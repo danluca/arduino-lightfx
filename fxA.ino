@@ -5,10 +5,6 @@
  */
 
 const char fx01_description[] = "Moving a fixed size segment with variable speed and stacking at the end - Tetris simplified";
-CRGBPalette16 fx01_colors = RainbowColors_p;
-uint fx01_cx = 0;
-uint fx01_lastCx = 0;
-uint fx01_speed = 100;
 const uint MAX_DOT_SIZE = 16;
 const uint8_t fx01_brightness = 175;
 const uint8_t fx01_dimmed = 20;
@@ -17,14 +13,18 @@ const uint FRAME_SIZE = 19;
 const int turnOffSeq[] = { 1, 1, 2, 3, 5, 7, 10 };
 enum OpMode { TurnOff, Chase };
 
+CRGBPalette16 fx01_colors = RainbowColors_p;
+uint fx01_cx = 0;
+uint fx01_lastCx = 0;
+uint fx01_speed = 100;
 uint fx01_szSegment = 3;
 uint fx01_szStackSeg = fx01_szSegment >> 1;
 uint fx01_szStack = 0;
-CRGB dot[MAX_DOT_SIZE];
-CRGB frame[FRAME_SIZE];
-int fx01_shuffleIndex[NUM_PIXELS];
 bool fx01_constSpeed = true;
 OpMode mode = Chase;
+int fx01_shuffleIndex[NUM_PIXELS];
+CRGB dot[MAX_DOT_SIZE];
+CRGB frame[FRAME_SIZE];
 
 CRGB* makeDot(CRGB color, uint szDot) {
   dot[0] = color;
@@ -162,6 +162,10 @@ void fxa01_setup() {
   //shuffle led indexes
   shuffleIndexes(fx01_shuffleIndex, NUM_PIXELS);
   reset();
+  fx01_cx = 0;
+  fx01_lastCx = 0;
+  fx01_speed = 100;
+  fx01_szStackSeg = fx01_szSegment >> 1;
 }
 
 
@@ -215,9 +219,13 @@ void fxa02_setup() {
   FastLED.clear(true);
   fill_solid(dot, MAX_DOT_SIZE, CRGB::Black);
 
-  fx01_colors = PartyColors_p;
   //shuffle led indexes done by fxa01_setup
+  fx01_colors = PartyColors_p;
   reset();
+  fx01_cx = 0;
+  fx01_lastCx = 0;
+  fx01_speed = 100;
+  fx01_szStackSeg = fx01_szSegment >> 1;
 }
 
 void fxa02_run() {

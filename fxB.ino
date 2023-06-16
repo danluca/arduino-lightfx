@@ -40,6 +40,7 @@ void fxb01_setup() {
 
   //shuffle led indexes
   fill_solid(frame, FRAME_SIZE, bkg);
+  fx02_speed = 100;
   fx02_cx = 0;
   fx02_lastCx = 0;
   fx02_szStack = 0;
@@ -52,7 +53,8 @@ void fxb01_run() {
       fill_solid(frame, FRAME_SIZE, bkg);
       fx02_cx = 0;
       fx02_lastCx = 0;
-      fx02_szStack = 0;      
+      fx02_szStack = 0;
+      mode = Chase;
     }
     return;
   }
@@ -63,8 +65,8 @@ void fxb01_run() {
   // Move a single led
   for (int led = 0; led < upLimit; led++) {
     // Turn our current led on, then show the leds
-    setTrailColor(frame, led, ColorFromPalette(fx02_colors, fx02_cx, random8(64, 193), LINEARBLEND), fx02_brightness, fx02_dimmed);
-    pushFrame(frame, 0, true);
+    setTrailColor(frame, led, ColorFromPalette(fx02_colors, fx02_cx, random8(fx02_dimmed+24, fx02_brightness), LINEARBLEND), fx02_brightness, fx02_dimmed);
+    pushFrame(frame, FRAME_SIZE, 0, true);
     FastLED.setBrightness(random8(30, 225));
     //fadeToBlackBy(leds, NUM_PIXELS, random16(40, 141));
     // Show the leds (only one of which is set to desired color, from above)

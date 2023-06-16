@@ -61,7 +61,7 @@ void fxd01_run() {
   // Move a single led
   for (int led = 0; led < upLimit; led++) {
     // Turn our current led on, then show the leds
-    setTrailColor(leds, led, ColorFromPalette(fx04_colors, fx04_cx, random8(40, 201), LINEARBLEND), fx04_brightness, fx04_dimmed);
+    setTrailColor(leds, led, ColorFromPalette(fx04_colors, fx04_cx, random8(fx04_dimmed+24, fx04_brightness), LINEARBLEND), fx04_brightness, fx04_dimmed);
     if (led == (upLimit-1))
       leds[led-1]=leds[led];
 
@@ -103,7 +103,13 @@ int       d02_huediff = 256;                                      // Range of ra
 uint8_t   d02_thisdelay = 5;                                        // We don't need much delay (if any)
 
 void fxd02_setup() {
-
+  d02_thisfade = 8;
+  d02_thishue = 50;
+  d02_thisinc = 1;
+  d02_thissat = 100;
+  d02_thisbri = 255;
+  d02_huediff = 256;
+  d02_thisdelay = 5;
 }
 
 void fxd02_run () {

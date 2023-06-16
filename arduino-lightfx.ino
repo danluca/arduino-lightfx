@@ -9,8 +9,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 //flips these to enable/disable logging to USB serial port
-#define DEBUG
-// #undef DEBUG
+// #define DEBUG
+#undef DEBUG
 
 /**
  * Setup LED strip and global data structures - executed once

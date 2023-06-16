@@ -28,7 +28,7 @@ void writeChar(char c) {
 
 template<typename... Args> void logDebug(const char* format, Args... data) {
 #if LOG_LEVEL <= LEVEL_DEBUG
-  printf("D [%lu]: ", millis());
+  printf("D [%lu] [%s %d]: ", millis(), rtos::ThisThread::get_name(), rtos::ThisThread::get_id());
   printf(format, data...);
   Serial.println();
 #endif
@@ -36,7 +36,7 @@ template<typename... Args> void logDebug(const char* format, Args... data) {
 
 template<typename... Args> void logInfo(const char* format, Args... data) {
 #if LOG_LEVEL <= LEVEL_INFO
-  printf("I [%lu]: ", millis());
+  printf("I [%lu] [%s %d]: ", millis(), rtos::ThisThread::get_name(), rtos::ThisThread::get_id());
   printf(format, data...);
   Serial.println();
 #endif
@@ -44,7 +44,7 @@ template<typename... Args> void logInfo(const char* format, Args... data) {
 
 template<typename... Args> void logWarn(const char* format, Args... data) {
 #if LOG_LEVEL <= LEVEL_WARN
-  printf("W [%lu]: ", millis());
+  printf("W [%lu] [%s]: ", millis(), rtos::ThisThread::get_name());
   // Serial.print("W [");
   // Serial.print(String(millis()));
   // Serial.print("]: ");
@@ -55,7 +55,7 @@ template<typename... Args> void logWarn(const char* format, Args... data) {
 
 template<typename... Args> void logError(const char* format, Args... data) {
 #if LOG_LEVEL <= LEVEL_ERR
-  printf("ERR [%lu]: ", millis());
+  printf("ERR [%lu] [%s]: ", millis(), rtos::ThisThread::get_name());
   printf(format, data...);
   Serial.println();
 #endif

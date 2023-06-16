@@ -36,7 +36,13 @@ bool       randhue =   1;                                     // Do we want rand
 
 void fxe01_setup() {
   currentBlending = LINEARBLEND;  
-  
+  twinkrate = 100;
+  thisdelay =  10;
+  thisfade =   8;
+  thishue =  50;
+  thissat = 255;
+  thisbri = 255;
+  randhue =   1;
 }
 
 void fxe01_run () {
@@ -90,6 +96,7 @@ void e01_ChangeMe() {                                             // A time (rat
 //=====================================
 void fxe02_setup() {
   currentPalette = RainbowColors_p;
+  fxe01_setup();
 }
 
 void fxe02_run() {
