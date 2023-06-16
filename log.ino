@@ -37,9 +37,6 @@ template<typename... Args> void logDebug(const char* format, Args... data) {
 template<typename... Args> void logInfo(const char* format, Args... data) {
 #if LOG_LEVEL <= LEVEL_INFO
   printf("I [%lu]: ", millis());
-  // Serial.print("I [");
-  // Serial.print(String(millis()));
-  // Serial.print("]: ");
   printf(format, data...);
   Serial.println();
 #endif

@@ -5,7 +5,6 @@
  */
 
 const char fx01_description[] = "Moving a fixed size segment with variable speed and stacking at the end - Tetris simplified";
-// const CRGB fx01_colors[] = {CRGB::Blue, CRGB::Red, CRGB::Lime, CRGB::Yellow, CRGB::Purple, CRGB::OrangeRed, CRGB::White, CRGB::Sienna, CRGB::SkyBlue, CRGB::FairyLight, CRGB::Green};
 CRGBPalette16 fx01_colors = RainbowColors_p;
 uint fx01_cx = 0;
 uint fx01_lastCx = 0;
@@ -13,17 +12,19 @@ uint fx01_speed = 100;
 const uint MAX_DOT_SIZE = 16;
 const uint8_t fx01_brightness = 175;
 const uint8_t fx01_dimmed = 20;
-// const uint FX01_NUM_COLORS = sizeof(fx01_colors)/sizeof(CRGB);
-const uint FX01_NUM_COLORS = 16;
 const CRGB bkg = CRGB::Black;
-const uint FX01_STACK_PUSH_COLOR = 7;
+const uint FRAME_SIZE = 19;
+const int turnOffSeq[] = { 1, 1, 2, 3, 5, 7, 10 };
+enum OpMode { TurnOff, Chase };
 
-uint fx01_szSegment = 4;
+uint fx01_szSegment = 3;
 uint fx01_szStackSeg = fx01_szSegment >> 1;
 uint fx01_szStack = 0;
 CRGB dot[MAX_DOT_SIZE];
+CRGB frame[FRAME_SIZE];
 int fx01_shuffleIndex[NUM_PIXELS];
-bool fx01_constSpeed = false;
+bool fx01_constSpeed = true;
+OpMode mode = Chase;
 
 CRGB* makeDot(CRGB color, uint szDot) {
   dot[0] = color;
@@ -35,170 +36,215 @@ CRGB* makeDot(CRGB color, uint szDot) {
   return dot;
 }
 
-bool isInViewport(int ledIndex, int viewportSize = NUM_PIXELS) {
+bool isInViewport(int ledIndex, int viewportSize = FRAME_SIZE) {
   int viewportLow = 0;
   int viewportHi = viewportSize;
   return (ledIndex >= viewportLow) && (ledIndex < viewportHi);
 }
 
 bool isVisible(int ledIndex) {
-  return (ledIndex>=0) && (ledIndex<NUM_PIXELS);
+  return (ledIndex >= 0) && (ledIndex < FRAME_SIZE);
 }
 
 uint validateSegmentSize(uint segSize) {
   return max(min(segSize, MAX_DOT_SIZE), 2);
 }
 
-void moveSeg(const CRGB dot[], uint szDot, uint lastPos, uint newPos, uint viewport) {
+void moveSeg(const CRGB dot[], uint szDot, CRGB dest[], uint lastPos, uint newPos, uint viewport) {
   bool rightDir = newPos >= lastPos;
-  int bkgSeg = min(szDot, abs(newPos-lastPos));
-  for (int x=0; x<bkgSeg; x++) {
-    int lx = rightDir?lastPos+x:newPos+szDot+x;
+  int bkgSeg = min(szDot, abs(newPos - lastPos));
+  for (int x = 0; x < bkgSeg; x++) {
+    int lx = rightDir ? lastPos + x : newPos + szDot + x;
     if (!isVisible(lx))
       continue;
     if (isInViewport(lx, viewport))
-      leds[lx] = bkg;
+      dest[lx] = bkg;
   }
-  for (int x=0; x<szDot; x++) {
-    int lx = newPos+x;
+  for (int x = 0; x < szDot; x++) {
+    int lx = newPos + x;
     if (!isVisible(lx))
       continue;
-    if (isInViewport(lx, viewport+fx01_szStackSeg))
-      leds[lx] = dot[rightDir?x:szDot-1-x];
+    if (isInViewport(lx, viewport + fx01_szStackSeg))
+      dest[lx] = dot[rightDir ? x : szDot - 1 - x];
   }
 }
 
-void stack(CRGB color, uint stackStart) {
-  for (int x=0; x<fx01_szStackSeg;x++) {
-    leds[stackStart+x]=color;
+void stack(CRGB color, CRGB dest[], uint stackStart) {
+  for (int x = 0; x < fx01_szStackSeg; x++) {
+    dest[stackStart + x] = color;
   }
 }
 
 uint incStackSize(int delta) {
-  fx01_szStack = (fx01_szStack+delta)%NUM_PIXELS;
+  fx01_szStack = capr(fx01_szStack + delta, 0, FRAME_SIZE);
   return fx01_szStack;
 }
 
 uint stackAdjust() {
-  if ((fx01_szStack>=fx01_szSegment) && (fx01_cx==FX01_STACK_PUSH_COLOR || fx01_cx==fx01_lastCx)) {
-    if (fx01_cx == FX01_STACK_PUSH_COLOR) {
-      shiftRight(leds, NUM_PIXELS, 1);
-      incStackSize(-1);
-      random16_add_entropy(millis() >> 4);
-      FastLED.show();
-      delay(fx01_speed << 2);
-    } else if (fx01_cx == fx01_lastCx) {
-      incStackSize(-fx01_szStackSeg);
-    } 
-  } else {
+  if (fx01_szStack < fx01_szSegment << 1) {
     incStackSize(fx01_szStackSeg);
+    return fx01_szStack;
   }
+  if (fx01_cx < 16) {
+    shiftRight(frame, FRAME_SIZE, 1);
+    incStackSize(-1);
+  } else if (inr(fx01_cx, 16, 32) || fx01_cx == fx01_lastCx) {
+    incStackSize(-fx01_szStackSeg);
+  } else
+    incStackSize(fx01_szStackSeg);
   return fx01_szStack;
 }
 
-void clearSmooth() {
-  if (!isAnyLedOn(bkg)) 
-    return;
-  
-  for (int led = 0; led < NUM_PIXELS;) {
-    int szThisRound = random16(1, 6);
-    if (led + szThisRound > NUM_PIXELS) {
-      szThisRound = NUM_PIXELS - led;
+void moldWindow() {
+  CRGB top[FRAME_SIZE];
+  CRGB right[FRAME_SIZE];
+  cloneArray(frame, top, FRAME_SIZE);
+  fill_solid(right, FRAME_SIZE, bkg);
+  copyArray(frame, 5, right, 5, 14);
+  reverseArray(right, FRAME_SIZE);
+  pushFrame(frame, 17);
+  pushFrame(top, 19, 17);
+  pushFrame(right, 14, 36);
+}
+
+void reset() {
+  fx01_szStack = 0;
+  fill_solid(frame, FRAME_SIZE, bkg);
+  mode = Chase;
+}
+
+bool turnOff() {
+  static int led = 0;
+  static int xOffNow = 0;
+  static uint szOffNow = turnOffSeq[xOffNow];
+  static bool setOff = false;
+  static bool allOff = false;
+
+  EVERY_N_MILLISECONDS(25) {
+    int totalLum = 0;
+    for (int x = 0; x < szOffNow; x++) {
+      int xled = fx01_shuffleIndex[(led + x)%FastLED.size()];
+      FastLED.leds()[xled].fadeToBlackBy(12);
+      totalLum += FastLED.leds()[xled].getLuma();
     }
-    int thisRound[szThisRound];
-    for (int x = 0; x < szThisRound; x++) {
-      thisRound[x] = fx01_shuffleIndex[led++];
-    }
-    smoothOffMultiple(thisRound, szThisRound);
+    FastLED.show();
+    setOff = totalLum<4;
   }
+
+  EVERY_N_MILLISECONDS(1200) {
+    if (setOff) {
+      led = (led + szOffNow) % FastLED.size();
+      xOffNow = capu(xOffNow + 1, sizeof(turnOffSeq) / sizeof(int) - 1);
+      szOffNow = turnOffSeq[xOffNow];
+      setOff = false;
+    }
+    allOff = !isAnyLedOn(FastLED.leds(), FastLED.size(), CRGB::Black);
+  }
+  //if we're turned off all LEDs, reset the static variables for next time
+  if (allOff) {
+    led = 0;
+    xOffNow = 0;
+    szOffNow = turnOffSeq[xOffNow];
+    setOff = false;
+    allOff = false;
+    return true;
+  }
+
+  return false;
 }
 
 //=====================================
 void fxa01_setup() {
-  fill_solid(leds, NUM_PIXELS, CRGB::Black);
-  fill_solid(dot, MAX_DOT_SIZE, CRGB::Black);
+  FastLED.clear(true);
+  fill_solid(dot, MAX_DOT_SIZE, bkg);
 
   fx01_colors = RainbowColors_p;
   //shuffle led indexes
   shuffleIndexes(fx01_shuffleIndex, NUM_PIXELS);
-  fx01_szStack = 0;
-  clearSmooth();
+  reset();
 }
 
 
 void fxa01_run() {
-  // fx01_cx = random16(0, FX01_NUM_COLORS);
+  if (mode == TurnOff) {
+    if (turnOff()) {
+      reset();
+    }
+    return;
+  }
   fx01_cx = random8();
   fx01_speed = random16(25, 201);
   fx01_szSegment = validateSegmentSize(fx01_szSegment);
   fx01_szStackSeg = fx01_szSegment >> 1;
-  int szViewport = NUM_PIXELS-fx01_szStack;
-  int startIndex = 0-fx01_szSegment;
+  int szViewport = FRAME_SIZE - fx01_szStack;
+  int startIndex = 0 - fx01_szSegment;
 
   // Make a dot with current color
   // makeDot(fx01_colors[fx01_cx], fx01_szSegment);
-  makeDot(ColorFromPalette(fx01_colors, fx01_cx, random8(30, 201), LINEARBLEND), fx01_szSegment);
+  makeDot(ColorFromPalette(fx01_colors, fx01_cx, random8(fx01_dimmed+24, fx01_brightness), LINEARBLEND), fx01_szSegment);
   for (int led = startIndex; led < szViewport; led++) {
     //move the segment, build up stack
-    moveSeg(dot, fx01_szSegment, led, led+1, szViewport);
-    if (led==(szViewport-1))
-      stack(dot[fx01_szSegment-1], szViewport);
+    moveSeg(dot, fx01_szSegment, frame, led, led + 1, szViewport);
+    if (led == (szViewport - 1))
+      stack(dot[fx01_szSegment - 1], frame, szViewport);
 
     // Show the updated leds
+    //FastLED.show();
+    //showFill(frame, FRAME_SIZE);
+    moldWindow();
     FastLED.show();
 
     // Wait a little bit
     delay(fx01_speed);
-    
+
     //update fx01_speed if in next segment of 10 leds
     if (!fx01_constSpeed && (led % 10 == 9) && random16(0, 2)) {
       fx01_speed = random16(25, 201);
     }
   }
 
-  if (fx01_szStack == 0) {
-    clearSmooth();
-    incStackSize(fx01_szStackSeg);
-  } else
-    stackAdjust();
-  
+  stackAdjust();
+  mode = fx01_szStack == FRAME_SIZE ? TurnOff : Chase;
+
   //save the color
   fx01_lastCx = fx01_cx;
 }
 
 //=====================================
 void fxa02_setup() {
-  fill_solid(leds, NUM_PIXELS, CRGB::Black);
+  FastLED.clear(true);
   fill_solid(dot, MAX_DOT_SIZE, CRGB::Black);
 
   fx01_colors = PartyColors_p;
-  //shuffle led indexes
-  shuffleIndexes(fx01_shuffleIndex, NUM_PIXELS);
-  fx01_szStack = 0;
-  clearSmooth();
+  //shuffle led indexes done by fxa01_setup
+  reset();
 }
 
 void fxa02_run() {
-  // fx01_cx = random16(0, FX01_NUM_COLORS);
+  if (mode == TurnOff) {
+    if (turnOff()) {
+      reset();
+    }
+    return;
+  }
+
   fx01_cx = random8();
   fx01_speed = random16(25, 201);
   fx01_szSegment = random8(2, MAX_DOT_SIZE);
-  // fx01_szSegment = validateSegmentSize(fx01_szSegment);
-  int szViewport = NUM_PIXELS;
-  int startIndex = 0-fx01_szSegment;
+  int szViewport = FRAME_SIZE;
+  int startIndex = 0 - fx01_szSegment;
 
   // Make a dot with current color
-  // makeDot(fx01_colors[fx01_cx], fx01_szSegment);
-  makeDot(ColorFromPalette(fx01_colors, fx01_cx, random8(30, 201), LINEARBLEND), fx01_szSegment);
+  makeDot(ColorFromPalette(fx01_colors, fx01_cx, random8(fx01_dimmed+24, fx01_brightness), LINEARBLEND), fx01_szSegment);
   //move dot to right
   for (int led = startIndex; led < szViewport; led++) {
     //move the segment, build up stack
-    moveSeg(dot, fx01_szSegment, led, led+1, szViewport);
+    moveSeg(dot, fx01_szSegment, frame, led, led + 1, szViewport);
     //retain the last pixel for turning back
-    if (led>=(szViewport-2))
-      leds[szViewport-1] = dot[fx01_szSegment-1];
+    if (led >= (szViewport - 2))
+      frame[szViewport - 1] = dot[fx01_szSegment - 1];
     // Show the updated leds
-    FastLED.show();
+    showFill(frame, FRAME_SIZE);
     // Wait a little bit
     delay(fx01_speed);
     //update fx01_speed if in next segment of 10 leds
@@ -209,9 +255,9 @@ void fxa02_run() {
   //move dot back to left
   for (int led = szViewport; led > startIndex; led--) {
     //move the segment, build up stack
-    moveSeg(dot, fx01_szSegment, led, led-1, szViewport);
+    moveSeg(dot, fx01_szSegment, frame, led, led - 1, szViewport);
     // Show the updated leds
-    FastLED.show();
+    showFill(frame, FRAME_SIZE);
     // Wait a little bit
     delay(fx01_speed);
     //update fx01_speed if in next segment of 10 leds

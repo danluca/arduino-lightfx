@@ -9,9 +9,6 @@
 // initial global brightness 0-255
 #define BRIGHTNESS 255
 
-// How many pixel are in the strip? Remember that WS2811 strips running on 12V have 3 LEDs per pixel.
-#define NUM_PIXELS 50
-
 // These are lists and need to be commas instead of dots eg. for IP address 192.168.0.1 use 192,168,0,1 instead
 #define IP_ADDR 192,168,0,10
 #define IP_DNS 8,8,8,8          // Google DNS

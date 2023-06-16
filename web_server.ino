@@ -131,8 +131,6 @@ void sendConfigJson(WiFiClient client) {
   fx1["dotSize"] = fx01_szSegment;
   fx1["hiBright"] = fx01_brightness;
   fx1["loBright"] = fx01_dimmed;
-  fx1["colorNbr"] = FX01_NUM_COLORS;
-  fx1["stackColor"] = FX01_STACK_PUSH_COLOR;
 
   JsonObject fx2 = fxArray.createNestedObject();
   fx2["name"] = "fx02";
@@ -141,8 +139,6 @@ void sendConfigJson(WiFiClient client) {
   fx2["dotSize"] = 1;
   fx2["hiBright"] = fx02_brightness;
   fx2["loBright"] = fx02_dimmed;
-  fx2["colorNbr"] = FX02_NUM_COLORS;
-  fx2["stackColor"] = FX02_STACK_PUSH_COLOR;
 
   //send it out
   uint bodyLen = serializeJson(doc, client);

@@ -8,32 +8,60 @@ CRGBPalette16 fx04_colors = PartyColors_p;
 uint fx04_cx = 0;
 uint fx04_lastCx = 0;
 uint fx04_speed = 100;
-uint fx04_frzBound = 0;
+uint fx04_szStack = 0;
 const uint8_t fx04_brightness = 140;
 const uint8_t fx04_dimmed = 20;
-int fx04_shuffleIndex[NUM_PIXELS];
-const uint FX04_NUM_COLORS = 16;
-const uint FX04_STACK_PUSH_COLOR = 5;
+const uint8_t fx04_szSegment = 1;
+const uint8_t fx04_szStackSeg = 1;
+
+uint fx04_incStackSize(int delta) {
+  fx04_szStack = capr(fx04_szStack + delta, 0, NUM_PIXELS);
+  return fx04_szStack;
+}
+
+uint fx04_stackAdjust() {
+  if (fx04_szStack < fx04_szSegment << 1) {
+    fx04_incStackSize(fx04_szStackSeg);
+    return fx04_szStack;
+  }
+  if (fx04_cx < 16) {
+    shiftRight(leds, NUM_PIXELS, 1);
+    fx04_incStackSize(-1);
+  } else if (inr(fx04_cx, 16, 32) || fx04_cx == fx04_lastCx) {
+    fx04_incStackSize(-fx04_szStackSeg);
+  } else
+    fx04_incStackSize(fx04_szStackSeg);
+  return fx04_szStack;
+}
 
 void fxd01_setup() {
-  fill_solid(leds, NUM_PIXELS, CRGB::Black);
+  FastLED.clear(true);
 
   fx04_colors = PartyColors_p;
   //shuffle led indexes
-  shuffleIndexes(fx04_shuffleIndex, NUM_PIXELS);
-  fx04_frzBound = 0;
-  clearSmooth();
+  fill_solid(leds, NUM_PIXELS, bkg);
+  fx04_cx = fx04_lastCx = fx04_szStack = 0;
+  mode = Chase;
 }
 
 void fxd01_run() {
-  // fx04_cx = random16(0, FX04_NUM_COLORS);
+  if (mode == TurnOff) {
+    if (turnOff()) {
+      fill_solid(leds, NUM_PIXELS, bkg);
+      fx04_cx = 0;
+      fx04_lastCx = 0;
+      fx04_szStack = 0;
+      mode = Chase;
+    }
+    return;
+  }
   fx04_cx = random8();
   fx04_speed = random16(25, 201);
-  int upLimit = NUM_PIXELS - fx04_frzBound;
+  int upLimit = NUM_PIXELS - fx04_szStack;
   // Move a single led
   for (int led = 0; led < upLimit; led++) {
     // Turn our current led on, then show the leds
-    setTrailColor(led, ColorFromPalette(fx04_colors, fx04_cx, random8(40, 201), LINEARBLEND), fx04_brightness, fx04_dimmed);
+    setTrailColor(leds, led, ColorFromPalette(fx04_colors, fx04_cx, random8(40, 201), LINEARBLEND), fx04_brightness, fx04_dimmed);
     if (led == (upLimit-1))
       leds[led-1]=leds[led];
 
@@ -45,26 +73,12 @@ void fxd01_run() {
 
     // Turn our current led back to black for the next loop around
     if (led < (upLimit - 1)) {
-      offTrailColor(led);
+      offTrailColor(leds, led);
     }
   }
 
-  if ((fx04_frzBound>3) && (fx04_cx==FX04_STACK_PUSH_COLOR || fx04_cx==fx04_lastCx)) {
-    if (fx04_cx == FX04_STACK_PUSH_COLOR) {
-      shiftRight(leds, NUM_PIXELS, 1);
-      random16_add_entropy(millis() >> 4);
-      FastLED.show();
-      delay(fx04_speed << 2);
-    } else if (fx04_cx == fx04_lastCx) {
-      fx04_frzBound--;
-    }
-  } else {
-    fx04_frzBound = (fx04_frzBound + 1) % NUM_PIXELS;
-  }
-
-  if (fx04_frzBound == 0) {
-    clearSmooth();
-  }
+  fx04_stackAdjust();
+  mode = fx04_szStack == FRAME_SIZE ? TurnOff : Chase;
 
   //save the color
   fx04_lastCx = fx04_cx;
