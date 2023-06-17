@@ -13,8 +13,8 @@
 CRGB leds[NUM_PIXELS];
 
 // Effectx setup and run functions - two arrays of same(!) size
-void (*setupFunc[])() = {fxa01_setup, fxa02_setup, fxb01_setup, fxc01_setup, fxc02_setup, fxd01_setup, fxd02_setup, fxe01_setup, fxe02_setup, fxh01_setup, fxh02_setup};
-void (*fxrunFunc[])() = {fxa01_run,   fxa02_run,   fxb01_run,   fxc01_run,   fxc02_run,   fxd01_run,   fxd02_run,   fxe01_run,   fxe02_run,   fxh01_run,   fxh02_run};
+void (*const setupFunc[])() = {fxa01_setup, fxa02_setup, fxb01_setup, fxc01_setup, fxc02_setup, fxd01_setup, fxd02_setup, fxe01_setup, fxe02_setup, fxh01_setup, fxh02_setup};
+void (*const fxrunFunc[])() = {fxa01_run,   fxa02_run,   fxb01_run,   fxc01_run,   fxc02_run,   fxd01_run,   fxd02_run,   fxe01_run,   fxe02_run,   fxh01_run,   fxh02_run};
 const uint szFx = sizeof(setupFunc)/sizeof(void*);
 
 // current effect
