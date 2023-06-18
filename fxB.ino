@@ -1,90 +1,104 @@
-/**
- * Tetris flavor 2 - single dot moving one direction, random color, stack at the end, constant speed between segments of 8
- */
+typedef void (*SimplePatternList[])();  // List of patterns to cycle through.  Each is defined as a separate function below.
 
-const char fx02_description[] = "Moving a 1 pixel segment with constant speed and stacking at the end; flickering; Halloween colors - Halloween Tetris";
-const CRGBPalette16 fx02_colors = CRGBPalette16(CRGB::Red, CRGB::Purple, CRGB::Orange, CRGB::Yellow);
-uint fx02_cx = 0;
-uint fx02_lastCx = 0;
-uint fx02_speed = 100;
-uint fx02_szStack = 0;
+const SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, fxb_confetti, sinelon, juggle, bpm };
 
-const uint8_t fx02_szSegment = 1;
-const uint8_t fx02_szStackSeg = 1;
-const uint8_t fx02_brightness = 140;
-const uint8_t fx02_dimmed = 20;
-
-uint fx02_incStackSize(int delta) {
-  fx02_szStack = capr(fx02_szStack + delta, 0, FRAME_SIZE);
-  return fx02_szStack;
-}
-
-uint fx02_stackAdjust() {
-  if (fx02_szStack < fx02_szSegment << 1) {
-    fx02_incStackSize(fx02_szStackSeg);
-    return fx02_szStack;
-  }
-  if (fx02_cx < 16) {
-    shiftRight(frame, FRAME_SIZE, 1);
-    fx02_incStackSize(-1);
-  } else if (inr(fx02_cx, 16, 32) || fx02_cx == fx02_lastCx) {
-    fx02_incStackSize(-fx02_szStackSeg);
-  } else
-    fx02_incStackSize(fx02_szStackSeg);
-  return fx02_szStack;
-}
-
+uint8_t gCurrentPatternNumber = 0;
+uint8_t gHue = 0;
+uint8_t max_bright = 128;
+CRGBPalette16 palette = PartyColors_p;
 
 void fxb01_setup() {
   FastLED.clear(true);
-
-  //shuffle led indexes
-  fill_solid(frame, FRAME_SIZE, bkg);
-  fx02_speed = 100;
-  fx02_cx = 0;
-  fx02_lastCx = 0;
-  fx02_szStack = 0;
-  mode = Chase;
+  FastLED.setBrightness(BRIGHTNESS);
+  gHue = 0;
+  gCurrentPatternNumber = 0;
 }
 
 void fxb01_run() {
-  if (mode == TurnOff) {
-    if (turnOff()) {
-      fill_solid(frame, FRAME_SIZE, bkg);
-      fx02_cx = 0;
-      fx02_lastCx = 0;
-      fx02_szStack = 0;
-      mode = Chase;
-    }
-    return;
+  EVERY_N_MILLISECONDS(100) {
+    gPatterns[gCurrentPatternNumber]();  // Call the current pattern function once, updating the 'leds' array
   }
 
-  fx02_cx = random8();
-  fx02_speed = random16(25, 201);
-  int upLimit = FRAME_SIZE - fx02_szStack;
-  // Move a single led
-  for (int led = 0; led < upLimit; led++) {
-    // Turn our current led on, then show the leds
-    setTrailColor(frame, led, ColorFromPalette(fx02_colors, fx02_cx, random8(fx02_dimmed+24, fx02_brightness), LINEARBLEND), fx02_brightness, fx02_dimmed);
-    pushFrame(frame, FRAME_SIZE, 0, true);
-    FastLED.setBrightness(random8(30, 225));
-    //fadeToBlackBy(leds, NUM_PIXELS, random16(40, 141));
-    // Show the leds (only one of which is set to desired color, from above)
-    FastLED.show();
-
-    // Wait a little bit
-    delay(fx02_speed);
-
-    // Turn our current led back to black for the next loop around
-    if (led < (upLimit - 1)) {
-      offTrailColor(leds, led);
-    }
+  EVERY_N_MILLISECONDS(40) {  // slowly cycle the "base color" through the rainbow
+    gHue++;
   }
 
-  fx02_stackAdjust();
-  mode = fx02_szStack == FRAME_SIZE ? TurnOff : Chase;
+  EVERY_N_MINUTES(2) {
+    gCurrentPatternNumber = inc(gCurrentPatternNumber, 1, arrSize(gPatterns));
+  }
 
-  //save the color
-  fx02_lastCx = fx02_cx;
+  FastLED.show();
 }
 
+void rainbow() {
+
+  fill_rainbow(leds, NUM_PIXELS, gHue, 7);  // FastLED's built-in rainbow generator.
+
+}  // rainbow()
+
+
+
+void rainbowWithGlitter() {
+
+  rainbow();  // Built-in FastLED rainbow, plus some random sparkly glitter.
+  nscale8(leds, NUM_PIXELS, fxa_brightness);
+  addGlitter(80);
+
+}  // rainbowWithGlitter()
+
+
+
+void addGlitter(fract8 chanceOfGlitter) {
+
+  if (random8() < chanceOfGlitter) {
+    leds[random16(NUM_PIXELS)] += CRGB::White;
+  }
+
+}  // addGlitter()
+
+
+
+void fxb_confetti() {  // Random colored speckles that blink in and fade smoothly.
+
+  fadeToBlackBy(leds, NUM_PIXELS, 10);
+  int pos = random16(NUM_PIXELS);
+  leds[pos] += CHSV(gHue + random8(64), 200, 255);
+
+}  // confetti()
+
+
+
+void sinelon() {  // A colored dot sweeping back and forth, with fading trails.
+
+  fadeToBlackBy(leds, NUM_PIXELS, 20);
+  int pos = beatsin16(13, 0, NUM_PIXELS - 1);
+  leds[pos] += CHSV(gHue, 255, 192);
+
+}  // sinelon()
+
+
+
+void bpm() {  // Colored stripes pulsing at a defined Beats-Per-Minute.
+
+  uint8_t BeatsPerMinute = 62;
+  uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
+
+  for (int i = 0; i < NUM_PIXELS; i++) {  //9948
+    leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
+  }
+
+}  // bpm()
+
+
+
+void juggle() {  // Eight colored dots, weaving in and out of sync with each other.
+
+  fadeToBlackBy(leds, NUM_PIXELS, 20);
+  byte dothue = 0;
+
+  for (int i = 0; i < 8; i++) {
+    leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= CHSV(dothue, 200, 255);
+    dothue += 32;
+  }
+
+}  // juggle()

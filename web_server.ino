@@ -125,20 +125,20 @@ void sendConfigJson(WiFiClient client) {
   doc["curEffect"] = String(curFxIndex);
   JsonArray fxArray = doc.createNestedArray("fx");
   JsonObject fx1 = fxArray.createNestedObject();
-  fx1["name"] = "fx01";
-  fx1["description"] = fx01_description;
-  fx1["constantSpeed"] = fx01_constSpeed;
-  fx1["dotSize"] = fx01_szSegment;
-  fx1["hiBright"] = fx01_brightness;
-  fx1["loBright"] = fx01_dimmed;
+  fx1["name"] = "fxa01";
+  fx1["description"] = fxa_description;
+  fx1["constantSpeed"] = fxa_constSpeed;
+  fx1["dotSize"] = fxa_szSegment;
+  fx1["hiBright"] = fxa_brightness;
+  fx1["loBright"] = fxa_dimmed;
 
   JsonObject fx2 = fxArray.createNestedObject();
-  fx2["name"] = "fx02";
-  fx2["description"] = fx02_description;
+  fx2["name"] = "fxb01";
+  fx2["description"] = fxb_description;
   fx2["constantSpeed"] = true;
   fx2["dotSize"] = 1;
-  fx2["hiBright"] = fx02_brightness;
-  fx2["loBright"] = fx02_dimmed;
+  fx2["hiBright"] = fxa_brightness;
+  fx2["loBright"] = fxa_dimmed;
 
   //send it out
   uint bodyLen = serializeJson(doc, client);
@@ -188,9 +188,9 @@ void webserver() {
           sendWifiJson(client);
         } else if (reqUri.startsWith("GET /fx01/constantSpeed=")) {
           if (reqUri.indexOf("=0") > 0) {
-            fx01_constSpeed = false;
+            fxa_constSpeed = false;
           } else {
-            fx01_constSpeed = true;
+            fxa_constSpeed = true;
           }
           client.print(http303Main);
           logInfo("Response: HTTP 303 [/index.html]");
@@ -202,9 +202,9 @@ void webserver() {
             client.print(http500Text);
             logInfo("Response: HTTP 500 [/fx/01]");
           } else {
-            fx01_szSegment = doc["dotSize"].as<uint>() % MAX_DOT_SIZE;
-            fx01_constSpeed = doc["constantSpeed"].as<bool>();
-            logInfo("FX01: Segment size updated to %u; constant speed updated to %s", fx01_szSegment, fx01_constSpeed?"true":"false");
+            fxa_szSegment = doc["dotSize"].as<uint>() % MAX_DOT_SIZE;
+            fxa_constSpeed = doc["constantSpeed"].as<bool>();
+            logInfo("FXA: Segment size updated to %u; constant speed updated to %s", fxa_szSegment, fxa_constSpeed?"true":"false");
             client.print(http303Main);
             logInfo("Response: HTTP 303 [/fx/01]");
           }

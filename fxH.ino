@@ -1,14 +1,15 @@
+#define MAX_ENGINE_SIZE   40
 ///////Engine 1///////
 #define EngineStart1 0
-#define EngineEnd1 19
+#define EngineEnd1 20
 
 ///////Engine 2///////
 #define EngineStart2 20
-#define EngineEnd2 39
+#define EngineEnd2 40
 
 ///////Engine 3///////
 #define EngineStart3 40
-#define EngineEnd3 49
+#define EngineEnd3 50
 
 ///////Engine 4///////
 // #define EngineStart4 24
@@ -20,17 +21,23 @@
 #define FRAMES_PER_SECOND 100
 
 const CRGBPalette16 gPal = CRGBPalette16( CRGB::Black, CRGB::Red, CRGB::Yellow, CRGB::OrangeRed );
+int fire1[MAX_ENGINE_SIZE];
+int fire2[MAX_ENGINE_SIZE];
+int fire3[MAX_ENGINE_SIZE];
+
 
 // Define variables used by the sequences.
 //uint8_t  thisfade = 8;                                        // How quickly does it fade? Lower = slower fade rate.
 //int       thishue = 50;                                       // Starting hue.
-uint8_t   thisinc = 1;                                        // Incremental value for rotating hues
+//uint8_t   thisinc = 1;                                        // Incremental value for rotating hues
 //uint8_t   thissat = 100;                                      // The saturation, where 255 = brilliant colours.
 //uint8_t   thisbri = 255;                                      // Brightness of a sequence. Remember, max_bright is the overall limiter.
-int       huediff = 256;                                      // Range of random #'s to use for hue
+//int       huediff = 256;                                      // Range of random #'s to use for hue
 //uint8_t thisdelay = 5;                                        // We don't need much delay (if any)
 
 void fxh01_setup() {
+  FastLED.clear(true);
+  FastLED.setBrightness(BRIGHTNESS);
 }
 
 void fxh01_run()
@@ -38,10 +45,10 @@ void fxh01_run()
   // Add entropy to random number generator; we use a lot of it. 
   //random16_add_entropy( random8());                                        // <<< use random() for ardunino esp_random() for ESP32
 
-  EVERY_N_MILLISECONDS(250) {
-    ENGINE(EngineStart1, EngineEnd1, false);
-    ENGINE(EngineStart2, EngineEnd2, false);
-    ENGINE(EngineStart3, EngineEnd3, true);
+  EVERY_N_MILLISECONDS(125) {
+    ENGINE(fire1, EngineStart1, EngineEnd1, false);
+    ENGINE(fire2, EngineStart2, EngineEnd2, false);
+    ENGINE(fire3, EngineStart3, EngineEnd3, true);
   // ENGINE(EngineSize4,EngineStart4,EngineEnd4);
   
     FastLED.show(); // display this frame
@@ -61,11 +68,12 @@ void fxh01_run()
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////
-void ENGINE(int EngineStart, int EngineEnd, bool gReverseDirection) {
+/**
+ * EngineEnd-EngineStart must be less that MAX_ENGINE_SIZE!
+ */
+void ENGINE(int heat[], int EngineStart, int EngineEnd, bool gReverseDirection) {
   const int EngineSize = EngineEnd - EngineStart;
   // Array of temperature readings at each simulation cell
-  int heat[EngineSize];
 
   // Step 1.  Cool down every cell a little
     for( int i = 0; i < EngineSize; i++) {
@@ -73,8 +81,8 @@ void ENGINE(int EngineStart, int EngineEnd, bool gReverseDirection) {
     }
   
     // Step 2.  Heat from each cell drifts 'up' and diffuses a little
-    for( int k= EngineSize - 1; k >= 0; k--) {
-      heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
+    for( int k= EngineSize - 1; k >=0; k--) {
+      heat[k] = (heat[qsub8(k, 1)] + heat[qsub8(k, 2)] + heat[qsub8(k, 2)] ) / 3;
     }
     
     // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
@@ -85,17 +93,20 @@ void ENGINE(int EngineStart, int EngineEnd, bool gReverseDirection) {
     }
 
     // Step 4.  Map from heat cells to LED colors
-    for( int j = EngineStart; j < EngineEnd; j++) {
+    for( int j = 0; j < EngineSize; j++) {
       // Scale the heat value from 0-255 down to 0-240 for best results with color palettes.
-      uint8_t colorindex = scale8( heat[j - EngineStart], 240);
+      uint8_t colorindex = scale8( heat[j], 240);
       CRGB color = ColorFromPalette( gPal, colorindex);
-      int pixelnumber = gReverseDirection ? (NUM_PIXELS-1) - j : j;
+      int pixelnumber = gReverseDirection ? (EngineEnd-1) - j : (j+EngineStart);
       leds[pixelnumber] = color;
     }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 void fxh02_setup() {
+  FastLED.clear(true);
+  FastLED.setBrightness(BRIGHTNESS);
+
   thisfade = 8; 
   thishue = 50;
   thisinc = 1;   

@@ -9,8 +9,6 @@ int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
 void wifi_setup() {
-  log_setup();
-
   // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
     logWarn("Communication with WiFi module failed!");
@@ -45,6 +43,14 @@ void wifi_setup() {
 void webserver(); //declare the function so we can invoke it; the implementation is in web_server.ino file included after this one
 
 void wifi_loop() {
+  EVERY_N_MINUTES(15) {
+    if (WiFi.status() != WL_CONNECTED) {
+      logWarn("WiFi Connection lost - re-connecting...");
+      status = WL_CONNECTION_LOST;
+      server.clearWriteError();
+      wifi_setup();
+    }
+  }
   webserver();
   yield();
 }

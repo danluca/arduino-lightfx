@@ -4,6 +4,9 @@
 #define capu(x,u) ((x>u)?u:x)
 #define capr(x,d,u) (capu(capd(x,d),u))
 #define inr(x,d,u) ((x>=d)&&(x<u))
+#define inc(x,i,u) ((x+i)%u)
+#define arrSize(A) (sizeof(A) / sizeof((A)[0]))
+
 
 #define MAX_NUM_PIXELS  1024    //maximum number of pixels supported (equivalent of 330ft LED strips). If more are needed, we'd need to revisit memory allocation and PWM timings
 
@@ -13,8 +16,8 @@
 CRGB leds[NUM_PIXELS];
 
 // Effectx setup and run functions - two arrays of same(!) size
-void (*const setupFunc[])() = {fxa01_setup, fxa02_setup, fxb01_setup, fxc01_setup, fxc02_setup, fxd01_setup, fxd02_setup, fxe01_setup, fxe02_setup, fxh01_setup, fxh02_setup};
-void (*const fxrunFunc[])() = {fxa01_run,   fxa02_run,   fxb01_run,   fxc01_run,   fxc02_run,   fxd01_run,   fxd02_run,   fxe01_run,   fxe02_run,   fxh01_run,   fxh02_run};
+void (*const setupFunc[])() = {fxa01_setup, fxa02_setup, fxa03_setup, fxa04_setup,  fxb01_setup, fxc01_setup, fxc02_setup, fxd01_setup, fxd02_setup, fxe01_setup, fxe02_setup, fxh01_setup, fxh02_setup};
+void (*const fxrunFunc[])() = {fxa01_run,   fxa02_run,   fxa03_run,   fxa04_run,    fxb01_run,   fxc01_run,   fxc02_run,   fxd01_run,   fxd02_run,   fxe01_run,   fxe02_run,   fxh01_run,   fxh02_run};
 const uint szFx = sizeof(setupFunc)/sizeof(void*);
 
 // current effect
@@ -92,29 +95,6 @@ void shuffleIndexes(int array[], uint szArray) {
     int tmp = array[x];
     array[x] = array[r];
     array[r] = tmp;
-  }
-}
-
-void smoothOffOne(CRGB arr[], uint szArr, int xLed) {
-  for (int fade = 0; fade < 8; fade++) {
-    arr[capr(xLed, 0, szArr)].nscale8(255 >> fade);
-    //FastLED.show();
-    showFill(arr, szArr);
-    delay(125);
-  }
-}
-
-void smoothOffMultiple(CRGB arr[], uint szArr, int xLed[], int szLed) {
-  for (int fade = 0; fade < 8; fade++) {
-    for (int x = 0; x < szLed; x++) {
-      arr[capr(xLed[x], 0, szArr)].nscale8(255 >> fade);
-    }
-    //FastLED.show();
-    if (arr == leds) 
-      FastLED.show();
-    else
-      showFill(arr, szArr);
-    delay(100);
   }
 }
 
@@ -233,9 +213,10 @@ void fx_setup() {
 //Run currently selected effect -------
 void fx_run() {
   if (autoSwitch) {
-    if ((millis()-fxSwitchTime)>300000)
+    EVERY_N_MINUTES(5) {
       curFxIndex = random8(0, szFx);
       // curFxIndex = capr(curFxIndex+1,0,szFx-1);
+    }
   } else 
     curFxIndex = capr(curFxIndex, 0, szFx-1);
   //if effect has changed, re-run the effect's setup

@@ -16,7 +16,7 @@
 
 
 // Global variables can be changed on the fly.
-uint8_t max_bright = 128;                                      // Overall brightness.
+//uint8_t max_bright = 128;                                      // Overall brightness.
 
 // Palette definitions
 CRGBPalette16 currentPalette;
@@ -25,16 +25,18 @@ TBlendType    currentBlending;                                // NOBLEND or LINE
 
 // Define variables used by the sequences.
 int      twinkrate = 100;                                     // The higher the value, the lower the number of twinkles.
-uint8_t  thisdelay =  10;                                     // A delay value for the sequence(s).
-uint8_t   thisfade =   8;                                     // How quickly does it fade? Lower = slower fade rate.
-uint8_t    thishue =  50;                                     // The hue.
-uint8_t    thissat = 255;                                     // The saturation, where 255 = brilliant colours.
-uint8_t    thisbri = 255;                                     // Brightness of a sequence.
+//uint8_t  thisdelay =  10;                                     // A delay value for the sequence(s).
+//uint8_t   thisfade =   8;                                     // How quickly does it fade? Lower = slower fade rate.
+//uint8_t    thishue =  50;                                     // The hue.
+//uint8_t    thissat = 255;                                     // The saturation, where 255 = brilliant colours.
+//uint8_t    thisbri = 255;                                     // Brightness of a sequence.
 bool       randhue =   1;                                     // Do we want random colours all the time? 1 = yes.
 
 
 
 void fxe01_setup() {
+  FastLED.clear(true);
+  FastLED.setBrightness(BRIGHTNESS);
   currentBlending = LINEARBLEND;  
   twinkrate = 100;
   thisdelay =  10;
@@ -95,8 +97,8 @@ void e01_ChangeMe() {                                             // A time (rat
 
 //=====================================
 void fxe02_setup() {
-  currentPalette = RainbowColors_p;
   fxe01_setup();
+  currentPalette = RainbowColors_p;
 }
 
 void fxe02_run() {

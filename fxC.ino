@@ -15,7 +15,8 @@ CRGB leds2[NUM_PIXELS];
 CRGB leds3[NUM_PIXELS];
 
 void fxc01_setup() {
-  //nothing special to setup
+  FastLED.clear(true);
+  FastLED.setBrightness(BRIGHTNESS);
 }
 
 void fxc01_run() {
@@ -66,7 +67,8 @@ void animationB() {                                               // running gre
  */
 
 void fxc02_setup() {
-
+  FastLED.clear(true);
+  FastLED.setBrightness(BRIGHTNESS);
 }
 
 void fxc02_run() {
