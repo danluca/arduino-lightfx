@@ -130,6 +130,9 @@ void sendConfigJson(WiFiClient client) {
   StaticJsonDocument<512> doc;
 
   doc["curEffect"] = String(curFxIndex);
+  char datetime[20];
+  sprintf(datetime, "%4d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
+  doc["currentTime"] = datetime;
   JsonArray fxArray = doc.createNestedArray("fx");
   JsonObject fx1 = fxArray.createNestedObject();
   fx1["name"] = "fxa01";

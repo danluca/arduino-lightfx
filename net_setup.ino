@@ -1,13 +1,20 @@
 #include <WiFiNINA.h>
 #include <Arduino_LSM6DSOX.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <TimeLib.h>
 #include "secrets.h"
 #include "config.h"
+
+#define CST_OFFSET_SECONDS -21600
 
 const char ssid[] = WF_SSID;
 const char pass[] = WF_PSW;
 
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
+WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
+NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
 
 bool wifi_setup() {
   bool result = false;
@@ -53,8 +60,14 @@ bool wifi_setup() {
     } 
   }
 
+  //read the time
+  result = result && ntp_sync();
+  if (result) {
+    setSyncProvider(curUnixTime);
+  }
+
   server.begin();                           // start the web server on port 80
-  printWifiStatus();                        // you're connected now, so print out the status
+  printWifiStatus();                        // you're connected now, so print out the status  
   return result;
 }
 
@@ -97,6 +110,11 @@ void printWifiStatus() {
     logInfo("Board temperature %d °C", temperature_deg);
   }
 
+  if (timeStatus() != timeNotSet)
+    logInfo("Current time %d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
+  else 
+    logWarn("Current time not available - NTP sync failed");
+
   // print where to go in a browser:
   logInfo("To see this page in action, open a browser to http://%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
 }
@@ -108,4 +126,19 @@ void checkFirmwareVersion() {
   if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
     logWarn("Please upgrade the WiFi firmware to %s", WIFI_FIRMWARE_LATEST_VERSION);
   }
+}
+
+///////////////////////////////////////
+// Time sync
+///////////////////////////////////////
+
+time_t curUnixTime() {
+  return timeClient.getEpochTime();
+}
+
+bool ntp_sync() {
+  timeClient.begin();
+  timeClient.update();
+  timeClient.end();
+  return timeClient.isTimeSet();
 }

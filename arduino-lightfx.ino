@@ -29,7 +29,7 @@ void setup() {
 
   //start the web server/fx in a separate thread - turns out the JSON library crashes quite often if ran in non-primary thread
   // Scheduler.startLoop(wifi_loop);
-  Scheduler.startLoop(fx_run);
+  Scheduler.startLoop(fx_run, 1024);
   if (auxOk)
     stateLED(CRGB::Indigo);   //ready to show awesome light effects!
   else
