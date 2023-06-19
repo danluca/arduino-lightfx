@@ -1,4 +1,5 @@
 #include <WiFiNINA.h>
+#include <Arduino_LSM6DSOX.h>
 #include "secrets.h"
 #include "config.h"
 
@@ -8,12 +9,16 @@ const char pass[] = WF_PSW;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
-void wifi_setup() {
+bool wifi_setup() {
+  bool result = false;
   // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
     logWarn("Communication with WiFi module failed!");
-    // don't continue
-    while (true);
+    // don't continue - terminate thread?
+    //rtos::ThisThread::terminate();
+    while (true) {
+      yield();
+    };
   }
   checkFirmwareVersion();
   
@@ -35,9 +40,22 @@ void wifi_setup() {
     delay(10000);
     attCount++;
   }
+  result = status == WL_CONNECTED;
+
+  // initialize the IMU (Inertial Measurement Unit)
+  if (!IMU.begin()) {
+    logError("Failed to initialize IMU!");
+    stateLED(CRGB::Red);
+    result = false;
+    //rtos::ThisThread::terminate();
+    while (true) {
+      yield();
+    } 
+  }
 
   server.begin();                           // start the web server on port 80
   printWifiStatus();                        // you're connected now, so print out the status
+  return result;
 }
 
 void webserver(); //declare the function so we can invoke it; the implementation is in web_server.ino file included after this one
@@ -71,6 +89,13 @@ void printWifiStatus() {
   // print the received signal strength:
   long rssi = WiFi.RSSI();
   logInfo("Signal strength (RSSI): %d dBm", rssi);
+
+  // print the board temperature
+  if (IMU.temperatureAvailable()) {
+    int temperature_deg = 0;
+    IMU.readTemperature(temperature_deg);
+    logInfo("Board temperature %d °C", temperature_deg);
+  }
 
   // print where to go in a browser:
   logInfo("To see this page in action, open a browser to http://%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);

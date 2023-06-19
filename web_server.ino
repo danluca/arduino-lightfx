@@ -1,3 +1,4 @@
+#include <Arduino_LSM6DSOX.h>
 #include <ArduinoJson.h>
 #include "index_html.h"
 #include "jquery_min_js.h"
@@ -109,6 +110,12 @@ void sendWifiJson(WiFiClient client) {
   doc["RSSI"] = String(WiFi.RSSI());
   //current time
   doc["millis"] = millis();
+  //current temperature
+  if (IMU.temperatureAvailable()) {
+    int temperature_deg = 0;
+    IMU.readTemperature(temperature_deg);
+    doc["temperature"] = temperature_deg;
+  }
 
   //send it out
   uint bodyLen = serializeJson(doc, client);
