@@ -81,6 +81,7 @@ void fxd02_setup() {
 void fxd02_run() {
   EVERY_N_MILLISECONDS(100) {
     dot_beat();
+    FastLED.show();
   }
 }
 
