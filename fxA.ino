@@ -366,6 +366,7 @@ void fxa04_setup() {
   //shuffle led indexes
   fill_solid(leds, NUM_PIXELS, bkg);
   fxa_cx = fxa_lastCx = fxa_szStack = 0;
+  fxa_szSegment = 1;
   fxa_speed = 100;
   mode = Chase;
 }

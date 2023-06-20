@@ -16,7 +16,7 @@
 #define FireEnd3 50
 
 
-#define FRAMES_PER_SECOND 20
+#define FRAMES_PER_SECOND 10
 
 const CRGBPalette16 gPal = CRGBPalette16(CRGB::Black, CRGB::Red, CRGB::OrangeRed, CRGB::Yellow);
 const uint8_t flameBrightness = 180;

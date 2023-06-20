@@ -22,25 +22,24 @@ void setup() {
   
   setupStateLED();
 
-  stateLED(CRGB::OrangeRed);    //wifi connect in progress
-  bool auxOk = wifi_setup();
-  
   fx_setup();
-
-  //start the web server/fx in a separate thread - turns out the JSON library crashes quite often if ran in non-primary thread
-  // Scheduler.startLoop(wifi_loop);
   Scheduler.startLoop(fx_run, 1024);
-  if (auxOk)
+
+  stateLED(CRGB::OrangeRed);    //wifi connect in progress
+  bool wifiOk = wifi_setup();
+  if (wifiOk)
     stateLED(CRGB::Indigo);   //ready to show awesome light effects!
   else
-    stateLED(CRGB::DarkRed);
+    stateLED(CRGB::Green);
+
+  //start the web server/fx in a separate thread - turns out the JSON library crashes if not given enough stack size
+  // Scheduler.startLoop(wifi_loop, 2048);
 }
 
 /**
- * Main Light Effects loop
+ * Main loop - runs the WebServer
  */
 void loop() {
-  // fx_run();
   wifi_loop();
 }
 
