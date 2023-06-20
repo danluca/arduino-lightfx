@@ -27,8 +27,6 @@ int fire2[MAX_ENGINE_SIZE];
 int fire3[MAX_ENGINE_SIZE];
 
 
-bool gReverseDirection = false;
-
 // Four different static color palettes are provided here, plus one dynamic one.
 //
 // The three static ones are:
@@ -84,9 +82,9 @@ void fxh01_run() {
     //   CRGB lightcolor = CHSV(hue,128,255); // half 'whitened', full brightness
     //   gPal = CRGBPalette16( CRGB::Black, darkcolor, lightcolor, CRGB::White);
 
-    Fire2012WithPalette(fire1, FireEnd1-FireStart1, FireStart1);  // run simulation frame 1, using palette colors
-    Fire2012WithPalette(fire2, FireEnd2-FireStart2, FireStart2);  // run simulation frame 2, using palette colors
-    Fire2012WithPalette(fire3, FireEnd3-FireStart3, FireStart3);  // run simulation frame 3, using palette colors
+    Fire2012WithPalette(fire1, FireEnd1-FireStart1, FireStart1, false);  // run simulation frame 1, using palette colors
+    Fire2012WithPalette(fire2, FireEnd2-FireStart2, FireStart2, false);  // run simulation frame 2, using palette colors
+    Fire2012WithPalette(fire3, FireEnd3-FireStart3, FireStart3, true);  // run simulation frame 3, using palette colors
 
     FastLED.show();  // display this frame
   }
@@ -130,7 +128,7 @@ void fxh01_run() {
 #define SPARKING 150
 
 
-void Fire2012WithPalette(int heat[], const uint szArray, const uint stripOffset) {
+void Fire2012WithPalette(int heat[], const uint szArray, const uint stripOffset, bool reverse) {
   if (szArray > MAX_ENGINE_SIZE)
     return;
 
@@ -155,7 +153,7 @@ void Fire2012WithPalette(int heat[], const uint szArray, const uint stripOffset)
     // Scale the heat value from 0-255 down to 0-240 for best results with color palettes.
     uint8_t colorindex = scale8(heat[j], 240);
     CRGB color = ColorFromPalette(gPal, colorindex);
-    int pixelnumber = (gReverseDirection ? (szArray - 1) - j : j) + stripOffset;
+    int pixelnumber = (reverse ? (szArray - 1 - j) : j) + stripOffset;
     leds[pixelnumber] = color;
     if (j > random8(5,9))
       leds[pixelnumber].nscale8(flameBrightness);
