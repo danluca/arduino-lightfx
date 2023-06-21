@@ -20,7 +20,7 @@
 
 // Palette definitions
 CRGBPalette16 currentPalette;
-CRGBPalette16 targetPalette;
+//CRGBPalette16 targetPalette;
 TBlendType    currentBlending;                                // NOBLEND or LINEARBLEND
 
 // Define variables used by the sequences.

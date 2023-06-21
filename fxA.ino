@@ -221,6 +221,55 @@ void fxa01_run() {
   fxa_lastCx = fxa_cx;
 }
 
+void fxa01a_setup() {
+  fxa01_setup();
+  fxa_szSegment = 5;
+  fxa_szStackSeg = fxa_szSegment >> 1;
+}
+
+void fxa01a_run() {
+  if (mode == TurnOff) {
+    if (turnOff()) {
+      reset();
+    }
+    return;
+  }
+  fxa_cx = random8();
+  fxa_speed = random16(25, 201);
+  fxa_szSegment = validateSegmentSize(fxa_szSegment);
+  fxa_szStackSeg = fxa_szSegment >> 1;
+  int szViewport = NUM_PIXELS - fxa_szStack;
+  int startIndex = 0 - fxa_szSegment;
+
+  // Make a dot with current color
+  // makeDot(fxa_colors[fxa_cx], fxa_szSegment);
+  makeDot(ColorFromPalette(fxa_colors, fxa_cx, random8(fxa_dimmed+24, fxa_brightness), LINEARBLEND), fxa_szSegment);
+  for (int led = startIndex; led < szViewport; led++) {
+    //move the segment, build up stack
+    moveSeg(dot, fxa_szSegment, frame, led, led + 1, szViewport);
+    if (led == (szViewport - 1))
+      stack(dot[fxa_szSegment - 1], frame, szViewport);
+
+    // Show the updated leds
+    //FastLED.show();
+    showFill(frame, NUM_PIXELS);
+
+    // Wait a little bit
+    delay(fxa_speed);
+
+    //update fxa_speed if in next segment of 10 leds
+    if (!fxa_constSpeed && (led % 10 == 9) && random16(0, 2)) {
+      fxa_speed = random16(25, 201);
+    }
+  }
+
+  fxa_stackAdjust(frame, NUM_PIXELS);
+  mode = fxa_szStack == NUM_PIXELS ? TurnOff : Chase;
+
+  //save the color
+  fxa_lastCx = fxa_cx;
+}
+
 //=====================================
 void fxa02_setup() {
   FastLED.clear(true);
@@ -301,9 +350,9 @@ void fxa03_setup() {
   //shuffle led indexes
   fill_solid(frame, FRAME_SIZE, bkg);
   fxa_speed = 100;
-  fxa_cx = 0;
-  fxa_lastCx = 0;
-  fxa_szStack = 0;
+  fxa_cx = fxa_lastCx = fxa_szStack = 0;
+  fxa_szStackSeg = 1;
+  fxa_szSegment = 2;
   mode = Chase;
 }
 
@@ -320,7 +369,7 @@ void fxa03_run() {
   }
 
   EVERY_N_MILLIS(fxa_speed<<2) {
-    FastLED.setBrightness(random8(30, 225));
+    FastLED.setBrightness(random8(40, 225));
   }
 
   fxa_cx = random8();
@@ -367,48 +416,68 @@ void fxa04_setup() {
   fill_solid(leds, NUM_PIXELS, bkg);
   fxa_cx = fxa_lastCx = fxa_szStack = 0;
   fxa_szSegment = 1;
+  fxa_szStackSeg = 1;
   fxa_speed = 100;
   mode = Chase;
 }
+
+uint curPos = 0;
 
 void fxa04_run() {
   if (mode == TurnOff) {
     if (turnOff()) {
       fill_solid(leds, NUM_PIXELS, bkg);
-      fxa_cx = 0;
+      fxa_lastCx = fxa_cx;
+      fxa_cx = random8();
       fxa_lastCx = 0;
       fxa_szStack = 0;
+      fxa_speed = random16(25, 201);
       mode = Chase;
     }
     return;
   }
-  fxa_cx = random8();
-  fxa_speed = random16(25, 201);
-  int upLimit = NUM_PIXELS - fxa_szStack;
-  // Move a single led
-  for (int led = 0; led < upLimit; led++) {
-    // Turn our current led on, then show the leds
-    setTrailColor(leds, led, ColorFromPalette(fxa_colors, fxa_cx, random8(fxa_dimmed+24, fxd_brightness), LINEARBLEND), fxd_brightness, fxa_dimmed);
-    if (led == (upLimit-1))
-      leds[led-1]=leds[led];
-
-    // Show the leds (only one of which is set to desired color, from above)
+  
+  EVERY_N_MILLISECONDS(fxa_speed) {
+    int upLimit = NUM_PIXELS - fxa_szStack;
+    setTrailColor(leds, curPos, ColorFromPalette(fxa_colors, fxa_cx, random8(fxa_dimmed+24, fxd_brightness), LINEARBLEND), fxd_brightness, fxa_dimmed);
+    if (curPos == (upLimit-1))
+      leds[curPos-1]=leds[curPos];
     FastLED.show();
 
-    // Wait a little bit
-    delay(fxa_speed);
-
-    // Turn our current led back to black for the next loop around
-    if (led < (upLimit - 1)) {
-      offTrailColor(leds, led);
+    if (curPos < (upLimit - 1)) {
+      offTrailColor(leds, curPos);
+    }
+    curPos = inc(curPos, 1, upLimit)
+    if (curPos == 0) {
+      fxa_stackAdjust(leds, NUM_PIXELS);
+      mode = fxa_szStack == NUM_PIXELS ? TurnOff : Chase;
     }
   }
+  // int upLimit = NUM_PIXELS - fxa_szStack;
+  // // Move a single led
+  // for (int led = 0; led < upLimit; led++) {
+  //   // Turn our current led on, then show the leds
+  //   setTrailColor(leds, led, ColorFromPalette(fxa_colors, fxa_cx, random8(fxa_dimmed+24, fxd_brightness), LINEARBLEND), fxd_brightness, fxa_dimmed);
+  //   if (led == (upLimit-1))
+  //     leds[led-1]=leds[led];
 
-  fxa_stackAdjust(leds, NUM_PIXELS);
-  mode = fxa_szStack == NUM_PIXELS ? TurnOff : Chase;
+  //   // Show the leds (only one of which is set to desired color, from above)
+  //   FastLED.show();
 
-  //save the color
-  fxa_lastCx = fxa_cx;
+  //   // Wait a little bit
+  //   delay(fxa_speed);
+
+  //   // Turn our current led back to black for the next loop around
+  //   if (led < (upLimit - 1)) {
+  //     offTrailColor(leds, led);
+  //   }
+  // }
+
+  // fxa_stackAdjust(leds, NUM_PIXELS);
+  // mode = fxa_szStack == NUM_PIXELS ? TurnOff : Chase;
+
+  // //save the color
+  // fxa_lastCx = fxa_cx;
 }
 
 

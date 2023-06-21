@@ -16,8 +16,8 @@
 CRGB leds[NUM_PIXELS];
 
 // Effectx setup and run functions - two arrays of same(!) size
-void (*const setupFunc[])() = {fxa01_setup, fxa02_setup, fxa03_setup, fxa04_setup,  fxb01_setup, fxc01_setup, fxc02_setup, fxd01_setup, fxd02_setup, fxe01_setup, fxe02_setup, fxh01_setup, fxh02_setup};
-void (*const fxrunFunc[])() = {fxa01_run,   fxa02_run,   fxa03_run,   fxa04_run,    fxb01_run,   fxc01_run,   fxc02_run,   fxd01_run,   fxd02_run,   fxe01_run,   fxe02_run,   fxh01_run,   fxh02_run};
+void (*const setupFunc[])() = {fxa01_setup, fxa01a_setup, fxa02_setup, fxa03_setup, fxa04_setup,  fxb01_setup, fxb02_setup, fxb03_setup, fxb04_setup, fxb05_setup, fxb06_setup, fxb07_setup, fxb08_setup, fxc01_setup, fxc02_setup, fxd01_setup, fxd02_setup, fxe01_setup, fxe02_setup, fxh01_setup, fxh02_setup};
+void (*const fxrunFunc[])() = {fxa01_run,   fxa01a_run,   fxa02_run,   fxa03_run,   fxa04_run,    fxb01_run,   fxb02_run,   fxb03_run,   fxb04_run,   fxb05_run,   fxb06_run,   fxb07_run,   fxb08_run,   fxc01_run,   fxc02_run,   fxd01_run,   fxd02_run,   fxe01_run,   fxe02_run,   fxh01_run,   fxh02_run};
 const uint szFx = sizeof(setupFunc)/sizeof(void*);
 
 // current effect
@@ -202,7 +202,7 @@ CRGB* cloneArray(const CRGB src[], CRGB dest[], size_t length) {
 //Setup all effects -------------------
 void fx_setup() {
   ledStripInit();
-  random16_set_seed(millis());
+  random16_set_seed(millis() >> 2);
 
   //initialize the effects configured in the functions above
   for (int f = 0; f < szFx; f++) {

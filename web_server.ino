@@ -136,17 +136,17 @@ void sendConfigJson(WiFiClient client) {
   JsonArray fxArray = doc.createNestedArray("fx");
   JsonObject fx1 = fxArray.createNestedObject();
   fx1["name"] = "fxa01";
-  fx1["description"] = fxa_description;
+  //fx1["description"] = fxa_description;
   fx1["constantSpeed"] = fxa_constSpeed;
   fx1["dotSize"] = fxa_szSegment;
-  fx1["hiBright"] = fxa_brightness;
-  fx1["loBright"] = fxa_dimmed;
+  //fx1["hiBright"] = fxa_brightness;
+  //fx1["loBright"] = fxa_dimmed;
 
   JsonObject fx2 = fxArray.createNestedObject();
   fx2["name"] = "fxb01";
   fx2["description"] = fxb_description;
-  fx2["constantSpeed"] = true;
-  fx2["dotSize"] = 1;
+  //fx2["constantSpeed"] = true;
+  //fx2["dotSize"] = 1;
   fx2["hiBright"] = fxa_brightness;
   fx2["loBright"] = fxa_dimmed;
 
