@@ -277,6 +277,7 @@ void fxa02_setup() {
   fill_solid(dot, MAX_DOT_SIZE, CRGB::Black);
 
   //shuffle led indexes done by fxa01_setup
+  shuffleIndexes(fxa_shuffleIndex, NUM_PIXELS);
   fxa_colors = PartyColors_p;
   reset();
   fxa_cx = 0;
@@ -348,6 +349,7 @@ void fxa03_setup() {
   FastLED.clear(true);
   FastLED.setBrightness(BRIGHTNESS);
   //shuffle led indexes
+  shuffleIndexes(fxa_shuffleIndex, NUM_PIXELS);
   fill_solid(frame, FRAME_SIZE, bkg);
   fxa_speed = 100;
   fxa_cx = fxa_lastCx = fxa_szStack = 0;
@@ -413,11 +415,13 @@ void fxa04_setup() {
 
   fxa_colors = PartyColors_p;
   //shuffle led indexes
+  shuffleIndexes(fxa_shuffleIndex, NUM_PIXELS);
   fill_solid(leds, NUM_PIXELS, bkg);
   fxa_cx = fxa_lastCx = fxa_szStack = 0;
   fxa_szSegment = 1;
   fxa_szStackSeg = 1;
   fxa_speed = 100;
+  curPos = 0;
   mode = Chase;
 }
 
@@ -427,17 +431,13 @@ void fxa04_run() {
   if (mode == TurnOff) {
     if (turnOff()) {
       fill_solid(leds, NUM_PIXELS, bkg);
-      fxa_lastCx = fxa_cx;
-      fxa_cx = random8();
-      fxa_lastCx = 0;
-      fxa_szStack = 0;
-      fxa_speed = random16(25, 201);
+      fxa_lastCx = fxa_cx = fxa_szStack = 0;
       mode = Chase;
     }
     return;
   }
   
-  EVERY_N_MILLISECONDS(fxa_speed) {
+  EVERY_N_MILLISECONDS_I(a04Timer, fxa_speed) {
     int upLimit = NUM_PIXELS - fxa_szStack;
     setTrailColor(leds, curPos, ColorFromPalette(fxa_colors, fxa_cx, random8(fxa_dimmed+24, fxd_brightness), LINEARBLEND), fxd_brightness, fxa_dimmed);
     if (curPos == (upLimit-1))
@@ -447,9 +447,13 @@ void fxa04_run() {
     if (curPos < (upLimit - 1)) {
       offTrailColor(leds, curPos);
     }
-    curPos = inc(curPos, 1, upLimit)
+    curPos = inc(curPos, 1, upLimit);
     if (curPos == 0) {
       fxa_stackAdjust(leds, NUM_PIXELS);
+      fxa_lastCx = fxa_cx;
+      fxa_cx = random8();
+      fxa_speed = random16(25, 221);
+      a04Timer.setPeriod(fxa_speed);
       mode = fxa_szStack == NUM_PIXELS ? TurnOff : Chase;
     }
   }
