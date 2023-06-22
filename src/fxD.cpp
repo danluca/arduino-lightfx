@@ -6,8 +6,9 @@ Date: July 2015
 
 Confetti flashes colours within a limited hue. It's been modified from Mark's original to support a few variables. It's a simple, but great looking routine.
 */
+#include "fxD.h"
 
-// Define variables used by the sequences.
+//~ Global variables definition
 uint8_t   thisfade = 8;                                        // How quickly does it fade? Lower = slower fade rate.
 int       thishue = 50;                                       // Starting hue.
 uint8_t   thisinc = 1;                                        // Incremental value for rotating hues
@@ -15,6 +16,9 @@ uint8_t   thissat = 100;                                      // The saturation,
 uint8_t   thisbri = 255;                                      // Brightness of a sequence. Remember, max_bright is the overall limiter.
 int       huediff = 256;                                      // Range of random #'s to use for hue
 uint8_t   thisdelay = 5;                                        // We don't need much delay (if any)
+uint8_t dotBpm = 30;
+uint8_t fadeval = 224;
+
 
 void fxd01_setup() {
   FastLED.clear(true);
@@ -69,9 +73,6 @@ void d02_ChangeMe() {                                             // A time (rat
  * 
  * Similar to dots by John Burroughs, but uses the FastLED beatsin8() function instead.
  */
-uint8_t dotBpm = 30;
-uint8_t fadeval = 224;
-
 void fxd02_setup() {
   FastLED.clear(true);
   FastLED.setBrightness(BRIGHTNESS);

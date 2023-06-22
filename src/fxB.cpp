@@ -1,5 +1,7 @@
-//typedef void (*SimplePatternList[])();  // List of patterns to cycle through.  Each is defined as a separate function below.
+#include "fxA.h"
+#include "fxB.h"
 
+//~ Global variables definition
 uint8_t gHue = 0;
 uint8_t max_bright = 128;
 CRGBPalette16 palette = PartyColors_p;

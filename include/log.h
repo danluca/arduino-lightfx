@@ -1,33 +1,33 @@
+//
+// Created by Dan on 06.21.2023.
+//
+#ifndef LIGHTFX_LOG_H
+#define LIGHTFX_LOG_H
+
+//#define LOG_ENABLED
+
 #define LEVEL_DEBUG  1
 #define LEVEL_INFO   2
 #define LEVEL_WARN   3
 #define LEVEL_ERR    4
 
-#ifdef DEBUG
-  #include <LibPrintf.h>
-  #include <Mutex.h>
-  #define LOG_LEVEL LEVEL_INFO
-  rtos::Mutex sioMutex;
-#else 
-  #define LOG_LEVEL   255
+#ifdef LOG_ENABLED
+    #include <Arduino.h>
+    #include <LibPrintf.h>
+    #include <Mutex.h>
+    #include <rtos.h>
+
+    #define LOG_LEVEL LEVEL_INFO
+    extern rtos::Mutex sioMutex;
+#else
+    #define LOG_LEVEL   255
 #endif
 
-void log_setup() {
-#ifdef DEBUG
-  if (!Serial) {
-    Serial.begin(115200);      // initialize serial communication
-    while(!Serial) {}
-    logInfo("========================================");
-  }
-#endif
-}
-
-void writeChar(char c) {
-  //not locking a single char write as there is no point, locking must occur at higher level
-#ifdef DEBUG
-  Serial.write(c);
-#endif
-}
+void log_setup();
+void writeChar(char c);
+//template<typename... Args> void logDebug(const char* format, Args... data);
+//template<typename... Args> void logWarn(const char* format, Args... data);
+//template<typename... Args> void logError(const char* format, Args... data);
 
 template<typename... Args> void logDebug(const char* format, Args... data) {
 #if LOG_LEVEL <= LEVEL_DEBUG
@@ -42,7 +42,7 @@ template<typename... Args> void logDebug(const char* format, Args... data) {
 template<typename... Args> void logInfo(const char* format, Args... data) {
 #if LOG_LEVEL <= LEVEL_INFO
   sioMutex.lock();
-  printf("I [%lu] [%s %d]: ", millis(), rtos::ThisThread::get_name(), rtos::ThisThread::get_id());
+  printf("I [%lu] [%s %d]: ", millis(), rtos::ThisThread::get_name(), (int)rtos::ThisThread::get_id());
   printf(format, data...);
   Serial.println();
   sioMutex.unlock();
@@ -71,3 +71,5 @@ template<typename... Args> void logError(const char* format, Args... data) {
   sioMutex.unlock();
 #endif
 }
+
+#endif //LIGHTFX_LOG_H

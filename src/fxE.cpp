@@ -10,29 +10,12 @@
  *
  * 
  */
+#include "fxE.h"
 
-#define qsubd(x, b) ((x>b)?b:0)                               // Clip. . . . A digital unsigned subtraction macro. if result <0, then x=0. Otherwise, x=b.
-#define qsuba(x, b) ((x>b)?x-b:0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
-
-
-// Global variables can be changed on the fly.
-//uint8_t max_bright = 128;                                      // Overall brightness.
-
-// Palette definitions
-CRGBPalette16 currentPalette;
-//CRGBPalette16 targetPalette;
-TBlendType    currentBlending;                                // NOBLEND or LINEARBLEND
-
-// Define variables used by the sequences.
-int      twinkrate = 100;                                     // The higher the value, the lower the number of twinkles.
-//uint8_t  thisdelay =  10;                                     // A delay value for the sequence(s).
-//uint8_t   thisfade =   8;                                     // How quickly does it fade? Lower = slower fade rate.
-//uint8_t    thishue =  50;                                     // The hue.
-//uint8_t    thissat = 255;                                     // The saturation, where 255 = brilliant colours.
-//uint8_t    thisbri = 255;                                     // Brightness of a sequence.
-bool       randhue =   1;                                     // Do we want random colours all the time? 1 = yes.
-
-
+//~ Global variables definition
+int twinkrate = 100;                                     // The higher the value, the lower the number of twinkles.
+bool randhue =   1;                                     // Do we want random colours all the time? 1 = yes.
+TBlendType    currentBlending;
 
 void fxe01_setup() {
   FastLED.clear(true);
@@ -61,7 +44,7 @@ void fxe01_run () {
   }
 
   EVERY_N_SECONDS(5) {                                        // Change the target palette to a random one every 5 seconds.
-    static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
+    //static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
     targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
   }
 
@@ -102,7 +85,6 @@ void fxe02_setup() {
 }
 
 void fxe02_run() {
-
   beatwave();
 
   EVERY_N_MILLISECONDS(100) {

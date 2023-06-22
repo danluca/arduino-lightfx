@@ -1,30 +1,13 @@
-#include "config.h"
+#include "log.h"
+#include "efx_setup.h"
 
-#define capd(x,d) ((x<d)?d:x)
-#define capu(x,u) ((x>u)?u:x)
-#define capr(x,d,u) (capu(capd(x,d),u))
-#define inr(x,d,u) ((x>=d)&&(x<u))
-#define inc(x,i,u) ((x+i)%u)
-#define arrSize(A) (sizeof(A) / sizeof((A)[0]))
-
-
-#define MAX_NUM_PIXELS  1024    //maximum number of pixels supported (equivalent of 330ft LED strips). If more are needed, we'd need to revisit memory allocation and PWM timings
-
-//#define NUM_PIXELS  305    //number of pixels on the house edge strip
-#define NUM_PIXELS  50    //number of pixels on a single 16.5ft (5m) strip
-
+//~ Global variables definition
 CRGB leds[NUM_PIXELS];
-
-// Effectx setup and run functions - two arrays of same(!) size
-void (*const setupFunc[])() = {fxa01_setup, fxa01a_setup, fxa02_setup, fxa03_setup, fxa04_setup,  fxb01_setup, fxb02_setup, fxb03_setup, fxb04_setup, fxb05_setup, fxb06_setup, fxb07_setup, fxb08_setup, fxc01_setup, fxc02_setup, fxd01_setup, fxd02_setup, fxe01_setup, fxe02_setup, fxh01_setup, fxh02_setup};
-void (*const fxrunFunc[])() = {fxa01_run,   fxa01a_run,   fxa02_run,   fxa03_run,   fxa04_run,    fxb01_run,   fxb02_run,   fxb03_run,   fxb04_run,   fxb05_run,   fxb06_run,   fxb07_run,   fxb08_run,   fxc01_run,   fxc02_run,   fxd01_run,   fxd02_run,   fxe01_run,   fxe02_run,   fxh01_run,   fxh02_run};
-const uint szFx = sizeof(setupFunc)/sizeof(void*);
-
-// current effect
 uint curFxIndex = 0;
 uint lastFxIndex = curFxIndex;
 ulong fxSwitchTime = 0;
 bool autoSwitch = true;
+
 
 //~ Support functions -----------------
 void setupStateLED() {
@@ -45,8 +28,6 @@ void ledStripInit() {
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.clear(true);
 }
-
-void showFill(const CRGB frame[], uint szFrame);
 
 void shiftRight(CRGB arr[], int szArr, uint pos) {
   CRGB seed = arr[0];
@@ -131,7 +112,7 @@ void copyArray(const CRGB* src, uint srcOfs, CRGB* dest, uint destOfs, size_t le
 }
 
 bool isAnyLedOn(CRGB arr[], uint szArray, CRGB backg) {
-  for (int x=0; x<szArray; x++) {
+  for (uint x=0; x<szArray; x++) {
     if (arr[x] != backg)
       return true;
   }
@@ -142,7 +123,7 @@ void fillArray(CRGB* src, size_t szSrc, CRGB color) {
   fill_solid(src, szSrc, color);
 }
 
-void fillArray(const CRGB* src, size_t srcLength, CRGB* array, size_t arrLength, uint arrOfs=0) {
+void fillArray(const CRGB* src, size_t srcLength, CRGB* array, size_t arrLength, uint arrOfs) {
   size_t curFrameIndex = arrOfs;
   while (curFrameIndex < arrLength) {
     size_t len = capu(curFrameIndex+srcLength, arrLength)-curFrameIndex;
@@ -157,7 +138,7 @@ void showFill(const CRGB frame[], uint szFrame) {
   FastLED.show();
 }
 
-void pushFrame(const CRGB frame[], uint szFrame, uint ofsDest=0, bool repeat=false) {
+void pushFrame(const CRGB frame[], uint szFrame, uint ofsDest, bool repeat) {
   CRGB* strip = FastLED.leds();
   int szStrip = FastLED.size();
   if (repeat)
@@ -178,7 +159,7 @@ CRGB* mirrorLow(CRGB array[], uint szArray) {
 
 CRGB* mirrorHigh(CRGB array[], uint szArray) {
   uint swaps = szArray>>1;
-  for (int x=0; x<swaps; x++) {
+  for (uint x=0; x<swaps; x++) {
     array[x] = array[szArray-x-1];
   }
   return array;

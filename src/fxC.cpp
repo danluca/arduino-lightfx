@@ -9,10 +9,12 @@
  *
  * This sketch demonstrates how to blend between two animations running at the same time.
  */
+#include "fxC.h"
 
-// have 2 more independent CRGBs for the sources
+//~ Global variables definition
 CRGB leds2[NUM_PIXELS];
 CRGB leds3[NUM_PIXELS];
+
 
 void fxc01_setup() {
   FastLED.clear(true);

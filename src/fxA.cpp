@@ -2,17 +2,9 @@
  * Tetris flavors - single dot/segment moving one direction, random color, stack at the end, configurable various speed between segments of 8
  * 
  */
+#include "fxA.h"
 
-const char fxa_description[] = "Moving a fixed size segment with variable speed and stacking at the end - Tetris simplified";
-
-const uint MAX_DOT_SIZE = 16;
-const uint8_t fxa_brightness = 175;
-const uint8_t fxa_dimmed = 20;
-const CRGB bkg = CRGB::Black;
-const uint FRAME_SIZE = 19;
-const int turnOffSeq[] = { 1, 1, 2, 3, 5, 7, 10 };
-enum OpMode { TurnOff, Chase };
-
+//~ Global variables definition
 CRGBPalette16 fxa_colors = RainbowColors_p;
 uint fxa_cx = 0;
 uint fxa_lastCx = 0;
@@ -25,6 +17,8 @@ OpMode mode = Chase;
 int fxa_shuffleIndex[NUM_PIXELS];
 CRGB dot[MAX_DOT_SIZE];
 CRGB frame[NUM_PIXELS];
+uint curPos = 0;
+
 
 ///////////////////////////////////////
 // Support Utilities
@@ -39,14 +33,14 @@ CRGB* makeDot(CRGB color, uint szDot) {
   return dot;
 }
 
-bool isInViewport(int ledIndex, int viewportSize = FRAME_SIZE) {
+bool isInViewport(int ledIndex, int viewportSize) {
   int viewportLow = 0;
   int viewportHi = viewportSize;
   return (ledIndex >= viewportLow) && (ledIndex < viewportHi);
 }
 
 bool isVisible(int ledIndex) {
-  return (ledIndex >= 0) && (ledIndex < FRAME_SIZE);
+  return (ledIndex >= 0) && (ledIndex < (int)FRAME_SIZE);
 }
 
 uint validateSegmentSize(uint segSize) {
@@ -341,8 +335,6 @@ void fxa02_run() {
  * Tetris flavor 2 - single dot moving one direction, random color, stack at the end, constant speed between segments of 8
  */
 
-const char fxb_description[] = "Moving a 1 pixel segment with constant speed and stacking at the end; flickering; Halloween colors - Halloween Tetris";
-const CRGBPalette16 fxb_colors = CRGBPalette16(CRGB::Red, CRGB::Purple, CRGB::Orange, CRGB::Black);
 
 //=====================================
 void fxa03_setup() {
@@ -407,8 +399,6 @@ void fxa03_run() {
  * Same as flavor 1, but with a segment of 1 pixel only
  */
 
-const uint8_t fxd_brightness = 140;
-
 void fxa04_setup() {
   FastLED.clear(true);
   FastLED.setBrightness(BRIGHTNESS);
@@ -425,8 +415,6 @@ void fxa04_setup() {
   mode = Chase;
 }
 
-uint curPos = 0;
-
 void fxa04_run() {
   if (mode == TurnOff) {
     if (turnOff()) {
@@ -438,7 +426,7 @@ void fxa04_run() {
   }
   
   EVERY_N_MILLISECONDS_I(a04Timer, fxa_speed) {
-    int upLimit = NUM_PIXELS - fxa_szStack;
+    uint upLimit = NUM_PIXELS - fxa_szStack;
     setTrailColor(leds, curPos, ColorFromPalette(fxa_colors, fxa_cx, random8(fxa_dimmed+24, fxd_brightness), LINEARBLEND), fxd_brightness, fxa_dimmed);
     if (curPos == (upLimit-1))
       leds[curPos-1]=leds[curPos];

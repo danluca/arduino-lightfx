@@ -1,17 +1,11 @@
-#include <WiFiNINA.h>
-#include <Arduino_LSM6DSOX.h>
-#include <NTPClient.h>
-#include <WiFiUdp.h>
-#include <TimeLib.h>
-#include "secrets.h"
+#include "net_setup.h"
 #include "config.h"
-
-#define CST_OFFSET_SECONDS -21600
 
 const char ssid[] = WF_SSID;
 const char pass[] = WF_PSW;
 
 int status = WL_IDLE_STATUS;
+
 WiFiServer server(80);
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
@@ -71,7 +65,6 @@ bool wifi_setup() {
   return result;
 }
 
-void webserver(); //declare the function so we can invoke it; the implementation is in web_server.ino file included after this one
 
 void wifi_loop() {
   EVERY_N_MINUTES(15) {
