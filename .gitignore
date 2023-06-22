@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Sensitive data
+secrets.h
+
