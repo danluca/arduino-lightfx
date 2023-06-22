@@ -33,4 +33,7 @@
 
 # Sensitive data
 secrets.h
-
+.idea/
+.pio/
+cmake-build-*/
+CMakeListsPrivate.txt
