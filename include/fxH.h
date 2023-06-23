@@ -64,16 +64,30 @@ const uint8_t sparkBrightness = 255;
 // Default 120, suggested range 50-200.
 #define SPARKING 150
 
-extern int fire1[MAX_ENGINE_SIZE];
-extern int fire2[MAX_ENGINE_SIZE];
-extern int fire3[MAX_ENGINE_SIZE];
+class FxH1 : public LedEffect {
+private:
+    int fire1[MAX_ENGINE_SIZE];
+    int fire2[MAX_ENGINE_SIZE];
+    int fire3[MAX_ENGINE_SIZE];
+public:
+    FxH1();
 
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+    void Fire2012WithPalette(int heat[], const uint szArray, const uint stripOffset, bool reverse);
+};
 
-void Fire2012WithPalette(int heat[], const uint szArray, const uint stripOffset, bool reverse);
-void confetti_pal();
-void fxh02_ChangeMe();
+class FxH2 : public LedEffect {
+public:
+    FxH2();
 
-
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+    void confetti_pal();
+    void ChangeMe();
+};
 
 
 #endif //LIGHTFX_FXH_H

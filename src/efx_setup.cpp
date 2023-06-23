@@ -3,9 +3,6 @@
 
 //~ Global variables definition
 CRGB leds[NUM_PIXELS];
-uint curFxIndex = 0;
-uint lastFxIndex = curFxIndex;
-ulong fxSwitchTime = 0;
 bool autoSwitch = true;
 
 
@@ -186,28 +183,70 @@ void fx_setup() {
   random16_set_seed(millis() >> 2);
 
   //initialize the effects configured in the functions above
-  for (int f = 0; f < szFx; f++) {
-    setupFunc[f]();
-  }
+  fxRegistry.setup();
 }
 
 //Run currently selected effect -------
 void fx_run() {
   if (autoSwitch) {
     EVERY_N_MINUTES(5) {
-      curFxIndex = random8(0, szFx);
-      // curFxIndex = capr(curFxIndex+1,0,szFx-1);
+      fxRegistry.randomNextEffectPos();
     }
-  } else 
-    curFxIndex = capr(curFxIndex, 0, szFx-1);
-  //if effect has changed, re-run the effect's setup
-  if (curFxIndex != lastFxIndex) {
-    setupFunc[curFxIndex]();
-    fxSwitchTime = millis();
-    logInfo("Switched to effect %d at %lu", curFxIndex, fxSwitchTime);
   }
-  //run the effect
-  fxrunFunc[curFxIndex]();
-  lastFxIndex = curFxIndex;
+
+  fxRegistry.loop();
   yield();
+}
+
+EffectRegistry fxRegistry;
+
+LedEffect * EffectRegistry::getCurrentEffect() {
+    return effects[currentEffect];
+}
+
+uint EffectRegistry::nextEffectPos(uint efx) {
+    uint prevPos = currentEffect;
+    currentEffect = capr(efx, 0, effectsCount);
+    return prevPos;
+}
+
+uint EffectRegistry::nextEffectPos() {
+    uint prevPos = currentEffect;
+    currentEffect = inc(currentEffect, 1, effectsCount);
+    return prevPos;
+}
+
+uint EffectRegistry::curEffectPos() {
+    return currentEffect;
+}
+
+uint EffectRegistry::randomNextEffectPos() {
+    currentEffect = random16(0, effectsCount);
+    return currentEffect;
+}
+
+EffectRegistry *EffectRegistry::registerEffect(LedEffect *effect) {
+    if (effectsCount < MAX_EFFECTS_COUNT) {
+        effects[effectsCount++] = effect;
+        logInfo("Effect [%s] registered successfully", effect->description());
+    } else
+        logError("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]", effect->description());
+    return this;
+}
+
+void EffectRegistry::setup() {
+    for (uint x = 0; x < effectsCount; x++) {
+        effects[x]->setup();
+    }
+}
+
+void EffectRegistry::loop() {
+    //if effect has changed, re-run the effect's setup
+    if (lastEffectRun != currentEffect) {
+        logInfo("Effect change: from index %d [%s] to %d [%s]",
+                lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
+        effects[currentEffect]->setup();
+    }
+    effects[currentEffect]->loop();
+    lastEffectRun = currentEffect;
 }

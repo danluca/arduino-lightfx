@@ -10,32 +10,36 @@
  * This sketch demonstrates how to blend between two animations running at the same time.
  */
 #include "fxC.h"
+FxC1 fxC1;
+FxC2 fxC2;
 
-//~ Global variables definition
-CRGB leds2[NUM_PIXELS];
-CRGB leds3[NUM_PIXELS];
-
-
-void fxc01_setup() {
-  FastLED.clear(true);
-  FastLED.setBrightness(BRIGHTNESS);
+FxC1::FxC1() {
+    fxRegistry.registerEffect(this);
 }
 
-void fxc01_run() {
-  animationA();                                               // render the first animation into leds2   
-  animationB();                                               // render the second animation into leds3
-
-  uint8_t ratio = beatsin8(2);                                // Alternate between 0 and 255 every minute
-  
-  for (int i = 0; i < NUM_PIXELS; i++) {                        // mix the 2 arrays together
-    leds[i] = blend( leds2[i], leds3[i], ratio );
-  }
-
-  FastLED.show();
-
+void FxC1::setup() {
+    FastLED.clear(true);
+    FastLED.setBrightness(BRIGHTNESS);
 }
 
-void animationA() {                                             // running red stripe.
+void FxC1::loop() {
+    animationA();                                               // render the first animation into leds2
+    animationB();                                               // render the second animation into leds3
+
+    uint8_t ratio = beatsin8(2);                                // Alternate between 0 and 255 every minute
+
+    for (int i = 0; i < NUM_PIXELS; i++) {                        // mix the 2 arrays together
+        leds[i] = blend( leds2[i], leds3[i], ratio );
+    }
+
+    FastLED.show();
+}
+
+const char *FxC1::description() {
+    return "FXC1: green / red moving bands in opposite directions";
+}
+
+void FxC1::animationA() {                                             // running red stripe.
 
   for (int i = 0; i < NUM_PIXELS; i++) {
     uint8_t red = (millis() / 10) + (i * 12);                    // speed, length
@@ -46,7 +50,7 @@ void animationA() {                                             // running red s
 
 
 
-void animationB() {                                               // running green stripe in opposite direction.
+void FxC1::animationB() {                                               // running green stripe in opposite direction.
   for (int i = 0; i < NUM_PIXELS; i++) {
     uint8_t green = (millis() / 5) - (i * 12);                    // speed, length
     if (green > 128) green = 0;
@@ -55,7 +59,8 @@ void animationB() {                                               // running gre
 } // animationB()
 
 //=====================================
-/* blur
+/**
+ * blur
  *
  * By: ????
  * 
@@ -68,28 +73,33 @@ void animationB() {                                               // running gre
  *
  */
 
-void fxc02_setup() {
-  FastLED.clear(true);
-  FastLED.setBrightness(BRIGHTNESS);
+FxC2::FxC2() {
+    fxRegistry.registerEffect(this);
 }
 
-void fxc02_run() {
+void FxC2::setup() {
+    FastLED.clear(true);
+    FastLED.setBrightness(BRIGHTNESS);
+}
 
-  uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
-  blur1d( leds, NUM_PIXELS, blurAmount);                        // Apply some blurring to whatever's already on the strip, which will eventually go black.
-  
-  uint8_t  i = beatsin8(  9, 0, NUM_PIXELS);
-  uint8_t  j = beatsin8( 7, 0, NUM_PIXELS);
-  uint8_t  k = beatsin8(  5, 0, NUM_PIXELS);
-  
-  // The color of each point shifts over time, each at a different speed.
-  uint16_t ms = millis();  
-  leds[(i+j)/2] = CHSV( ms / 29, 200, 255);
-  leds[(j+k)/2] = CHSV( ms / 41, 200, 255);
-  leds[(k+i)/2] = CHSV( ms / 73, 200, 255);
-  leds[(k+i+j)/3] = CHSV( ms / 53, 200, 255);
-  
-  FastLED.show();
-  
-} // fxc02_run()
- 
+void FxC2::loop() {
+    uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
+    blur1d( leds, NUM_PIXELS, blurAmount);                        // Apply some blurring to whatever's already on the strip, which will eventually go black.
+
+    uint8_t  i = beatsin8(  9, 0, NUM_PIXELS);
+    uint8_t  j = beatsin8( 7, 0, NUM_PIXELS);
+    uint8_t  k = beatsin8(  5, 0, NUM_PIXELS);
+
+    // The color of each point shifts over time, each at a different speed.
+    uint16_t ms = millis();
+    leds[(i+j)/2] = CHSV( ms / 29, 200, 255);
+    leds[(j+k)/2] = CHSV( ms / 41, 200, 255);
+    leds[(k+i)/2] = CHSV( ms / 73, 200, 255);
+    leds[(k+i+j)/3] = CHSV( ms / 53, 200, 255);
+
+    FastLED.show();
+}
+
+const char *FxC2::description() {
+    return "FXC2: blur";
+}

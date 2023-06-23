@@ -23,7 +23,23 @@ void confetti();
 void d02_ChangeMe();
 void dot_beat();
 
+class FxD1 : public LedEffect {
+public:
+    FxD1();
 
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxD2 : public LedEffect {
+public:
+    FxD2();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
 
 
 #endif //LIGHTFX_FXD_H

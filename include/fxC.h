@@ -8,12 +8,29 @@
 #include "efx_setup.h"
 
 // have 2 more independent CRGBs for the sources
-extern CRGB leds2[NUM_PIXELS];
-extern CRGB leds3[NUM_PIXELS];
 
-void animationA();
-void animationB();
+class FxC1 : public LedEffect {
+private:
+    CRGB leds2[NUM_PIXELS];
+    CRGB leds3[NUM_PIXELS];
 
+public:
+    FxC1();
 
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+    void animationA();
+    void animationB();
+};
+
+class FxC2 : public LedEffect {
+public:
+    FxC2();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
 
 #endif //LIGHTFX_FXC_H

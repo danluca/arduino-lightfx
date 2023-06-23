@@ -1,146 +1,211 @@
-#include "fxA.h"
 #include "fxB.h"
 
 //~ Global variables definition
 uint8_t gHue = 0;
-uint8_t max_bright = 128;
+uint max_bright = 128;
+uint8_t fxb_brightness = 175;
 CRGBPalette16 palette = PartyColors_p;
 CRGBPalette16 targetPalette;
+FxB1 fxB1;
+FxB2 fxB2;
+FxB3 fxB3;
+FxB4 fxB4;
+FxB5 fxB5;
+FxB6 fxB6;
+FxB7 fxB7;
+FxB8 fxB8;
 
-void fxb01_setup() {
-  FastLED.clear(true);
-  FastLED.setBrightness(BRIGHTNESS);
-  palette = PartyColors_p;
-  gHue = 0;
-  max_bright = 128;
+void fxb_setup() {
+    FastLED.clear(true);
+    FastLED.setBrightness(BRIGHTNESS);
+    palette = PartyColors_p;
+    gHue = 0;
+    max_bright = 128;
 }
 
-void fxb01_run() {
-  EVERY_N_MILLISECONDS(100) {
-    rainbow();
-    gHue++;
-  }
-  FastLED.show();
+//FXB1
+void FxB1::setup() {
+    fxb_setup();
 }
 
-void fxb02_setup() {
-  fxb01_setup();
+void FxB1::loop() {
+    EVERY_N_MILLISECONDS(50) {
+        rainbow();
+        gHue+=2;
+    }
+    FastLED.show();
 }
 
-void fxb02_run() {
-  EVERY_N_MILLISECONDS(100) {
-    rainbowWithGlitter();
-    gHue++;
-  }
-
-  FastLED.show();
+const char *FxB1::description() {
+    return "FXB1: rainbow";
 }
 
-void fxb03_setup() {
-  fxb01_setup();
+FxB1::FxB1() {
+    fxRegistry.registerEffect(this);
 }
 
-void fxb03_run() {
-  EVERY_N_MILLISECONDS(50) {
-    fxb_confetti();
-  }
-
-  EVERY_N_MILLISECONDS(150) {  // slowly cycle the "base color" through the rainbow
-    gHue++;
-  }
-
-  FastLED.show();
+//FXB2
+FxB2::FxB2() {
+    fxRegistry.registerEffect(this);
 }
 
-void fxb04_setup() {
-  fxb01_setup();
+void FxB2::setup() {
+  fxb_setup();
 }
 
-void fxb04_run() {
+void FxB2::loop() {
+    EVERY_N_MILLISECONDS(50) {
+        rainbowWithGlitter();
+        gHue+=2;
+    }
+
+    FastLED.show();
+}
+
+const char *FxB2::description() {
+    return "FXB2: rainbowWithGlitter";
+}
+
+//FXB3
+FxB3::FxB3() {
+    fxRegistry.registerEffect(this);
+}
+
+void FxB3::setup() {
+  fxb_setup();
+}
+
+void FxB3::loop() {
+    EVERY_N_MILLISECONDS(50) {
+        fxb_confetti();
+        gHue+=2;
+    }
+
+    FastLED.show();
+}
+
+const char *FxB3::description() {
+    return "FXB3: fxb_confetti";
+}
+
+//FXB4
+FxB4::FxB4() {
+    fxRegistry.registerEffect(this);
+}
+
+void FxB4::setup() {
+  fxb_setup();
+}
+
+void FxB4::loop() {
   EVERY_N_MILLISECONDS(50) {
     sinelon();
-  }
-
-  EVERY_N_MILLISECONDS(100) {  // slowly cycle the "base color" through the rainbow
-    gHue++;
+    gHue+=2;
   }
 
   FastLED.show();
 }
 
-void fxb05_setup() {
-  fxb01_setup();
+const char *FxB4::description() {
+    return "FXB4: sinelon";
 }
 
-void fxb05_run() {
-  EVERY_N_MILLISECONDS(50) {
-    juggle();
-  }
-
-  EVERY_N_MILLISECONDS(100) {  // slowly cycle the "base color" through the rainbow
-    gHue++;
-  }
-
-  FastLED.show();
+//FXB5
+FxB5::FxB5() {
+    fxRegistry.registerEffect(this);
 }
 
-void fxb06_setup() {
-  fxb01_setup();
+void FxB5::setup() {
+  fxb_setup();
 }
 
-void fxb06_run() {
-  EVERY_N_MILLISECONDS(100) {
-    bpm();
-  }
+void FxB5::loop() {
+    EVERY_N_MILLISECONDS(50) {
+        juggle();
+        gHue+=2;
+    }
 
-  EVERY_N_MILLISECONDS(200) {  // slowly cycle the "base color" through the rainbow
-    gHue++;
-  }
-
-  FastLED.show();
+    FastLED.show();
 }
 
-void fxb07_setup() {
-  fxb01_setup();
+const char *FxB5::description() {
+    return "FXB5: juggle";
 }
 
-void fxb07_run() {
-  EVERY_N_MILLISECONDS(50) {
-    ease();
-  }
-
-  EVERY_N_MILLISECONDS(150) {  // slowly cycle the "base color" through the rainbow
-    gHue++;
-  }
-
-  FastLED.show();
+//FXB6
+FxB6::FxB6() {
+    fxRegistry.registerEffect(this);
 }
 
-void fxb08_setup() {
-  fxb01_setup();
+void FxB6::setup() {
+  fxb_setup();
 }
 
-void fxb08_run() {
+void FxB6::loop() {
+    EVERY_N_MILLISECONDS(50) {
+        bpm();
+        gHue += 2;  // slowly cycle the "base color" through the rainbow
+    }
 
-  EVERY_N_MILLISECONDS(250) {                                                 // FastLED based non-blocking FIXED delay.
-    uint8_t maxChanges = 24;
-    nblendPaletteTowardPalette(palette, targetPalette, maxChanges);    // AWESOME palette blending capability.
-  }
+    FastLED.show();
+}
 
-  EVERY_N_MILLISECONDS(50) {
-    fadein();
-  }
+const char *FxB6::description() {
+    return "FXB6: bpm";
+}
 
-  EVERY_N_SECONDS(10) {                                                        // Change the target palette to a random one every 5 seconds.
-    uint8_t baseC = random8(255);                                             // Use the built-in random number generator as we are re-initializing the FastLED one.
-    targetPalette = CRGBPalette16(CHSV(baseC+random8(0,32), 255, random8(128, 255)), CHSV(baseC+random8(0,32), 255, random8(128, 255)), CHSV(baseC+random8(0,32), 192, random8(128, 255)), CHSV(baseC+random8(0,32), 255, random8(128, 255)));
-  }
+//FXB7
+FxB7::FxB7() {
+    fxRegistry.registerEffect(this);
+}
 
-  FastLED.show();
-  
-} // loop()
+void FxB7::setup() {
+  fxb_setup();
+}
 
+void FxB7::loop() {
+    EVERY_N_MILLISECONDS(50) {
+        ease();
+        gHue+=2;
+    }
 
+    FastLED.show();
+}
+
+const char *FxB7::description() {
+    return "FXB7: ease";
+}
+
+//FXB8
+FxB8::FxB8() {
+    fxRegistry.registerEffect(this);
+}
+
+void FxB8::setup() {
+    fxb_setup();
+}
+
+void FxB8::loop() {
+    EVERY_N_MILLISECONDS(250) {                                                 // FastLED based non-blocking FIXED delay.
+        uint8_t maxChanges = 24;
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);    // AWESOME palette blending capability.
+    }
+
+    EVERY_N_MILLISECONDS(50) {
+        fadein();
+    }
+
+    EVERY_N_SECONDS(10) {                                                        // Change the target palette to a random one every 5 seconds.
+        uint8_t baseC = random8(255);                                             // Use the built-in random number generator as we are re-initializing the FastLED one.
+        targetPalette = CRGBPalette16(CHSV(baseC+random8(0,32), 255, random8(128, 255)), CHSV(baseC+random8(0,32), 255, random8(128, 255)), CHSV(baseC+random8(0,32), 192, random8(128, 255)), CHSV(baseC+random8(0,32), 255, random8(128, 255)));
+    }
+
+    FastLED.show();
+}
+
+const char *FxB8::description() {
+    return "FXB8: fadein";
+}
 
 void fadein() {
 
@@ -167,7 +232,7 @@ void rainbow() {
 void rainbowWithGlitter() {
 
   rainbow();  // Built-in FastLED rainbow, plus some random sparkly glitter.
-  nscale8(leds, NUM_PIXELS, fxa_brightness);
+  nscale8(leds, NUM_PIXELS, fxb_brightness);
   addGlitter(80);
 
 }  // rainbowWithGlitter()

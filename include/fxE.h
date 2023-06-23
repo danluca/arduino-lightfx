@@ -20,15 +20,28 @@
 extern CRGBPalette16 currentPalette;
 extern TBlendType    currentBlending;                                // NOBLEND or LINEARBLEND
 
-// Define variables used by the sequences.
-extern int      twinkrate;
-extern bool       randhue;
 
 
-void twinkle();
-void e01_ChangeMe();
-void beatwave();
+class FxE1 : public LedEffect {
+public:
+    FxE1();
 
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+    void twinkle();
+    void ChangeMe();
+};
+
+class FxE2 : public LedEffect {
+public:
+    FxE2();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+    void beatwave();
+};
 
 
 #endif //LIGHTFX_FXE_H

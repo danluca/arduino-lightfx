@@ -18,30 +18,38 @@ int       huediff = 256;                                      // Range of random
 uint8_t   thisdelay = 5;                                        // We don't need much delay (if any)
 uint8_t dotBpm = 30;
 uint8_t fadeval = 224;
+FxD1 fxD1;
+FxD2 fxD2;
 
-
-void fxd01_setup() {
-  FastLED.clear(true);
-  FastLED.setBrightness(BRIGHTNESS);
-
-  thisfade = 8;
-  thishue = 50;
-  thisinc = 1;
-  thissat = 100;
-  thisbri = 255;
-  huediff = 256;
-  thisdelay = 5;
+FxD1::FxD1() {
+    fxRegistry.registerEffect(this);
 }
 
-void fxd01_run () {
-  d02_ChangeMe();                                                 // Check the demo loop for changes to the variables.
+void FxD1::setup() {
+    FastLED.clear(true);
+    FastLED.setBrightness(BRIGHTNESS);
 
-  EVERY_N_MILLISECONDS(thisdelay) {                           // FastLED based non-blocking delay to update/display the sequence.
-    confetti();
-  }
-  FastLED.show();  
-} // loop()
+    thisfade = 8;
+    thishue = 50;
+    thisinc = 1;
+    thissat = 100;
+    thisbri = 255;
+    huediff = 256;
+    thisdelay = 5;
+}
 
+void FxD1::loop() {
+    d02_ChangeMe();                                                 // Check the demo loop for changes to the variables.
+
+    EVERY_N_MILLISECONDS(thisdelay) {                           // FastLED based non-blocking delay to update/display the sequence.
+        confetti();
+    }
+    FastLED.show();
+}
+
+const char *FxD1::description() {
+    return "FXD1: confetti";
+}
 
 
 void confetti() {                                             // random colored speckles that blink in and fade smoothly
@@ -70,20 +78,28 @@ void d02_ChangeMe() {                                             // A time (rat
  * dots By: John Burroughs
  * Modified by: Andrew Tuline
  * Date: July, 2015
- * 
+ *
  * Similar to dots by John Burroughs, but uses the FastLED beatsin8() function instead.
  */
-void fxd02_setup() {
-  FastLED.clear(true);
-  FastLED.setBrightness(BRIGHTNESS);
-  dotBpm = 30;
+FxD2::FxD2() {
+    fxRegistry.registerEffect(this);
 }
 
-void fxd02_run() {
-  EVERY_N_MILLISECONDS(100) {
-    dot_beat();
-    FastLED.show();
-  }
+void FxD2::setup() {
+    FastLED.clear(true);
+    FastLED.setBrightness(BRIGHTNESS);
+    dotBpm = 30;
+}
+
+void FxD2::loop() {
+    EVERY_N_MILLISECONDS(100) {
+        dot_beat();
+        FastLED.show();
+    }
+}
+
+const char *FxD2::description() {
+    return "FXD2: dot beat";
 }
 
 void dot_beat() {

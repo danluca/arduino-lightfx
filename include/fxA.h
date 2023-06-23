@@ -32,9 +32,10 @@ extern OpMode mode;
 extern int fxa_shuffleIndex[NUM_PIXELS];
 extern CRGB dot[MAX_DOT_SIZE];
 extern CRGB frame[NUM_PIXELS];
-extern uint curPos;
+extern uint fxa_curPos;
 
 CRGB* makeDot(CRGB color, uint szDot);
+
 bool isInViewport(int ledIndex, int viewportSize = FRAME_SIZE);
 bool isVisible(int ledIndex);
 uint validateSegmentSize(uint segSize);
@@ -45,6 +46,52 @@ uint fxa_stackAdjust(CRGB array[], uint szArray);
 void moldWindow();
 void reset();
 bool turnOff();
+void fxa_setup();
+
+class FxA1 : public LedEffect {
+public:
+    FxA1();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxA2 : public LedEffect {
+public:
+    FxA2();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxA3 : public LedEffect {
+public:
+    FxA3();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxA4 : public LedEffect {
+public:
+    FxA4();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxA5 : public LedEffect {
+public:
+    FxA5();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
 
 
 #endif //LIGHTFX_FXA_H

@@ -9,7 +9,7 @@
 //typedef void (*SimplePatternList[])();  // List of patterns to cycle through.  Each is defined as a separate function below.
 
 extern uint8_t gHue;
-extern uint8_t max_bright;
+extern uint max_bright;
 extern CRGBPalette16 palette;
 extern CRGBPalette16 targetPalette;
 
@@ -24,6 +24,78 @@ void bpm();
 void juggle();
 void ease();
 
+
+class FxB1 : public LedEffect {
+public:
+    FxB1();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxB2 : public LedEffect {
+public:
+    FxB2();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxB3 : public LedEffect {
+public:
+    FxB3();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxB4 : public LedEffect {
+public:
+    FxB4();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxB5 : public LedEffect {
+public:
+    FxB5();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxB6 : public LedEffect {
+public:
+    FxB6();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxB7 : public LedEffect {
+public:
+    FxB7();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
+
+class FxB8 : public LedEffect {
+public:
+    FxB8();
+
+    void setup() override;
+    void loop() override;
+    const char *description() override;
+};
 
 
 #endif //LIGHTFX_FXB_H

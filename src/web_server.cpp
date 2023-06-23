@@ -123,7 +123,8 @@ void sendConfigJson(WiFiClient client) {
   // response body
   StaticJsonDocument<512> doc;
 
-  doc["curEffect"] = String(curFxIndex);
+  doc["curEffect"] = String(fxRegistry.curEffectPos());
+  doc["curEffectDesc"] = fxRegistry.getCurrentEffect()->description();
   char datetime[20];
   sprintf(datetime, "%4d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
   doc["currentTime"] = datetime;
@@ -221,10 +222,12 @@ void webserver() {
             logInfo("Response: HTTP 500 [/fx]");
           } else {
             int fxIndex = doc["effect"].as<int>();
-            curFxIndex = capr(fxIndex, 0, szFx);
-            autoSwitch = fxIndex<0;
+            if (fxIndex >= 0)
+                fxRegistry.nextEffectPos(fxIndex);
+            else
+                autoSwitch = true;
 
-            logInfo("FX: Current running effect updated to %u, autoswitch %s", curFxIndex, autoSwitch?"true":"false");
+            logInfo("FX: Current running effect updated to %u, autoswitch %s", fxRegistry.curEffectPos(), autoSwitch?"true":"false");
             client.print(http303Main);
             logInfo("Response: HTTP 303 [/fx]");
           }
