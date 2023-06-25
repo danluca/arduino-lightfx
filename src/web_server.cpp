@@ -121,7 +121,7 @@ void sendConfigJson(WiFiClient client) {
   //response header
   client.print(http200Json);
   // response body
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<2048> doc;
 
   doc["curEffect"] = String(fxRegistry.curEffectPos());
   doc["curEffectDesc"] = fxRegistry.getCurrentEffect()->description();
