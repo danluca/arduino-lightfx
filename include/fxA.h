@@ -7,54 +7,65 @@
 
 #include "efx_setup.h"
 
-const char fxa_description[] = "Moving a fixed size segment with variable speed and stacking at the end - Tetris simplified";
-const char fxb_description[] = "Moving a 1 pixel segment with constant speed and stacking at the end; flickering; Halloween colors - Halloween Tetris";
-
 const uint MAX_DOT_SIZE = 16;
-const uint8_t fxa_brightness = 175;
-const uint8_t fxa_dimmed = 20;
-const CRGB bkg = CRGB::Black;
+const uint8_t dimmed = 20;
+const CRGB BKG = CRGB::Black;
 const uint FRAME_SIZE = 19;
-const uint turnOffSeq[] = { 1, 1, 2, 3, 5, 7, 10 };
-enum OpMode { TurnOff, Chase };
-const CRGBPalette16 fxb_colors = CRGBPalette16(CRGB::Red, CRGB::Purple, CRGB::Orange, CRGB::Black);
-const uint8_t fxd_brightness = 140;
+const uint turnOffSeq[] = {1, 1, 2, 3, 5, 7, 10};
+enum OpMode {
+    TurnOff, Chase
+};
 
-extern CRGBPalette16 fxa_colors;
-extern uint fxa_cx;
-extern uint fxa_lastCx;
-extern uint fxa_speed;
-extern uint fxa_szSegment;
-extern uint fxa_szStackSeg;
-extern uint fxa_szStack;
-extern bool fxa_constSpeed;
+extern CRGBPalette16 palette;
+extern uint8_t brightness;
+extern uint8_t colorIndex;
+extern uint8_t lastColorIndex;
+extern uint speed;
+extern uint8_t szSegment;
+extern uint8_t szStackSeg;
+extern uint szStack;
+extern bool bConstSpeed;
 extern OpMode mode;
-extern int fxa_shuffleIndex[NUM_PIXELS];
+extern int stripShuffleIndex[NUM_PIXELS];
 extern CRGB dot[MAX_DOT_SIZE];
 extern CRGB frame[NUM_PIXELS];
-extern uint fxa_curPos;
+extern uint curPos;
 
-CRGB* makeDot(CRGB color, uint szDot);
+CRGB *makeDot(CRGB color, uint szDot);
 
 bool isInViewport(int ledIndex, int viewportSize = FRAME_SIZE);
+
 bool isVisible(int ledIndex);
+
 uint validateSegmentSize(uint segSize);
+
 void moveSeg(const CRGB dot[], uint szDot, CRGB dest[], uint lastPos, uint newPos, uint viewport);
+
 void stack(CRGB color, CRGB dest[], uint stackStart);
+
 uint fxa_incStackSize(int delta, uint max);
+
 uint fxa_stackAdjust(CRGB array[], uint szArray);
+
 void moldWindow();
+
 void reset();
+
 bool turnOff();
-void fxa_setup();
 
 class FxA1 : public LedEffect {
 public:
     FxA1();
 
     void setup() override;
+
     void loop() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
     const char *description() override;
+
+    const char *name() override;
 };
 
 class FxA2 : public LedEffect {
@@ -62,8 +73,14 @@ public:
     FxA2();
 
     void setup() override;
+
     void loop() override;
+
     const char *description() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
 };
 
 class FxA3 : public LedEffect {
@@ -71,8 +88,14 @@ public:
     FxA3();
 
     void setup() override;
+
     void loop() override;
+
     const char *description() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
 };
 
 class FxA4 : public LedEffect {
@@ -80,8 +103,14 @@ public:
     FxA4();
 
     void setup() override;
+
     void loop() override;
+
     const char *description() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
 };
 
 class FxA5 : public LedEffect {
@@ -89,8 +118,14 @@ public:
     FxA5();
 
     void setup() override;
+
     void loop() override;
+
     const char *description() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
 };
 
 

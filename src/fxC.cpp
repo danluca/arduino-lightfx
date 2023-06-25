@@ -36,7 +36,7 @@ void FxC1::loop() {
 }
 
 const char *FxC1::description() {
-    return "FXC1: green / red moving bands in opposite directions";
+    return "FXC1: blend between two animations running at the same time - green / red moving bands in opposite directions";
 }
 
 void FxC1::animationA() {                                             // running red stripe.
@@ -56,7 +56,17 @@ void FxC1::animationB() {                                               // runni
     if (green > 128) green = 0;
     leds3[i] = CRGB(0, green, 0);
   }
-} // animationB()
+}
+
+const char *FxC1::name() {
+    return "FXC1";
+}
+
+JsonObject &FxC1::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    return obj;
+}
+// animationB()
 
 //=====================================
 /**
@@ -101,5 +111,14 @@ void FxC2::loop() {
 }
 
 const char *FxC2::description() {
-    return "FXC2: blur";
+    return "FXC2: blur function. If you look carefully at the animation, sometimes there's a smooth gradient between each LED.";
+}
+
+const char *FxC2::name() {
+    return "FXC2";
+}
+
+JsonObject &FxC2::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    return obj;
 }

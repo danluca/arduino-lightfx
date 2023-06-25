@@ -18,10 +18,18 @@ public:
     FxC1();
 
     void setup() override;
+
     void loop() override;
+
     const char *description() override;
+
     void animationA();
+
     void animationB();
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
 };
 
 class FxC2 : public LedEffect {
@@ -29,7 +37,13 @@ public:
     FxC2();
 
     void setup() override;
+
     void loop() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
+
     const char *description() override;
 };
 

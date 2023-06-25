@@ -9,15 +9,14 @@ Confetti flashes colours within a limited hue. It's been modified from Mark's or
 #include "fxD.h"
 
 //~ Global variables definition
-uint8_t   thisfade = 8;                                        // How quickly does it fade? Lower = slower fade rate.
-int       thishue = 50;                                       // Starting hue.
-uint8_t   thisinc = 1;                                        // Incremental value for rotating hues
-uint8_t   thissat = 100;                                      // The saturation, where 255 = brilliant colours.
-uint8_t   thisbri = 255;                                      // Brightness of a sequence. Remember, max_bright is the overall limiter.
-int       huediff = 256;                                      // Range of random #'s to use for hue
-uint8_t   thisdelay = 5;                                        // We don't need much delay (if any)
-uint8_t dotBpm = 30;
-uint8_t fadeval = 224;
+uint8_t     fade = 8;                                        // How quickly does it fade? Lower = slower fade rate.
+uint8_t     hue = 50;                                       // Starting hue.
+uint8_t     incr = 1;                                        // Incremental value for rotating hues
+uint8_t     saturation = 100;                                      // The saturation, where 255 = brilliant colours.
+uint        hueDiff = 256;                                      // Range of random #'s to use for hue
+uint8_t     dotBpm = 30;
+uint8_t     fadeVal = 224;
+
 FxD1 fxD1;
 FxD2 fxD2;
 
@@ -29,50 +28,60 @@ void FxD1::setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
 
-    thisfade = 8;
-    thishue = 50;
-    thisinc = 1;
-    thissat = 100;
-    thisbri = 255;
-    huediff = 256;
-    thisdelay = 5;
+    fade = 8;
+    hue = 50;
+    incr = 1;
+    saturation = 100;
+    brightness = 255;
+    hueDiff = 256;
+    speed = 5;
 }
 
 void FxD1::loop() {
-    d02_ChangeMe();                                                 // Check the demo loop for changes to the variables.
+    ChangeMe();                                                 // Check the demo loop for changes to the variables.
 
-    EVERY_N_MILLISECONDS(thisdelay) {                           // FastLED based non-blocking delay to update/display the sequence.
+    EVERY_N_MILLISECONDS(speed) {                           // FastLED based non-blocking delay to update/display the sequence.
         confetti();
     }
     FastLED.show();
 }
 
 const char *FxD1::description() {
-    return "FXD1: confetti";
+    return "FXD1: Confetti flashes colours within a limited hue. Simple, but great looking routine";
+}
+
+const char *FxD1::name() {
+    return "FXD1";
+}
+
+JsonObject &FxD1::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["brightness"] = brightness;
+    return obj;
 }
 
 
-void confetti() {                                             // random colored speckles that blink in and fade smoothly
-  fadeToBlackBy(leds, NUM_PIXELS, thisfade);                    // Low values = slower fade.
+void FxD1::confetti() {                                             // random colored speckles that blink in and fade smoothly
+  fadeToBlackBy(leds, NUM_PIXELS, fade);                    // Low values = slower fade.
   int pos = random16(NUM_PIXELS);                               // Pick an LED at random.
-  leds[pos] += CHSV((thishue + random16(huediff))/4 , thissat, thisbri);  // I use 12 bits for hue so that the hue increment isn't too quick.
-  thishue = thishue + thisinc;                                // It increments here.
+  leds[pos] += CHSV((hue + random16(hueDiff)) / 4 , saturation, brightness);  // I use 12 bits for hue so that the hue increment isn't too quick.
+  hue = hue + incr;                                // It increments here.
 } // confetti()
 
 
-void d02_ChangeMe() {                                             // A time (rather than loop) based demo sequencer. This gives us full control over the length of each sequence.
+void FxD1::ChangeMe() {                                             // A time (rather than loop) based demo sequencer. This gives us full control over the length of each sequence.
   uint8_t secondHand = (millis() / 1000) % 15;                // IMPORTANT!!! Change '15' to a different value to change duration of the loop.
   static uint8_t lastSecond = 99;                             // Static variable, means it's only defined once. This is our 'debounce' variable.
   if (lastSecond != secondHand) {                             // Debounce to make sure we're not repeating an assignment.
     lastSecond = secondHand;
     switch(secondHand) {
-      case  0: thisinc=1; thishue=192; thissat=255; thisfade=2; huediff=256; break;  // You can change values here, one at a time , or altogether.
-      case  5: thisinc=2; thishue=128; thisfade=8; huediff=64; break;
-      case 10: thisinc=1; thishue=random16(255); thisfade=1; huediff=16; break;      // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
+      case  0: incr=1; hue=192; saturation=255; fade=2; hueDiff=256; break;  // You can change values here, one at a time , or altogether.
+      case  5: incr=2; hue=128; fade=8; hueDiff=64; break;
+      case 10: incr=1; hue=random16(255); fade=1; hueDiff=16; break;      // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
       case 15: break;                                                                // Here's the matching 15 for the other one.
     }
   }
-} // d02_ChangeMe()
+} // ChangeMe()
 
 /**
  * dots By: John Burroughs
@@ -102,7 +111,18 @@ const char *FxD2::description() {
     return "FXD2: dot beat";
 }
 
-void dot_beat() {
+const char *FxD2::name() {
+    return "FXD2";
+}
+
+JsonObject &FxD2::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["bpm"] = dotBpm;
+    obj["fade"] = fadeVal;
+    return obj;
+}
+
+void FxD2::dot_beat() {
 
   uint8_t inner = beatsin8(dotBpm, NUM_PIXELS/4, NUM_PIXELS/4*3);    // Move 1/4 to 3/4
   uint8_t outer = beatsin8(dotBpm, 0, NUM_PIXELS-1);               // Move entire length
@@ -112,7 +132,7 @@ void dot_beat() {
   leds[inner] = CRGB::Blue;
   leds[outer] = CRGB::Aqua;
 
-  nscale8(leds,NUM_PIXELS,fadeval);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeval);
+  nscale8(leds, NUM_PIXELS, fadeVal);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeVal);
 
 } // dot_beat()
 

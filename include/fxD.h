@@ -8,28 +8,34 @@
 #include "efx_setup.h"
 
 // Define variables used by the sequences.
-extern uint8_t   thisfade;
-extern int       thishue;
-extern uint8_t   thisinc;
-extern uint8_t   thissat;
-extern uint8_t   thisbri;
-extern int       huediff;
-extern uint8_t   thisdelay;
+extern uint8_t fade;
+extern uint8_t hue;
+extern uint8_t incr;
+extern uint8_t saturation;
+extern uint hueDiff;
 extern uint8_t dotBpm;
-extern uint8_t fadeval;
+extern uint8_t fadeVal;
+extern uint8_t brightness;
+extern uint8_t speed;
 
-
-void confetti();
-void d02_ChangeMe();
-void dot_beat();
 
 class FxD1 : public LedEffect {
 public:
     FxD1();
 
     void setup() override;
+
     void loop() override;
+
     const char *description() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
+
+    void ChangeMe();
+
+    void confetti();
 };
 
 class FxD2 : public LedEffect {
@@ -37,8 +43,16 @@ public:
     FxD2();
 
     void setup() override;
+
     void loop() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
+
     const char *description() override;
+
+    void dot_beat();
 };
 
 

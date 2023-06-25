@@ -6,7 +6,6 @@
 #define LIGHTFX_FXH_H
 
 #include "efx_setup.h"
-#include "fxE.h"
 
 #define MAX_ENGINE_SIZE 40
 ///////Fire 1///////
@@ -24,9 +23,19 @@
 
 #define FRAMES_PER_SECOND 10
 
-const CRGBPalette16 gPal = CRGBPalette16(CRGB::Black, CRGB::Red, CRGB::OrangeRed, CRGB::Yellow);
 const uint8_t flameBrightness = 180;
 const uint8_t sparkBrightness = 255;
+extern CRGBPalette16 palette;
+extern CRGBPalette16 targetPalette;
+extern uint8_t fade;
+extern uint8_t hue;
+extern uint8_t incr;
+extern uint8_t saturation;
+extern uint8_t brightness;
+extern uint hueDiff;
+extern uint8_t speed;
+extern TBlendType currentBlending;
+
 
 //
 // This basic one-dimensional 'fire' simulation works roughly as follows:
@@ -73,9 +82,16 @@ public:
     FxH1();
 
     void setup() override;
+
     void loop() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
+
     const char *description() override;
-    void Fire2012WithPalette(int heat[], const uint szArray, const uint stripOffset, bool reverse);
+
+    static void Fire2012WithPalette(int heat[], uint szArray, uint stripOffset, bool reverse);
 };
 
 class FxH2 : public LedEffect {
@@ -83,10 +99,33 @@ public:
     FxH2();
 
     void setup() override;
+
     void loop() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
+
     const char *description() override;
-    void confetti_pal();
-    void ChangeMe();
+
+    static void confetti_pal();
+
+    static void ChangeMe();
+};
+
+class FxH3 : public LedEffect {
+public:
+    FxH3();
+
+    void setup() override;
+
+    void loop() override;
+
+    const char *description() override;
+
+    JsonObject &describeConfig(JsonArray &json) override;
+
+    const char *name() override;
 };
 
 

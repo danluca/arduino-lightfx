@@ -2,9 +2,6 @@
 
 //~ Global variables definition
 uint8_t gHue = 0;
-uint max_bright = 128;
-uint8_t fxb_brightness = 175;
-CRGBPalette16 palette = PartyColors_p;
 CRGBPalette16 targetPalette;
 FxB1 fxB1;
 FxB2 fxB2;
@@ -15,17 +12,13 @@ FxB6 fxB6;
 FxB7 fxB7;
 FxB8 fxB8;
 
-void fxb_setup() {
+//FXB1
+void FxB1::setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
     palette = PartyColors_p;
     gHue = 0;
-    max_bright = 128;
-}
-
-//FXB1
-void FxB1::setup() {
-    fxb_setup();
+    brightness = 148;
 }
 
 void FxB1::loop() {
@@ -44,13 +37,24 @@ FxB1::FxB1() {
     fxRegistry.registerEffect(this);
 }
 
+const char *FxB1::name() {
+    return "FXB1";
+}
+
+JsonObject &FxB1::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["brightness"] = brightness;
+    obj["palette"] = "PartyColors";
+    return obj;
+}
+
 //FXB2
 FxB2::FxB2() {
     fxRegistry.registerEffect(this);
 }
 
 void FxB2::setup() {
-  fxb_setup();
+  fxB1.setup();
 }
 
 void FxB2::loop() {
@@ -66,13 +70,22 @@ const char *FxB2::description() {
     return "FXB2: rainbowWithGlitter";
 }
 
+const char *FxB2::name() {
+    return "FXB2";
+}
+
+JsonObject &FxB2::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    return obj;
+}
+
 //FXB3
 FxB3::FxB3() {
     fxRegistry.registerEffect(this);
 }
 
 void FxB3::setup() {
-  fxb_setup();
+  fxB1.setup();
 }
 
 void FxB3::loop() {
@@ -88,13 +101,24 @@ const char *FxB3::description() {
     return "FXB3: fxb_confetti";
 }
 
+const char *FxB3::name() {
+    return "FXB3";
+}
+
+JsonObject &FxB3::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["brightness"] = brightness;
+    obj["palette"] = "PartyColors";
+    return obj;
+}
+
 //FXB4
 FxB4::FxB4() {
     fxRegistry.registerEffect(this);
 }
 
 void FxB4::setup() {
-  fxb_setup();
+  fxB1.setup();
 }
 
 void FxB4::loop() {
@@ -110,13 +134,24 @@ const char *FxB4::description() {
     return "FXB4: sinelon";
 }
 
+const char *FxB4::name() {
+    return "FXB4";
+}
+
+JsonObject &FxB4::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["brightness"] = brightness;
+    obj["palette"] = "PartyColors";
+    return obj;
+}
+
 //FXB5
 FxB5::FxB5() {
     fxRegistry.registerEffect(this);
 }
 
 void FxB5::setup() {
-  fxb_setup();
+  fxB1.setup();
 }
 
 void FxB5::loop() {
@@ -132,13 +167,24 @@ const char *FxB5::description() {
     return "FXB5: juggle";
 }
 
+const char *FxB5::name() {
+    return "FXB5";
+}
+
+JsonObject &FxB5::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["brightness"] = brightness;
+    obj["palette"] = "PartyColors";
+    return obj;
+}
+
 //FXB6
 FxB6::FxB6() {
     fxRegistry.registerEffect(this);
 }
 
 void FxB6::setup() {
-  fxb_setup();
+  fxB1.setup();
 }
 
 void FxB6::loop() {
@@ -154,13 +200,22 @@ const char *FxB6::description() {
     return "FXB6: bpm";
 }
 
+const char *FxB6::name() {
+    return "FXB6";
+}
+
+JsonObject &FxB6::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    return obj;
+}
+
 //FXB7
 FxB7::FxB7() {
     fxRegistry.registerEffect(this);
 }
 
 void FxB7::setup() {
-  fxb_setup();
+  fxB1.setup();
 }
 
 void FxB7::loop() {
@@ -176,13 +231,24 @@ const char *FxB7::description() {
     return "FXB7: ease";
 }
 
+const char *FxB7::name() {
+    return "FXB7";
+}
+
+JsonObject &FxB7::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["brightness"] = brightness;
+    obj["palette"] = "PartyColors";
+    return obj;
+}
+
 //FXB8
 FxB8::FxB8() {
     fxRegistry.registerEffect(this);
 }
 
 void FxB8::setup() {
-    fxb_setup();
+    fxB1.setup();
 }
 
 void FxB8::loop() {
@@ -205,6 +271,17 @@ void FxB8::loop() {
 
 const char *FxB8::description() {
     return "FXB8: fadein";
+}
+
+const char *FxB8::name() {
+    return "FXB8";
+}
+
+JsonObject &FxB8::describeConfig(JsonArray &json) {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["brightness"] = brightness;
+    obj["palette"] = "PartyColors";
+    return obj;
 }
 
 void fadein() {
@@ -232,7 +309,7 @@ void rainbow() {
 void rainbowWithGlitter() {
 
   rainbow();  // Built-in FastLED rainbow, plus some random sparkly glitter.
-  nscale8(leds, NUM_PIXELS, fxb_brightness);
+  nscale8(leds, NUM_PIXELS, brightness);
   addGlitter(80);
 
 }  // rainbowWithGlitter()
