@@ -90,10 +90,9 @@ const char *FxE1::name() {
     return "FXE1";
 }
 
-JsonObject &FxE1::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxE1::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["brightness"] = brightness;
-    return obj;
 }
 // e01_ChangeMe()
 
@@ -144,8 +143,7 @@ const char *FxE2::name() {
     return "FXE2";
 }
 
-JsonObject &FxE2::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
-    return obj;
+void FxE2::describeConfig(JsonArray &json) {
+    baseConfig(json);
 }
 // beatwave()

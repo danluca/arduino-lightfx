@@ -41,11 +41,10 @@ const char *FxB1::name() {
     return "FXB1";
 }
 
-JsonObject &FxB1::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxB1::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
-    return obj;
 }
 
 //FXB2
@@ -74,9 +73,8 @@ const char *FxB2::name() {
     return "FXB2";
 }
 
-JsonObject &FxB2::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
-    return obj;
+void FxB2::describeConfig(JsonArray &json) {
+    baseConfig(json);
 }
 
 //FXB3
@@ -105,11 +103,10 @@ const char *FxB3::name() {
     return "FXB3";
 }
 
-JsonObject &FxB3::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxB3::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
-    return obj;
 }
 
 //FXB4
@@ -138,11 +135,10 @@ const char *FxB4::name() {
     return "FXB4";
 }
 
-JsonObject &FxB4::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxB4::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
-    return obj;
 }
 
 //FXB5
@@ -171,11 +167,10 @@ const char *FxB5::name() {
     return "FXB5";
 }
 
-JsonObject &FxB5::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxB5::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
-    return obj;
 }
 
 //FXB6
@@ -204,9 +199,8 @@ const char *FxB6::name() {
     return "FXB6";
 }
 
-JsonObject &FxB6::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
-    return obj;
+void FxB6::describeConfig(JsonArray &json) {
+    baseConfig(json);
 }
 
 //FXB7
@@ -235,11 +229,10 @@ const char *FxB7::name() {
     return "FXB7";
 }
 
-JsonObject &FxB7::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxB7::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
-    return obj;
 }
 
 //FXB8
@@ -277,11 +270,10 @@ const char *FxB8::name() {
     return "FXB8";
 }
 
-JsonObject &FxB8::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxB8::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
-    return obj;
 }
 
 void fadein() {

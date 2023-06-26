@@ -117,11 +117,10 @@ const char *FxH1::name() {
     return "FXH1";
 }
 
-JsonObject &FxH1::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxH1::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["flameBrightness"] = flameBrightness;
     obj["numberOfFires"] = 3;
-    return obj;
 }
 
 
@@ -214,11 +213,10 @@ const char *FxH2::name() {
     return "FXH2";
 }
 
-JsonObject &FxH2::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxH2::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["brightness"] = brightness;
     obj["speed"] = 5;
-    return obj;
 }
 // ChangeMe()
 
@@ -276,9 +274,8 @@ const char *FxH3::name() {
     return "FXH3";
 }
 
-JsonObject &FxH3::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxH3::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["hueDiff"] = hueDiff;
     obj["speed"] = speed;
-    return obj;
 }

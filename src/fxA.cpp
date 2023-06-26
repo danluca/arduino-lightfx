@@ -232,11 +232,10 @@ const char *FxA1::description() {
     return "FXA1: Multiple Tetris segments, molded for office window";
 }
 
-JsonObject &FxA1::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxA1::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["segmentSize"] = szSegment;
     obj["palette"] = "Rainbow";
-    return obj;
 }
 
 const char *FxA1::name() {
@@ -301,11 +300,10 @@ FxA2::FxA2() {
     fxRegistry.registerEffect(this);
 }
 
-JsonObject &FxA2::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxA2::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["segmentSize"] = szSegment;
     obj["palette"] = "Rainbow";
-    return obj;
 }
 
 const char *FxA2::name() {
@@ -377,10 +375,9 @@ FxA3::FxA3() {
     fxRegistry.registerEffect(this);
 }
 
-JsonObject &FxA3::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxA3::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["palette"] = "PartyColors";
-    return obj;
 }
 
 const char *FxA3::name() {
@@ -450,10 +447,9 @@ FxA4::FxA4() {
     fxRegistry.registerEffect(this);
 }
 
-JsonObject &FxA4::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxA4::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["palette"] = "Red-Orange-Purple";
-    return obj;
 }
 
 const char *FxA4::name() {
@@ -511,10 +507,9 @@ FxA5::FxA5() {
     fxRegistry.registerEffect(this);
 }
 
-JsonObject &FxA5::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxA5::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["palette"] = "PartyColors";
-    return obj;
 }
 
 const char *FxA5::name() {

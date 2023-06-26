@@ -31,7 +31,9 @@ public:
 
     virtual const char *name() = 0;
 
-    virtual JsonObject &describeConfig(JsonArray &json);
+    virtual void describeConfig(JsonArray &json) = 0;
+
+    JsonObject &baseConfig(JsonArray &json);
 
     virtual ~LedEffect() {}     // Destructor
 };

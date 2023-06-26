@@ -62,9 +62,8 @@ const char *FxC1::name() {
     return "FXC1";
 }
 
-JsonObject &FxC1::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
-    return obj;
+void FxC1::describeConfig(JsonArray &json) {
+    baseConfig(json);
 }
 // animationB()
 
@@ -118,7 +117,6 @@ const char *FxC2::name() {
     return "FXC2";
 }
 
-JsonObject &FxC2::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
-    return obj;
+void FxC2::describeConfig(JsonArray &json) {
+    baseConfig(json);
 }

@@ -43,7 +43,7 @@ public:
 
     const char *description() override;
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 };
@@ -58,7 +58,7 @@ public:
 
     const char *description() override;
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 };
@@ -71,7 +71,7 @@ public:
 
     void loop() override;
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 
@@ -86,7 +86,7 @@ public:
 
     void loop() override;
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 
@@ -101,7 +101,7 @@ public:
 
     void loop() override;
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 
@@ -116,7 +116,7 @@ public:
 
     void loop() override;
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 
@@ -131,7 +131,7 @@ public:
 
     void loop() override;
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 
@@ -146,7 +146,7 @@ public:
 
     void loop() override;
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 

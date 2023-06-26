@@ -252,7 +252,7 @@ void EffectRegistry::loop() {
     lastEffectRun = currentEffect;
 }
 
-JsonObject &LedEffect::describeConfig(JsonArray &json) {
+JsonObject &LedEffect::baseConfig(JsonArray &json) {
     JsonObject object = json.createNestedObject();
     object["description"] = description();
     object["name"] = name();

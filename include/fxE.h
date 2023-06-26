@@ -38,7 +38,7 @@ public:
 
     static void twinkle();
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 
@@ -55,7 +55,7 @@ public:
 
     const char *description() override;
 
-    JsonObject &describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) override;
 
     const char *name() override;
 

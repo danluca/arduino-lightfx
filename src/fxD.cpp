@@ -54,10 +54,9 @@ const char *FxD1::name() {
     return "FXD1";
 }
 
-JsonObject &FxD1::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxD1::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["brightness"] = brightness;
-    return obj;
 }
 
 
@@ -115,11 +114,10 @@ const char *FxD2::name() {
     return "FXD2";
 }
 
-JsonObject &FxD2::describeConfig(JsonArray &json) {
-    JsonObject obj = LedEffect::describeConfig(json);
+void FxD2::describeConfig(JsonArray &json) {
+    JsonObject obj = baseConfig(json);
     obj["bpm"] = dotBpm;
     obj["fade"] = fadeVal;
-    return obj;
 }
 
 void FxD2::dot_beat() {
