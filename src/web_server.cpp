@@ -61,7 +61,7 @@ void sendContent(WiFiClient client, const char* name, const char* content) {
   // The HTTP response ends with another blank line:
   sz += client.println();
   //sz = strlen_P(content);
-  Log.info("Response: HTTP 200 %s [%d bytes]", name, sz);  //responses are long and static, not logging the body
+  Log.infoln("Response: HTTP 200 %s [%d bytes]", name, sz);  //responses are long and static, not logging the body
 }
 
 void sendMainPage(WiFiClient client) {
@@ -89,7 +89,7 @@ void sendWifiJson(WiFiClient client) {
   //response header
   client.print(http200Json);
   // response body
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<512> doc;
 
   //MAC address
   uint8_t mac[WL_MAC_ADDR_LENGTH];
@@ -115,14 +115,14 @@ void sendWifiJson(WiFiClient client) {
   //send it out
   uint bodyLen = serializeJson(doc, client);
   bodyLen += client.println();
-  Log.info("Response: HTTP 200 wifi.json [%u bytes]", bodyLen);
+  Log.infoln("Response: HTTP 200 wifi.json [%u bytes]", bodyLen);
 }
 
 void sendConfigJson(WiFiClient client) {
   //response header
   client.print(http200Json);
   // response body
-  StaticJsonDocument<2048> doc;
+  StaticJsonDocument<4098> doc;
 
   doc["curEffect"] = String(fxRegistry.curEffectPos());
   doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
@@ -134,7 +134,7 @@ void sendConfigJson(WiFiClient client) {
   //send it out
   uint bodyLen = serializeJson(doc, client);
   bodyLen += client.println();
-  Log.info("Response: HTTP 200 config.json [%u bytes]", bodyLen);
+  Log.infoln("Response: HTTP 200 config.json [%u bytes]", bodyLen);
 }
 
 
@@ -143,7 +143,7 @@ void webserver() {
   if (client) {
     unsigned long start = millis();
     IPAddress clientIp = client.remoteIP();
-    Log.info("Request: %u.%u.%u.%u WEB start", clientIp[0], clientIp[1], clientIp[2], clientIp[3]);
+    Log.infoln("Request: %u.%u.%u.%u WEB start", clientIp[0], clientIp[1], clientIp[2], clientIp[3]);
     while (client.connected()) {
       if (client.available()) {
         String reqUri = client.readStringUntil('\n');
@@ -158,9 +158,9 @@ void webserver() {
         reqUri.trim();
         reqHost.trim();
         req.trim();
-        Log.info(reqUri.c_str());
-        Log.info(reqHost.c_str());
-        Log.info(req.c_str());
+        Log.infoln(reqUri.c_str());
+        Log.infoln(reqHost.c_str());
+        Log.infoln(req.c_str());
 
         //handle the request
         if (reqUri.startsWith("GET / ") || reqUri.startsWith("GET /index.html ")) {
@@ -184,20 +184,20 @@ void webserver() {
               bConstSpeed = true;
           }
           client.print(http303Main);
-          Log.info("Response: HTTP 303 [/index.html]");
+          Log.infoln("Response: HTTP 303 [/index.html]");
         } else if (reqUri.startsWith("PUT /fx/01 ")) {
           DynamicJsonDocument doc(512);
           // Parse JSON object
           DeserializationError error = deserializeJson(doc, reqBody);
           if (error) {
             client.print(http500Text);
-            Log.info("Response: HTTP 500 [/fx/01]");
+            Log.infoln("Response: HTTP 500 [/fx/01]");
           } else {
               szSegment = doc["dotSize"].as<uint>() % MAX_DOT_SIZE;
               bConstSpeed = doc["constantSpeed"].as<bool>();
-            Log.info("FXA: Segment size updated to %u; constant speed updated to %s", szSegment, bConstSpeed ? "true" : "false");
+            Log.infoln("FXA: Segment size updated to %u; constant speed updated to %s", szSegment, bConstSpeed ? "true" : "false");
             client.print(http303Main);
-            Log.info("Response: HTTP 303 [/fx/01]");
+            Log.infoln("Response: HTTP 303 [/fx/01]");
           }
         } else if (reqUri.startsWith("PUT /fx ")) {
           DynamicJsonDocument doc(512);
@@ -205,7 +205,7 @@ void webserver() {
           DeserializationError error = deserializeJson(doc, reqBody);
           if (error) {
             client.print(http500Text);
-            Log.info("Response: HTTP 500 [/fx]");
+            Log.infoln("Response: HTTP 500 [/fx]");
           } else {
             int fxIndex = doc["effect"].as<int>();
             if (fxIndex >= 0)
@@ -213,14 +213,14 @@ void webserver() {
             else
                 autoSwitch = true;
 
-            Log.info("FX: Current running effect updated to %u, autoswitch %s", fxRegistry.curEffectPos(), autoSwitch?"true":"false");
+            Log.infoln("FX: Current running effect updated to %u, autoswitch %s", fxRegistry.curEffectPos(), autoSwitch?"true":"false");
             client.print(http303Main);
-            Log.info("Response: HTTP 303 [/fx]");
+            Log.infoln("Response: HTTP 303 [/fx]");
           }
         } else {
           //unsupported - return 400
           client.print(http400Text);
-          Log.error("Response: HTTP 404 NotFound");
+          Log.errorln("Response: HTTP 404 NotFound");
         }
         //done handling
         break;
@@ -229,6 +229,6 @@ void webserver() {
     // close the connection:
     client.stop();
     unsigned long dur = millis() - start;
-    Log.info("Request: WEB completed [%lu ms]", dur);
+    Log.infoln("Request: WEB completed [%lu ms]", dur);
   }
 }

@@ -55,7 +55,8 @@ const char *FxD1::name() {
 }
 
 void FxD1::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["brightness"] = brightness;
 }
 
@@ -115,7 +116,8 @@ const char *FxD2::name() {
 }
 
 void FxD2::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["bpm"] = dotBpm;
     obj["fade"] = fadeVal;
 }

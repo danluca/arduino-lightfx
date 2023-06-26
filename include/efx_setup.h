@@ -33,7 +33,7 @@ public:
 
     virtual void describeConfig(JsonArray &json) = 0;
 
-    JsonObject &baseConfig(JsonArray &json);
+    void baseConfig(JsonObject &json);
 
     virtual ~LedEffect() {}     // Destructor
 };

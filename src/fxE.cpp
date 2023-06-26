@@ -91,7 +91,8 @@ const char *FxE1::name() {
 }
 
 void FxE1::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["brightness"] = brightness;
 }
 // e01_ChangeMe()
@@ -144,6 +145,7 @@ const char *FxE2::name() {
 }
 
 void FxE2::describeConfig(JsonArray &json) {
-    baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
 }
 // beatwave()

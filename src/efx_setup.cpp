@@ -227,9 +227,9 @@ uint EffectRegistry::randomNextEffectPos() {
 EffectRegistry *EffectRegistry::registerEffect(LedEffect *effect) {
     if (effectsCount < MAX_EFFECTS_COUNT) {
         effects[effectsCount++] = effect;
-        Log.info("Effect [%s] registered successfully", effect->description());
+        Log.infoln("Effect [%s] registered successfully", effect->description());
     } else
-        Log.error("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]",
+        Log.errorln("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]",
                  effect->description());
     return this;
 }
@@ -243,7 +243,7 @@ void EffectRegistry::setup() {
 void EffectRegistry::loop() {
     //if effect has changed, re-run the effect's setup
     if (lastEffectRun != currentEffect) {
-        Log.info("Effect change: from index %d [%s] to %d [%s]",
+        Log.infoln("Effect change: from index %d [%s] to %d [%s]",
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         effects[currentEffect]->setup();
     }
@@ -257,10 +257,8 @@ void EffectRegistry::describeConfig(JsonArray &json) {
     }
 }
 
-JsonObject &LedEffect::baseConfig(JsonArray &json) {
-    JsonObject object = json.createNestedObject();
-    object["description"] = description();
-    object["name"] = name();
-    return object;
+void LedEffect::baseConfig(JsonObject &json) {
+    json["description"] = description();
+    json["name"] = name();
 }
 

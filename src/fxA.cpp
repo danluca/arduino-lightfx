@@ -234,10 +234,10 @@ const char *FxA1::description() {
 }
 
 void FxA1::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["segmentSize"] = szSegment;
     obj["palette"] = "Rainbow";
-    Log.info("FXA1::describeConfig");
 }
 
 const char *FxA1::name() {
@@ -303,7 +303,8 @@ FxA2::FxA2() {
 }
 
 void FxA2::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["segmentSize"] = szSegment;
     obj["palette"] = "Rainbow";
 }
@@ -378,7 +379,8 @@ FxA3::FxA3() {
 }
 
 void FxA3::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["palette"] = "PartyColors";
 }
 
@@ -450,7 +452,8 @@ FxA4::FxA4() {
 }
 
 void FxA4::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["palette"] = "Red-Orange-Purple";
 }
 
@@ -510,7 +513,8 @@ FxA5::FxA5() {
 }
 
 void FxA5::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["palette"] = "PartyColors";
 }
 

@@ -118,7 +118,8 @@ const char *FxH1::name() {
 }
 
 void FxH1::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["flameBrightness"] = flameBrightness;
     obj["numberOfFires"] = 3;
 }
@@ -214,7 +215,8 @@ const char *FxH2::name() {
 }
 
 void FxH2::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["brightness"] = brightness;
     obj["speed"] = 5;
 }
@@ -275,7 +277,8 @@ const char *FxH3::name() {
 }
 
 void FxH3::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["hueDiff"] = hueDiff;
     obj["speed"] = speed;
 }

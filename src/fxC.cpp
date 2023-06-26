@@ -63,7 +63,8 @@ const char *FxC1::name() {
 }
 
 void FxC1::describeConfig(JsonArray &json) {
-    baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
 }
 // animationB()
 
@@ -118,5 +119,6 @@ const char *FxC2::name() {
 }
 
 void FxC2::describeConfig(JsonArray &json) {
-    baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
 }

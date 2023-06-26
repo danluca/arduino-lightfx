@@ -42,7 +42,8 @@ const char *FxB1::name() {
 }
 
 void FxB1::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
 }
@@ -74,7 +75,8 @@ const char *FxB2::name() {
 }
 
 void FxB2::describeConfig(JsonArray &json) {
-    baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
 }
 
 //FXB3
@@ -104,7 +106,8 @@ const char *FxB3::name() {
 }
 
 void FxB3::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
 }
@@ -136,7 +139,8 @@ const char *FxB4::name() {
 }
 
 void FxB4::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
 }
@@ -168,7 +172,8 @@ const char *FxB5::name() {
 }
 
 void FxB5::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
 }
@@ -200,7 +205,8 @@ const char *FxB6::name() {
 }
 
 void FxB6::describeConfig(JsonArray &json) {
-    baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
 }
 
 //FXB7
@@ -230,7 +236,8 @@ const char *FxB7::name() {
 }
 
 void FxB7::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
 }
@@ -271,7 +278,8 @@ const char *FxB8::name() {
 }
 
 void FxB8::describeConfig(JsonArray &json) {
-    JsonObject obj = baseConfig(json);
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
     obj["brightness"] = brightness;
     obj["palette"] = "PartyColors";
 }

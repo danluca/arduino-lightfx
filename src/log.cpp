@@ -6,7 +6,7 @@ void log_setup() {
     Serial.begin(115200);      // initialize serial communication
     while(!Serial) {}
     Log.begin(LOG_LEVEL_INFO, &Serial, true);
-    Log.info("========================================");
+    Log.infoln("========================================");
     Log.setPrefix(logPrefix);
   }
 #endif
@@ -57,7 +57,7 @@ void printLogLevel(Print* _logOutput, int logLevel) {
 void logPrefix(Print *_logOutput, int logLevel) {
 #ifndef DISABLE_LOGGING
     printTimestamp(_logOutput);
-    printLogLevel(_logOutput, logLevel);
+//    printLogLevel(_logOutput, logLevel);
 #endif
 }
 
