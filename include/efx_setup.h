@@ -22,31 +22,7 @@ extern CRGB leds[NUM_PIXELS];
 
 typedef void (*setupFunc)();
 
-//base class/interface for all effects - boy, venturing into OOP in embedded environment!!
-class LedEffect {
-protected:
-    uint registryIndex = 0;
-public:
-    virtual void setup() = 0;
-
-    virtual void loop() = 0;
-
-    virtual const char *description() = 0;
-
-    virtual const char *name() = 0;
-
-    virtual void describeConfig(JsonArray &json) = 0;
-
-    void baseConfig(JsonObject &json);
-
-    uint getRegistryIndex();
-
-    virtual ~LedEffect() = default;     // Destructor
-};
-
-// current effect
 extern bool autoSwitch;
-
 
 void setupStateLED();
 
@@ -104,14 +80,40 @@ void fx_setup();
 
 void fx_run();
 
+// Classes - OOP rules for embedded!
+
+//base class/interface for all effects
+class LedEffect {
+protected:
+    uint registryIndex = 0;
+public:
+    virtual void setup() = 0;
+
+    virtual void loop() = 0;
+
+    virtual const char *description() = 0;
+
+    virtual const char *name() = 0;
+
+    virtual void describeConfig(JsonArray &json) = 0;
+
+    void baseConfig(JsonObject &json);
+
+    uint getRegistryIndex();
+
+    virtual ~LedEffect() = default;     // Destructor
+};
+
 class EffectRegistry {
 private:
     LedEffect *effects[MAX_EFFECTS_COUNT];
     uint currentEffect = 0;
     uint effectsCount = 0;
-    uint lastEffectRun = MAX_EFFECTS_COUNT; //initialized on purpose to be different than current effect on the first run; causes proper effect's setup to be invoked.
+    uint lastEffectRun = 0;
 public:
     LedEffect *getCurrentEffect();
+
+    EffectRegistry() : effects() {};
 
     uint nextEffectPos(uint efx);
 

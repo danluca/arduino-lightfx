@@ -44,7 +44,7 @@ const char *FxB1::description() {
 }
 
 FxB1::FxB1() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 const char *FxB1::name() {
@@ -60,7 +60,7 @@ void FxB1::describeConfig(JsonArray &json) {
 
 //FXB2
 FxB2::FxB2() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxB2::setup() {
@@ -91,7 +91,7 @@ void FxB2::describeConfig(JsonArray &json) {
 
 //FXB3
 FxB3::FxB3() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxB3::setup() {
@@ -124,7 +124,7 @@ void FxB3::describeConfig(JsonArray &json) {
 
 //FXB4
 FxB4::FxB4() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxB4::setup() {
@@ -157,7 +157,7 @@ void FxB4::describeConfig(JsonArray &json) {
 
 //FXB5
 FxB5::FxB5() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxB5::setup() {
@@ -190,7 +190,7 @@ void FxB5::describeConfig(JsonArray &json) {
 
 //FXB6
 FxB6::FxB6() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxB6::setup() {
@@ -221,7 +221,7 @@ void FxB6::describeConfig(JsonArray &json) {
 
 //FXB7
 FxB7::FxB7() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxB7::setup() {
@@ -254,7 +254,7 @@ void FxB7::describeConfig(JsonArray &json) {
 
 //FXB8
 FxB8::FxB8() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxB8::setup() {

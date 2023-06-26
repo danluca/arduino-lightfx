@@ -186,9 +186,10 @@ void fx_setup() {
     //instantiate effect categories
     for (auto x : categorySetup)
         x();
-
     //initialize the effects configured in the functions above
     fxRegistry.setup();
+    //ensure the current effect is setup, in case they share global variables
+    fxRegistry.getCurrentEffect()->setup();
 }
 
 //Run currently selected effect -------
@@ -263,6 +264,7 @@ void EffectRegistry::describeConfig(JsonArray &json) {
     }
 }
 
+// LedEffect
 uint LedEffect::getRegistryIndex() {
     return registryIndex;
 }

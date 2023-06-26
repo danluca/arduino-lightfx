@@ -34,7 +34,7 @@ void fxh_setup() {
 // color palette every time through the loop, producing "rainbow fire".
 
 FxH1::FxH1() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxH1::setup() {
@@ -133,7 +133,7 @@ void FxH1::describeConfig(JsonArray &json) {
 // Confetti Palette
 //////////////////////////////////////////////////////////////////////////////////////////
 FxH2::FxH2() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxH2::setup() {
@@ -250,7 +250,7 @@ void FxH2::describeConfig(JsonArray &json) {
 //CHSV hsvval(100,255,200);
 
 FxH3::FxH3() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxH3::setup() {

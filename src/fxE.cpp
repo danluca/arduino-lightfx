@@ -27,7 +27,7 @@ void fxe_setup() {
  *
  */
 FxE1::FxE1() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxE1::setup() {
@@ -107,7 +107,7 @@ void FxE1::describeConfig(JsonArray &json) {
 
 //=====================================
 FxE2::FxE2() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxE2::setup() {
