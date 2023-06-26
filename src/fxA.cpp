@@ -1,9 +1,8 @@
 /**
- * Tetris flavors - single dot/segment moving one direction, random color, stack at the end, configurable various speed between segments of 8
+ * Category A of light effects
  * 
  */
 #include "fxA.h"
-#include "log.h"
 
 //~ Global variables definition for FxA
 CRGBPalette16 palette;
@@ -21,12 +20,15 @@ CRGB dot[MAX_DOT_SIZE];
 CRGB frame[NUM_PIXELS];
 uint curPos = 0;
 
-FxA1 fxa1;
-FxA2 fxa2;
-FxA3 fxa3;
-FxA4 fxa4;
-FxA5 fxa5;
-
+FxA1* fxa1;
+void fxa_setup() {
+    static FxA1 fxA1;
+    static FxA2 fxA2;
+    static FxA3 fxA3;
+    static FxA4 fxA4;
+    static FxA5 fxA5;
+    fxa1 = &fxA1;
+}
 ///////////////////////////////////////
 // Support Utilities
 ///////////////////////////////////////
@@ -85,7 +87,8 @@ uint fxa_incStackSize(int delta, uint max) {
 }
 
 uint fxa_stackAdjust(CRGB array[], uint szArray) {
-    if (szStack < szSegment << 1) {
+    uint minStack = szSegment << 1;
+    if (szStack < minStack) {
         fxa_incStackSize(szStackSeg, szArray);
         return szStack;
     }
@@ -163,7 +166,7 @@ bool turnOff() {
 ///////////////////////////////////////
 //FX A1
 FxA1::FxA1() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxA1::setup() {
@@ -248,7 +251,7 @@ const char *FxA1::name() {
 // FX A2
 void FxA2::setup() {
     szSegment = 5;
-    fxa1.setup();
+    fxa1->setup();
     //szStackSeg = szSegment >> 1;
 }
 
@@ -299,7 +302,7 @@ const char *FxA2::description() {
 }
 
 FxA2::FxA2() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxA2::describeConfig(JsonArray &json) {
@@ -316,7 +319,7 @@ const char *FxA2::name() {
 //=====================================
 //FX A3
 void FxA3::setup() {
-    fxa1.setup();
+    fxa1->setup();
     palette = PartyColors_p;
 }
 
@@ -375,7 +378,7 @@ const char *FxA3::description() {
 }
 
 FxA3::FxA3() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxA3::describeConfig(JsonArray &json) {
@@ -391,7 +394,7 @@ const char *FxA3::name() {
 // FX A4
 void FxA4::setup() {
     szSegment = 2;
-    fxa1.setup();
+    fxa1->setup();
     palette = CRGBPalette16(CRGB::Red, CRGB::Purple, CRGB::Orange, CRGB::Black);
     szStackSeg = 1;
     mode = Chase;
@@ -448,7 +451,7 @@ const char *FxA4::description() {
 }
 
 FxA4::FxA4() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxA4::describeConfig(JsonArray &json) {
@@ -464,7 +467,7 @@ const char *FxA4::name() {
 // FX A5
 void FxA5::setup() {
     szSegment = 1;
-    fxa1.setup();
+    fxa1->setup();
     palette = PartyColors_p;
     szStackSeg = 1;
     mode = Chase;
@@ -509,7 +512,7 @@ const char *FxA5::description() {
 }
 
 FxA5::FxA5() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxA5::describeConfig(JsonArray &json) {

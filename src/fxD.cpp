@@ -1,11 +1,8 @@
-//=====================================
-/* Confetti
-By: Mark Kriegsman
-Modified By: Andrew Tuline
-Date: July 2015
+/**
+ * Category D of light effects
+ *
+ */
 
-Confetti flashes colours within a limited hue. It's been modified from Mark's original to support a few variables. It's a simple, but great looking routine.
-*/
 #include "fxD.h"
 
 //~ Global variables definition
@@ -17,11 +14,22 @@ uint        hueDiff = 256;                                      // Range of rand
 uint8_t     dotBpm = 30;
 uint8_t     fadeVal = 224;
 
-FxD1 fxD1;
-FxD2 fxD2;
 
+void fxd_setup() {
+    static FxD1 fxD1;
+    static FxD2 fxD2;
+}
+
+/**
+ * Confetti
+ * By: Mark Kriegsman
+ * Modified By: Andrew Tuline
+ * Date: July 2015
+ *
+ * Confetti flashes colours within a limited hue. It's been modified from Mark's original to support a few variables. It's a simple, but great looking routine.
+ */
 FxD1::FxD1() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxD1::setup() {
@@ -91,7 +99,7 @@ void FxD1::ChangeMe() {                                             // A time (r
  * Similar to dots by John Burroughs, but uses the FastLED beatsin8() function instead.
  */
 FxD2::FxD2() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxD2::setup() {

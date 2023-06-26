@@ -20,8 +20,12 @@
 
 extern CRGB leds[NUM_PIXELS];
 
+typedef void (*setupFunc)();
+
 //base class/interface for all effects - boy, venturing into OOP in embedded environment!!
 class LedEffect {
+protected:
+    uint registryIndex = 0;
 public:
     virtual void setup() = 0;
 
@@ -35,7 +39,9 @@ public:
 
     void baseConfig(JsonObject &json);
 
-    virtual ~LedEffect() {}     // Destructor
+    uint getRegistryIndex();
+
+    virtual ~LedEffect() = default;     // Destructor
 };
 
 // current effect
@@ -80,6 +86,20 @@ CRGB *reverseArray(CRGB array[], uint szArray);
 
 CRGB *cloneArray(const CRGB src[], CRGB dest[], size_t length);
 
+void fxa_setup();
+
+void fxb_setup();
+
+void fxc_setup();
+
+void fxd_setup();
+
+void fxe_setup();
+
+void fxf_setup();
+
+void fxh_setup();
+
 void fx_setup();
 
 void fx_run();
@@ -89,7 +109,7 @@ private:
     LedEffect *effects[MAX_EFFECTS_COUNT];
     uint currentEffect = 0;
     uint effectsCount = 0;
-    uint lastEffectRun = 0;
+    uint lastEffectRun = MAX_EFFECTS_COUNT; //initialized on purpose to be different than current effect on the first run; causes proper effect's setup to be invoked.
 public:
     LedEffect *getCurrentEffect();
 
@@ -99,9 +119,9 @@ public:
 
     uint curEffectPos();
 
-    uint randomNextEffectPos();
+    uint nextRandomEffectPos();
 
-    EffectRegistry *registerEffect(LedEffect *effect);
+    uint registerEffect(LedEffect *effect);
 
     void setup();
 
@@ -111,5 +131,8 @@ public:
 };
 
 extern EffectRegistry fxRegistry;
+
+const setupFunc categorySetup[] = {fxa_setup, fxb_setup, fxc_setup, fxd_setup, fxe_setup, fxf_setup, fxh_setup};
+
 
 #endif //LIGHTFX_EFX_SETUP_H

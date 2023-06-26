@@ -1,16 +1,26 @@
+/**
+ * Category B of light effects
+ *
+ */
 #include "fxB.h"
 
 //~ Global variables definition
 uint8_t gHue = 0;
 CRGBPalette16 targetPalette;
-FxB1 fxB1;
-FxB2 fxB2;
-FxB3 fxB3;
-FxB4 fxB4;
-FxB5 fxB5;
-FxB6 fxB6;
-FxB7 fxB7;
-FxB8 fxB8;
+FxB1* fxB1;
+
+void fxb_setup() {
+    static FxB1 fxb1;
+    static FxB2 fxB2;
+    static FxB3 fxB3;
+    static FxB4 fxB4;
+    static FxB5 fxB5;
+    static FxB6 fxB6;
+    static FxB7 fxB7;
+    static FxB8 fxB8;
+    fxB1 = &fxb1;
+}
+
 
 //FXB1
 void FxB1::setup() {
@@ -54,7 +64,7 @@ FxB2::FxB2() {
 }
 
 void FxB2::setup() {
-  fxB1.setup();
+  fxB1->setup();
 }
 
 void FxB2::loop() {
@@ -85,7 +95,7 @@ FxB3::FxB3() {
 }
 
 void FxB3::setup() {
-  fxB1.setup();
+  fxB1->setup();
 }
 
 void FxB3::loop() {
@@ -118,7 +128,7 @@ FxB4::FxB4() {
 }
 
 void FxB4::setup() {
-  fxB1.setup();
+  fxB1->setup();
 }
 
 void FxB4::loop() {
@@ -151,7 +161,7 @@ FxB5::FxB5() {
 }
 
 void FxB5::setup() {
-  fxB1.setup();
+  fxB1->setup();
 }
 
 void FxB5::loop() {
@@ -184,7 +194,7 @@ FxB6::FxB6() {
 }
 
 void FxB6::setup() {
-  fxB1.setup();
+  fxB1->setup();
 }
 
 void FxB6::loop() {
@@ -215,7 +225,7 @@ FxB7::FxB7() {
 }
 
 void FxB7::setup() {
-  fxB1.setup();
+  fxB1->setup();
 }
 
 void FxB7::loop() {
@@ -248,7 +258,7 @@ FxB8::FxB8() {
 }
 
 void FxB8::setup() {
-    fxB1.setup();
+    fxB1->setup();
 }
 
 void FxB8::loop() {

@@ -1,12 +1,6 @@
 /**
- * Display Template for FastLED
- * By: Andrew Tuline
- * Modified by: Andrew Tuline
+ * Category E of light effects
  *
- * Date: July, 2015
- * This is a simple non-blocking FastLED display sequence template.
- *
- * 
  */
 #include "fxE.h"
 
@@ -15,9 +9,23 @@ int twinkrate = 100;                                     // The higher the value
 bool randhue =   true;                                     // Do we want random colours all the time? 1 = yes.
 TBlendType    currentBlending;
 
-FxE1 fxE1;
-FxE2 fxE2;
+FxE1* fxE1;
 
+void fxe_setup() {
+    static FxE1 fxe1;
+    static FxE2 fxE2;
+    fxE1 = &fxe1;
+}
+
+/**
+ * Display Template for FastLED
+ * By: Andrew Tuline
+ * Modified by: Andrew Tuline
+ *
+ * Date: July, 2015
+ * This is a simple non-blocking FastLED display sequence template.
+ *
+ */
 FxE1::FxE1() {
     fxRegistry.registerEffect(this);
 }
@@ -103,7 +111,7 @@ FxE2::FxE2() {
 }
 
 void FxE2::setup() {
-    fxE1.setup();
+    fxE1->setup();
     palette = RainbowColors_p;
 }
 

@@ -1,20 +1,25 @@
 /**
- * aanimations
+ * Category C of light effects
  *
+ */
+
+#include "fxC.h"
+
+void fxc_setup() {
+    static FxC1 fxC1;
+    static FxC2 fxC2;
+}
+
+/**
+ * aanimations
  * By: Can't recall where I found this. Maybe Stefan Petrick.
- * 
  * Modified by: Andrew Tuline
  *
  * Date: January, 2017
- *
  * This sketch demonstrates how to blend between two animations running at the same time.
  */
-#include "fxC.h"
-FxC1 fxC1;
-FxC2 fxC2;
-
 FxC1::FxC1() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxC1::setup() {
@@ -71,20 +76,17 @@ void FxC1::describeConfig(JsonArray &json) {
 //=====================================
 /**
  * blur
- *
  * By: ????
- * 
  * Modified by: Andrew Tuline
  *
  * Date: July, 2015
- *
  * Let's try the blur function. If you look carefully at the animation, sometimes there's a smooth gradient between each LED.
  * Other times, the difference between them is quite significant. Thanks for the blur.
  *
  */
 
 FxC2::FxC2() {
-    fxRegistry.registerEffect(this);
+    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxC2::setup() {

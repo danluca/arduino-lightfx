@@ -183,6 +183,10 @@ void fx_setup() {
     ledStripInit();
     random16_set_seed(millis() >> 2);
 
+    //instantiate effect categories
+    for (auto x : categorySetup)
+        x();
+
     //initialize the effects configured in the functions above
     fxRegistry.setup();
 }
@@ -191,7 +195,7 @@ void fx_setup() {
 void fx_run() {
     if (autoSwitch) {
         EVERY_N_MINUTES(5) {
-            fxRegistry.randomNextEffectPos();
+            fxRegistry.nextRandomEffectPos();
         }
     }
 
@@ -219,19 +223,21 @@ uint EffectRegistry::curEffectPos() {
     return currentEffect;
 }
 
-uint EffectRegistry::randomNextEffectPos() {
+uint EffectRegistry::nextRandomEffectPos() {
     currentEffect = random16(0, effectsCount);
     return currentEffect;
 }
 
-EffectRegistry *EffectRegistry::registerEffect(LedEffect *effect) {
+uint EffectRegistry::registerEffect(LedEffect *effect) {
     if (effectsCount < MAX_EFFECTS_COUNT) {
-        effects[effectsCount++] = effect;
-        Log.infoln("Effect [%s] registered successfully", effect->description());
-    } else
-        Log.errorln("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]",
-                 effect->description());
-    return this;
+        uint8_t curIndex = effectsCount++;
+        effects[curIndex] = effect;
+        Log.infoln("Effect [%s] registered successfully at index %d", effect->name(), curIndex);
+        return curIndex;
+    }
+
+    Log.errorln("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]", effect->name());
+    return MAX_EFFECTS_COUNT;
 }
 
 void EffectRegistry::setup() {
@@ -257,8 +263,13 @@ void EffectRegistry::describeConfig(JsonArray &json) {
     }
 }
 
+uint LedEffect::getRegistryIndex() {
+    return registryIndex;
+}
+
 void LedEffect::baseConfig(JsonObject &json) {
     json["description"] = description();
     json["name"] = name();
+    json["registryIndex"] = getRegistryIndex();
 }
 

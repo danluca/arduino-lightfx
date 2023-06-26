@@ -1,13 +1,17 @@
-///////////////////////////////////////////////////////////////////////////////////////////
-// Fire2012 with programmable Color Palette standard example, broken into multiple segments
-// Based on Fire2012 by Mark Kriegsman, July 2012 as part of "Five Elements" shown here: http://youtu.be/knWiGsmgycY
-//////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * Category H of light effects
+ *
+ */
 #include "fxH.h"
 
-FxH1 fxH1;
-FxH2 fxH2;
-FxH3 fxH3;
+void fxh_setup() {
+    static FxH1 fxH1;
+    static FxH2 fxH2;
+    static FxH3 fxH3;
+}
 
+// Fire2012 with programmable Color Palette standard example, broken into multiple segments
+// Based on Fire2012 by Mark Kriegsman, July 2012 as part of "Five Elements" shown here: http://youtu.be/knWiGsmgycY
 // Four different static color palettes are provided here, plus one dynamic one.
 //
 // The three static ones are:
