@@ -1,5 +1,5 @@
-#include "log.h"
 #include "efx_setup.h"
+#include "log.h"
 
 //~ Global variables definition
 CRGB leds[NUM_PIXELS];
@@ -227,9 +227,9 @@ uint EffectRegistry::randomNextEffectPos() {
 EffectRegistry *EffectRegistry::registerEffect(LedEffect *effect) {
     if (effectsCount < MAX_EFFECTS_COUNT) {
         effects[effectsCount++] = effect;
-        logInfo("Effect [%s] registered successfully", effect->description());
+        Log.info("Effect [%s] registered successfully", effect->description());
     } else
-        logError("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]",
+        Log.error("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]",
                  effect->description());
     return this;
 }
@@ -243,13 +243,18 @@ void EffectRegistry::setup() {
 void EffectRegistry::loop() {
     //if effect has changed, re-run the effect's setup
     if (lastEffectRun != currentEffect) {
-        logInfo("Effect change: from index %d [%s] to %d [%s]",
-                lastEffectRun, effects[lastEffectRun]->description(), currentEffect,
-                effects[currentEffect]->description());
+        Log.info("Effect change: from index %d [%s] to %d [%s]",
+                lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         effects[currentEffect]->setup();
     }
     effects[currentEffect]->loop();
     lastEffectRun = currentEffect;
+}
+
+void EffectRegistry::describeConfig(JsonArray &json) {
+    for (uint x = 0; x < effectsCount; x++) {
+        effects[x]->describeConfig(json);
+    }
 }
 
 JsonObject &LedEffect::baseConfig(JsonArray &json) {
@@ -259,8 +264,3 @@ JsonObject &LedEffect::baseConfig(JsonArray &json) {
     return object;
 }
 
-void EffectRegistry::describeConfig(JsonArray &json) {
-    for (uint x = 0; x < effectsCount; x++) {
-        effects[x]->describeConfig(json);
-    }
-}

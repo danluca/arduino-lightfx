@@ -3,6 +3,7 @@
  * 
  */
 #include "fxA.h"
+#include "log.h"
 
 //~ Global variables definition for FxA
 CRGBPalette16 palette;
@@ -236,6 +237,7 @@ void FxA1::describeConfig(JsonArray &json) {
     JsonObject obj = baseConfig(json);
     obj["segmentSize"] = szSegment;
     obj["palette"] = "Rainbow";
+    Log.info("FXA1::describeConfig");
 }
 
 const char *FxA1::name() {

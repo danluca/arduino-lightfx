@@ -4,8 +4,8 @@
 // Collection of light strip effects with ability to be configured through Wi-Fi
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-#include "log.h"
 #include "efx_setup.h"
+#include "log.h"
 #include "net_setup.h"
 #include <Scheduler.h>
 

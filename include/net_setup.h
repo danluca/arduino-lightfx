@@ -11,7 +11,6 @@
 #include <FastLED.h>
 #include <Arduino_LSM6DSOX.h>
 #include <TimeLib.h>
-#include "log.h"
 #include "secrets.h"
 
 #define CST_OFFSET_SECONDS -21600

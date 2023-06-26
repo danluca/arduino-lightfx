@@ -1,10 +1,6 @@
 #ifndef LIGHTFX_CONFIG_H
 #define LIGHTFX_CONFIG_H
 
-//flips these to enable/disable logging to USB serial port
-//#define DEBUG
-//#undef DEBUG
-
 // the PWM pin dedicated for LED control - see PinNames for D2
 #define LED_PIN 25
 

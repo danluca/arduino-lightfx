@@ -8,7 +8,6 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <Arduino_LSM6DSOX.h>
-#include "log.h"
 #include "net_setup.h"
 #include "fxA.h"
 
