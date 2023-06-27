@@ -20,15 +20,35 @@ CRGB dot[MAX_DOT_SIZE];
 CRGB frame[NUM_PIXELS];
 uint curPos = 0;
 
-FxA1* fxa1;
-void fxa_setup() {
+
+void fxa_register() {
     static FxA1 fxA1;
     static FxA2 fxA2;
     static FxA3 fxA3;
     static FxA4 fxA4;
     static FxA5 fxA5;
-    fxa1 = &fxA1;
 }
+
+void fxa_setup() {
+    FastLED.clear(true);
+    FastLED.setBrightness(BRIGHTNESS);
+    fill_solid(dot, MAX_DOT_SIZE, BKG);
+    fill_solid(frame, FRAME_SIZE, BKG);
+
+    palette = RainbowColors_p;
+    //shuffle led indexes
+    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+    reset();
+    colorIndex = lastColorIndex = 0;
+    curPos = 0;
+    speed = 100;
+    szStack = 0;
+    brightness = 175;
+    szSegment = validateSegmentSize(szSegment);
+    szStackSeg = szSegment >> 1;
+    mode = Chase;
+}
+
 ///////////////////////////////////////
 // Support Utilities
 ///////////////////////////////////////
@@ -170,23 +190,7 @@ FxA1::FxA1() {
 }
 
 void FxA1::setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
-    fill_solid(dot, MAX_DOT_SIZE, BKG);
-    fill_solid(frame, FRAME_SIZE, BKG);
-
-    palette = RainbowColors_p;
-    //shuffle led indexes
-    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-    reset();
-    colorIndex = lastColorIndex = 0;
-    curPos = 0;
-    speed = 100;
-    szStack = 0;
-    brightness = 175;
-    szSegment = validateSegmentSize(szSegment);
-    szStackSeg = szSegment >> 1;
-    mode = Chase;
+    fxa_setup();
 }
 
 void FxA1::loop() {
@@ -251,7 +255,7 @@ const char *FxA1::name() {
 // FX A2
 void FxA2::setup() {
     szSegment = 5;
-    fxa1->setup();
+    fxa_setup();
     //szStackSeg = szSegment >> 1;
 }
 
@@ -319,7 +323,7 @@ const char *FxA2::name() {
 //=====================================
 //FX A3
 void FxA3::setup() {
-    fxa1->setup();
+    fxa_setup();
     palette = PartyColors_p;
 }
 
@@ -394,7 +398,7 @@ const char *FxA3::name() {
 // FX A4
 void FxA4::setup() {
     szSegment = 2;
-    fxa1->setup();
+    fxa_setup();
     palette = CRGBPalette16(CRGB::Red, CRGB::Purple, CRGB::Orange, CRGB::Black);
     szStackSeg = 1;
     mode = Chase;
@@ -412,38 +416,32 @@ void FxA4::loop() {
         return;
     }
 
-    EVERY_N_MILLIS(speed << 2) {
-        FastLED.setBrightness(random8(40, 225));
-    }
+//    EVERY_N_MILLIS(speed << 2) {
+//        FastLED.setBrightness(random8(40, 225));
+//    }
 
-    colorIndex = random8();
-    speed = random16(25, 201);
-    int upLimit = FRAME_SIZE - szStack;
-    // Move a single led
-    for (int led = 0; led < upLimit; led++) {
-        // Turn our current led on, then show the leds
-        setTrailColor(frame, led,
+    EVERY_N_MILLISECONDS_I(a4Timer, speed) {
+        uint upLimit = FRAME_SIZE - szStack;
+        setTrailColor(frame, curPos,
                       ColorFromPalette(palette, colorIndex, random8(dimmed + 24, brightness), LINEARBLEND),
                       brightness, dimmed);
         pushFrame(frame, FRAME_SIZE, 0, true);
-        //fadeToBlackBy(leds, NUM_PIXELS, random16(40, 141));
-        // Show the leds (only one of which is set to desired color, from above)
         FastLED.show();
 
-        // Wait a little bit
-        delay(speed);
-
         // Turn our current led back to black for the next loop around
-        if (led < (upLimit - 1)) {
-            offTrailColor(leds, led);
+        if (curPos < (upLimit - 1)) {
+            offTrailColor(leds, curPos);
+        }
+        curPos = inc(curPos, 1, upLimit);
+        if (curPos == 0) {
+            fxa_stackAdjust(frame, FRAME_SIZE);
+            lastColorIndex = colorIndex;
+            colorIndex = random8();
+            speed = random16(25, 221);
+            a4Timer.setPeriod(speed);
+            mode = szStack == FRAME_SIZE ? TurnOff : Chase;
         }
     }
-
-    fxa_stackAdjust(frame, FRAME_SIZE);
-    mode = szStack == FRAME_SIZE ? TurnOff : Chase;
-
-    //save the color
-    lastColorIndex = colorIndex;
 }
 
 const char *FxA4::description() {
@@ -467,7 +465,7 @@ const char *FxA4::name() {
 // FX A5
 void FxA5::setup() {
     szSegment = 1;
-    fxa1->setup();
+    fxa_setup();
     palette = PartyColors_p;
     szStackSeg = 1;
     mode = Chase;
@@ -483,7 +481,7 @@ void FxA5::loop() {
         return;
     }
 
-    EVERY_N_MILLISECONDS_I(a04Timer, speed) {
+    EVERY_N_MILLISECONDS_I(a5Timer, speed) {
         uint upLimit = NUM_PIXELS - szStack;
         setTrailColor(leds, curPos,
                       ColorFromPalette(palette, colorIndex, random8(dimmed + 24, brightness), LINEARBLEND),
@@ -501,7 +499,7 @@ void FxA5::loop() {
             lastColorIndex = colorIndex;
             colorIndex = random8();
             speed = random16(25, 221);
-            a04Timer.setPeriod(speed);
+            a5Timer.setPeriod(speed);
             mode = szStack == NUM_PIXELS ? TurnOff : Chase;
         }
     }

@@ -4,7 +4,7 @@
  */
 #include "fxH.h"
 
-void fxh_setup() {
+void fxh_register() {
     static FxH1 fxH1;
     static FxH2 fxH2;
     static FxH3 fxH3;
@@ -146,13 +146,13 @@ void FxH2::setup() {
     saturation = 100;
     brightness = 255;
     hueDiff = 256;
-    speed = 5;
+    speed = 15;
 }
 
 void FxH2::loop() {
     ChangeMe();  // Check the demo loop for changes to the variables.
 
-    EVERY_N_MILLISECONDS(100) {
+    EVERY_N_MILLISECONDS(300) {
         uint8_t maxChanges = 24;
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);  // AWESOME palette blending capability.
     }
@@ -222,7 +222,7 @@ void FxH2::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
-    obj["speed"] = 5;
+    obj["speed"] = speed;
 }
 // ChangeMe()
 
@@ -258,6 +258,7 @@ void FxH3::setup() {
     FastLED.setBrightness(BRIGHTNESS);
     hueDiff = 15;
     speed = 50;
+    hue = random8();
 }
 
 void FxH3::loop() {
@@ -269,6 +270,10 @@ void FxH3::loop() {
         fill_rainbow(leds + 1, NUM_PIXELS - 2, hue, hueDiff);        // One pixel border at each end.
 
         FastLED.show();
+    }
+
+    EVERY_N_SECONDS(2) {
+        hue += 10;
     }
 }
 

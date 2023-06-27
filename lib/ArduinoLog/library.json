@@ -1,0 +1,22 @@
+{
+	"name": "ArduinoLog",
+	"keywords": "logging, debug, log, log levels, AVR, ESP8266",
+	"description": "ArduinoLog is a minimalistic logging framework - see https://docs.platformio.org/page/librarymanager/config.html. Overridden here to fix a bug related to disabling the logging.",
+	"version": "1.1.1",
+	"authors": {
+		"name": "Thijs Elenbaas",
+		"url": "https://github.com/thijse",
+		"maintainer": true
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/thijse/Arduino-Log"
+	},
+	"homepage": "https://github.com/thijse/Arduino-Log/",
+	"frameworks": ["arduino"],
+	"platforms": "*",
+	"build": {
+		"srcDir": ".",
+		"includeDir": "."
+	}
+}

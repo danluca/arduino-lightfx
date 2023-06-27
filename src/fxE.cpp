@@ -9,12 +9,23 @@ int twinkrate = 100;                                     // The higher the value
 bool randhue =   true;                                     // Do we want random colours all the time? 1 = yes.
 TBlendType    currentBlending;
 
-FxE1* fxE1;
-
-void fxe_setup() {
+void fxe_register() {
     static FxE1 fxe1;
     static FxE2 fxE2;
-    fxE1 = &fxe1;
+}
+
+void fxe_setup() {
+    FastLED.clear(true);
+    FastLED.setBrightness(BRIGHTNESS);
+    currentBlending = LINEARBLEND;
+    palette = PartyColors_p;
+    twinkrate = 100;
+    speed =  10;
+    fade =   8;
+    hue =  50;
+    saturation = 255;
+    brightness = 255;
+    randhue = true;
 }
 
 /**
@@ -31,17 +42,7 @@ FxE1::FxE1() {
 }
 
 void FxE1::setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
-    currentBlending = LINEARBLEND;
-    palette = PartyColors_p;
-    twinkrate = 100;
-    speed =  10;
-    fade =   8;
-    hue =  50;
-    saturation = 255;
-    brightness = 255;
-    randhue = true;
+    fxe_setup();
 }
 
 void FxE1::loop() {
@@ -111,7 +112,7 @@ FxE2::FxE2() {
 }
 
 void FxE2::setup() {
-    fxE1->setup();
+    fxe_setup();
     palette = RainbowColors_p;
 }
 

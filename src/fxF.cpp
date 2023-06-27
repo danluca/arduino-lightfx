@@ -4,6 +4,6 @@
  */
 #include "fxF.h"
 
-void fxf_setup() {
+void fxf_register() {
 
 }

@@ -5,9 +5,15 @@
 
 #include "fxC.h"
 
-void fxc_setup() {
+void fxc_register() {
     static FxC1 fxC1;
     static FxC2 fxC2;
+    static FxC3 fxC3;
+}
+
+void fxc_setup() {
+    FastLED.clear(true);
+    FastLED.setBrightness(BRIGHTNESS);
 }
 
 /**
@@ -23,8 +29,7 @@ FxC1::FxC1() {
 }
 
 void FxC1::setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
+    fxc_setup();
 }
 
 void FxC1::loop() {
@@ -90,8 +95,7 @@ FxC2::FxC2() {
 }
 
 void FxC2::setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
+    fxc_setup();
 }
 
 void FxC2::loop() {
@@ -123,4 +127,62 @@ const char *FxC2::name() {
 void FxC2::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
+}
+
+/**
+ * inoise8_mover
+ * By: Andrew Tuline
+ * Date: February, 2017
+ *
+ * We've used sine waves and counting to move pixels around a strand. In this case, I'm using Perlin Noise to move a pixel up and down the strand.
+ * The advantage here is that it provides random natural movement without requiring lots of fancy math by joe programmer.
+ */
+static uint16_t dist;                                               // A moving location for our noise generator.
+const uint16_t xscale = 30;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
+const uint16_t yscale = 30;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
+const uint8_t maxChanges = 24;                                      // Value for blending between palettes.
+
+FxC3::FxC3() {
+    registryIndex = fxRegistry.registerEffect(this);
+}
+
+void FxC3::setup() {
+    fxc_setup();
+    brightness = 128;
+    palette = LavaColors_p;
+    targetPalette = OceanColors_p;
+}
+
+void FxC3::loop() {
+    EVERY_N_MILLISECONDS(20) {
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
+
+        uint16_t locn = inoise16(xscale, dist+yscale) % 0xFFFF;           // Get a new pixel location from moving noise.
+        uint8_t pixlen = map(locn,0,0xFFFF,0,NUM_PIXELS);                     // Map that to the length of the strand.
+        leds[pixlen] = ColorFromPalette(palette, pixlen, 255, LINEARBLEND);   // Use that value for both the location as well as the palette index colour for the pixel.
+
+        dist += beatsin16(10,1,4);                                                // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
+        fadeToBlackBy(leds, NUM_PIXELS, 4);
+    }
+
+    EVERY_N_SECONDS(5) {                                        // Change the target palette to a random one every 5 seconds.
+        targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
+    }
+
+    FastLED.show();
+}
+
+void FxC3::describeConfig(JsonArray &json) {
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
+    obj["xscale"] = xscale;
+    obj["yscale"] = yscale;
+}
+
+const char *FxC3::name() {
+    return "FXC3";
+}
+
+const char *FxC3::description() {
+    return "FXC3: using Perlin Noise to move a pixel up and down the strand for a random natural movement";
 }

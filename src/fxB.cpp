@@ -7,9 +7,8 @@
 //~ Global variables definition
 uint8_t gHue = 0;
 CRGBPalette16 targetPalette;
-FxB1* fxB1;
 
-void fxb_setup() {
+void fxb_register() {
     static FxB1 fxb1;
     static FxB2 fxB2;
     static FxB3 fxB3;
@@ -18,17 +17,19 @@ void fxb_setup() {
     static FxB6 fxB6;
     static FxB7 fxB7;
     static FxB8 fxB8;
-    fxB1 = &fxb1;
 }
 
-
-//FXB1
-void FxB1::setup() {
+void fxb_setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
     palette = PartyColors_p;
     gHue = 0;
     brightness = 148;
+}
+
+//FXB1
+void FxB1::setup() {
+    fxb_setup();
 }
 
 void FxB1::loop() {
@@ -64,7 +65,7 @@ FxB2::FxB2() {
 }
 
 void FxB2::setup() {
-  fxB1->setup();
+    fxb_setup();
 }
 
 void FxB2::loop() {
@@ -95,7 +96,7 @@ FxB3::FxB3() {
 }
 
 void FxB3::setup() {
-  fxB1->setup();
+    fxb_setup();
 }
 
 void FxB3::loop() {
@@ -128,7 +129,7 @@ FxB4::FxB4() {
 }
 
 void FxB4::setup() {
-  fxB1->setup();
+    fxb_setup();
 }
 
 void FxB4::loop() {
@@ -161,7 +162,7 @@ FxB5::FxB5() {
 }
 
 void FxB5::setup() {
-  fxB1->setup();
+    fxb_setup();
 }
 
 void FxB5::loop() {
@@ -194,7 +195,7 @@ FxB6::FxB6() {
 }
 
 void FxB6::setup() {
-  fxB1->setup();
+    fxb_setup();
 }
 
 void FxB6::loop() {
@@ -225,7 +226,7 @@ FxB7::FxB7() {
 }
 
 void FxB7::setup() {
-  fxB1->setup();
+    fxb_setup();
 }
 
 void FxB7::loop() {
@@ -258,7 +259,7 @@ FxB8::FxB8() {
 }
 
 void FxB8::setup() {
-    fxB1->setup();
+    fxb_setup();
 }
 
 void FxB8::loop() {

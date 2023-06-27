@@ -1,13 +1,14 @@
 //
-// Created by Dan on 06.21.2023.
+// Copyright 2023 by Dan Luca. All rights reserved
 //
-
 #ifndef LIGHTFX_FXC_H
 #define LIGHTFX_FXC_H
 
 #include "efx_setup.h"
 
-// have 2 more independent CRGBs for the sources
+extern uint8_t brightness;
+extern CRGBPalette16 palette;
+extern CRGBPalette16 targetPalette;
 
 class FxC1 : public LedEffect {
 private:
@@ -35,6 +36,21 @@ public:
 class FxC2 : public LedEffect {
 public:
     FxC2();
+
+    void setup() override;
+
+    void loop() override;
+
+    void describeConfig(JsonArray &json) override;
+
+    const char *name() override;
+
+    const char *description() override;
+};
+
+class FxC3 : public LedEffect {
+public:
+    FxC3();
 
     void setup() override;
 

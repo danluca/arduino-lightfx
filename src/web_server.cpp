@@ -143,7 +143,9 @@ void webserver() {
   if (client) {
     unsigned long start = millis();
     IPAddress clientIp = client.remoteIP();
-    Log.infoln("Request: %u.%u.%u.%u WEB start", clientIp[0], clientIp[1], clientIp[2], clientIp[3]);
+    Log.infoln("Request: %p WEB start", clientIp);
+    //add some real entropy
+    random16_add_entropy(start >> 4);
     while (client.connected()) {
       if (client.available()) {
         String reqUri = client.readStringUntil('\n');

@@ -77,7 +77,7 @@ void shuffleIndexes(int array[], uint szArray) {
     }
 }
 
-void offTrailColor(CRGB arr[], int x) {
+void offTrailColor(CRGB arr[], uint x) {
     if (x < 1) {
         arr[x] = CRGB::Black;
         return;
@@ -86,7 +86,7 @@ void offTrailColor(CRGB arr[], int x) {
     arr[x - 1] = CRGB::Black;
 }
 
-void setTrailColor(CRGB arr[], int x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness) {
+void setTrailColor(CRGB arr[], uint x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness) {
     arr[x] = color;
     arr[x] %= dotBrightness;
     if (x < 1) {

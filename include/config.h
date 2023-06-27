@@ -1,3 +1,6 @@
+//
+// Copyright 2023 by Dan Luca. All rights reserved
+//
 #ifndef LIGHTFX_CONFIG_H
 #define LIGHTFX_CONFIG_H
 

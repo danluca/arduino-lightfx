@@ -1,5 +1,5 @@
 //
-// Created by Dan on 06.21.2023.
+// Copyright 2023 by Dan Luca. All rights reserved
 //
 
 #ifndef LIGHTFX_EFX_SETUP_H
@@ -38,9 +38,9 @@ void shiftLeft(CRGB arr[], int szArr, uint pos);
 
 void shuffleIndexes(int array[], uint szArray);
 
-void offTrailColor(CRGB arr[], int x);
+void offTrailColor(CRGB arr[], uint x);
 
-void setTrailColor(CRGB arr[], int x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness);
+void setTrailColor(CRGB arr[], uint x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness);
 
 void copyArray(CRGB *src, CRGB *dest, size_t length);
 
@@ -62,19 +62,25 @@ CRGB *reverseArray(CRGB array[], uint szArray);
 
 CRGB *cloneArray(const CRGB src[], CRGB dest[], size_t length);
 
-void fxa_setup();
+void fxa_register();
 
-void fxb_setup();
+void fxb_register();
 
-void fxc_setup();
+void fxc_register();
 
-void fxd_setup();
+void fxd_register();
 
-void fxe_setup();
+void fxe_register();
 
-void fxf_setup();
+void fxf_register();
 
-void fxh_setup();
+void fxh_register();
+
+void fxi_register();
+
+void fxj_register();
+
+void fxk_register();
 
 void fx_setup();
 
@@ -111,9 +117,11 @@ private:
     uint effectsCount = 0;
     uint lastEffectRun = 0;
 public:
+    EffectRegistry() : effects() {};
+
     LedEffect *getCurrentEffect();
 
-    EffectRegistry() : effects() {};
+    LedEffect *getEffect(uint index);
 
     uint nextEffectPos(uint efx);
 
@@ -134,7 +142,7 @@ public:
 
 extern EffectRegistry fxRegistry;
 
-const setupFunc categorySetup[] = {fxa_setup, fxb_setup, fxc_setup, fxd_setup, fxe_setup, fxf_setup, fxh_setup};
+const setupFunc categorySetup[] = {fxa_register, fxb_register, fxc_register, fxd_register, fxe_register, fxf_register, fxh_register, fxi_register, fxj_register, fxk_register};
 
 
 #endif //LIGHTFX_EFX_SETUP_H

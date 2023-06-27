@@ -15,7 +15,7 @@ uint8_t     dotBpm = 30;
 uint8_t     fadeVal = 224;
 
 
-void fxd_setup() {
+void fxd_register() {
     static FxD1 fxD1;
     static FxD2 fxD2;
 }

@@ -1,7 +1,6 @@
 //
-// Created by Dan on 06.21.2023.
+// Copyright 2023 by Dan Luca. All rights reserved
 //
-
 #ifndef LIGHTFX_FXA_H
 #define LIGHTFX_FXA_H
 
