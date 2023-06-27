@@ -137,9 +137,9 @@ void FxC2::describeConfig(JsonArray &json) {
  * We've used sine waves and counting to move pixels around a strand. In this case, I'm using Perlin Noise to move a pixel up and down the strand.
  * The advantage here is that it provides random natural movement without requiring lots of fancy math by joe programmer.
  */
-static uint16_t dist;                                               // A moving location for our noise generator.
-const uint16_t xscale = 30;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
-const uint16_t yscale = 30;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
+static int32_t dist;                                               // A moving location for our noise generator.
+const uint32_t xscale = 8192;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
+const uint32_t yscale = 7680;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 const uint8_t maxChanges = 24;                                      // Value for blending between palettes.
 
 FxC3::FxC3() {
@@ -151,17 +151,18 @@ void FxC3::setup() {
     brightness = 128;
     palette = LavaColors_p;
     targetPalette = OceanColors_p;
+    dist = random();
 }
 
 void FxC3::loop() {
-    EVERY_N_MILLISECONDS(20) {
+    EVERY_N_MILLISECONDS(25) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
 
         uint16_t locn = inoise16(xscale, dist+yscale) % 0xFFFF;           // Get a new pixel location from moving noise.
-        uint8_t pixlen = map(locn,0,0xFFFF,0,NUM_PIXELS);                     // Map that to the length of the strand.
-        leds[pixlen] = ColorFromPalette(palette, pixlen, 255, LINEARBLEND);   // Use that value for both the location as well as the palette index colour for the pixel.
+        uint16_t pixlen = map(locn,0,0xFFFF,0,NUM_PIXELS);                     // Map that to the length of the strand.
+        leds[pixlen] = ColorFromPalette(palette, pixlen % 256, 255, LINEARBLEND);   // Use that value for both the location as well as the palette index colour for the pixel.
 
-        dist += beatsin16(10,1,4);                                                // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
+        dist += beatsin16(10,128,8192);                                                // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
         fadeToBlackBy(leds, NUM_PIXELS, 4);
     }
 

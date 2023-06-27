@@ -61,7 +61,7 @@ void sendContent(WiFiClient client, const char* name, const char* content) {
   // The HTTP response ends with another blank line:
   sz += client.println();
   //sz = strlen_P(content);
-  Log.infoln("Response: HTTP 200 %s [%d bytes]", name, sz);  //responses are long and static, not logging the body
+  Log.infoln(F("Response: HTTP 200 %s [%d bytes]"), name, sz);  //responses are long and static, not logging the body
 }
 
 void sendMainPage(WiFiClient client) {
@@ -115,7 +115,7 @@ void sendWifiJson(WiFiClient client) {
   //send it out
   uint bodyLen = serializeJson(doc, client);
   bodyLen += client.println();
-  Log.infoln("Response: HTTP 200 wifi.json [%u bytes]", bodyLen);
+  Log.infoln(F("Response: HTTP 200 wifi.json [%u bytes]"), bodyLen);
 }
 
 void sendConfigJson(WiFiClient client) {
@@ -134,7 +134,7 @@ void sendConfigJson(WiFiClient client) {
   //send it out
   uint bodyLen = serializeJson(doc, client);
   bodyLen += client.println();
-  Log.infoln("Response: HTTP 200 config.json [%u bytes]", bodyLen);
+  Log.infoln(F("Response: HTTP 200 config.json [%u bytes]"), bodyLen);
 }
 
 
@@ -143,7 +143,7 @@ void webserver() {
   if (client) {
     unsigned long start = millis();
     IPAddress clientIp = client.remoteIP();
-    Log.infoln("Request: %p WEB start", clientIp);
+    Log.infoln(F("Request: %p WEB start"), clientIp);
     //add some real entropy
     random16_add_entropy(start >> 4);
     while (client.connected()) {
@@ -179,35 +179,13 @@ void webserver() {
           sendConfigJson(client);
         } else if (reqUri.startsWith("GET /wifi.json ")) {
           sendWifiJson(client);
-        } else if (reqUri.startsWith("GET /fx01/constantSpeed=")) {
-          if (reqUri.indexOf("=0") > 0) {
-              bConstSpeed = false;
-          } else {
-              bConstSpeed = true;
-          }
-          client.print(http303Main);
-          Log.infoln("Response: HTTP 303 [/index.html]");
-        } else if (reqUri.startsWith("PUT /fx/01 ")) {
-          DynamicJsonDocument doc(512);
-          // Parse JSON object
-          DeserializationError error = deserializeJson(doc, reqBody);
-          if (error) {
-            client.print(http500Text);
-            Log.infoln("Response: HTTP 500 [/fx/01]");
-          } else {
-              szSegment = doc["dotSize"].as<uint>() % MAX_DOT_SIZE;
-              bConstSpeed = doc["constantSpeed"].as<bool>();
-            Log.infoln("FXA: Segment size updated to %u; constant speed updated to %s", szSegment, bConstSpeed ? "true" : "false");
-            client.print(http303Main);
-            Log.infoln("Response: HTTP 303 [/fx/01]");
-          }
         } else if (reqUri.startsWith("PUT /fx ")) {
           DynamicJsonDocument doc(512);
           // Parse JSON object
           DeserializationError error = deserializeJson(doc, reqBody);
           if (error) {
             client.print(http500Text);
-            Log.infoln("Response: HTTP 500 [/fx]");
+            Log.infoln(F("Response: HTTP 500 [/fx]"));
           } else {
             int fxIndex = doc["effect"].as<int>();
             if (fxIndex >= 0)
@@ -215,14 +193,14 @@ void webserver() {
             else
                 autoSwitch = true;
 
-            Log.infoln("FX: Current running effect updated to %u, autoswitch %s", fxRegistry.curEffectPos(), autoSwitch?"true":"false");
+            Log.infoln(F("FX: Current running effect updated to %u, autoswitch %s"), fxRegistry.curEffectPos(), autoSwitch?"true":"false");
             client.print(http303Main);
-            Log.infoln("Response: HTTP 303 [/fx]");
+            Log.infoln(F("Response: HTTP 303 [/fx]"));
           }
         } else {
           //unsupported - return 400
           client.print(http400Text);
-          Log.errorln("Response: HTTP 404 NotFound");
+          Log.errorln(F("Response: HTTP 404 NotFound"));
         }
         //done handling
         break;
@@ -231,6 +209,6 @@ void webserver() {
     // close the connection:
     client.stop();
     unsigned long dur = millis() - start;
-    Log.infoln("Request: WEB completed [%lu ms]", dur);
+    Log.infoln(F("Request: WEB completed [%u ms]"), dur);
   }
 }

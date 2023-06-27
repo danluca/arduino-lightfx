@@ -399,7 +399,7 @@ const char *FxA3::name() {
 void FxA4::setup() {
     szSegment = 2;
     fxa_setup();
-    palette = CRGBPalette16(CRGB::Red, CRGB::Purple, CRGB::Orange, CRGB::Black);
+    palette = CRGBPalette16(CRGB::Red, CRGB::Orange,CRGB::Purple, CRGB::Black);
     szStackSeg = 1;
     mode = Chase;
 }
@@ -425,19 +425,22 @@ void FxA4::loop() {
         setTrailColor(frame, curPos,
                       ColorFromPalette(palette, colorIndex, random8(dimmed + 24, brightness), LINEARBLEND),
                       brightness, dimmed);
+        if (curPos == (upLimit - 1))
+            frame[curPos - 1] = frame[curPos];
         pushFrame(frame, FRAME_SIZE, 0, true);
+        fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
         FastLED.show();
 
         // Turn our current led back to black for the next loop around
         if (curPos < (upLimit - 1)) {
-            offTrailColor(leds, curPos);
+            offTrailColor(frame, curPos);
         }
         curPos = inc(curPos, 1, upLimit);
         if (curPos == 0) {
             fxa_stackAdjust(frame, FRAME_SIZE);
             lastColorIndex = colorIndex;
             colorIndex = random8();
-            speed = random16(25, 221);
+            speed = random16(25, 201);
             a4Timer.setPeriod(speed);
             mode = szStack == FRAME_SIZE ? TurnOff : Chase;
         }

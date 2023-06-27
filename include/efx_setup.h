@@ -105,7 +105,7 @@ public:
 
     void baseConfig(JsonObject &json);
 
-    uint getRegistryIndex();
+    uint getRegistryIndex() const;
 
     virtual ~LedEffect() = default;     // Destructor
 };
@@ -119,15 +119,15 @@ private:
 public:
     EffectRegistry() : effects() {};
 
-    LedEffect *getCurrentEffect();
+    LedEffect *getCurrentEffect() const;
 
-    LedEffect *getEffect(uint index);
+    LedEffect *getEffect(uint index) const;
 
     uint nextEffectPos(uint efx);
 
     uint nextEffectPos();
 
-    uint curEffectPos();
+    uint curEffectPos() const;
 
     uint nextRandomEffectPos();
 

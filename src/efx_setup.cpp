@@ -204,13 +204,13 @@ void fx_run() {
     yield();
 }
 
-LedEffect *EffectRegistry::getCurrentEffect() {
+LedEffect *EffectRegistry::getCurrentEffect() const {
     return effects[currentEffect];
 }
 
 uint EffectRegistry::nextEffectPos(uint efx) {
     uint prevPos = currentEffect;
-    currentEffect = capr(efx, 0, effectsCount);
+    currentEffect = capu(efx, effectsCount-1);
     return prevPos;
 }
 
@@ -220,7 +220,7 @@ uint EffectRegistry::nextEffectPos() {
     return prevPos;
 }
 
-uint EffectRegistry::curEffectPos() {
+uint EffectRegistry::curEffectPos() const {
     return currentEffect;
 }
 
@@ -233,11 +233,11 @@ uint EffectRegistry::registerEffect(LedEffect *effect) {
     if (effectsCount < MAX_EFFECTS_COUNT) {
         uint8_t curIndex = effectsCount++;
         effects[curIndex] = effect;
-        Log.infoln("Effect [%s] registered successfully at index %d", effect->name(), curIndex);
+        Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), curIndex);
         return curIndex;
     }
 
-    Log.errorln("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]", effect->name());
+    Log.errorln(F("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]"), effect->name());
     return MAX_EFFECTS_COUNT;
 }
 
@@ -250,7 +250,7 @@ void EffectRegistry::setup() {
 void EffectRegistry::loop() {
     //if effect has changed, re-run the effect's setup
     if (lastEffectRun != currentEffect) {
-        Log.infoln("Effect change: from index %d [%s] to %d [%s]",
+        Log.infoln(F("Effect change: from index %d [%s] to %d [%s]"),
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         effects[currentEffect]->setup();
     }
@@ -264,8 +264,12 @@ void EffectRegistry::describeConfig(JsonArray &json) {
     }
 }
 
+LedEffect *EffectRegistry::getEffect(uint index) const {
+    return effects[capu(index, effectsCount-1)];
+}
+
 // LedEffect
-uint LedEffect::getRegistryIndex() {
+uint LedEffect::getRegistryIndex() const {
     return registryIndex;
 }
 
