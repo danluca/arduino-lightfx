@@ -19,7 +19,7 @@ extern CRGBPalette16 palette;
 extern uint8_t brightness;
 extern uint8_t colorIndex;
 extern uint8_t lastColorIndex;
-extern uint speed;
+extern volatile uint speed;
 extern uint8_t szSegment;
 extern uint8_t szStackSeg;
 extern uint szStack;
@@ -28,7 +28,7 @@ extern OpMode mode;
 extern int stripShuffleIndex[NUM_PIXELS];
 extern CRGB dot[MAX_DOT_SIZE];
 extern CRGB frame[NUM_PIXELS];
-extern uint curPos;
+extern volatile uint curPos;
 
 CRGB *makeDot(CRGB color, uint szDot);
 

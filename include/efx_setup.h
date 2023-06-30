@@ -8,6 +8,7 @@
 #include <FastLED.h>
 #include <ArduinoJson.h>
 #include "config.h"
+#include "PaletteFactory.h"
 
 #define capd(x, d) ((x<d)?d:x)
 #define capu(x, u) ((x>u)?u:x)
@@ -21,8 +22,6 @@
 extern CRGB leds[NUM_PIXELS];
 
 typedef void (*setupFunc)();
-
-extern bool autoSwitch;
 
 void setupStateLED();
 
@@ -116,6 +115,7 @@ private:
     uint currentEffect = 0;
     uint effectsCount = 0;
     uint lastEffectRun = 0;
+    bool autoSwitch = true;
 public:
     EffectRegistry() : effects() {};
 
@@ -138,6 +138,10 @@ public:
     void loop();
 
     void describeConfig(JsonArray &json);
+
+    void autoRoll(bool switchType = true);
+
+    bool isAutoRoll() const;
 };
 
 extern EffectRegistry fxRegistry;

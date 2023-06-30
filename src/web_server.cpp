@@ -126,6 +126,7 @@ void sendConfigJson(WiFiClient client) {
 
   doc["curEffect"] = String(fxRegistry.curEffectPos());
   doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
+  doc["holiday"] = holidayToString(paletteFactory.currentHoliday());
   char datetime[20];
   sprintf(datetime, "%4d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
   doc["currentTime"] = datetime;
@@ -187,13 +188,16 @@ void webserver() {
             client.print(http500Text);
             Log.infoln(F("Response: HTTP 500 [/fx]"));
           } else {
-            int fxIndex = doc["effect"].as<int>();
-            if (fxIndex >= 0)
-                fxRegistry.nextEffectPos(fxIndex);
-            else
-                autoSwitch = true;
-
-            Log.infoln(F("FX: Current running effect updated to %u, autoswitch %s"), fxRegistry.curEffectPos(), autoSwitch?"true":"false");
+            bool autoAdvance = !doc.containsKey("auto") || doc["auto"].as<bool>();
+            fxRegistry.autoRoll(autoAdvance);
+            if (doc.containsKey("effect"))
+                fxRegistry.nextEffectPos(abs(doc["effect"].as<int>()));
+            if (doc.containsKey("holiday")) {
+                String userHoliday = doc["holiday"].as<String>();
+                paletteFactory.forceHoliday(parseHoliday(&userHoliday));
+            }
+            Log.infoln(F("FX: Current running effect updated to %u, autoswitch %s, holiday %s"),
+                       fxRegistry.curEffectPos(), fxRegistry.isAutoRoll()?"true":"false", holidayToString(paletteFactory.currentHoliday()));
             client.print(http303Main);
             Log.infoln(F("Response: HTTP 303 [/fx]"));
           }

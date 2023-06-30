@@ -11,10 +11,12 @@
 #include <Arduino_LSM6DSOX.h>
 #include <TimeLib.h>
 #include "secrets.h"
+#include "PaletteFactory.h"
 
 #define CST_OFFSET_SECONDS -21600
 
 extern WiFiServer server;
+extern PaletteFactory paletteFactory;
 
 void setupStateLED();
 void stateLED(CRGB color);

@@ -22,7 +22,7 @@ void fxb_register() {
 void fxb_setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
-    palette = PartyColors_p;
+    palette = paletteFactory.mainPalette();
     gHue = 0;
     brightness = 148;
 }

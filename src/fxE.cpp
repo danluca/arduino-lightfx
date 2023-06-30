@@ -18,7 +18,7 @@ void fxe_setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
     currentBlending = LINEARBLEND;
-    palette = PartyColors_p;
+    palette = paletteFactory.mainPalette();
     twinkrate = 100;
     speed =  10;
     fade =   8;
@@ -113,7 +113,7 @@ FxE2::FxE2() {
 
 void FxE2::setup() {
     fxe_setup();
-    palette = RainbowColors_p;
+    palette = paletteFactory.secondaryPalette();
 }
 
 void FxE2::loop() {

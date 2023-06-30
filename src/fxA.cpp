@@ -9,7 +9,7 @@ CRGBPalette16 palette;
 uint8_t brightness = 175;
 uint8_t colorIndex = 0;
 uint8_t lastColorIndex = 0;
-uint speed = 100;
+volatile uint speed = 100;
 uint8_t szSegment = 3;
 uint8_t szStackSeg = szSegment >> 1;
 uint szStack = 0;
@@ -18,7 +18,7 @@ OpMode mode = Chase;
 int stripShuffleIndex[NUM_PIXELS];
 CRGB dot[MAX_DOT_SIZE];
 CRGB frame[NUM_PIXELS];
-uint curPos = 0;
+volatile uint curPos = 0;
 
 
 void fxa_register() {
@@ -35,7 +35,7 @@ void fxa_setup() {
     fill_solid(dot, MAX_DOT_SIZE, BKG);
     fill_solid(frame, FRAME_SIZE, BKG);
 
-    palette = RainbowColors_p;
+    palette = paletteFactory.mainPalette();
     //shuffle led indexes
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     reset();
@@ -73,25 +73,25 @@ bool isVisible(int ledIndex) {
 }
 
 uint validateSegmentSize(uint segSize) {
-    return max(min(segSize, MAX_DOT_SIZE), 2);
+    return max(min(segSize, MAX_DOT_SIZE), 2u);
 }
 
-void moveSeg(const CRGB dot[], uint szDot, CRGB dest[], uint lastPos, uint newPos, uint viewport) {
+void moveSeg(const CRGB dotSeg[], uint szDot, CRGB dest[], uint lastPos, uint newPos, uint viewport) {
     bool rightDir = newPos >= lastPos;
-    int bkgSeg = min(szDot, abs(newPos - lastPos));
-    for (int x = 0; x < bkgSeg; x++) {
-        int lx = rightDir ? lastPos + x : newPos + szDot + x;
+    uint bkgSeg = min(szDot, abs(newPos - lastPos));
+    for (uint x = 0; x < bkgSeg; x++) {
+        uint lx = rightDir ? lastPos + x : newPos + szDot + x;
         if (!isVisible(lx))
             continue;
         if (isInViewport(lx, viewport))
             dest[lx] = BKG;
     }
-    for (int x = 0; x < szDot; x++) {
-        int lx = newPos + x;
+    for (uint x = 0; x < szDot; x++) {
+        uint lx = newPos + x;
         if (!isVisible(lx))
             continue;
         if (isInViewport(lx, viewport + szStackSeg))
-            dest[lx] = dot[rightDir ? x : szDot - 1 - x];
+            dest[lx] = dotSeg[rightDir ? x : szDot - 1 - x];
     }
 }
 
@@ -324,7 +324,7 @@ const char *FxA2::name() {
 //FX A3
 void FxA3::setup() {
     fxa_setup();
-    palette = PartyColors_p;
+    palette = paletteFactory.mainPalette();
 }
 
 void FxA3::loop() {
@@ -399,7 +399,7 @@ const char *FxA3::name() {
 void FxA4::setup() {
     szSegment = 2;
     fxa_setup();
-    palette = CRGBPalette16(CRGB::Red, CRGB::Orange,CRGB::Purple, CRGB::Black);
+    palette = paletteFactory.mainPalette();
     szStackSeg = 1;
     mode = Chase;
 }
@@ -469,7 +469,7 @@ const char *FxA4::name() {
 void FxA5::setup() {
     szSegment = 1;
     fxa_setup();
-    palette = PartyColors_p;
+    palette = paletteFactory.mainPalette();
     szStackSeg = 1;
     mode = Chase;
 }

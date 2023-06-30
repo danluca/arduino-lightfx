@@ -1,0 +1,22 @@
+{
+  "name": "SchedulerExt",
+  "keywords": "scheduler,multi-threads,concurrency,RP2040",
+  "description": "SchedulerExt is an extension of the default Scheduler from mbed libraries that allows a setup task alongside the main loop task. See https://github.com/arduino/ArduinoCore-mbed/tree/main/libraries/Scheduler",
+  "version": "0.4.4.1",
+  "authors": {
+    "name": "The Android Open Source Project",
+    "url": "https://github.com/arduino/ArduinoCore-mbed",
+    "maintainer": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arduino/ArduinoCore-mbed"
+  },
+  "homepage": "https://github.com/arduino/ArduinoCore-mbed",
+  "frameworks": ["arduino"],
+  "platforms": "*",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
+  }
+}

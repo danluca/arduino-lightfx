@@ -3,7 +3,6 @@
 
 //~ Global variables definition
 CRGB leds[NUM_PIXELS];
-bool autoSwitch = true;
 EffectRegistry fxRegistry;
 
 //~ Support functions -----------------
@@ -188,16 +187,14 @@ void fx_setup() {
         x();
     //initialize the effects configured in the functions above
     fxRegistry.setup();
-    //ensure the current effect is setup, in case they share global variables
+    //ensure the current effect is set up, in case they share global variables
     fxRegistry.getCurrentEffect()->setup();
 }
 
 //Run currently selected effect -------
 void fx_run() {
-    if (autoSwitch) {
-        EVERY_N_MINUTES(5) {
-            fxRegistry.nextRandomEffectPos();
-        }
+    EVERY_N_MINUTES(5) {
+        fxRegistry.nextRandomEffectPos();
     }
 
     fxRegistry.loop();
@@ -215,6 +212,8 @@ uint EffectRegistry::nextEffectPos(uint efx) {
 }
 
 uint EffectRegistry::nextEffectPos() {
+    if (!autoSwitch)
+        return currentEffect;
     uint prevPos = currentEffect;
     currentEffect = inc(currentEffect, 1, effectsCount);
     return prevPos;
@@ -225,7 +224,7 @@ uint EffectRegistry::curEffectPos() const {
 }
 
 uint EffectRegistry::nextRandomEffectPos() {
-    currentEffect = random16(0, effectsCount);
+    currentEffect = autoSwitch ? random16(0, effectsCount) : currentEffect;
     return currentEffect;
 }
 
@@ -266,6 +265,14 @@ void EffectRegistry::describeConfig(JsonArray &json) {
 
 LedEffect *EffectRegistry::getEffect(uint index) const {
     return effects[capu(index, effectsCount-1)];
+}
+
+void EffectRegistry::autoRoll(bool switchType) {
+    autoSwitch = switchType;
+}
+
+bool EffectRegistry::isAutoRoll() const {
+    return autoSwitch;
 }
 
 // LedEffect

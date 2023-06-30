@@ -1,4 +1,5 @@
 #include "log.h"
+#include <mbed.h>
 
 void log_setup() {
 #ifndef DISABLE_LOGGING
@@ -54,9 +55,18 @@ void printLogLevel(Print* _logOutput, int logLevel) {
 #endif
 }
 
+void printThread(Print *_logOutput, int logLevel) {
+#ifndef DISABLE_LOGGING
+    char buf[20];
+    snprintf(buf, 20, "[%s] ", rtos::ThisThread::get_name());
+    _logOutput->print(buf);
+#endif
+}
+
 void logPrefix(Print *_logOutput, int logLevel) {
 #ifndef DISABLE_LOGGING
     printTimestamp(_logOutput);
+    printThread(_logOutput, logLevel);
 //    printLogLevel(_logOutput, logLevel);
 #endif
 }

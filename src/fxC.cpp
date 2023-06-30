@@ -149,8 +149,8 @@ FxC3::FxC3() {
 void FxC3::setup() {
     fxc_setup();
     brightness = 128;
-    palette = LavaColors_p;
-    targetPalette = OceanColors_p;
+    palette = paletteFactory.mainPalette();
+    targetPalette = paletteFactory.secondaryPalette();
     dist = random();
 }
 
