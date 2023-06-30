@@ -24,7 +24,8 @@ void setup() {
     log_setup();
 
     Scheduler.startLoop(&fxTasks, 2048);
-    Scheduler.startLoop(&micTasks, 1024);
+    //Scheduler.startLoop(&micTasks, 1024);
+    mic_setup();
 
     stateLED(CRGB::OrangeRed);    //Wi-Fi connect in progress
     bool wifiOk = wifi_setup();
@@ -42,5 +43,6 @@ void setup() {
  */
 void loop() {
     wifi_loop();
+    mic_run();
 }
 

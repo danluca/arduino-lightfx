@@ -4,14 +4,15 @@
 
 #include "mic.h"
 #include "log.h"
-#include <FastLED.h>
+#include "efx_setup.h"
 
+#define MIC_SAMPLE_SIZE 512
 // default number of output channels
 static const char channels = 1;
-// default PCM output frequency
-static const int frequency = 16000;
+// default PCM output frequency - 20kHz for Nano RP2040
+static const int frequency = 20000;
 // Buffer to read samples into, each sample is 16-bits
-short sampleBuffer[512];
+short sampleBuffer[MIC_SAMPLE_SIZE];
 // Number of audio samples read
 volatile int samplesRead;
 
@@ -22,7 +23,7 @@ volatile int samplesRead;
   */
 void onPDMdata() {
     // Query the number of available bytes
-    int bytesAvailable = PDM.available();
+    int bytesAvailable = capu(PDM.available(), MIC_SAMPLE_SIZE);
     // Read into the sample buffer
     PDM.read(sampleBuffer, bytesAvailable);
     // 16-bit, 2 bytes per sample
@@ -35,7 +36,7 @@ void mic_setup() {
 
     // Optionally set the gain
     // Defaults to 20 on the BLE Sense and -10 on the Portenta Vision Shields
-    // PDM.setGain(30);
+    PDM.setGain(40);
 
     // Initialize PDM with:
     // - one channel (mono mode)
@@ -52,7 +53,8 @@ void mic_run() {
     if (samplesRead) {
         // Print samples to the serial monitor or plotter
         for (int i = 0; i < samplesRead; i++) {
-            if (sampleBuffer[i] > 10000 || sampleBuffer[i] <= -10000) {
+//            if (sampleBuffer[i] > 10000 || sampleBuffer[i] <= -10000) {
+            if (sampleBuffer[i] > 300) {
                 random16_add_entropy(abs(sampleBuffer[i]));
             }
         }
