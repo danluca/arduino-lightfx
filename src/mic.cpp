@@ -6,11 +6,14 @@
 #include "log.h"
 #include "efx_setup.h"
 
+// Note there is a collision between FastLED and PDM, allegedly around the PIO pins used. Until further clarification, the mic functionality will not be engaged
+
+
 #define MIC_SAMPLE_SIZE 512
-// default number of output channels
-static const char channels = 1;
+// one channel - mono mode for Nano RP2040 microphone, MP34DT06JTR
+#define MIC_CHANNELS    1
 // default PCM output frequency - 20kHz for Nano RP2040
-static const int frequency = 20000;
+#define PCM_SAMPLE_FREQ 20000
 // Buffer to read samples into, each sample is 16-bits
 short sampleBuffer[MIC_SAMPLE_SIZE];
 // Number of audio samples read
@@ -23,7 +26,7 @@ volatile int samplesRead;
   */
 void onPDMdata() {
     // Query the number of available bytes
-    int bytesAvailable = capu(PDM.available(), MIC_SAMPLE_SIZE);
+    int bytesAvailable = PDM.available();
     // Read into the sample buffer
     PDM.read(sampleBuffer, bytesAvailable);
     // 16-bit, 2 bytes per sample
@@ -33,16 +36,9 @@ void onPDMdata() {
 void mic_setup() {
     // Configure the data receive callback
     PDM.onReceive(onPDMdata);
-
-    // Optionally set the gain
-    // Defaults to 20 on the BLE Sense and -10 on the Portenta Vision Shields
+    // Optionally set the gain - Defaults to 20
     PDM.setGain(40);
-
-    // Initialize PDM with:
-    // - one channel (mono mode)
-    // - a 16 kHz sample rate for the Arduino Nano 33 BLE Sense
-    // - a 32 kHz or 64 kHz sample rate for the Arduino Portenta Vision Shields
-    if (!PDM.begin(channels, frequency)) {
+    if (!PDM.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
         Log.errorln("Failed to start PDM! (microphone sampling)");
         while (true);
     }

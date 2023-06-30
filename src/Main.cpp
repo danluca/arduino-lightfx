@@ -7,12 +7,12 @@
 #include "efx_setup.h"
 #include "log.h"
 #include "net_setup.h"
-#include "mic.h"
+//#include "mic.h"
 //#include <Scheduler.h>
 #include <SchedulerExt.h>
 
 ThreadTasks fxTasks {fx_setup, fx_run};
-ThreadTasks micTasks {mic_setup, mic_run};
+//ThreadTasks micTasks {mic_setup, mic_run};
 
 /**
  * Setup LED strip and global data structures - executed once
@@ -25,7 +25,6 @@ void setup() {
 
     Scheduler.startLoop(&fxTasks, 2048);
     //Scheduler.startLoop(&micTasks, 1024);
-    mic_setup();
 
     stateLED(CRGB::OrangeRed);    //Wi-Fi connect in progress
     bool wifiOk = wifi_setup();
@@ -43,6 +42,5 @@ void setup() {
  */
 void loop() {
     wifi_loop();
-    mic_run();
 }
 
