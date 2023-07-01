@@ -15,7 +15,7 @@ uint8_t szStackSeg = szSegment >> 1;
 uint szStack = 0;
 bool bConstSpeed = true;
 OpMode mode = Chase;
-int stripShuffleIndex[NUM_PIXELS];
+uint stripShuffleIndex[NUM_PIXELS];
 CRGB dot[MAX_DOT_SIZE];
 CRGB frame[NUM_PIXELS];
 volatile uint curPos = 0;
@@ -33,7 +33,7 @@ void fxa_setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
     fill_solid(dot, MAX_DOT_SIZE, BKG);
-    fill_solid(frame, FRAME_SIZE, BKG);
+    fill_solid(frame, NUM_PIXELS, BKG);
 
     palette = paletteFactory.mainPalette();
     //shuffle led indexes
@@ -68,10 +68,6 @@ bool isInViewport(int ledIndex, int viewportSize) {
     return (ledIndex >= viewportLow) && (ledIndex < viewportHi);
 }
 
-bool isVisible(int ledIndex) {
-    return (ledIndex >= 0) && (ledIndex < (int) FRAME_SIZE);
-}
-
 uint validateSegmentSize(uint segSize) {
     return max(min(segSize, MAX_DOT_SIZE), 2u);
 }
@@ -81,15 +77,11 @@ void moveSeg(const CRGB dotSeg[], uint szDot, CRGB dest[], uint lastPos, uint ne
     uint bkgSeg = min(szDot, abs(newPos - lastPos));
     for (uint x = 0; x < bkgSeg; x++) {
         uint lx = rightDir ? lastPos + x : newPos + szDot + x;
-        if (!isVisible(lx))
-            continue;
         if (isInViewport(lx, viewport))
             dest[lx] = BKG;
     }
     for (uint x = 0; x < szDot; x++) {
         uint lx = newPos + x;
-        if (!isVisible(lx))
-            continue;
         if (isInViewport(lx, viewport + szStackSeg))
             dest[lx] = dotSeg[rightDir ? x : szDot - 1 - x];
     }
@@ -262,6 +254,7 @@ void FxA2::setup() {
 void FxA2::loop() {
     if (mode == TurnOff) {
         if (turnOff()) {
+            fill_solid(frame, NUM_PIXELS, BKG);
             reset();
         }
         return;
@@ -298,7 +291,6 @@ void FxA2::loop() {
 
     //save the color
     lastColorIndex = colorIndex;
-
 }
 
 const char *FxA2::description() {

@@ -125,6 +125,7 @@ void sendConfigJson(WiFiClient client) {
   StaticJsonDocument<4098> doc;
 
   doc["curEffect"] = String(fxRegistry.curEffectPos());
+  doc["auto"] = fxRegistry.isAutoRoll();
   doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
   doc["holiday"] = holidayToString(paletteFactory.currentHoliday());
   char datetime[20];

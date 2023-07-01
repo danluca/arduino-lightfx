@@ -6,71 +6,86 @@ CRGB leds[NUM_PIXELS];
 EffectRegistry fxRegistry;
 
 //~ Support functions -----------------
+/**
+ * Setup the on-board status LED
+ */
 void setupStateLED() {
     pinMode(LEDR, OUTPUT);
     pinMode(LEDG, OUTPUT);
     pinMode(LEDB, OUTPUT);
     stateLED(CRGB::Black);
 }
-
+/**
+ * Controls the on-board status LED
+ * @param color
+ */
 void stateLED(CRGB color) {
     analogWrite(LEDR, 255 - color.r);
     analogWrite(LEDG, 255 - color.g);
     analogWrite(LEDB, 255 - color.b);
 }
-
+/**
+ * Setup the strip LED lights to be controlled by FastLED library
+ */
 void ledStripInit() {
-    FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(
-            Tungsten100W);
+    FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
     FastLED.setBrightness(BRIGHTNESS);
     FastLED.clear(true);
 }
 
-void shiftRight(CRGB arr[], int szArr, uint pos) {
+//~ General Utilities ---------------------------------------------------------
+/**
+ * Shifts the content of an array to the right by the number of positions specified
+ * First item of the array (arr[0]) is used as seed to fill the new elements entering left
+ * @param arr array
+ * @param szArr size of the array
+ * @param pos how many positions to shift right
+ */
+void shiftRight(CRGB arr[], uint szArr, uint pos) {
+    if (pos == 0)
+        return;
     CRGB seed = arr[0];
     if (pos >= szArr) {
-        fill_solid(arr, szArr, seed);
+        fill_solid(arr, (int)szArr, seed);
         return;
     }
-    if (pos == 0) {
-        return;
-    }
-    for (int x = szArr - 1; x >= 0; x--) {
-        if (x < pos) {
-            arr[x] = seed;
-        } else {
-            arr[x] = arr[x - pos];
-        }
+    for (int x = szArr-1; x >= 0; x--) {
+        arr[x] = x < (int)pos ? seed : arr[x - pos];
     }
 }
-
-void shiftLeft(CRGB arr[], int szArr, uint pos) {
+/**
+ * Shifts the content of an array to the left by the number of positions specified
+ * The elements entering right are filled with current's array last value (arr[szArr-1])
+ * @param arr array
+ * @param szArr size of the array
+ * @param pos how many positions to shift left
+ */
+void shiftLeft(CRGB arr[], uint szArr, uint pos) {
+    if (pos == 0)
+        return;
     CRGB seed = arr[szArr - 1];
     if (pos >= szArr) {
-        fill_solid(arr, szArr, seed);
+        fill_solid(arr, (int)szArr, seed);
         return;
     }
-    if (pos == 0) {
-        return;
-    }
-    for (int x = 0; x < szArr; x++) {
-        if (x + pos >= szArr) {
-            arr[x] = seed;
-        } else {
-            arr[x] = arr[x + pos];
-        }
-    }
+    for (uint x = 0; x < szArr; x++)
+        arr[x] = (x+pos) < szArr ? arr[x+pos] : seed;
 }
-
-void shuffleIndexes(int array[], uint szArray) {
-    //shuffle LED indexes
-    for (int x = 0; x < szArray; x++) {
+/**
+ * Populates and shuffles randomly an array of numbers in the range of 0-szArray (array indexes)
+ * @param array array of indexes
+ * @param szArray size of the array
+ */
+void shuffleIndexes(uint array[], uint szArray) {
+    //populates the indexes in ascending order
+    for (uint x = 0; x < szArray; x++) {
         array[x] = x;
     }
+    //shuffle indexes
     uint swIter = (szArray >> 1) + (szArray >> 3);
-    for (int x = 0; x < swIter; x++) {
-        int r = random16(0, szArray);
-        int tmp = array[x];
+    for (uint x = 0; x < swIter; x++) {
+        uint r = random16(0, szArray);
+        uint tmp = array[x];
         array[x] = array[r];
         array[r] = tmp;
     }
@@ -101,9 +116,9 @@ void copyArray(CRGB *src, CRGB *dest, size_t length) {
 
 // copy arrays using pointer loops - one of the faster ways. No checks are made on the validity of offsets, length for both arrays
 void copyArray(const CRGB *src, uint srcOfs, CRGB *dest, uint destOfs, size_t length) {
-    const CRGB *srSt = &src[srcOfs];
+    const CRGB *srSt = src + srcOfs;
     CRGB *dsSt = &dest[destOfs];
-    for (int x = 0; x < length; x++) {
+    for (uint x = 0; x < length; x++) {
         *dsSt++ = *srSt++;
     }
 }
@@ -117,7 +132,7 @@ bool isAnyLedOn(CRGB arr[], uint szArray, CRGB backg) {
 }
 
 void fillArray(CRGB *src, size_t szSrc, CRGB color) {
-    fill_solid(src, szSrc, color);
+    fill_solid(src, (int)szSrc, color);
 }
 
 void fillArray(const CRGB *src, size_t srcLength, CRGB *array, size_t arrLength, uint arrOfs) {
@@ -130,8 +145,7 @@ void fillArray(const CRGB *src, size_t srcLength, CRGB *array, size_t arrLength,
 }
 
 void showFill(const CRGB frame[], uint szFrame) {
-    if (frame != NULL)
-        fillArray(frame, szFrame, FastLED.leds(), FastLED.size());
+    fillArray(frame, szFrame, FastLED.leds(), FastLED.size());
     FastLED.show();
 }
 

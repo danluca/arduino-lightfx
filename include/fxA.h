@@ -25,7 +25,7 @@ extern uint8_t szStackSeg;
 extern uint szStack;
 extern bool bConstSpeed;
 extern OpMode mode;
-extern int stripShuffleIndex[NUM_PIXELS];
+extern uint stripShuffleIndex[NUM_PIXELS];
 extern CRGB dot[MAX_DOT_SIZE];
 extern CRGB frame[NUM_PIXELS];
 extern volatile uint curPos;
@@ -33,8 +33,6 @@ extern volatile uint curPos;
 CRGB *makeDot(CRGB color, uint szDot);
 
 bool isInViewport(int ledIndex, int viewportSize = FRAME_SIZE);
-
-bool isVisible(int ledIndex);
 
 uint validateSegmentSize(uint segSize);
 

@@ -31,11 +31,11 @@ void ledStripInit();
 
 void showFill(const CRGB frame[], uint szFrame);
 
-void shiftRight(CRGB arr[], int szArr, uint pos);
+void shiftRight(CRGB arr[], uint szArr, uint pos);
 
-void shiftLeft(CRGB arr[], int szArr, uint pos);
+void shiftLeft(CRGB arr[], uint szArr, uint pos);
 
-void shuffleIndexes(int array[], uint szArray);
+void shuffleIndexes(uint array[], uint szArray);
 
 void offTrailColor(CRGB arr[], uint x);
 
