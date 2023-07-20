@@ -5,6 +5,7 @@
 #ifndef LIGHTFX_EFX_SETUP_H
 #define LIGHTFX_EFX_SETUP_H
 
+#include "mic.h"
 #include <FastLED.h>
 #include <ArduinoJson.h>
 #include "config.h"

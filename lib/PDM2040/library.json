@@ -1,0 +1,22 @@
+{
+	"name": "PDM2040",
+	"keywords": "PDM, Nano, 2040",
+	"description": "Enables the communication with devices that use the PDM Bus. Specific implementation for RP2040 that can work with FastLED library without resource collisions.",
+	"version": "1.1",
+	"authors": {
+		"name": "Arduino",
+		"url": "Arduino <info@arduino.cc>",
+		"maintainer": true
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/arduino/ArduinoCore-mbed.git"
+	},
+	"homepage": "https://docs.arduino.cc/learn/built-in-libraries/pdm",
+	"frameworks": ["arduino"],
+	"platforms": "*",
+	"build": {
+		"srcDir": "src",
+		"includeDir": "src"
+	}
+}

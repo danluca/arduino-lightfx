@@ -6,9 +6,6 @@
 #include "log.h"
 #include "efx_setup.h"
 
-// Note there is a collision between FastLED and PDM, allegedly around the PIO pins used. Until further clarification, the mic functionality will not be engaged
-
-
 #define MIC_SAMPLE_SIZE 512
 // one channel - mono mode for Nano RP2040 microphone, MP34DT06JTR
 #define MIC_CHANNELS    1
@@ -26,22 +23,23 @@ volatile int samplesRead;
   */
 void onPDMdata() {
     // Query the number of available bytes
-    int bytesAvailable = PDM.available();
+    int bytesAvailable = PDMNano.available();
     // Read into the sample buffer
-    PDM.read(sampleBuffer, bytesAvailable);
+    PDMNano.read(sampleBuffer, bytesAvailable);
     // 16-bit, 2 bytes per sample
     samplesRead = bytesAvailable / 2;
 }
 
 void mic_setup() {
     // Configure the data receive callback
-    PDM.onReceive(onPDMdata);
+    PDMNano.onReceive(onPDMdata);
     // Optionally set the gain - Defaults to 20
-    PDM.setGain(40);
-    if (!PDM.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
+    PDMNano.setGain(60);
+    if (!PDMNano.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
         Log.errorln("Failed to start PDM! (microphone sampling)");
         while (true);
     }
+    delay(1000);
 }
 
 void mic_run() {
@@ -52,9 +50,10 @@ void mic_run() {
 //            if (sampleBuffer[i] > 10000 || sampleBuffer[i] <= -10000) {
             if (sampleBuffer[i] > 300) {
                 random16_add_entropy(abs(sampleBuffer[i]));
+                Log.infoln("Audio sample over 300");
             }
         }
-        Log.infoln("Processed %d audio samples", samplesRead);
+        //Log.infoln("Processed %d audio samples", samplesRead);
         // Clear the read count
         samplesRead = 0;
     }
