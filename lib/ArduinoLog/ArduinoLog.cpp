@@ -31,6 +31,10 @@ SOFTWARE.
 
 #include "ArduinoLog.h"
 
+#ifndef DISABLE_LOGGING
+rtos::Mutex serial_mtx;
+#endif
+
 void Logging::begin(int level, Print* logOutput, bool showLevel)
 {
 #ifndef DISABLE_LOGGING

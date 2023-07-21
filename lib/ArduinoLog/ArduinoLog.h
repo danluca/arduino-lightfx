@@ -14,6 +14,8 @@ Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 #pragma once
 #include <inttypes.h>
 #include <stdarg.h>
+#include <mbed.h>
+#include <mbed/rtos/include/rtos/Mutex.h>
 
 // Non standard: Arduino.h also chosen if ARDUINO is not defined. To facilitate use in non-Arduino test environments
 #if ARDUINO < 100
@@ -31,6 +33,9 @@ Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 #endif
 typedef void (*printfunction)(Print*, int);
 
+#ifndef DISABLE_LOGGING
+extern rtos::Mutex serial_mtx;
+#endif
 
 // *************************************************************************
 //  Uncomment line below to fully disable logging, and reduce project size
@@ -340,6 +345,9 @@ private:
 		{
 			return;
 		}
+
+        serial_mtx.lock();
+
 		if (level < LOG_LEVEL_SILENT) 
 		{
 			level = LOG_LEVEL_SILENT;
@@ -369,6 +377,7 @@ private:
 		{
 		    _logOutput->print(CR);
 		}
+        serial_mtx.unlock();
 #endif
 	}
 
