@@ -108,21 +108,17 @@ int PDMClass::begin(int channels, int sampleRate)
   // Configure PIO state machine
   float clkDiv = (float)clock_get_hz(clk_sys) / sampleRate / decimation / 2; 
 
-  //Code copied from FastLED on how to claim an unused state machine
+  //BEGIN State machine dynamic lookup
+  // Code copied from FastLED on how to claim an unused state machine
   // find an unclaimed PIO state machine and upload the clockless program if possible
   // there's two PIO instances, each with four state machines, so this should usually work out fine
   const PIO pios[NUM_PIOS] = { pio0, pio1 };
   // iterate over PIO instances
-  Serial.println("Starting PIO SM setup");
   for (unsigned int i = 0; i < NUM_PIOS; i++) {
     pio = pios[i];
     sm = pio_claim_unused_sm(pio, false); // claim a state machine
     if (sm == -1) continue; // skip this PIO if no unused sm
    
-    Serial.print("Attempting PIO ");
-    Serial.print(i);
-    Serial.print(" with SM ");
-    Serial.println(sm);
     if(pio_can_add_program(pio, &pdm_pio_program)) {
       offset = pio_add_program(pio, &pdm_pio_program);
       pdm_pio_program_init(pio, sm, offset, _clkPin, _dinPin, clkDiv);
@@ -131,28 +127,15 @@ int PDMClass::begin(int channels, int sampleRate)
         pio_sm_unclaim(pio, sm); // unclaim the state machine and skip this PIO
         continue;                // if program couldn't be added
     }
-    Serial.print("PDM has found a workable PIO state machine: PIO ");
-    Serial.print(i);
-    Serial.print("; SM ");
-    Serial.println(sm);
     break; // found pio and sm that work
   }
   if (offset == -1) {
-    Serial.println("Could not load the PIO program!!!");
     mbed_error_printf("Cannot load pio program\n");
     mbed_die();
   } // couldn't find good pio and sm
   //END State machine modification code
   
-//  if(pio_can_add_program(pio, &pdm_pio_program)) {
-//    offset = pio_add_program(pio, &pdm_pio_program);
-//    pdm_pio_program_init(pio, sm, offset, _clkPin, _dinPin, clkDiv);
-//  } else {
-//    mbed_error_printf("Cannot load pio program\n");
-//    mbed_die();
-//  }
-
-  // Wait for microphone 
+  // Wait for microphone
   delay(100);
 
   // Configure DMA for transferring PIO rx buffer to raw buffers
@@ -167,7 +150,6 @@ int PDMClass::begin(int channels, int sampleRate)
   // Enable DMA interrupts
   dma_channel_set_irq1_enabled(dmaChannel, true);
   irq_set_exclusive_handler(DMA_IRQ_1, dmaHandler);
-  //irq_add_shared_handler(DMA_IRQ_0, dmaHandler, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
   irq_set_enabled(DMA_IRQ_1, true);
 
   dma_channel_configure(dmaChannel, &c,
@@ -186,7 +168,7 @@ int PDMClass::begin(int channels, int sampleRate)
 
 void PDMClass::end()
 {
-  NVIC_DisableIRQ(DMA_IRQ_0n);
+  NVIC_DisableIRQ(DMA_IRQ_1n);
   pio_remove_program(pio, &pdm_pio_program, offset);
   pio_sm_unclaim(pio, sm);
   dma_channel_abort(dmaChannel);
@@ -198,17 +180,17 @@ void PDMClass::end()
 
 int PDMClass::available()
 {
-  NVIC_DisableIRQ(DMA_IRQ_0n);
+  NVIC_DisableIRQ(DMA_IRQ_1n);
   size_t avail = _doubleBuffer.available();
-  NVIC_EnableIRQ(DMA_IRQ_0n);
+  NVIC_EnableIRQ(DMA_IRQ_1n);
   return avail;
 }
 
 int PDMClass::read(void* buffer, size_t size)
 {
-  NVIC_DisableIRQ(DMA_IRQ_0n);
+  NVIC_DisableIRQ(DMA_IRQ_1n);
   int read = _doubleBuffer.read(buffer, size);
-  NVIC_EnableIRQ(DMA_IRQ_0n);
+  NVIC_EnableIRQ(DMA_IRQ_1n);
   return read;
 }
 

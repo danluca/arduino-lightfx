@@ -34,9 +34,9 @@ void mic_setup() {
     // Configure the data receive callback
     PDMNano.onReceive(onPDMdata);
     // Optionally set the gain - Defaults to 20
-    PDMNano.setGain(60);
+    PDMNano.setGain(80);
     if (!PDMNano.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
-        Log.errorln("Failed to start PDM! (microphone sampling)");
+        Log.errorln("Failed to start PDM library! (for microphone sampling)");
         while (true);
     }
     delay(1000);
@@ -45,7 +45,6 @@ void mic_setup() {
 void mic_run() {
     // Wait for samples to be read
     if (samplesRead) {
-        // Print samples to the serial monitor or plotter
         for (int i = 0; i < samplesRead; i++) {
 //            if (sampleBuffer[i] > 10000 || sampleBuffer[i] <= -10000) {
             if (sampleBuffer[i] > 300) {
@@ -53,7 +52,6 @@ void mic_run() {
                 Log.infoln("Audio sample over 300");
             }
         }
-        //Log.infoln("Processed %d audio samples", samplesRead);
         // Clear the read count
         samplesRead = 0;
     }
