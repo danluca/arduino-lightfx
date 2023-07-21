@@ -17,6 +17,7 @@ void fxb_register() {
     static FxB6 fxB6;
     static FxB7 fxB7;
     static FxB8 fxB8;
+    static FxB9 fxB9;
 }
 
 void fxb_setup() {
@@ -164,6 +165,7 @@ FxB5::FxB5() {
 
 void FxB5::setup() {
     fxb_setup();
+    brightness = BRIGHTNESS;
 }
 
 void FxB5::loop() {
@@ -172,12 +174,12 @@ void FxB5::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    juggle();
+    juggle_short();
     FastLED.show();
 }
 
 const char *FxB5::description() {
-    return "FXB5: juggle";
+    return "FXB5: juggle short segments";
 }
 
 const char *FxB5::name() {
@@ -297,6 +299,40 @@ void FxB8::describeConfig(JsonArray &json) {
     obj["palette"] = "PartyColors";
 }
 
+void FxB9::setup() {
+    fxb_setup();
+    brightness = BRIGHTNESS;
+}
+
+void FxB9::loop() {
+    EVERY_N_MILLISECONDS(100) {
+        uint8_t maxChanges = 24;
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
+    }
+
+    juggle_long();
+    FastLED.show();
+}
+
+const char *FxB9::description() {
+    return "FxB9: juggle short segments";
+}
+
+const char *FxB9::name() {
+    return "FxB9";
+}
+
+void FxB9::describeConfig(JsonArray &json) {
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
+}
+
+FxB9::FxB9() {
+    registryIndex = fxRegistry.registerEffect(this);
+}
+
+
+
 void fadein() {
 
   random16_set_seed(535);                                                           // The randomizer needs to be re-set each time through the loop in order for the 'random' numbers to be the same each time through.
@@ -370,48 +406,56 @@ void bpm() {  // Colored stripes pulsing at a defined Beats-Per-Minute.
 
 }  // bpm()
 
+/**
+ * See juggle effect in the demoReel100_button example of FastLED-Demos repository
+ * Eight colored dots, weaving in and out of sync with each other.
+ */
+void juggle_short() {
 
+  fadeToBlackBy(leds, NUM_PIXELS, 20);
+  byte dothue = 0;
 
-void juggle() {  // Eight colored dots, weaving in and out of sync with each other.
-
-//  fadeToBlackBy(leds, NUM_PIXELS, 20);
-//  byte dothue = 0;
-//
-//  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 8; i++) {
 //    leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= CHSV(dothue, 200, 255);
-//    dothue += 32;
-//  }
+    leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= ColorFromPalette(palette, dothue, brightness, LINEARBLEND);
+    dothue += 32;
+  }
 
-  //==========
+}  // juggle()
+
+/**
+ * See juggle_pal - Originally by: Mark Kriegsman; Modified By: Andrew Tuline
+ * Date: February, 2015
+ *
+ * Juggle just moves some balls back and forth. A single ball could be a Cylon effect. I've added several variables to this simple routine.
+ */
+void juggle_long() {
     // Routine specific variables
-    static uint8_t    numdots =   4;                                     // Number of dots in use.
-    static uint8_t   thisfade =   2;                                     // How long should the trails be. Very low value = longer trails.
-    static uint8_t   thisdiff =  16;                                     // Incremental change in hue between each dot.
-    static uint8_t    thishue =   0;                                     // Starting hue.
-    static uint8_t     curhue =   0;                                     // The current hue
-    static uint8_t thisbright = 255;                                     // How bright should the LED/display be.
-    static uint8_t   thisbeat =   5;                                     // Higher = faster movement.
+    static uint8_t   numdots = 4;                                     // Number of dots in use.
+    static uint8_t   fade = 2;                                        // How long should the trails be. Very low value = longer trails.
+    static uint8_t   hueDiff = 16;                                    // Incremental change in hue between each dot.
+    static uint8_t   startHue = 0;                                    // Starting hue.
+    static uint8_t   beat = 5;                                        // Higher = faster movement.
     static uint8_t lastSecond = 99;
 
     uint8_t secondHand = (millis() / 1000) % 31;                // IMPORTANT!!! Change '30' to a different value to change duration of the loop.
     if (lastSecond != secondHand) {
         lastSecond = secondHand;
         switch(secondHand) {
-            case  0: numdots = 1; thisbeat = 20; thisdiff = 16; thisfade = 2; thishue = 0; break;                  // You can change values here, one at a time , or altogether.
-            case 10: numdots = 4; thisbeat = 10; thisdiff = 16; thisfade = 8; thishue = 128; break;
-            case 20: numdots = 8; thisbeat =  3; thisdiff =  0; thisfade = 8; thishue=random8(); break;           // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
+            case  0: numdots = 1; beat = 20; hueDiff = 16; fade = 2; startHue = 0; break;                  // You can change values here, one at a time , or altogether.
+            case 10: numdots = 4; beat = 10; hueDiff = 16; fade = 8; startHue = 128; break;
+            case 20: numdots = 8; beat =  3; hueDiff =  0; fade = 8; startHue=random8(); break;           // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
             case 30: break;
         }
-    }   //changeme
-    curhue = thishue;                                           // Reset the hue values.
-    fadeToBlackBy(leds, NUM_PIXELS, thisfade);
+    }   //changeme()
+    uint8_t curhue = startHue;                                           // Reset the hue values.
+    fadeToBlackBy(leds, NUM_PIXELS, fade);
 
     for( int i = 0; i < numdots; i++) {
-        leds[beatsin16(thisbeat+i+numdots,0,NUM_PIXELS)] += ColorFromPalette(palette, curhue , thisbright, LINEARBLEND);    // Munge the values and pick a colour from the palette
-        curhue += thisdiff;
-    }   //juggle_pal
-
-}  // juggle()
+        leds[beatsin16(beat + i + numdots, 0, NUM_PIXELS - 1)] += ColorFromPalette(palette, curhue , brightness, LINEARBLEND);    // Munge the values and pick a colour from the palette
+        curhue += hueDiff;
+    }
+}   //juggle_pal()
 
 void ease() {
   static uint8_t easeOutVal = 0;
@@ -427,4 +471,3 @@ void ease() {
   fadeToBlackBy(leds, NUM_PIXELS, 16);                          // 8 bit, 1 = slow fade, 255 = fast fade
  
 } // ease()
-

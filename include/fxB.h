@@ -27,7 +27,9 @@ void sinelon();
 
 void bpm();
 
-void juggle();
+void juggle_short();
+
+void juggle_long();
 
 void ease();
 
@@ -150,6 +152,21 @@ public:
     const char *name() override;
 
     const char *description() override;
+};
+
+class FxB9 : public LedEffect {
+public:
+    FxB9();
+
+    void setup() override;
+
+    void loop() override;
+
+    void describeConfig(JsonArray &json) override;
+
+    const char *description() override;
+
+    const char *name() override;
 };
 
 
