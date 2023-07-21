@@ -315,7 +315,7 @@ void FxB9::loop() {
 }
 
 const char *FxB9::description() {
-    return "FxB9: juggle short segments";
+    return "FxB9: juggle long segments";
 }
 
 const char *FxB9::name() {

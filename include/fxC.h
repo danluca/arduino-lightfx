@@ -79,4 +79,31 @@ public:
     const char *name() override;
 };
 
+class FxC5 : public LedEffect {
+public:
+    FxC5();
+
+    void setup() override;
+
+    void loop() override;
+
+    void describeConfig(JsonArray &json) override;
+
+    const char *description() override;
+
+    const char *name() override;
+
+    void changeParams();
+    void matrix();
+
+protected:
+    int      delay = 50;                                     // A delay value for the sequence(s)
+    uint8_t  palIndex = 95;
+    uint8_t  sat = 255;
+    int      dir = 0;
+    bool     huerot = false;                                     // Does the hue rotate? 1 = yes
+    uint8_t  bgclr = 0;
+    uint8_t  bgbri = 0;
+};
+
 #endif //LIGHTFX_FXC_H

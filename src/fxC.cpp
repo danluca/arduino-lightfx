@@ -10,6 +10,7 @@ void fxc_register() {
     static FxC2 fxC2;
     static FxC3 fxC3;
     static FxC4 fxC4;
+    static FxC5 fxC5;
 }
 
 void fxc_setup() {
@@ -239,4 +240,81 @@ const char *FxC4::name() {
 void FxC4::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
+}
+
+void FxC5::setup() {
+    fxc_setup();
+    palette = paletteFactory.secondaryPalette();
+    targetPalette = paletteFactory.mainPalette();
+}
+
+void FxC5::loop() {
+    changeParams();
+
+    EVERY_N_MILLISECONDS(100) {
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
+    }
+
+    EVERY_N_MILLISECONDS_I(c5Timer, delay) {
+        matrix();
+        c5Timer.setPeriod(delay);
+    }
+
+    FastLED.show();
+}
+
+const char *FxC5::description() {
+    return "FxC5: matrix";
+}
+
+const char *FxC5::name() {
+    return "FxC5";
+}
+
+void FxC5::describeConfig(JsonArray &json) {
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
+}
+
+FxC5::FxC5() {
+    registryIndex = fxRegistry.registerEffect(this);
+}
+
+void FxC5::changeParams() {
+    uint8_t secondHand = (millis() / 1000) % 25;                // Change '25' to a different value to change length of the loop.
+    static uint8_t lastSecond = 99;                             // Static variable, means it's only defined once. This is our 'debounce' variable.
+
+    if (lastSecond != secondHand) {                             // Debounce to make sure we're not repeating an assignment.
+        lastSecond = secondHand;
+        switch(secondHand) {
+            case  0: delay=50; palIndex=95; bgclr=140; bgbri=4; huerot=true; break;
+            case  5: targetPalette = paletteFactory.mainPalette(); dir=1; bgbri=0; huerot=true; break;
+            case 10: targetPalette = paletteFactory.secondaryPalette(); delay=30; palIndex=0; bgclr=50; bgbri=8; huerot=false; break;
+            case 15: targetPalette = paletteFactory.mainPalette(); delay=80; bgbri = 16; bgclr=96; palIndex=random8(); break;
+            case 20: palIndex=random8(); huerot=true; break;
+            default: break;
+        }
+    }
+}
+
+void FxC5::matrix() {
+    if (huerot) palIndex++;
+
+    if (random8(90) > 80) {
+        if (dir == 0)
+            leds[0] = ColorFromPalette(palette, palIndex, brightness, LINEARBLEND);
+        else
+            leds[NUM_PIXELS-1] = ColorFromPalette(palette, palIndex, brightness, LINEARBLEND);
+    } else {
+        if (dir == 0)
+            leds[0] = CHSV(bgclr, sat, bgbri);
+        else
+            leds[NUM_PIXELS-1] = CHSV(bgclr, sat, bgbri);
+    }
+
+    if (dir == 0) {
+        for (int i = NUM_PIXELS-1; i >0 ; i-- ) leds[i] = leds[i-1];
+    } else {
+        for (int i = 0; i < NUM_PIXELS-1 ; i++ ) leds[i] = leds[i+1];
+    }
 }
