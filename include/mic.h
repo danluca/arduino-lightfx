@@ -5,7 +5,7 @@
 #ifndef ARDUINO_LIGHTFX_MIC_H
 #define ARDUINO_LIGHTFX_MIC_H
 
-#include "PDM.h"
+#include "PDM2040.h"
 
 void mic_setup();
 

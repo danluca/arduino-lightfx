@@ -1,7 +1,7 @@
 #if defined(ARDUINO_ARCH_RP2040)
 
 #include "Arduino.h"
-#include "PDM.h"
+#include "PDM2040.h"
 #include "OpenPDMFilter.h"
 #include "mbed_interface.h"
 
@@ -40,7 +40,7 @@ TPDMFilter_InitStruct filter;
 extern "C" {
   __attribute__((__used__)) void dmaHandler(void)
   {
-    PDMNano.IrqHandler(true);
+    PDM.IrqHandler(true);
   }
 }
 
@@ -245,6 +245,6 @@ void PDMClass::IrqHandler(bool halftranfer)
   }
 }
 
-PDMClass PDMNano(PIN_PDM_DIN, PIN_PDM_CLK, -1);
+PDMClass PDM(PIN_PDM_DIN, PIN_PDM_CLK, -1);
 
 #endif

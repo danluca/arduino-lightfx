@@ -15,7 +15,7 @@ Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 #include <inttypes.h>
 #include <stdarg.h>
 #include <mbed.h>
-#include <mbed/rtos/include/rtos/Mutex.h>
+#include <Mutex.h>
 
 // Non standard: Arduino.h also chosen if ARDUINO is not defined. To facilitate use in non-Arduino test environments
 #if ARDUINO < 100

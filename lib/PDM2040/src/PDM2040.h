@@ -66,6 +66,6 @@ private:
   void (*_onReceive)(void);
 };
 
-extern PDMClass PDMNano;
+extern PDMClass PDM;
 
 #endif

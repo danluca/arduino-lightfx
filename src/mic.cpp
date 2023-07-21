@@ -23,19 +23,19 @@ volatile int samplesRead;
   */
 void onPDMdata() {
     // Query the number of available bytes
-    int bytesAvailable = PDMNano.available();
+    int bytesAvailable = PDM.available();
     // Read into the sample buffer
-    PDMNano.read(sampleBuffer, bytesAvailable);
+    PDM.read(sampleBuffer, bytesAvailable);
     // 16-bit, 2 bytes per sample
     samplesRead = bytesAvailable / 2;
 }
 
 void mic_setup() {
     // Configure the data receive callback
-    PDMNano.onReceive(onPDMdata);
+    PDM.onReceive(onPDMdata);
     // Optionally set the gain - Defaults to 20
-    PDMNano.setGain(80);
-    if (!PDMNano.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
+    PDM.setGain(80);
+    if (!PDM.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
         Log.errorln("Failed to start PDM library! (for microphone sampling)");
         while (true);
     }
