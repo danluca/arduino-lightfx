@@ -10,6 +10,9 @@ extern uint8_t brightness;
 extern CRGBPalette16 palette;
 extern CRGBPalette16 targetPalette;
 extern const CRGB BKG;
+extern const uint8_t maxChanges;
+extern uint8_t speed;
+extern uint8_t saturation;
 
 class FxC1 : public LedEffect {
 private:
@@ -97,13 +100,11 @@ public:
     void matrix();
 
 protected:
-    int      delay = 50;                                     // A delay value for the sequence(s)
     uint8_t  palIndex = 95;
-    uint8_t  sat = 255;
     bool     fwd = true;
-    bool     huerot = false;                                     // Does the hue rotate? 1 = yes
-    uint8_t  bgclr = 0;
-    uint8_t  bgbri = 0;
+    bool     hueRot = false;                                     // Does the hue rotate? 1 = yes
+    uint8_t  bgClr = 0;
+    uint8_t  bgBri = 0;
 };
 
 #endif //LIGHTFX_FXC_H

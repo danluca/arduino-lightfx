@@ -13,7 +13,6 @@ extern uint8_t incr;
 extern uint8_t saturation;
 extern uint hueDiff;
 extern uint8_t dotBpm;
-extern uint8_t fadeVal;
 extern uint8_t brightness;
 extern uint8_t speed;
 

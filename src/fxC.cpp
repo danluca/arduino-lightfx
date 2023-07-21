@@ -221,12 +221,12 @@ void FxC4::loop() {
         fill_solid(leds+ledstart,ledlen,BKG);           // Clear the section of LED's
         FastLED.show();
 
-        if (flashCounter == 0) delay (250);                       // longer delay until next flash after the leader
+        if (flashCounter == 0) delay (250);                       // longer speed until next flash after the leader
 
-        delay(50+random8(100));                                   // shorter delay between strokes
+        delay(50+random8(100));                                   // shorter speed between strokes
     } // for()
 
-    delay(random8(frequency)*100);                              // delay between strikes
+    delay(random8(frequency)*100);                              // speed between strikes
 }
 
 const char *FxC4::description() {
@@ -246,6 +246,9 @@ void FxC5::setup() {
     fxc_setup();
     palette = paletteFactory.secondaryPalette();
     targetPalette = paletteFactory.mainPalette();
+    saturation = 255;
+    speed = 50;
+    brightness = BRIGHTNESS;
 }
 
 void FxC5::loop() {
@@ -255,9 +258,9 @@ void FxC5::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    EVERY_N_MILLISECONDS_I(c5Timer, delay) {
+    EVERY_N_MILLISECONDS_I(c5Timer, speed) {
         matrix();
-        c5Timer.setPeriod(delay);
+        c5Timer.setPeriod(speed);
     }
 
     FastLED.show();
@@ -287,23 +290,23 @@ void FxC5::changeParams() {
     if (lastSecond != secondHand) {                             // Debounce to make sure we're not repeating an assignment.
         lastSecond = secondHand;
         switch(secondHand) {
-            case  0: delay=50; palIndex=95; bgclr=140; bgbri=4; huerot=true; break;
-            case  5: targetPalette = paletteFactory.mainPalette(); fwd=false; bgbri=0; huerot=true; break;
-            case 10: targetPalette = paletteFactory.secondaryPalette(); delay=30; palIndex=0; bgclr=50; bgbri=8; huerot=false; break;
-            case 15: targetPalette = paletteFactory.mainPalette(); delay=80; bgbri = 16; bgclr=96; palIndex=random8(); break;
-            case 20: palIndex=random8(); huerot=true; break;
+            case  0: speed=50; palIndex=95; bgClr=140; bgBri=4; hueRot=true; break;
+            case  5: targetPalette = paletteFactory.mainPalette(); fwd=false; bgBri=0; hueRot=true; break;
+            case 10: targetPalette = paletteFactory.secondaryPalette(); speed=30; palIndex=0; bgClr=50; bgBri=8; hueRot=false; break;
+            case 15: targetPalette = paletteFactory.mainPalette(); speed=80; bgBri = 16; bgClr=96; palIndex=random8(); break;
+            case 20: palIndex=random8(); hueRot=true; break;
             default: break;
         }
     }
 }
 
 void FxC5::matrix() {
-    if (huerot) palIndex++;
+    if (hueRot) palIndex++;
 
     if (random8(90) > 80)
         leds[fwd?0:(NUM_PIXELS-1)] = ColorFromPalette(palette, palIndex, brightness, LINEARBLEND);
     else
-        leds[fwd?0:(NUM_PIXELS-1)] = CHSV(bgclr, sat, bgbri);
+        leds[fwd?0:(NUM_PIXELS-1)] = CHSV(bgClr, saturation, bgBri);
 
     if (fwd)
         for (int i = NUM_PIXELS-1; i >0 ; i-- ) leds[i] = leds[i-1];

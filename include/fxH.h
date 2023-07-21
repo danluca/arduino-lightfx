@@ -34,6 +34,7 @@ extern uint8_t brightness;
 extern uint hueDiff;
 extern uint8_t speed;
 extern TBlendType currentBlending;
+extern const uint8_t maxChanges;
 
 
 //
@@ -53,7 +54,7 @@ extern TBlendType currentBlending;
 // "OK" on anywhere from 20 to 100 LEDs without too much tweaking.
 //
 // I recommend running this simulation at anywhere from 30-100 frames per second,
-// meaning an interframe delay of about 10-35 milliseconds.
+// meaning an interframe speed of about 10-35 milliseconds.
 //
 // Looks best on a high-density LED setup (60+ pixels/meter).
 //

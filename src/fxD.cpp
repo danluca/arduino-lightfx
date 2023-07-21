@@ -12,7 +12,6 @@ uint8_t     incr = 1;                                        // Incremental valu
 uint8_t     saturation = 100;                                      // The saturation, where 255 = brilliant colours.
 uint        hueDiff = 256;                                      // Range of random #'s to use for hue
 uint8_t     dotBpm = 30;
-uint8_t     fadeVal = 224;
 
 
 void fxd_register() {
@@ -48,7 +47,7 @@ void FxD1::setup() {
 void FxD1::loop() {
     ChangeMe();                                                 // Check the demo loop for changes to the variables.
 
-    EVERY_N_MILLISECONDS(speed) {                           // FastLED based non-blocking delay to update/display the sequence.
+    EVERY_N_MILLISECONDS(speed) {                           // FastLED based non-blocking speed to update/display the sequence.
         confetti();
     }
     FastLED.show();
@@ -106,6 +105,7 @@ void FxD2::setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
     dotBpm = 30;
+    fade = 31;
 }
 
 void FxD2::loop() {
@@ -127,7 +127,7 @@ void FxD2::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["bpm"] = dotBpm;
-    obj["fade"] = fadeVal;
+    obj["fade"] = 255-fade;
 }
 
 void FxD2::dot_beat() {
@@ -140,7 +140,7 @@ void FxD2::dot_beat() {
   leds[inner] = CRGB::Blue;
   leds[outer] = CRGB::Aqua;
 
-  nscale8(leds, NUM_PIXELS, fadeVal);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeVal);
+  nscale8(leds, NUM_PIXELS, 255-fade);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeVal);
 
 } // dot_beat()
 

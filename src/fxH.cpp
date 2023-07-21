@@ -153,11 +153,10 @@ void FxH2::loop() {
     ChangeMe();  // Check the demo loop for changes to the variables.
 
     EVERY_N_MILLISECONDS(300) {
-        uint8_t maxChanges = 24;
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);  // AWESOME palette blending capability.
     }
 
-    EVERY_N_MILLISECONDS(speed) {  // FastLED based non-blocking delay to update/display the sequence.
+    EVERY_N_MILLISECONDS(speed) {  // FastLED based non-blocking speed to update/display the sequence.
         confetti_pal();
     }
 

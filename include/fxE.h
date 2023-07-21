@@ -22,6 +22,7 @@ extern uint8_t fade;
 extern uint8_t hue;
 extern uint8_t saturation;
 extern TBlendType currentBlending;                                // NOBLEND or LINEARBLEND
+extern const uint8_t maxChanges;
 
 
 

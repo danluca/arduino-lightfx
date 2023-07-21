@@ -266,7 +266,7 @@ void FxB8::setup() {
 }
 
 void FxB8::loop() {
-    EVERY_N_MILLISECONDS(250) {                                                 // FastLED based non-blocking FIXED delay.
+    EVERY_N_MILLISECONDS(250) {                                                 // FastLED based non-blocking FIXED speed.
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);    // AWESOME palette blending capability.
     }
 
@@ -300,6 +300,10 @@ void FxB8::describeConfig(JsonArray &json) {
 void FxB9::setup() {
     fxb_setup();
     brightness = BRIGHTNESS;
+    fade = 2;   // How long should the trails be. Very low value = longer trails.
+    hueDiff = 16;   // Incremental change in hue between each dot.
+    hue = 0;    // Starting hue.
+    dotBpm = 5; // Higher = faster movement.
 }
 
 void FxB9::loop() {
@@ -429,27 +433,23 @@ void juggle_short() {
 void juggle_long() {
     // Routine specific variables
     static uint8_t   numdots = 4;                                     // Number of dots in use.
-    static uint8_t   fade = 2;                                        // How long should the trails be. Very low value = longer trails.
-    static uint8_t   hueDiff = 16;                                    // Incremental change in hue between each dot.
-    static uint8_t   startHue = 0;                                    // Starting hue.
-    static uint8_t   beat = 5;                                        // Higher = faster movement.
     static uint8_t lastSecond = 99;
 
     uint8_t secondHand = (millis() / 1000) % 31;                // IMPORTANT!!! Change '30' to a different value to change duration of the loop.
     if (lastSecond != secondHand) {
         lastSecond = secondHand;
         switch(secondHand) {
-            case  0: numdots = 1; beat = 20; hueDiff = 16; fade = 2; startHue = 0; break;                  // You can change values here, one at a time , or altogether.
-            case 10: numdots = 4; beat = 10; hueDiff = 16; fade = 8; startHue = 128; break;
-            case 20: numdots = 8; beat =  3; hueDiff =  0; fade = 8; startHue=random8(); break;           // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
+            case  0: numdots = 1; dotBpm = 20; hueDiff = 16; fade = 2; hue = 0; break;                  // You can change values here, one at a time , or altogether.
+            case 10: numdots = 4; dotBpm = 10; hueDiff = 16; fade = 8; hue = 128; break;
+            case 20: numdots = 8; dotBpm =  3; hueDiff =  0; fade = 8; hue=random8(); break;           // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
             case 30: break;
         }
     }   //changeme()
-    uint8_t curhue = startHue;                                           // Reset the hue values.
+    uint8_t curhue = hue;                                           // Reset the hue values.
     fadeToBlackBy(leds, NUM_PIXELS, fade);
 
     for( int i = 0; i < numdots; i++) {
-        leds[beatsin16(beat + i + numdots, 0, NUM_PIXELS - 1)] += ColorFromPalette(palette, curhue , brightness, LINEARBLEND);    // Munge the values and pick a colour from the palette
+        leds[beatsin16(dotBpm + i + numdots, 0, NUM_PIXELS - 1)] += ColorFromPalette(palette, curhue , brightness, LINEARBLEND);    // Munge the values and pick a colour from the palette
         curhue += hueDiff;
     }
 }   //juggle_pal()
