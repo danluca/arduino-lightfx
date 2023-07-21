@@ -11,7 +11,7 @@ extern uint8_t gHue;
 extern uint8_t brightness;
 extern CRGBPalette16 palette;
 extern CRGBPalette16 targetPalette;
-
+extern const uint8_t maxChanges;
 
 void fadein();
 

@@ -170,7 +170,6 @@ void FxB5::setup() {
 
 void FxB5::loop() {
     EVERY_N_MILLISECONDS(100) {
-        uint8_t maxChanges = 24;
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
@@ -268,7 +267,6 @@ void FxB8::setup() {
 
 void FxB8::loop() {
     EVERY_N_MILLISECONDS(250) {                                                 // FastLED based non-blocking FIXED delay.
-        uint8_t maxChanges = 24;
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);    // AWESOME palette blending capability.
     }
 
@@ -306,7 +304,6 @@ void FxB9::setup() {
 
 void FxB9::loop() {
     EVERY_N_MILLISECONDS(100) {
-        uint8_t maxChanges = 24;
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 

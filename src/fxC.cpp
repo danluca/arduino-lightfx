@@ -288,7 +288,7 @@ void FxC5::changeParams() {
         lastSecond = secondHand;
         switch(secondHand) {
             case  0: delay=50; palIndex=95; bgclr=140; bgbri=4; huerot=true; break;
-            case  5: targetPalette = paletteFactory.mainPalette(); dir=1; bgbri=0; huerot=true; break;
+            case  5: targetPalette = paletteFactory.mainPalette(); fwd=false; bgbri=0; huerot=true; break;
             case 10: targetPalette = paletteFactory.secondaryPalette(); delay=30; palIndex=0; bgclr=50; bgbri=8; huerot=false; break;
             case 15: targetPalette = paletteFactory.mainPalette(); delay=80; bgbri = 16; bgclr=96; palIndex=random8(); break;
             case 20: palIndex=random8(); huerot=true; break;
@@ -300,21 +300,13 @@ void FxC5::changeParams() {
 void FxC5::matrix() {
     if (huerot) palIndex++;
 
-    if (random8(90) > 80) {
-        if (dir == 0)
-            leds[0] = ColorFromPalette(palette, palIndex, brightness, LINEARBLEND);
-        else
-            leds[NUM_PIXELS-1] = ColorFromPalette(palette, palIndex, brightness, LINEARBLEND);
-    } else {
-        if (dir == 0)
-            leds[0] = CHSV(bgclr, sat, bgbri);
-        else
-            leds[NUM_PIXELS-1] = CHSV(bgclr, sat, bgbri);
-    }
+    if (random8(90) > 80)
+        leds[fwd?0:(NUM_PIXELS-1)] = ColorFromPalette(palette, palIndex, brightness, LINEARBLEND);
+    else
+        leds[fwd?0:(NUM_PIXELS-1)] = CHSV(bgclr, sat, bgbri);
 
-    if (dir == 0) {
+    if (fwd)
         for (int i = NUM_PIXELS-1; i >0 ; i-- ) leds[i] = leds[i-1];
-    } else {
+    else
         for (int i = 0; i < NUM_PIXELS-1 ; i++ ) leds[i] = leds[i+1];
-    }
 }

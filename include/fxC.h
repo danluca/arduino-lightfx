@@ -100,7 +100,7 @@ protected:
     int      delay = 50;                                     // A delay value for the sequence(s)
     uint8_t  palIndex = 95;
     uint8_t  sat = 255;
-    int      dir = 0;
+    bool     fwd = true;
     bool     huerot = false;                                     // Does the hue rotate? 1 = yes
     uint8_t  bgclr = 0;
     uint8_t  bgbri = 0;
