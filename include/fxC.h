@@ -9,6 +9,7 @@
 extern uint8_t brightness;
 extern CRGBPalette16 palette;
 extern CRGBPalette16 targetPalette;
+extern const CRGB BKG;
 
 class FxC1 : public LedEffect {
 private:
@@ -61,6 +62,21 @@ public:
     const char *name() override;
 
     const char *description() override;
+};
+
+class FxC4 : public LedEffect {
+public:
+    FxC4();
+
+    void setup() override;
+
+    void loop() override;
+
+    void describeConfig(JsonArray &json) override;
+
+    const char *description() override;
+
+    const char *name() override;
 };
 
 #endif //LIGHTFX_FXC_H

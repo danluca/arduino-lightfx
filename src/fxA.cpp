@@ -19,7 +19,7 @@ uint stripShuffleIndex[NUM_PIXELS];
 CRGB dot[MAX_DOT_SIZE];
 CRGB frame[NUM_PIXELS];
 volatile uint curPos = 0;
-
+const CRGB BKG = CRGB::Black;
 
 void fxa_register() {
     static FxA1 fxA1;

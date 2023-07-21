@@ -9,6 +9,7 @@ void fxc_register() {
     static FxC1 fxC1;
     static FxC2 fxC2;
     static FxC3 fxC3;
+    static FxC4 fxC4;
 }
 
 void fxc_setup() {
@@ -186,4 +187,56 @@ const char *FxC3::name() {
 
 const char *FxC3::description() {
     return "FXC3: using Perlin Noise to move a pixel up and down the strand for a random natural movement";
+}
+
+FxC4::FxC4() {
+    registryIndex = fxRegistry.registerEffect(this);
+}
+
+void FxC4::setup() {
+    fxc_setup();
+    palette = paletteFactory.mainPalette();
+    brightness = BRIGHTNESS;
+}
+
+void FxC4::loop() {
+    static uint8_t frequency = 50;                                       // controls the interval between strikes
+    static uint8_t flashes = 8;                                          //the upper limit of flashes per strike
+    static uint dimmer = 1;
+    static uint8_t ledstart;                                             // Starting location of a flash
+    static uint8_t ledlen;                                               // Length of a flash
+
+    ledstart = random8(NUM_PIXELS);                               // Determine starting location of flash
+    ledlen = random8(NUM_PIXELS-ledstart);                        // Determine length of flash (not to go beyond NUM_LEDS-1)
+
+    for (int flashCounter = 0; flashCounter < random8(3,flashes); flashCounter++) {
+        if(flashCounter == 0) dimmer = 5;                         // the brightness of the leader is scaled down by a factor of 5
+        else dimmer = random8(1,3);                               // return strokes are brighter than the leader
+
+        CRGB color = ColorFromPalette(palette, random8(), brightness/dimmer, LINEARBLEND);
+        fill_solid(leds+ledstart,ledlen,color);
+        FastLED.show();                       // Show a section of LED's
+        delay(random8(4,10));                                     // each flash only lasts 4-10 milliseconds
+        fill_solid(leds+ledstart,ledlen,BKG);           // Clear the section of LED's
+        FastLED.show();
+
+        if (flashCounter == 0) delay (250);                       // longer delay until next flash after the leader
+
+        delay(50+random8(100));                                   // shorter delay between strokes
+    } // for()
+
+    delay(random8(frequency)*100);                              // delay between strikes
+}
+
+const char *FxC4::description() {
+    return "FxC4: lightnings";
+}
+
+const char *FxC4::name() {
+    return "FxC4";
+}
+
+void FxC4::describeConfig(JsonArray &json) {
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
 }

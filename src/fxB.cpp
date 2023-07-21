@@ -22,7 +22,8 @@ void fxb_register() {
 void fxb_setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
-    palette = paletteFactory.mainPalette();
+    targetPalette = paletteFactory.mainPalette();
+    palette = paletteFactory.secondaryPalette();
     gHue = 0;
     brightness = 148;
 }
@@ -166,11 +167,12 @@ void FxB5::setup() {
 }
 
 void FxB5::loop() {
-    EVERY_N_MILLISECONDS(50) {
-        juggle();
-        gHue+=2;
+    EVERY_N_MILLISECONDS(100) {
+        uint8_t maxChanges = 24;
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
+    juggle();
     FastLED.show();
 }
 
@@ -372,13 +374,42 @@ void bpm() {  // Colored stripes pulsing at a defined Beats-Per-Minute.
 
 void juggle() {  // Eight colored dots, weaving in and out of sync with each other.
 
-  fadeToBlackBy(leds, NUM_PIXELS, 20);
-  byte dothue = 0;
+//  fadeToBlackBy(leds, NUM_PIXELS, 20);
+//  byte dothue = 0;
+//
+//  for (int i = 0; i < 8; i++) {
+//    leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= CHSV(dothue, 200, 255);
+//    dothue += 32;
+//  }
 
-  for (int i = 0; i < 8; i++) {
-    leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= CHSV(dothue, 200, 255);
-    dothue += 32;
-  }
+  //==========
+    // Routine specific variables
+    static uint8_t    numdots =   4;                                     // Number of dots in use.
+    static uint8_t   thisfade =   2;                                     // How long should the trails be. Very low value = longer trails.
+    static uint8_t   thisdiff =  16;                                     // Incremental change in hue between each dot.
+    static uint8_t    thishue =   0;                                     // Starting hue.
+    static uint8_t     curhue =   0;                                     // The current hue
+    static uint8_t thisbright = 255;                                     // How bright should the LED/display be.
+    static uint8_t   thisbeat =   5;                                     // Higher = faster movement.
+    static uint8_t lastSecond = 99;
+
+    uint8_t secondHand = (millis() / 1000) % 31;                // IMPORTANT!!! Change '30' to a different value to change duration of the loop.
+    if (lastSecond != secondHand) {
+        lastSecond = secondHand;
+        switch(secondHand) {
+            case  0: numdots = 1; thisbeat = 20; thisdiff = 16; thisfade = 2; thishue = 0; break;                  // You can change values here, one at a time , or altogether.
+            case 10: numdots = 4; thisbeat = 10; thisdiff = 16; thisfade = 8; thishue = 128; break;
+            case 20: numdots = 8; thisbeat =  3; thisdiff =  0; thisfade = 8; thishue=random8(); break;           // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
+            case 30: break;
+        }
+    }   //changeme
+    curhue = thishue;                                           // Reset the hue values.
+    fadeToBlackBy(leds, NUM_PIXELS, thisfade);
+
+    for( int i = 0; i < numdots; i++) {
+        leds[beatsin16(thisbeat+i+numdots,0,NUM_PIXELS)] += ColorFromPalette(palette, curhue , thisbright, LINEARBLEND);    // Munge the values and pick a colour from the palette
+        curhue += thisdiff;
+    }   //juggle_pal
 
 }  // juggle()
 
