@@ -152,8 +152,8 @@ FxC3::FxC3() {
 void FxC3::setup() {
     fxc_setup();
     brightness = 128;
-    palette = paletteFactory.mainPalette();
-    targetPalette = paletteFactory.secondaryPalette();
+    targetPalette = paletteFactory.mainPalette();
+    palette = paletteFactory.secondaryPalette();
     dist = random();
 }
 
@@ -170,7 +170,7 @@ void FxC3::loop() {
     }
 
     EVERY_N_SECONDS(5) {                                        // Change the target palette to a random one every 5 seconds.
-        targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
+        targetPalette = PaletteFactory::randomPalette();
     }
 
     FastLED.show();
@@ -291,7 +291,7 @@ void FxC5::changeParams() {
             case 0: speed=50; palIndex=95; bgClr=140; bgBri=4; hueRot=true; break;
             case 1: targetPalette = paletteFactory.mainPalette(); fwd=false; bgBri=0; hueRot=true; break;
             case 2: targetPalette = paletteFactory.secondaryPalette(); speed=30; palIndex=0; bgClr=50; bgBri=8; hueRot=false; fwd=true; break;
-            case 3: targetPalette = paletteFactory.mainPalette(); speed=80; bgBri = 16; bgClr=96; palIndex=random8(); break;
+            case 3: targetPalette = PaletteFactory::randomPalette(0, millis()); speed=80; bgBri = 16; bgClr=96; palIndex=random8(); break;
             case 4: palIndex=random8(); hueRot=true; break;
             default: break;
         }

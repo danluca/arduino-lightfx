@@ -179,38 +179,17 @@ void FxH2::confetti_pal() {  // random colored speckles that blink in and fade s
 
 // A time (rather than loop) based demo sequencer. This gives us full control over the length of each sequence.
 void FxH2::ChangeMe() {
-    uint8_t secondHand = (millis() / 1000) % 15;  // IMPORTANT!!! Change '15' to a different value to change duration of the loop.
-    static uint8_t lastSecond = 99;               // Static variable, means it's only defined once. This is our 'debounce' variable.
-    if (lastSecond != secondHand) {               // Debounce to make sure we're not repeating an assignment.
-        lastSecond = secondHand;
-        switch (secondHand) {
-            case 0:
-                targetPalette = OceanColors_p;
-                incr = 1;
-                hue = 192;
-                saturation = 255;
-                fade = 2;
-                hueDiff = 255;
-                break;  // You can change values here, one at a time , or altogether.
-            case 5:
-                targetPalette = LavaColors_p;
-                incr = 2;
-                hue = 128;
-                fade = 8;
-                hueDiff = 64;
-                break;
-            case 10:
-                targetPalette = ForestColors_p;
-                incr = 1;
-                hue = random16(255);
-                fade = 1;
-                hueDiff = 16;
-                break;         // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
-            case 15:
-                break;  // Here's the matching 15 for the other one.
-        }
-    }
+    static uint8_t secSlot = 0;
+    EVERY_N_SECONDS(5) {
+        switch (secSlot) {
+            case 0: targetPalette = paletteFactory.mainPalette(); incr = 1; hue = 192; saturation = 255; fade = 2; hueDiff = 255; break;  // You can change values here, one at a time , or altogether.
+            case 1: targetPalette = paletteFactory.secondaryPalette(); incr = 2; hue = 128; fade = 8; hueDiff = 64; break;
+            case 2: targetPalette = PaletteFactory::randomPalette(); incr = 1; hue = random16(255); fade = 1; hueDiff = 16; break;
+            default: break;
 
+        }
+        secSlot = inc(secSlot, 1, 4);
+    }
 }
 
 const char *FxH2::name() {

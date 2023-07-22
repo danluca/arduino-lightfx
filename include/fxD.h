@@ -15,6 +15,7 @@ extern uint hueDiff;
 extern uint8_t dotBpm;
 extern uint8_t brightness;
 extern uint8_t speed;
+extern CRGBPalette16 palette;
 
 
 class FxD1 : public LedEffect {

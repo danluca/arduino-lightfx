@@ -76,19 +76,18 @@ void FxD1::confetti() {                                             // random co
 } // confetti()
 
 
-void FxD1::ChangeMe() {                                             // A time (rather than loop) based demo sequencer. This gives us full control over the length of each sequence.
-  uint8_t secondHand = (millis() / 1000) % 15;                // IMPORTANT!!! Change '15' to a different value to change duration of the loop.
-  static uint8_t lastSecond = 99;                             // Static variable, means it's only defined once. This is our 'debounce' variable.
-  if (lastSecond != secondHand) {                             // Debounce to make sure we're not repeating an assignment.
-    lastSecond = secondHand;
-    switch(secondHand) {
-      case  0: incr=1; hue=192; saturation=255; fade=2; hueDiff=256; break;  // You can change values here, one at a time , or altogether.
-      case  5: incr=2; hue=128; fade=8; hueDiff=64; break;
-      case 10: incr=1; hue=random16(255); fade=1; hueDiff=16; break;      // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
-      case 15: break;                                                                // Here's the matching 15 for the other one.
+void FxD1::ChangeMe() {
+    static uint8_t secSlot = 0;
+    EVERY_N_SECONDS(5) {
+        switch (secSlot) {
+            case 0: incr=1; hue=192; saturation=255; fade=2; hueDiff=256; break;  // You can change values here, one at a time , or altogether.
+            case 1: incr=2; hue=128; fade=8; hueDiff=64; break;
+            case 2: incr=1; hue=random16(255); fade=1; hueDiff=16; break;
+            default: break;
+        }
+        secSlot = inc(secSlot, 1, 4);
     }
-  }
-} // ChangeMe()
+}
 
 /**
  * dots By: John Burroughs
@@ -106,6 +105,7 @@ void FxD2::setup() {
     FastLED.setBrightness(BRIGHTNESS);
     dotBpm = 30;
     fade = 31;
+    palette = paletteFactory.mainPalette();
 }
 
 void FxD2::loop() {
@@ -136,9 +136,9 @@ void FxD2::dot_beat() {
   uint8_t outer = beatsin8(dotBpm, 0, NUM_PIXELS-1);               // Move entire length
   uint8_t middle = beatsin8(dotBpm, NUM_PIXELS/3, NUM_PIXELS/3*2);   // Move 1/3 to 2/3
 
-  leds[middle] = CRGB::Purple;
-  leds[inner] = CRGB::Blue;
-  leds[outer] = CRGB::Aqua;
+  leds[middle] = ColorFromPalette(palette, 0);
+  leds[inner] = ColorFromPalette(palette, 127);
+  leds[outer] = ColorFromPalette(palette, 255);
 
   nscale8(leds, NUM_PIXELS, 255-fade);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeVal);
 

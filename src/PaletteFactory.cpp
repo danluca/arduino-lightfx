@@ -140,4 +140,13 @@ Holiday PaletteFactory::currentHoliday() const {
     return holiday;
 }
 
+CRGBPalette16 PaletteFactory::randomPalette(uint8_t ofsHue, time_t time) {
+    if (time > 0)
+        random16_add_entropy(time >> 4);
+    return {CHSV(ofsHue + random8(0, 256-ofsHue), 160, random8(128,255)),
+            CHSV(ofsHue + random8(0, 256-ofsHue), 255, random8(128,255)),
+            CHSV(ofsHue + random8(), 192, random8(128,255)),
+            CHSV(ofsHue + random8(), 255, random8(128,255))};
+}
+
 PaletteFactory paletteFactory;

@@ -18,7 +18,8 @@ void fxe_setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
     currentBlending = LINEARBLEND;
-    palette = paletteFactory.mainPalette();
+    palette = paletteFactory.secondaryPalette();
+    targetPalette = paletteFactory.mainPalette();
     twinkrate = 100;
     speed =  10;
     fade =   8;
@@ -57,9 +58,9 @@ void FxE1::loop() {
         fxe1Timer.setPeriod(speed);
     }
 
-    EVERY_N_SECONDS(5) {                                        // Change the target palette to a random one every 5 seconds.
+    EVERY_N_SECONDS(10) {                                        // Change the target palette to a random one every 10 seconds.
         //static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
-        targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
+        targetPalette = PaletteFactory::randomPalette();
     }
 
     FastLED.show();
@@ -79,19 +80,16 @@ void FxE1::twinkle() {
 
 
 
-void FxE1::ChangeMe() {                                             // A time (rather than loop) based demo sequencer. This gives us full control over the length of each sequence.
-
-  uint8_t secondHand = (millis() / 1000) % 10;                // IMPORTANT!!! Change '15' to a different value to change duration of the loop.
-  static uint8_t lastSecond = 99;                             // Static variable, means it's only defined once. This is our 'debounce' variable.
-  if (lastSecond != secondHand) {                             // Debounce to make sure we're not repeating an assignment.
-    lastSecond = secondHand;
-    switch(secondHand) {
-      case 0: speed = 10; randhue = true; saturation=255; fade=8; twinkrate=150; break;  // You can change values here, one at a time , or altogether.
-      case 5: speed = 100; randhue = false; hue=random8(); fade=2; twinkrate=20; break;
-      case 10: break;
+void FxE1::ChangeMe() {
+    static uint8_t secSlot = 0;
+    EVERY_N_SECONDS(5) {
+        switch (secSlot) {
+            case 0: speed = 10; randhue = true; saturation=255; fade=8; twinkrate=150; break;  // You can change values here, one at a time , or altogether.
+            case 1: speed = 100; randhue = false; hue=random8(); fade=2; twinkrate=20; break;
+            default: break;
+        }
+        secSlot = inc(secSlot, 1, 3);
     }
-  }
-
 }
 
 const char *FxE1::name() {
@@ -124,7 +122,7 @@ void FxE2::loop() {
     }
 
     EVERY_N_SECONDS(15) {                                        // Change the target palette to a random one every 15 seconds.
-        targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
+        targetPalette = PaletteFactory::randomPalette(0, millis());
     }
 
     FastLED.show();

@@ -58,7 +58,7 @@ void FxB1::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
-    obj["palette"] = "PartyColors";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
 }
 
 //FXB2
@@ -122,7 +122,7 @@ void FxB3::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
-    obj["palette"] = "PartyColors";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
 }
 
 //FXB4
@@ -155,7 +155,7 @@ void FxB4::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
-    obj["palette"] = "PartyColors";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
 }
 
 //FXB5
@@ -189,7 +189,7 @@ void FxB5::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
-    obj["palette"] = "PartyColors";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
 }
 
 //FXB6
@@ -253,7 +253,7 @@ void FxB7::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
-    obj["palette"] = "PartyColors";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
 }
 
 //FXB8
@@ -266,17 +266,16 @@ void FxB8::setup() {
 }
 
 void FxB8::loop() {
-    EVERY_N_MILLISECONDS(250) {                                                 // FastLED based non-blocking FIXED speed.
-        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);    // AWESOME palette blending capability.
+    EVERY_N_MILLISECONDS(250) {
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
     EVERY_N_MILLISECONDS(50) {
         fadein();
     }
 
-    EVERY_N_SECONDS(10) {                                                        // Change the target palette to a random one every 5 seconds.
-        uint8_t baseC = random8(255);                                             // Use the built-in random number generator as we are re-initializing the FastLED one.
-        targetPalette = CRGBPalette16(CHSV(baseC+random8(0,32), 255, random8(128, 255)), CHSV(baseC+random8(0,32), 255, random8(128, 255)), CHSV(baseC+random8(0,32), 192, random8(128, 255)), CHSV(baseC+random8(0,32), 255, random8(128, 255)));
+    EVERY_N_SECONDS(10) {                                                        // Change the target palette to a random one every 10 seconds.
+        targetPalette = PaletteFactory::randomPalette(random8());
     }
 
     FastLED.show();
@@ -294,7 +293,7 @@ void FxB8::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
-    obj["palette"] = "PartyColors";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
 }
 
 void FxB9::setup() {

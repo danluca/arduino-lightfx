@@ -236,7 +236,7 @@ void FxA1::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["segmentSize"] = szSegment;
-    obj["palette"] = "Rainbow";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
 }
 
 const char *FxA1::name() {
@@ -305,7 +305,7 @@ void FxA2::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["segmentSize"] = szSegment;
-    obj["palette"] = "Rainbow";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
 }
 
 const char *FxA2::name() {
@@ -380,7 +380,7 @@ FxA3::FxA3() {
 void FxA3::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
-    obj["palette"] = "PartyColors";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
 }
 
 const char *FxA3::name() {
@@ -450,7 +450,7 @@ FxA4::FxA4() {
 void FxA4::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
-    obj["palette"] = "Red-Orange-Purple";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
 }
 
 const char *FxA4::name() {
@@ -511,7 +511,7 @@ FxA5::FxA5() {
 void FxA5::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
-    obj["palette"] = "PartyColors";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
 }
 
 const char *FxA5::name() {

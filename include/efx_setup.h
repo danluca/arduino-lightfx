@@ -23,6 +23,7 @@
 #define MAX_EFFECTS_COUNT   256
 
 extern CRGB leds[NUM_PIXELS];
+extern const CRGB BKG;
 
 typedef void (*setupFunc)();
 
@@ -55,6 +56,8 @@ void fillArray(CRGB *src, size_t szSrc, CRGB color);
 void fillArray(const CRGB *src, size_t srcLength, CRGB *array, size_t arrLength, uint arrOfs = 0);
 
 void pushFrame(const CRGB frame[], uint szFrame, uint ofsDest = 0, bool repeat = false);
+
+bool turnOffJuggle(CRGB* arr, uint szArr);
 
 CRGB *mirrorLow(CRGB array[], uint szArray);
 

@@ -191,6 +191,19 @@ CRGB *cloneArray(const CRGB src[], CRGB dest[], size_t length) {
     return dest;
 }
 
+bool turnOffJuggle(CRGB *arr, uint szArr) {
+    static bool allOff = false;
+    EVERY_N_MILLISECONDS(75) {
+        uint numDots = 4;
+        uint dotBpm = 3;
+        for (uint i = 0; i < numDots; i++) {
+            arr[beatsin16(dotBpm + i + numDots, 0, szArr-1)].fadeToBlackBy(12);
+        }
+        allOff = !isAnyLedOn(arr, szArr, BKG);
+    }
+    return allOff;
+}
+
 //Setup all effects -------------------
 void fx_setup() {
     ledStripInit();
