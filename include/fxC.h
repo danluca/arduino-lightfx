@@ -107,4 +107,30 @@ protected:
     uint8_t  bgBri = 0;
 };
 
+class FxC6 : public LedEffect {
+public:
+    FxC6();
+
+    void setup() override;
+
+    void loop() override;
+
+    const char *description() override;
+
+    const char *name() override;
+
+    void describeConfig(JsonArray &json) override;
+
+    void one_sine_pal(uint8_t colorIndex);
+
+protected:
+    uint8_t allfreq = 32;                                     // You can change the frequency, thus distance between bars.
+    int phase = 0;                                            // Phase change value gets calculated.
+    uint8_t cutoff = 192;                                     // You can change the cutoff value to display this wave. Lower value = longer wave.
+    int delay = 30;                                           // You can change the delay. Also you can change the speed global variable.
+    uint8_t bgclr = 0;                                        // A rotating background colour.
+    uint8_t bgbright = 10;                                    // Brightness of background colour
+
+};
+
 #endif //LIGHTFX_FXC_H

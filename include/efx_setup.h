@@ -17,6 +17,8 @@
 #define inr(x, d, u) ((x>=d)&&(x<u))
 #define inc(x, i, u) ((x+i)%u)
 #define arrSize(A) (sizeof(A) / sizeof((A)[0]))
+#define qsubd(x, b) ((x>b)?b:0)                               // Clip. . . . A digital unsigned subtraction macro. if result <0, then x=0. Otherwise, x=b.
+#define qsuba(x, b) ((x>b)?x-b:0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
 
 #define MAX_EFFECTS_COUNT   256
 

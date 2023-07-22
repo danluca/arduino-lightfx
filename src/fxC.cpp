@@ -11,6 +11,7 @@ void fxc_register() {
     static FxC3 fxC3;
     static FxC4 fxC4;
     static FxC5 fxC5;
+    static FxC6 fxC6;
 }
 
 void fxc_setup() {
@@ -311,4 +312,58 @@ void FxC5::matrix() {
         for (int i = NUM_PIXELS-1; i >0 ; i-- ) leds[i] = leds[i-1];
     else
         for (int i = 0; i < NUM_PIXELS-1 ; i++ ) leds[i] = leds[i+1];
+}
+
+void FxC6::setup() {
+    fxc_setup();
+    speed = 8;
+    palette = paletteFactory.secondaryPalette();
+    targetPalette = paletteFactory.mainPalette();
+}
+
+void FxC6::loop() {
+    EVERY_N_MILLISECONDS(delay) {
+        one_sine_pal(millis()>>4);
+    }
+
+    EVERY_N_MILLISECONDS(100) {
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
+    }
+
+//    EVERY_N_SECONDS(5) {                                          // Change the target palette to a random one every 5 seconds.
+//        static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
+//        targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
+//    }
+
+    FastLED.show();
+}
+
+const char *FxC6::description() {
+    return "FxC6: one sine";
+}
+
+const char *FxC6::name() {
+    return "FxC6";
+}
+
+void FxC6::describeConfig(JsonArray &json) {
+
+}
+
+FxC6::FxC6() {
+    registryIndex = fxRegistry.registerEffect(this);
+}
+
+void FxC6::one_sine_pal(uint8_t colorIndex) {
+    // This is the heart of this program. Sure is short.
+    phase += speed;                                                     // You can change direction and speed individually.
+
+    for (int k=0; k<NUM_PIXELS-1; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
+        int thisbright = qsubd(cubicwave8((k*allfreq)+phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
+        leds[k] = CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
+        leds[k] += ColorFromPalette(palette, colorIndex, thisbright, LINEARBLEND);    // Let's now add the foreground colour.
+        colorIndex +=3;
+    }
+
+    bgclr++;
 }

@@ -112,6 +112,7 @@ FxE2::FxE2() {
 
 void FxE2::setup() {
     fxe_setup();
+    targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
 }
 
@@ -122,7 +123,7 @@ void FxE2::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
     }
 
-    EVERY_N_SECONDS(5) {                                        // Change the target palette to a random one every 5 seconds.
+    EVERY_N_SECONDS(15) {                                        // Change the target palette to a random one every 15 seconds.
         targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
     }
 
