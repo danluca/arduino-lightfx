@@ -284,19 +284,18 @@ FxC5::FxC5() {
 }
 
 void FxC5::changeParams() {
-    uint8_t secondHand = (millis() / 1000) % 25;                // Change '25' to a different value to change length of the loop.
-    static uint8_t lastSecond = 99;                             // Static variable, means it's only defined once. This is our 'debounce' variable.
-
-    if (lastSecond != secondHand) {                             // Debounce to make sure we're not repeating an assignment.
-        lastSecond = secondHand;
-        switch(secondHand) {
-            case  0: speed=50; palIndex=95; bgClr=140; bgBri=4; hueRot=true; break;
-            case  5: targetPalette = paletteFactory.mainPalette(); fwd=false; bgBri=0; hueRot=true; break;
-            case 10: targetPalette = paletteFactory.secondaryPalette(); speed=30; palIndex=0; bgClr=50; bgBri=8; hueRot=false; break;
-            case 15: targetPalette = paletteFactory.mainPalette(); speed=80; bgBri = 16; bgClr=96; palIndex=random8(); break;
-            case 20: palIndex=random8(); hueRot=true; break;
+    static uint8_t secSlot = 0;
+    EVERY_N_SECONDS(5) {
+        switch(secSlot) {
+            case 0: speed=50; palIndex=95; bgClr=140; bgBri=4; hueRot=true; break;
+            case 1: targetPalette = paletteFactory.mainPalette(); fwd=false; bgBri=0; hueRot=true; break;
+            case 2: targetPalette = paletteFactory.secondaryPalette(); speed=30; palIndex=0; bgClr=50; bgBri=8; hueRot=false; fwd=true; break;
+            case 3: targetPalette = paletteFactory.mainPalette(); speed=80; bgBri = 16; bgClr=96; palIndex=random8(); break;
+            case 4: palIndex=random8(); hueRot=true; break;
             default: break;
         }
+
+        secSlot = inc(secSlot, 1, 5);   // Change '5' upper bound to a different value to change length of the loop.
     }
 }
 

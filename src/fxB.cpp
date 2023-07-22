@@ -432,25 +432,25 @@ void juggle_short() {
  */
 void juggle_long() {
     // Routine specific variables
-    static uint8_t   numdots = 4;                                     // Number of dots in use.
-    static uint8_t lastSecond = 99;
+    static uint8_t numDots = 4;                                     // Number of dots in use.
+    static uint8_t secSlot = 0;
 
-    uint8_t secondHand = (millis() / 1000) % 31;                // IMPORTANT!!! Change '30' to a different value to change duration of the loop.
-    if (lastSecond != secondHand) {
-        lastSecond = secondHand;
-        switch(secondHand) {
-            case  0: numdots = 1; dotBpm = 20; hueDiff = 16; fade = 2; hue = 0; break;                  // You can change values here, one at a time , or altogether.
-            case 10: numdots = 4; dotBpm = 10; hueDiff = 16; fade = 8; hue = 128; break;
-            case 20: numdots = 8; dotBpm =  3; hueDiff =  0; fade = 8; hue=random8(); break;           // Only gets called once, and not continuously for the next several seconds. Therefore, no rainbows.
-            case 30: break;
+    EVERY_N_SECONDS(10) {
+        switch(secSlot) {
+            case 0: numDots = 1; dotBpm = 20; hueDiff = 16; fade = 2; hue = 0; break;
+            case 1: numDots = 4; dotBpm = 10; hueDiff = 16; fade = 8; hue = 128; break;
+            case 2: numDots = 8; dotBpm =  3; hueDiff =  0; fade = 8; hue=random8(); break;
+            default: break;
         }
-    }   //changeme()
-    uint8_t curhue = hue;                                           // Reset the hue values.
+        secSlot = inc(secSlot, 1, 3);   //change the modulo value for changing the duration of the loop
+    }
+
+    uint8_t curHue = hue;                                           // Reset the hue values.
     fadeToBlackBy(leds, NUM_PIXELS, fade);
 
-    for( int i = 0; i < numdots; i++) {
-        leds[beatsin16(dotBpm + i + numdots, 0, NUM_PIXELS - 1)] += ColorFromPalette(palette, curhue , brightness, LINEARBLEND);    // Munge the values and pick a colour from the palette
-        curhue += hueDiff;
+    for(int i = 0; i < numDots; i++) {
+        leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS - 1)] += ColorFromPalette(palette, curHue , brightness, LINEARBLEND);    // Munge the values and pick a colour from the palette
+        curHue += hueDiff;
     }
 }   //juggle_pal()
 
