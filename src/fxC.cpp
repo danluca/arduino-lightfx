@@ -347,7 +347,8 @@ const char *FxC6::name() {
 }
 
 void FxC6::describeConfig(JsonArray &json) {
-
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
 }
 
 FxC6::FxC6() {
