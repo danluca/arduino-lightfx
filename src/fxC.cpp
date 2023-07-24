@@ -324,18 +324,18 @@ void FxC6::setup() {
 
 void FxC6::loop() {
     static uint8_t secSlot = 0;
+
     EVERY_N_MILLISECONDS(delay) {
         one_sine_pal(millis()>>4);
     }
 
-    EVERY_N_SECONDS(2) {
-        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
+    EVERY_N_SECONDS(1) {
+        fwd = secSlot == 6;
+        if (fwd)
+            nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
+        secSlot = inc(secSlot, 1, 7);
     }
 
-    EVERY_N_MILLISECONDS(1000) {
-        fwd = secSlot == 4;
-        secSlot = inc(secSlot, 1, 5);
-    }
 
 //    EVERY_N_SECONDS(5) {                                          // Change the target palette to a random one every 5 seconds.
 //        static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
