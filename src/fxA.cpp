@@ -151,7 +151,7 @@ bool turnOff() {
         setOff = totalLum < 4;
     }
 
-    EVERY_N_MILLISECONDS(1200) {
+    EVERY_N_MILLISECONDS(1500) {
         if (setOff) {
             led = (led + szOffNow) % FastLED.size();
             xOffNow = capu(xOffNow + 1, sizeof(turnOffSeq) / sizeof(int) - 1);
@@ -182,15 +182,14 @@ FxA1::FxA1() {
 }
 
 void FxA1::setup() {
+    szSegment = 3;
     fxa_setup();
 }
 
 void FxA1::loop() {
     if (mode == TurnOff) {
-//        if (turnOff()) {
-        if (turnOffJuggle()) {
+        if (turnOff())
             reset();
-        }
         return;
     }
     colorIndex = random8();

@@ -9,7 +9,7 @@
 const uint MAX_DOT_SIZE = 16;
 const uint8_t dimmed = 20;
 const uint FRAME_SIZE = 19;
-const uint turnOffSeq[] = {1, 1, 2, 3, 5, 7, 10};
+const uint turnOffSeq[] = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 enum OpMode {
     TurnOff, Chase
 };
