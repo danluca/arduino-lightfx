@@ -47,9 +47,9 @@ void mic_run() {
     if (samplesRead) {
         for (int i = 0; i < samplesRead; i++) {
 //            if (sampleBuffer[i] > 10000 || sampleBuffer[i] <= -10000) {
-            if (sampleBuffer[i] > 300) {
+            if (sampleBuffer[i] > 800) {
                 random16_add_entropy(abs(sampleBuffer[i]));
-                Log.infoln("Audio sample over 300");
+                Log.infoln("Audio sample over 800");
             }
         }
         // Clear the read count
