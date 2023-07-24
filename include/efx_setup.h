@@ -57,7 +57,7 @@ void fillArray(const CRGB *src, size_t srcLength, CRGB *array, size_t arrLength,
 
 void pushFrame(const CRGB frame[], uint szFrame, uint ofsDest = 0, bool repeat = false);
 
-bool turnOffJuggle(CRGB* arr, uint szArr);
+bool turnOffJuggle();
 
 CRGB *mirrorLow(CRGB array[], uint szArray);
 

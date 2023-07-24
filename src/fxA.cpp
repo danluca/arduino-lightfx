@@ -187,7 +187,8 @@ void FxA1::setup() {
 
 void FxA1::loop() {
     if (mode == TurnOff) {
-        if (turnOff()) {
+//        if (turnOff()) {
+        if (turnOffJuggle()) {
             reset();
         }
         return;

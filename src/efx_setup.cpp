@@ -191,15 +191,20 @@ CRGB *cloneArray(const CRGB src[], CRGB dest[], size_t length) {
     return dest;
 }
 
-bool turnOffJuggle(CRGB *arr, uint szArr) {
+bool turnOffJuggle() {
     static bool allOff = false;
-    EVERY_N_MILLISECONDS(75) {
+    EVERY_N_MILLISECONDS(25) {
         uint numDots = 4;
-        uint dotBpm = 3;
+        uint dotBpm = 12;
         for (uint i = 0; i < numDots; i++) {
-            arr[beatsin16(dotBpm + i + numDots, 0, szArr-1)].fadeToBlackBy(12);
+            leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS-1)].fadeToBlackBy(64);
         }
-        allOff = !isAnyLedOn(arr, szArr, BKG);
+        FastLED.show();
+        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
+    }
+    if (allOff) {
+        allOff = false;
+        return true;
     }
     return allOff;
 }
