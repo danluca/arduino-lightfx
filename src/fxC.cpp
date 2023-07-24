@@ -4,7 +4,6 @@
  */
 
 #include "fxC.h"
-#include "log.h"
 
 void fxc_register() {
     static FxC1 fxC1;
@@ -318,17 +317,24 @@ void FxC5::matrix() {
 void FxC6::setup() {
     fxc_setup();
     speed = 8;
+    fwd = true;
     palette = paletteFactory.secondaryPalette();
     targetPalette = paletteFactory.mainPalette();
 }
 
 void FxC6::loop() {
+    static uint8_t secSlot = 0;
     EVERY_N_MILLISECONDS(delay) {
         one_sine_pal(millis()>>4);
     }
 
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
+    }
+
+    EVERY_N_MILLISECONDS(1000) {
+        fwd = secSlot == 4;
+        secSlot = inc(secSlot, 1, 5);
     }
 
 //    EVERY_N_SECONDS(5) {                                          // Change the target palette to a random one every 5 seconds.
@@ -357,29 +363,14 @@ FxC6::FxC6() {
 }
 
 void FxC6::one_sine_pal(uint8_t colorIndex) {
-    static uint8_t logIter = 0;
-    if (logIter < 5)
-        Log.infoln("OneSine called with colorIndex=%d. BgClr=%d. Phase=%d. Speed=%d", colorIndex, bgclr, phase, speed);
-
-    if (logIter == 0) {
-        for (int x = 0; x < 256; x++)
-            Log.infoln("cubicwave8(%d)=%d", x, cubicwave8(x));
-    }
     // This is the heart of this program. Sure is short.
-    phase -= speed;                                                     // You can change direction and speed individually.
+    phase = fwd ? phase - speed : phase + speed;
 
     for (int k=0; k<NUM_PIXELS-1; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
-        int thisbright = qsubd(cubicwave8((k*allfreq)+phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
+        int thisBright = qsubd(quadwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
         leds[k] = CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
-        leds[k] += ColorFromPalette(palette, colorIndex, thisbright, LINEARBLEND);    // Let's now add the foreground colour.
+        leds[k] += ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
         colorIndex +=3;
-        if (logIter < 5)
-            Log.infoln("Brightness LED[%d]=%d; phase=%d; cubicwave8(%d)=%d", k, thisbright, phase, (k*allfreq)+phase,
-                       cubicwave8((k*allfreq)+phase));
     }
-    if (logIter < 5)
-        Log.infoln("OneSine Done.");
-    logIter++;
-
     bgclr++;
 }

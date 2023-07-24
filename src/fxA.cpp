@@ -151,7 +151,7 @@ bool turnOff() {
         setOff = totalLum < 4;
     }
 
-    EVERY_N_MILLISECONDS(1500) {
+    EVERY_N_MILLISECONDS(1200) {
         if (setOff) {
             led = (led + szOffNow) % FastLED.size();
             xOffNow = capu(xOffNow + 1, sizeof(turnOffSeq) / sizeof(int) - 1);

@@ -128,6 +128,7 @@ protected:
     int phase = 0;                                            // Phase change value gets calculated.
     uint8_t cutoff = 192;                                     // You can change the cutoff value to display this wave. Lower value = longer wave.
     int delay = 30;                                           // You can change the delay. Also you can change the speed global variable.
+    bool fwd = true;                                          // moving direction
     uint8_t bgclr = 0;                                        // A rotating background colour.
     uint8_t bgbright = 10;                                    // Brightness of background colour
 

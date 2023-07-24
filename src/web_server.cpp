@@ -111,6 +111,7 @@ void sendWifiJson(WiFiClient client) {
     IMU.readTemperature(temperature_deg);
     doc["temperature"] = temperature_deg;
   }
+  doc["ntpSync"] = ntpTimeAvailable;
 
   //send it out
   uint bodyLen = serializeJson(doc, client);
