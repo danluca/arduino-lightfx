@@ -4,6 +4,7 @@
  */
 
 #include "fxC.h"
+#include "log.h"
 
 void fxc_register() {
     static FxC1 fxC1;
@@ -326,7 +327,7 @@ void FxC6::loop() {
         one_sine_pal(millis()>>4);
     }
 
-    EVERY_N_MILLISECONDS(100) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
@@ -356,15 +357,29 @@ FxC6::FxC6() {
 }
 
 void FxC6::one_sine_pal(uint8_t colorIndex) {
+    static uint8_t logIter = 0;
+    if (logIter < 5)
+        Log.infoln("OneSine called with colorIndex=%d. BgClr=%d. Phase=%d. Speed=%d", colorIndex, bgclr, phase, speed);
+
+    if (logIter == 0) {
+        for (int x = 0; x < 256; x++)
+            Log.infoln("cubicwave8(%d)=%d", x, cubicwave8(x));
+    }
     // This is the heart of this program. Sure is short.
-    phase += speed;                                                     // You can change direction and speed individually.
+    phase -= speed;                                                     // You can change direction and speed individually.
 
     for (int k=0; k<NUM_PIXELS-1; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
         int thisbright = qsubd(cubicwave8((k*allfreq)+phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
         leds[k] = CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
         leds[k] += ColorFromPalette(palette, colorIndex, thisbright, LINEARBLEND);    // Let's now add the foreground colour.
         colorIndex +=3;
+        if (logIter < 5)
+            Log.infoln("Brightness LED[%d]=%d; phase=%d; cubicwave8(%d)=%d", k, thisbright, phase, (k*allfreq)+phase,
+                       cubicwave8((k*allfreq)+phase));
     }
+    if (logIter < 5)
+        Log.infoln("OneSine Done.");
+    logIter++;
 
     bgclr++;
 }
