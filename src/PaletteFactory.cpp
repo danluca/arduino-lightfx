@@ -54,7 +54,7 @@ Holiday getHoliday(const time_t time) {
 }
 
 Holiday currentHoliday() {
-    return ntpTimeAvailable ? getHoliday(now()) : Party;
+    return timeStatus() != timeNotSet ? getHoliday(now()) : Party;
 }
 
 /**

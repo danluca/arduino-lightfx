@@ -197,7 +197,7 @@ bool turnOffJuggle() {
         uint numDots = 4;
         uint dotBpm = 10;
         for (uint i = 0; i < numDots; i++) {
-            leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS-1)].fadeToBlackBy(128);
+            leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS-1)].fadeToBlackBy(224);
         }
         FastLED.show();
         allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);

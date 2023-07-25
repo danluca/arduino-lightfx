@@ -33,6 +33,8 @@ FxC1::FxC1() {
 
 void FxC1::setup() {
     fxc_setup();
+    palette = paletteFactory.mainPalette();
+    brightness = 176;
 }
 
 void FxC1::loop() {
@@ -57,7 +59,8 @@ void FxC1::animationA() {                                             // running
   for (int i = 0; i < NUM_PIXELS; i++) {
     uint8_t red = (millis() / 10) + (i * 12);                    // speed, length
     if (red > 128) red = 0;
-    leds2[i] = CRGB(red, 0, 0);
+    //leds2[i] = CRGB(red, 0, 0);
+    leds2[i] = ColorFromPalette(palette, red, dim8_raw(red < 1), LINEARBLEND);
   }
 } // animationA()
 
@@ -67,7 +70,8 @@ void FxC1::animationB() {                                               // runni
   for (int i = 0; i < NUM_PIXELS; i++) {
     uint8_t green = (millis() / 5) - (i * 12);                    // speed, length
     if (green > 128) green = 0;
-    leds3[i] = CRGB(0, green, 0);
+//    leds3[i] = CRGB(0, green, 0);
+    leds3[i] = ColorFromPalette(palette, 255-green, dim8_raw(green < 1), LINEARBLEND);
   }
 }
 
@@ -255,7 +259,7 @@ void FxC5::setup() {
 void FxC5::loop() {
     changeParams();
 
-    EVERY_N_MILLISECONDS(100) {
+    EVERY_N_SECONDS(1) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 

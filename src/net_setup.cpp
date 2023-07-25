@@ -10,7 +10,6 @@ int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
-volatile bool ntpTimeAvailable = false;
 
 bool wifi_setup() {
   bool result = false;
@@ -57,7 +56,7 @@ bool wifi_setup() {
   }
 
   //read the time
-  ntpTimeAvailable = ntp_sync();
+  bool ntpTimeAvailable = ntp_sync();
   if (ntpTimeAvailable) {
       setSyncProvider(curUnixTime);
       //paletteFactory.forceHoliday(None);
