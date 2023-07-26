@@ -285,8 +285,8 @@ void EffectRegistry::loop() {
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         effects[currentEffect]->setup();
     }
-    effects[currentEffect]->loop();
     lastEffectRun = currentEffect;
+    effects[currentEffect]->loop();
 }
 
 void EffectRegistry::describeConfig(JsonArray &json) {

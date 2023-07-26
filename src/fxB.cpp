@@ -169,7 +169,7 @@ void FxB5::setup() {
 }
 
 void FxB5::loop() {
-    EVERY_N_MILLISECONDS(100) {
+    EVERY_N_SECONDS(5) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
@@ -306,7 +306,7 @@ void FxB9::setup() {
 }
 
 void FxB9::loop() {
-    EVERY_N_MILLISECONDS(100) {
+    EVERY_N_SECONDS(5) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 

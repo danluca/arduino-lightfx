@@ -60,7 +60,7 @@ void FxC1::animationA() {                                             // running
     uint8_t red = (millis() / 10) + (i * 12);                    // speed, length
     if (red > 128) red = 0;
     //leds2[i] = CRGB(red, 0, 0);
-    leds2[i] = ColorFromPalette(palette, red, dim8_raw(red < 1), LINEARBLEND);
+    leds2[i] = ColorFromPalette(palette, red, dim8_raw(red << 1), LINEARBLEND);
   }
 } // animationA()
 
@@ -71,7 +71,7 @@ void FxC1::animationB() {                                               // runni
     uint8_t green = (millis() / 5) - (i * 12);                    // speed, length
     if (green > 128) green = 0;
 //    leds3[i] = CRGB(0, green, 0);
-    leds3[i] = ColorFromPalette(palette, 255-green, dim8_raw(green < 1), LINEARBLEND);
+    leds3[i] = ColorFromPalette(palette, 255-green, dim8_raw(green << 1), LINEARBLEND);
   }
 }
 
@@ -370,8 +370,8 @@ void FxC6::one_sine_pal(uint8_t colorIndex) {
     // This is the heart of this program. Sure is short.
     phase = fwd ? phase - speed : phase + speed;
 
-    for (int k=0; k<NUM_PIXELS-1; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
-        int thisBright = qsubd(quadwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
+    for (int k=0; k<NUM_PIXELS; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
+        int thisBright = qsubd(cubicwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
         leds[k] = CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
         leds[k] += ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
         colorIndex +=3;
