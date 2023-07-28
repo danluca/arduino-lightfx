@@ -208,9 +208,9 @@ void FxA1::loop() {
 
         // Show the updated leds
         //FastLED.show();
-        //showFill(frame, FRAME_SIZE);
-        moldWindow();
-        FastLED.show();
+        showFill(frame, FRAME_SIZE);
+        //moldWindow();
+        //FastLED.show();
 
         // Wait a little bit
         delay(speed);
@@ -229,7 +229,7 @@ void FxA1::loop() {
 }
 
 const char *FxA1::description() {
-    return "FXA1: Multiple Tetris segments, molded for office window";
+    return "FXA1: Multiple Tetris segments";
 }
 
 void FxA1::describeConfig(JsonArray &json) {
