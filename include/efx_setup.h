@@ -24,6 +24,7 @@
 
 extern CRGB leds[NUM_PIXELS];
 extern const CRGB BKG;
+extern uint stripShuffleIndex[NUM_PIXELS];
 
 typedef void (*setupFunc)();
 

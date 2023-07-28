@@ -227,6 +227,7 @@ void fx_setup() {
 void fx_run() {
     EVERY_N_MINUTES(5) {
         fxRegistry.nextRandomEffectPos();
+        shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     }
 
     fxRegistry.loop();

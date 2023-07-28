@@ -25,7 +25,6 @@ extern uint8_t szStackSeg;
 extern uint szStack;
 extern bool bConstSpeed;
 extern OpMode mode;
-extern uint stripShuffleIndex[NUM_PIXELS];
 extern CRGB dot[MAX_DOT_SIZE];
 extern CRGB frame[NUM_PIXELS];
 extern volatile uint curPos;

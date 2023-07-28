@@ -16,6 +16,8 @@ short sampleBuffer[MIC_SAMPLE_SIZE];
 // Number of audio samples read
 volatile int samplesRead;
 
+extern volatile uint speed;
+
 /**
   * Callback function to process the data from the PDM microphone.
   * NOTE: This callback is executed as part of an ISR.
@@ -50,6 +52,7 @@ void mic_run() {
             if (sampleBuffer[i] > 800) {
                 random16_add_entropy(abs(sampleBuffer[i]));
                 Log.infoln("Audio sample over 800: %d", sampleBuffer[i]);
+                speed = 210 - map(sampleBuffer[i], 800, 3000, 10, 200);
             }
         }
         // Clear the read count
