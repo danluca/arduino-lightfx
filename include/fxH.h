@@ -9,15 +9,15 @@
 #define MAX_ENGINE_SIZE 40
 ///////Fire 1///////
 #define FireStart1 0
-#define FireEnd1 19
+#define FireEnd1 49
 
 ///////Fire 2///////
-#define FireStart2 20
-#define FireEnd2 39
+#define FireStart2 50
+#define FireEnd2 99
 
 ///////Fire 3///////
-#define FireStart3 40
-#define FireEnd3 50
+#define FireStart3 100
+#define FireEnd3 200
 
 
 #define FRAMES_PER_SECOND 10
