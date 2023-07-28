@@ -284,8 +284,8 @@ void EffectRegistry::loop() {
         Log.infoln(F("Effect change: from index %d [%s] to %d [%s]"),
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         effects[currentEffect]->setup();
+        lastEffectRun = currentEffect;
     }
-    lastEffectRun = currentEffect;
     effects[currentEffect]->loop();
 }
 

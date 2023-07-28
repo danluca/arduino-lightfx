@@ -454,14 +454,14 @@ void juggle_long() {
 }   //juggle_pal()
 
 void ease() {
-  static uint8_t easeOutVal = 0;
-  static uint8_t easeInVal  = 0;
-  static uint8_t lerpVal    = 0;
+  static uint16_t easeOutVal = 0;
+  static uint16_t easeInVal  = 0;
+  static uint16_t lerpVal    = 0;
 
-  easeOutVal = ease8InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
+  easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
   easeInVal++;
 
-  lerpVal = lerp8by8(0, NUM_PIXELS, easeOutVal);                // Map it to the number of LED's you have.
+  lerpVal = lerp16by16(0, NUM_PIXELS, easeOutVal);                // Map it to the number of LED's you have.
 
   leds[lerpVal] = ColorFromPalette(palette, gHue + (easeInVal << 1), 40 + easeOutVal);
   fadeToBlackBy(leds, NUM_PIXELS, 16);                          // 8 bit, 1 = slow fade, 255 = fast fade

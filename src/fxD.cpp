@@ -142,9 +142,9 @@ void FxD2::describeConfig(JsonArray &json) {
 
 void FxD2::dot_beat() {
 
-  uint8_t inner = beatsin8(dotBpm, NUM_PIXELS/4, NUM_PIXELS/4*3);    // Move 1/4 to 3/4
-  uint8_t outer = beatsin8(dotBpm, 0, NUM_PIXELS-1);               // Move entire length
-  uint8_t middle = beatsin8(dotBpm, NUM_PIXELS/3, NUM_PIXELS/3*2);   // Move 1/3 to 2/3
+  uint16_t inner = beatsin16(dotBpm, NUM_PIXELS/4, NUM_PIXELS/4*3);    // Move 1/4 to 3/4
+  uint16_t outer = beatsin16(dotBpm, 0, NUM_PIXELS-1);               // Move entire length
+  uint16_t middle = beatsin16(dotBpm, NUM_PIXELS/3, NUM_PIXELS/3*2);   // Move 1/3 to 2/3
 
   leds[middle] = ColorFromPalette(palette, 0);
   leds[inner] = ColorFromPalette(palette, 127);

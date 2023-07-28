@@ -109,9 +109,9 @@ void FxC2::loop() {
     uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
     blur1d( leds, NUM_PIXELS, blurAmount);                        // Apply some blurring to whatever's already on the strip, which will eventually go black.
 
-    uint8_t  i = beatsin8(  9, 0, NUM_PIXELS);
-    uint8_t  j = beatsin8( 7, 0, NUM_PIXELS);
-    uint8_t  k = beatsin8(  5, 0, NUM_PIXELS);
+    uint16_t  i = beatsin16(  9, 0, NUM_PIXELS);
+    uint16_t  j = beatsin16( 7, 0, NUM_PIXELS);
+    uint16_t  k = beatsin16(  5, 0, NUM_PIXELS);
 
     // The color of each point shifts over time, each at a different speed.
     uint16_t ms = millis();
