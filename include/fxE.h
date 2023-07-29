@@ -55,5 +55,42 @@ public:
     void beatwave();
 };
 
+class FxE3 : public LedEffect {
+public:
+    FxE3();
+
+    void setup() override;
+
+    void loop() override;
+
+    const char *description() override;
+
+    const char *name() override;
+
+    void describeConfig(JsonArray &json) override;
+};
+
+class FxE4 : public LedEffect {
+public:
+    FxE4();
+
+    void setup() override;
+
+    void loop() override;
+
+    const char *description() override;
+
+    const char *name() override;
+
+    void describeConfig(JsonArray &json) override;
+
+    void serendipitous();
+protected:
+    uint16_t Xorig = 0x012;
+    uint16_t  Yorig = 0x015;
+    uint16_t X, Y, Xn, Yn;
+    uint8_t index;
+};
+
 
 #endif //LIGHTFX_FXE_H
