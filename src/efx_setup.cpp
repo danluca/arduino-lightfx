@@ -4,6 +4,7 @@
 //~ Global variables definition
 CRGB leds[NUM_PIXELS];
 EffectRegistry fxRegistry;
+volatile bool fxBump = false;
 
 //~ Support functions -----------------
 /**
@@ -225,6 +226,12 @@ void fx_setup() {
 
 //Run currently selected effect -------
 void fx_run() {
+    EVERY_N_SECONDS(10) {
+        if (fxBump) {
+            fxRegistry.nextEffectPos();
+            fxBump = false;
+        }
+    }
     EVERY_N_MINUTES(5) {
         fxRegistry.nextRandomEffectPos();
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);

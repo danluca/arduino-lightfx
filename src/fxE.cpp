@@ -29,6 +29,7 @@ void fxe_setup() {
     saturation = 255;
     brightness = 255;
     randhue = true;
+    curPos = 0;
 }
 
 /**
@@ -51,12 +52,13 @@ void FxE1::setup() {
 void FxE1::loop() {
     ChangeMe();                                                 // Check the demo loop for changes to the variables.
 
-    EVERY_N_MILLISECONDS(100) {
+    EVERY_N_MILLISECONDS(500) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
     }
 
     EVERY_N_MILLISECONDS_I(fxe1Timer, speed) {                           // FastLED based non-blocking speed to update/display the sequence.
         twinkle();
+        FastLED.show();
         fxe1Timer.setPeriod(speed);
     }
 
@@ -65,7 +67,6 @@ void FxE1::loop() {
         targetPalette = PaletteFactory::randomPalette();
     }
 
-    FastLED.show();
 }
 
 const char *FxE1::description() {
@@ -117,9 +118,12 @@ void FxE2::setup() {
 }
 
 void FxE2::loop() {
-    beatwave();
+    EVERY_N_MILLIS(50) {
+        beatwave();
+        FastLED.show();
+    }
 
-    EVERY_N_MILLISECONDS(100) {
+    EVERY_N_MILLISECONDS(500) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
     }
 
@@ -127,7 +131,6 @@ void FxE2::loop() {
         targetPalette = PaletteFactory::randomPalette(0, millis());
     }
 
-    FastLED.show();
 }
 
 const char *FxE2::description() {
@@ -162,18 +165,23 @@ void FxE3::setup() {
 }
 
 void FxE3::loop() {
-    int bpm = 60;
-    int ms_per_beat = 60000/bpm;                                // 500ms per beat, where 60,000 = 60 seconds * 1000 ms
-    int ms_per_led = 60000/bpm/NUM_PIXELS;
-
-    int cur_led = ((millis() % ms_per_beat) / ms_per_led)%(NUM_PIXELS);     // Using millis to count up the strand, with %NUM_LEDS at the end as a safety factor.
-
-    if (cur_led == 0)
-        fill_solid(leds, NUM_PIXELS, CRGB::Black);
-    else
-        leds[cur_led] = ColorFromPalette(palette, 0, 255, currentBlending);    // I prefer to use palettes instead of CHSV or CRGB assignments.
-
-    FastLED.show();
+    static bool fwd = true;
+    EVERY_N_MILLISECONDS_I(e3Timer, 400) {
+        uint8_t adv = random8(1, 16);
+        CRGB clr = fwd ? ColorFromPalette(palette, random8(), 255, currentBlending) : BKG;
+        for (uint8_t x = 0; x < adv; x++) {
+            int16_t pos = fwd ? curPos + x : NUM_PIXELS - 1 - curPos - x;
+            pos = capr(pos, 0, NUM_PIXELS-1);
+            leds[pos] = clr;
+        }
+        FastLED.show();
+        uint newPos = inc(curPos, adv, NUM_PIXELS);
+        if (newPos < curPos) {
+            fwd = !fwd;     //curPos rolled over
+        }
+        curPos = newPos;
+        e3Timer.setPeriod(150 + random16(901));
+    }
 }
 
 const char *FxE3::description() {
@@ -235,8 +243,8 @@ FxE4::FxE4() {
 void FxE4::serendipitous() {
 //  Xn = X-(Y/2); Yn = Y+(Xn/2);
 //  Xn = X-Y/2;   Yn = Y+Xn/2;
-//  Xn = X-(Y/2); Yn = Y+(X/2.1);
-    Xn = X-(Y/3); Yn = Y+(X/1.5);
+  Xn = X-(Y/2); Yn = Y+(X/2.1);
+//    Xn = X-(Y/3); Yn = Y+(X/1.5);
 //  Xn = X-(2*Y); Yn = Y+(X/1.1);
 
     X = Xn;

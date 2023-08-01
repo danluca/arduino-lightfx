@@ -16,8 +16,6 @@ short sampleBuffer[MIC_SAMPLE_SIZE];
 // Number of audio samples read
 volatile int samplesRead;
 
-extern volatile uint speed;
-
 /**
   * Callback function to process the data from the PDM microphone.
   * NOTE: This callback is executed as part of an ISR.
@@ -35,6 +33,7 @@ void onPDMdata() {
 void mic_setup() {
     // Configure the data receive callback
     PDM.onReceive(onPDMdata);
+    PDM.setBufferSize(MIC_SAMPLE_SIZE);
     // Optionally set the gain - Defaults to 20
     PDM.setGain(80);
     if (!PDM.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
@@ -47,13 +46,15 @@ void mic_setup() {
 void mic_run() {
     // Wait for samples to be read
     if (samplesRead) {
+        short maxSample = INT16_MIN;
         for (int i = 0; i < samplesRead; i++) {
-//            if (sampleBuffer[i] > 10000 || sampleBuffer[i] <= -10000) {
-            if (sampleBuffer[i] > 800) {
-                random16_add_entropy(abs(sampleBuffer[i]));
-                Log.infoln("Audio sample over 800: %d", sampleBuffer[i]);
-                speed = 210 - map(sampleBuffer[i], 800, 3000, 10, 200);
-            }
+            if (sampleBuffer[i] > maxSample)
+                maxSample = sampleBuffer[i];
+        }
+        if (maxSample > 800) {
+            fxBump = true;
+            random16_add_entropy(abs(maxSample));
+            Log.infoln("Audio max sample over 800: %d", maxSample);
         }
         // Clear the read count
         samplesRead = 0;

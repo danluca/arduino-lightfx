@@ -6,7 +6,7 @@
 
 #include "efx_setup.h"
 
-#define MAX_ENGINE_SIZE 40
+#define MAX_ENGINE_SIZE 100
 ///////Fire 1///////
 #define FireStart1 0
 #define FireEnd1 49

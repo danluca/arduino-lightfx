@@ -151,7 +151,7 @@ public:
     void ripples();
 
 protected:
-    static const uint8_t maxRipples = 3;
+    static const uint8_t maxRipples = 7;
     Ripple ripplesData[maxRipples];
 
 

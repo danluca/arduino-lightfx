@@ -60,12 +60,12 @@ void FxD1::loop() {
 
     EVERY_N_MILLISECONDS(speed) {                           // FastLED based non-blocking speed to update/display the sequence.
         confetti();
+        FastLED.show();
     }
-    FastLED.show();
 }
 
 const char *FxD1::description() {
-    return "FXD1: Confetti flashes colours within a limited hue. Simple, but great looking routine";
+    return "FXD1: Confetti D flashes colours within a limited hue";
 }
 
 const char *FxD1::name() {
@@ -114,12 +114,12 @@ FxD2::FxD2() {
 
 void FxD2::setup() {
     fxd_setup();
-    dotBpm = 30;
+    dotBpm = 21;
     fade = 31;
 }
 
 void FxD2::loop() {
-    EVERY_N_MILLISECONDS(100) {
+    EVERY_N_MILLISECONDS(75) {
         dot_beat();
         FastLED.show();
     }
@@ -162,6 +162,7 @@ void FxD3::setup() {
 void FxD3::loop() {
     EVERY_N_MILLISECONDS(50) {                                  // FastLED based non-blocking delay to update/display the sequence.
         plasma();
+        FastLED.show();
     }
 
     EVERY_N_SECONDS(1) {
@@ -174,7 +175,6 @@ void FxD3::loop() {
         targetPalette = PaletteFactory::randomPalette(baseC);
     }
 
-    FastLED.show();
 }
 
 void FxD3::plasma() {
@@ -223,7 +223,7 @@ void FxD4::loop() {
         secSlot = inc(secSlot, 1, 15);
     }
 
-    EVERY_N_MILLISECONDS(50) {
+    EVERY_N_MILLISECONDS(20) {
         rainbow_march();
         FastLED.show();
     }

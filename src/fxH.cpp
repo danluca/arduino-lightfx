@@ -158,13 +158,13 @@ void FxH2::loop() {
 
     EVERY_N_MILLISECONDS(speed) {  // FastLED based non-blocking speed to update/display the sequence.
         confetti_pal();
+        FastLED.show();
     }
 
-    FastLED.show();
 }
 
 const char *FxH2::description() {
-    return "FXH2: confetti palette";
+    return "FXH2: confetti H palette";
 }
 
 void FxH2::confetti_pal() {  // random colored speckles that blink in and fade smoothly
@@ -205,7 +205,7 @@ void FxH2::describeConfig(JsonArray &json) {
 // ChangeMe()
 
 /**
- * fill_colours
+ * fill_colours - TBD whether to keep, too close to rainbow march, etc.
  *
  * By: Andrew Tuline
  * Date: July, 2015
@@ -235,28 +235,28 @@ void FxH3::setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
     hueDiff = 15;
-    speed = 50;
+    speed = 100;
     hue = random8();
 }
 
 void FxH3::loop() {
     // fill_rainbow section
     EVERY_N_MILLISECONDS(speed) {
-        fill_rainbow(leds, NUM_PIXELS, hue, hueDiff);            // Use FastLED's fill_rainbow routine.
-        fill_solid(leds, NUM_PIXELS, 0);                                // Clear the strip for. . .
+        //fill_rainbow(leds, NUM_PIXELS, hue, hueDiff);            // Use FastLED's fill_rainbow routine.
+        //fill_solid(leds, NUM_PIXELS, 0);                                // Clear the strip for. . .
         //below leds+1 is the same as &leds[1]
         fill_rainbow(leds + 1, NUM_PIXELS - 2, hue, hueDiff);        // One pixel border at each end.
-
+        hue += 3;
         FastLED.show();
     }
 
-    EVERY_N_SECONDS(2) {
-        hue += 10;
-    }
+//    EVERY_N_SECONDS(1) {
+//        hue += 10;
+//    }
 }
 
 const char *FxH3::description() {
-    return "FXH3: filling the strand with colours - whole enchilada of colours across sections of, or the entire the strip";
+    return "FXH3: filling the strand with colours";
 }
 
 const char *FxH3::name() {

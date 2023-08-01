@@ -59,7 +59,6 @@ bool wifi_setup() {
   bool ntpTimeAvailable = ntp_sync();
   if (ntpTimeAvailable) {
       setSyncProvider(curUnixTime);
-      //paletteFactory.forceHoliday(None);
       paletteFactory.adjustHoliday();
   }
   result = result && ntpTimeAvailable;
@@ -77,6 +76,13 @@ void wifi_loop() {
       status = WL_CONNECTION_LOST;
       server.clearWriteError();
       wifi_setup();
+    }
+    if (!timeClient.isTimeSet()) {
+        bool ntpTimeAvailable = ntp_sync();
+        if (ntpTimeAvailable) {
+            setSyncProvider(curUnixTime);
+            paletteFactory.adjustHoliday();
+        }
     }
   }
   webserver();

@@ -51,7 +51,7 @@ void FxC1::loop() {
 }
 
 const char *FxC1::description() {
-    return "FXC1: blend between two animations running at the same time - green / red moving bands in opposite directions";
+    return "FXC1: blend between two animations running at the same time";
 }
 
 void FxC1::animationA() {                                             // running red stripe.
@@ -73,7 +73,7 @@ void FxC1::animationB() {                                               // runni
 //    leds3[i] = CRGB(0, green, 0);
     leds3[i] = ColorFromPalette(palette, 255-green, dim8_raw(green << 1), LINEARBLEND);
   }
-}
+}  // animationB()
 
 const char *FxC1::name() {
     return "FXC1";
@@ -83,7 +83,6 @@ void FxC1::describeConfig(JsonArray &json) {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
-// animationB()
 
 //=====================================
 /**
@@ -124,7 +123,7 @@ void FxC2::loop() {
 }
 
 const char *FxC2::description() {
-    return "FXC2: blur function. If you look carefully at the animation, sometimes there's a smooth gradient between each LED.";
+    return "FXC2: blur function";
 }
 
 const char *FxC2::name() {
@@ -171,13 +170,13 @@ void FxC3::loop() {
 
         dist += beatsin16(10,128,8192);                                                // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
         fadeToBlackBy(leds, NUM_PIXELS, 4);
+        FastLED.show();
     }
 
     EVERY_N_SECONDS(5) {                                        // Change the target palette to a random one every 5 seconds.
         targetPalette = PaletteFactory::randomPalette();
     }
 
-    FastLED.show();
 }
 
 void FxC3::describeConfig(JsonArray &json) {
@@ -207,7 +206,7 @@ void FxC4::setup() {
 
 void FxC4::loop() {
     static uint8_t frequency = 50;                                       // controls the interval between strikes
-    static uint8_t flashes = 8;                                          //the upper limit of flashes per strike
+    static uint8_t flashes = 12;                                          //the upper limit of flashes per strike
     static uint dimmer = 1;
     static uint8_t ledstart;                                             // Starting location of a flash
     static uint8_t ledlen;                                               // Length of a flash
@@ -215,7 +214,7 @@ void FxC4::loop() {
     ledstart = random8(NUM_PIXELS);                               // Determine starting location of flash
     ledlen = random8(NUM_PIXELS-ledstart);                        // Determine length of flash (not to go beyond NUM_LEDS-1)
 
-    for (int flashCounter = 0; flashCounter < random8(3,flashes); flashCounter++) {
+    for (int flashCounter = 0; flashCounter < random8(5,flashes); flashCounter++) {
         if(flashCounter == 0) dimmer = 5;                         // the brightness of the leader is scaled down by a factor of 5
         else dimmer = random8(1,3);                               // return strokes are brighter than the leader
 
@@ -266,9 +265,9 @@ void FxC5::loop() {
     EVERY_N_MILLISECONDS_I(c5Timer, speed) {
         matrix();
         c5Timer.setPeriod(speed);
+        FastLED.show();
     }
 
-    FastLED.show();
 }
 
 const char *FxC5::description() {
@@ -329,8 +328,10 @@ void FxC6::setup() {
 void FxC6::loop() {
     static uint8_t secSlot = 0;
 
-    EVERY_N_MILLISECONDS(delay) {
+    EVERY_N_MILLISECONDS_I(c6Timer, delay) {
         one_sine_pal(millis()>>4);
+        FastLED.show();
+        c6Timer.setPeriod(delay);
     }
 
     EVERY_N_SECONDS(1) {
@@ -345,8 +346,6 @@ void FxC6::loop() {
 //        static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
 //        targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
 //    }
-
-    FastLED.show();
 }
 
 const char *FxC6::description() {

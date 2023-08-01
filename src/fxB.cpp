@@ -80,7 +80,7 @@ void FxB2::loop() {
 }
 
 const char *FxB2::description() {
-    return "FXB2: rainbowWithGlitter";
+    return "FXB2: rainbow with glitter";
 }
 
 const char *FxB2::name() {
@@ -111,7 +111,7 @@ void FxB3::loop() {
 }
 
 const char *FxB3::description() {
-    return "FXB3: fxb_confetti";
+    return "FXB3: confetti B";
 }
 
 const char *FxB3::name() {
@@ -173,8 +173,10 @@ void FxB5::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    juggle_short();
-    FastLED.show();
+    EVERY_N_MILLIS(25) {
+        juggle_short();
+        FastLED.show();
+    }
 }
 
 const char *FxB5::description() {
@@ -205,9 +207,9 @@ void FxB6::loop() {
     EVERY_N_MILLISECONDS(50) {
         bpm();
         gHue += 2;  // slowly cycle the "base color" through the rainbow
+        FastLED.show();
     }
 
-    FastLED.show();
 }
 
 const char *FxB6::description() {
@@ -233,12 +235,11 @@ void FxB7::setup() {
 }
 
 void FxB7::loop() {
-    EVERY_N_MILLISECONDS(50) {
+    EVERY_N_MILLISECONDS(25) {
         ease();
-        gHue+=2;
+        FastLED.show();
     }
 
-    FastLED.show();
 }
 
 const char *FxB7::description() {
@@ -266,19 +267,19 @@ void FxB8::setup() {
 }
 
 void FxB8::loop() {
-    EVERY_N_MILLISECONDS(250) {
+    EVERY_N_MILLISECONDS(500) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
     EVERY_N_MILLISECONDS(50) {
         fadein();
+        FastLED.show();
     }
 
     EVERY_N_SECONDS(10) {                                                        // Change the target palette to a random one every 10 seconds.
         targetPalette = PaletteFactory::randomPalette(random8());
     }
 
-    FastLED.show();
 }
 
 const char *FxB8::description() {
@@ -310,8 +311,10 @@ void FxB9::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    juggle_long();
-    FastLED.show();
+    EVERY_N_MILLIS(50) {
+        juggle_long();
+        FastLED.show();
+    }
 }
 
 const char *FxB9::description() {
@@ -459,11 +462,12 @@ void ease() {
   static uint16_t lerpVal    = 0;
 
   easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
-  easeInVal++;
+  easeInVal+=17;
 
   lerpVal = lerp16by16(0, NUM_PIXELS, easeOutVal);                // Map it to the number of LED's you have.
 
   leds[lerpVal] = ColorFromPalette(palette, gHue + (easeInVal << 1), 40 + easeOutVal);
-  fadeToBlackBy(leds, NUM_PIXELS, 16);                          // 8 bit, 1 = slow fade, 255 = fast fade
+  fadeToBlackBy(leds, NUM_PIXELS, 1);                          // 8 bit, 1 = slow fade, 255 = fast fade
+  gHue+=2;
  
 } // ease()

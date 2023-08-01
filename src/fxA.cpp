@@ -6,7 +6,7 @@
 
 //~ Global variables definition for FxA
 CRGBPalette16 palette;
-uint8_t brightness = 175;
+uint8_t brightness = 224;
 uint8_t colorIndex = 0;
 uint8_t lastColorIndex = 0;
 volatile uint speed = 100;
@@ -184,49 +184,40 @@ FxA1::FxA1() {
 void FxA1::setup() {
     szSegment = 3;
     fxa_setup();
+    makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
 void FxA1::loop() {
     if (mode == TurnOff) {
-        if (turnOff())
+        if (turnOff()) {
             reset();
+        }
         return;
     }
-    colorIndex = random8();
-    speed = random16(25, 201);
-    int szViewport = FRAME_SIZE - szStack;
-    int startIndex = 0 - szSegment;
-
-    // Make a dot with current color
-    // makeDot(palette[colorIndex], szSegment);
-    makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 24, brightness), LINEARBLEND), szSegment);
-    for (int led = startIndex; led < szViewport; led++) {
-        //move the segment, build up stack
-        moveSeg(dot, szSegment, frame, led, led + 1, szViewport);
-        if (led == (szViewport - 1))
-            stack(dot[szSegment - 1], frame, szViewport);
-
-        // Show the updated leds
-        //FastLED.show();
+    EVERY_N_MILLISECONDS_I(a1Timer, speed) {
+        uint16_t upLimit = FRAME_SIZE - szStack;
+        moveSeg(dot, szSegment, frame, curPos, curPos+1, upLimit);
+        if (curPos == (upLimit-1))
+            stack(dot[szSegment-1], frame, upLimit);
         showFill(frame, FRAME_SIZE);
-        //moldWindow();
-        //FastLED.show();
 
-        // Wait a little bit
-        delay(speed);
-
-        //update speed if in next segment of 10 leds
-        if (!bConstSpeed && (led % 10 == 9) && random16(0, 2)) {
-            speed = random16(25, 201);
+        curPos = inc(curPos, 1, upLimit);
+        //update speed if in next segment of 16 leds
+        if (!bConstSpeed && (curPos % 16 == 15) && random8(0, 2)) {
+            speed = random16(30, 211);
+            a1Timer.setPeriod(speed);
+        }
+        if (curPos == 0) {
+            fxa_stackAdjust(frame, FRAME_SIZE);
+            mode = szStack == FRAME_SIZE ? TurnOff : Chase;
+            //save the color
+            lastColorIndex = colorIndex;
+            colorIndex = random8();
+            makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
         }
     }
-
-    fxa_stackAdjust(frame, FRAME_SIZE);
-    mode = szStack == FRAME_SIZE ? TurnOff : Chase;
-
-    //save the color
-    lastColorIndex = colorIndex;
 }
+
 
 const char *FxA1::description() {
     return "FXA1: Multiple Tetris segments";
@@ -249,6 +240,7 @@ void FxA2::setup() {
     szSegment = 5;
     fxa_setup();
     //szStackSeg = szSegment >> 1;
+    makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
 void FxA2::loop() {
@@ -259,38 +251,29 @@ void FxA2::loop() {
         }
         return;
     }
-    colorIndex = random8();
-    speed = random16(25, 201);
-    int szViewport = NUM_PIXELS - szStack;
-    int startIndex = 0 - szSegment;
-
-    // Make a dot with current color
-    // makeDot(palette[colorIndex], szSegment);
-    makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 24, brightness), LINEARBLEND), szSegment);
-    for (int led = startIndex; led < szViewport; led++) {
-        //move the segment, build up stack
-        moveSeg(dot, szSegment, frame, led, led + 1, szViewport);
-        if (led == (szViewport - 1))
-            stack(dot[szSegment - 1], frame, szViewport);
+    EVERY_N_MILLISECONDS_I(a2Timer, speed) {
+        uint16_t upLimit = NUM_PIXELS - szStack;
+        moveSeg(dot, szSegment, frame, curPos, curPos + 1, upLimit);
+        if (curPos == (upLimit - 1))
+            stack(dot[szSegment - 1], frame, upLimit);
 
         // Show the updated leds
-        //FastLED.show();
         showFill(frame, NUM_PIXELS);
-
-        // Wait a little bit
-        delay(speed);
-
-        //update speed if in next segment of 10 leds
-        if (!bConstSpeed && (led % 10 == 9) && random16(0, 2)) {
-            speed = random16(25, 201);
+        curPos = inc(curPos, 1, upLimit);
+        //update speed if in next segment of 16 leds
+        if (!bConstSpeed && (curPos % 16 == 15) && random8(0, 2)) {
+            speed = random16(30, 211);
+            a2Timer.setPeriod(speed);
+        }
+        if (curPos == 0) {
+            fxa_stackAdjust(frame, NUM_PIXELS);
+            mode = szStack == NUM_PIXELS ? TurnOff : Chase;
+            //save the color
+            lastColorIndex = colorIndex;
+            colorIndex = random8();
+            makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
         }
     }
-
-    fxa_stackAdjust(frame, NUM_PIXELS);
-    mode = szStack == NUM_PIXELS ? TurnOff : Chase;
-
-    //save the color
-    lastColorIndex = colorIndex;
 }
 
 const char *FxA2::description() {
@@ -315,58 +298,41 @@ const char *FxA2::name() {
 //=====================================
 //FX A3
 void FxA3::setup() {
+    szSegment = 3;
     fxa_setup();
-    palette = paletteFactory.mainPalette();
+    makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
 void FxA3::loop() {
-    if (mode == TurnOff) {
-        if (turnOff()) {
-            reset();
-        }
-        return;
-    }
+    static bool fwd = true;
 
-    colorIndex = random8();
-    speed = random16(25, 201);
-    szSegment = random8(2, MAX_DOT_SIZE);
-    int szViewport = FRAME_SIZE;
-    int startIndex = 0 - szSegment;
-
-    // Make a dot with current color
-    makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 24, brightness), LINEARBLEND), szSegment);
-    //move dot to right
-    for (int led = startIndex; led < szViewport; led++) {
-        //move the segment, build up stack
-        moveSeg(dot, szSegment, frame, led, led + 1, szViewport);
-        //retain the last pixel for turning back
-        if (led >= (szViewport - 2))
+    EVERY_N_MILLISECONDS_I(a3Timer, speed) {
+        uint16_t szViewport = FRAME_SIZE;
+        if (fwd)
+            moveSeg(dot, szSegment, frame, curPos, curPos + 1, szViewport);
+        else
+            moveSeg(dot, szSegment, frame, curPos, curPos - 1, szViewport);
+        if (fwd && (curPos >= (szViewport - 2)))
             frame[szViewport - 1] = dot[szSegment - 1];
-        // Show the updated leds
         showFill(frame, FRAME_SIZE);
-        // Wait a little bit
-        delay(speed);
-        //update speed if in next segment of 10 leds
-        if (!bConstSpeed && (led % 10 == 9) && random16(0, 2)) {
-            speed = random16(25, 201);
+        if (fwd) curPos++; else curPos--;
+        if (curPos == 0) {
+            fwd = !fwd;
+            lastColorIndex = colorIndex;
+            colorIndex = random8();
+            speed = random8(30, 211);
+            a3Timer.setPeriod(speed);
+            szSegment = random8(2, MAX_DOT_SIZE);
+            makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
         }
-    }
-    //move dot back to left
-    for (int led = szViewport; led > startIndex; led--) {
-        //move the segment, build up stack
-        moveSeg(dot, szSegment, frame, led, led - 1, szViewport);
-        // Show the updated leds
-        showFill(frame, FRAME_SIZE);
-        // Wait a little bit
-        delay(speed);
-        //update speed if in next segment of 10 leds
-        if (!bConstSpeed && (led % 10 == 9) && random16(0, 2)) {
-            speed = random16(25, 201);
-        }
-    }
+        if (curPos == szViewport)
+            fwd = !fwd;
 
-    //save the color
-    lastColorIndex = colorIndex;
+        if (!bConstSpeed && (curPos % 16 == 15) && random8(0, 2)) {
+            speed = random16(30, 211);
+            a3Timer.setPeriod(speed);
+        }
+    }
 }
 
 const char *FxA3::description() {
@@ -399,11 +365,9 @@ void FxA4::setup() {
 void FxA4::loop() {
     if (mode == TurnOff) {
         if (turnOff()) {
-            fill_solid(frame, FRAME_SIZE, BKG);
+            reset();
             colorIndex = 0;
             lastColorIndex = 0;
-            szStack = 0;
-            mode = Chase;
         }
         return;
     }
@@ -415,7 +379,7 @@ void FxA4::loop() {
     EVERY_N_MILLISECONDS_I(a4Timer, speed) {
         uint upLimit = FRAME_SIZE - szStack;
         setTrailColor(frame, curPos,
-                      ColorFromPalette(palette, colorIndex, random8(dimmed + 24, brightness), LINEARBLEND),
+                      ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND),
                       brightness, dimmed);
         if (curPos == (upLimit - 1))
             frame[curPos - 1] = frame[curPos];
@@ -430,17 +394,17 @@ void FxA4::loop() {
         curPos = inc(curPos, 1, upLimit);
         if (curPos == 0) {
             fxa_stackAdjust(frame, FRAME_SIZE);
+            mode = szStack == FRAME_SIZE ? TurnOff : Chase;
             lastColorIndex = colorIndex;
             colorIndex = random8();
-            speed = random16(25, 201);
+            speed = random16(30, 211);
             a4Timer.setPeriod(speed);
-            mode = szStack == FRAME_SIZE ? TurnOff : Chase;
         }
     }
 }
 
 const char *FxA4::description() {
-    return "FXA4: 3 Segments, Tetris moving single pixel dot";
+    return "FXA4: 36 pixel segments, moving 1 pixel dot flickering";
 }
 
 FxA4::FxA4() {
@@ -479,7 +443,7 @@ void FxA5::loop() {
     EVERY_N_MILLISECONDS_I(a5Timer, speed) {
         uint upLimit = NUM_PIXELS - szStack;
         setTrailColor(leds, curPos,
-                      ColorFromPalette(palette, colorIndex, random8(dimmed + 24, brightness), LINEARBLEND),
+                      ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND),
                       brightness, dimmed);
         if (curPos == (upLimit - 1))
             leds[curPos - 1] = leds[curPos];
@@ -491,17 +455,17 @@ void FxA5::loop() {
         curPos = inc(curPos, 1, upLimit);
         if (curPos == 0) {
             fxa_stackAdjust(leds, NUM_PIXELS);
+            mode = szStack == NUM_PIXELS ? TurnOff : Chase;
             lastColorIndex = colorIndex;
             colorIndex = random8();
             speed = random16(25, 221);
             a5Timer.setPeriod(speed);
-            mode = szStack == NUM_PIXELS ? TurnOff : Chase;
         }
     }
 }
 
 const char *FxA5::description() {
-    return "FXA5: Similar with FXA4, moving single pixel dot with stacking; implementation with timers";
+    return "FXA5: Moving single pixel dot with stacking";
 }
 
 FxA5::FxA5() {
