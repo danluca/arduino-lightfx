@@ -57,10 +57,8 @@ bool wifi_setup() {
 
   //read the time
   bool ntpTimeAvailable = ntp_sync();
-  if (ntpTimeAvailable) {
-      setSyncProvider(curUnixTime);
-      paletteFactory.adjustHoliday();
-  }
+  setSyncProvider(curUnixTime);
+  paletteFactory.adjustHoliday();
   result = result && ntpTimeAvailable;
 
   server.begin();                           // start the web server on port 80
@@ -147,7 +145,7 @@ void checkFirmwareVersion() {
 
 time_t curUnixTime() {
     //Note - the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve this purpose
-  return timeClient.getEpochTime();
+  return timeClient.isTimeSet() ? timeClient.getEpochTime() : WiFi.getTime();
 }
 
 bool ntp_sync() {
