@@ -76,9 +76,17 @@ void wifi_loop() {
       status = WL_CONNECTION_LOST;
       server.clearWriteError();
       wifi_setup();
+    } else if (WiFi.ping(WiFi.gatewayIP()) < 0) {
+        //ping test - can we ping the router? if not, disconnect and re-connect again, something must've gotten stale with the connection
+        Log.warningln(F("Ping test failed, WiFi Connection unusable - re-connecting..."));
+        WiFi.disconnect();
+        status = WL_CONNECTION_LOST;
+        server.clearWriteError();
+        wifi_setup();
     }
     if (!timeClient.isTimeSet()) {
         bool ntpTimeAvailable = ntp_sync();
+        Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
         if (ntpTimeAvailable) {
             setSyncProvider(curUnixTime);
             paletteFactory.adjustHoliday();
@@ -138,6 +146,7 @@ void checkFirmwareVersion() {
 ///////////////////////////////////////
 
 time_t curUnixTime() {
+    //Note - the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve this purpose
   return timeClient.getEpochTime();
 }
 
