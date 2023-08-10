@@ -19,12 +19,15 @@
 #define arrSize(A) (sizeof(A) / sizeof((A)[0]))
 #define qsubd(x, b) ((x>b)?b:0)                               // Clip. . . . A digital unsigned subtraction macro. if result <0, then x=0. Otherwise, x=b.
 #define qsuba(x, b) ((x>b)?x-b:0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
+#define isInViewport(x, z) ((x>=0)&&(x<z))
 
 #define MAX_EFFECTS_COUNT   256
 
+const uint16_t turnOffSeq[] = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
+
 extern CRGB leds[NUM_PIXELS];
 extern const CRGB BKG;
-extern uint stripShuffleIndex[NUM_PIXELS];
+extern uint16_t stripShuffleIndex[NUM_PIXELS];
 extern volatile bool fxBump;
 
 typedef void (*setupFunc)();
@@ -35,39 +38,43 @@ void stateLED(CRGB color);
 
 void ledStripInit();
 
-void showFill(const CRGB frame[], uint szFrame);
+void showFill(const CRGB frame[], uint16_t szFrame);
 
-void shiftRight(CRGB arr[], uint szArr, uint pos);
+void shiftRight(CRGB arr[], uint16_t szArr, uint16_t hiViewport, uint16_t pos = 1, CRGB feedLeft = BKG);
 
-void shiftLeft(CRGB arr[], uint szArr, uint pos);
+void shiftLeft(CRGB arr[], uint16_t szArr, uint16_t hiViewport, uint16_t pos = 1, CRGB feedRight = BKG);
 
-void shuffleIndexes(uint array[], uint szArray);
+void shuffleIndexes(uint16_t array[], uint16_t szArray);
 
-void offTrailColor(CRGB arr[], uint x);
+void offTrailColor(CRGB arr[], uint16_t x);
 
-void setTrailColor(CRGB arr[], uint x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness);
+void setTrailColor(CRGB arr[], uint16_t x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness);
 
-void copyArray(CRGB *src, CRGB *dest, size_t length);
+void copyArray(CRGB *src, CRGB *dest, uint16_t length);
 
-void copyArray(const CRGB *src, uint srcOfs, CRGB *dest, uint destOfs, size_t length);
+void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, uint16_t length);
 
-bool isAnyLedOn(CRGB arr[], uint szArray, CRGB backg);
+bool isAnyLedOn(CRGB arr[], uint16_t szArray, CRGB backg);
 
-void fillArray(CRGB *src, size_t szSrc, CRGB color);
+void fillArray(CRGB *src, uint16_t szSrc, CRGB color);
 
-void fillArray(const CRGB *src, size_t srcLength, CRGB *array, size_t arrLength, uint arrOfs = 0);
+void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs = 0);
 
-void pushFrame(const CRGB frame[], uint szFrame, uint ofsDest = 0, bool repeat = false);
+void pushFrame(const CRGB frame[], uint16_t szFrame, uint16_t ofsDest = 0, bool repeat = false);
 
 bool turnOffJuggle();
 
-CRGB *mirrorLow(CRGB array[], uint szArray);
 
-CRGB *mirrorHigh(CRGB array[], uint szArray);
+CRGB *mirrorLow(CRGB array[], uint16_t szArray);
 
-CRGB *reverseArray(CRGB array[], uint szArray);
+CRGB *mirrorHigh(CRGB array[], uint16_t szArray);
 
-CRGB *cloneArray(const CRGB src[], CRGB dest[], size_t length);
+CRGB *reverseArray(CRGB array[], uint16_t szArray);
+
+CRGB *cloneArray(const CRGB src[], CRGB dest[], uint16_t length);
+
+bool turnOff();
+
 
 void fxa_register();
 

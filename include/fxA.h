@@ -9,7 +9,6 @@
 const uint MAX_DOT_SIZE = 16;
 const uint8_t dimmed = 20;
 const uint FRAME_SIZE = 36;
-const uint turnOffSeq[] = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 enum OpMode {
     TurnOff, Chase
 };
@@ -19,35 +18,20 @@ extern CRGBPalette16 palette;
 extern uint8_t brightness;
 extern uint8_t colorIndex;
 extern uint8_t lastColorIndex;
-extern volatile uint speed;
-extern uint8_t szSegment;
-extern uint8_t szStackSeg;
-extern uint szStack;
-extern bool bConstSpeed;
+extern uint16_t szStack;
 extern OpMode mode;
-extern CRGB dot[MAX_DOT_SIZE];
 extern CRGB frame[NUM_PIXELS];
-extern volatile uint curPos;
+extern volatile uint16_t speed;
+extern volatile uint16_t curPos;
 
-CRGB *makeDot(CRGB color, uint szDot);
 
-bool isInViewport(int ledIndex, int viewportSize = FRAME_SIZE);
+void stack(CRGB color, CRGB dest[], uint16_t stackStart, uint16_t szStackSeg);
 
-uint validateSegmentSize(uint segSize);
+uint16_t fxa_incStackSize(int16_t delta, uint16_t max);
 
-void moveSeg(const CRGB dot[], uint szDot, CRGB dest[], uint lastPos, uint newPos, uint viewport);
-
-void stack(CRGB color, CRGB dest[], uint stackStart);
-
-uint fxa_incStackSize(int delta, uint max);
-
-uint fxa_stackAdjust(CRGB array[], uint szArray);
-
-void moldWindow();
+uint16_t fxa_stackAdjust(CRGB array[], uint16_t szArray, uint16_t szStackSeg);
 
 void reset();
-
-bool turnOff();
 
 class FxA1 : public LedEffect {
 public:
@@ -62,6 +46,13 @@ public:
     const char *description() override;
 
     const char *name() override;
+
+protected:
+    CRGB dot[MAX_DOT_SIZE]{};
+    void makeDot(CRGB color, uint16_t szDot);
+    uint8_t szSegment = 3;
+    uint8_t szStackSeg = 1;
+    bool bConstSpeed = true;
 };
 
 class FxA2 : public LedEffect {
@@ -77,6 +68,14 @@ public:
     void describeConfig(JsonArray &json) override;
 
     const char *name() override;
+
+protected:
+    enum Movement {forward, pause, backward};
+    CRGB dot[MAX_DOT_SIZE]{};
+    void makeDot();
+    uint8_t szSegment = 5;
+    Movement movement = forward;
+    uint8_t spacing = 1;
 };
 
 class FxA3 : public LedEffect {
@@ -92,6 +91,13 @@ public:
     void describeConfig(JsonArray &json) override;
 
     const char *name() override;
+
+protected:
+    CRGB dot[MAX_DOT_SIZE]{};
+    void makeDot(CRGB color, uint16_t szDot);
+    uint8_t szSegment = 5;
+    uint8_t szStackSeg = 3;
+    bool bFwd = true;
 };
 
 class FxA4 : public LedEffect {
@@ -107,6 +113,12 @@ public:
     void describeConfig(JsonArray &json) override;
 
     const char *name() override;
+
+protected:
+    CRGB dot[MAX_DOT_SIZE]{};
+    void makeDot(CRGB color, uint16_t szDot);
+    uint8_t szSegment = 5;
+    uint8_t szStackSeg = 3;
 };
 
 class FxA5 : public LedEffect {
@@ -122,7 +134,12 @@ public:
     void describeConfig(JsonArray &json) override;
 
     const char *name() override;
-};
 
+protected:
+    CRGB dot[MAX_DOT_SIZE]{};
+    void makeDot(CRGB color, uint16_t szDot);
+    uint8_t szSegment = 2;
+    uint8_t szStackSeg = 1;
+};
 
 #endif //LIGHTFX_FXA_H

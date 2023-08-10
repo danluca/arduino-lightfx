@@ -40,18 +40,22 @@ void ledStripInit() {
  * First item of the array (arr[0]) is used as seed to fill the new elements entering left
  * @param arr array
  * @param szArr size of the array
+ * @param hiViewport upper limit of the shifting area
  * @param pos how many positions to shift right
+ * @param feedLeft the color to introduce from the left as we shift the array
  */
-void shiftRight(CRGB arr[], uint szArr, uint pos) {
+void shiftRight(CRGB arr[], uint16_t szArr, uint16_t hiViewport, uint16_t pos, CRGB feedLeft) {
     if (pos == 0)
         return;
-    CRGB seed = arr[0];
-    if (pos >= szArr) {
-        fill_solid(arr, (int)szArr, seed);
+    CRGB seed = feedLeft;
+    uint16_t hiShiftArea = capu(hiViewport, szArr);
+    if (pos >= hiShiftArea) {
+        fill_solid(arr, hiShiftArea, seed);
         return;
     }
-    for (int x = szArr-1; x >= 0; x--) {
-        arr[x] = x < (int)pos ? seed : arr[x - pos];
+    for (uint16_t x = hiShiftArea; x > 0; x--) {
+        uint16_t y = x-1;
+        arr[y] = y < pos ? seed : arr[y - pos];
     }
 }
 /**
@@ -59,40 +63,45 @@ void shiftRight(CRGB arr[], uint szArr, uint pos) {
  * The elements entering right are filled with current's array last value (arr[szArr-1])
  * @param arr array
  * @param szArr size of the array
+ * @param hiViewport upper limit of the shifting area
  * @param pos how many positions to shift left
+ * @param feedRight the color to introduce from the right as we shift the array
  */
-void shiftLeft(CRGB arr[], uint szArr, uint pos) {
+void shiftLeft(CRGB arr[], uint16_t szArr, uint16_t hiViewport, uint16_t pos, CRGB feedRight) {
     if (pos == 0)
         return;
-    CRGB seed = arr[szArr - 1];
-    if (pos >= szArr) {
-        fill_solid(arr, (int)szArr, seed);
+    CRGB seed = feedRight;
+    uint16_t hiShiftArea = capu(hiViewport, szArr);
+    if (pos >= hiShiftArea) {
+        fill_solid(arr, hiShiftArea, seed);
         return;
     }
-    for (uint x = 0; x < szArr; x++)
-        arr[x] = (x+pos) < szArr ? arr[x+pos] : seed;
+    for (uint16_t x = 0; x < hiShiftArea; x++) {
+        uint16_t y = x + pos;
+        arr[x] = y < szArr ? arr[y] : seed;
+    }
 }
 /**
  * Populates and shuffles randomly an array of numbers in the range of 0-szArray (array indexes)
  * @param array array of indexes
  * @param szArray size of the array
  */
-void shuffleIndexes(uint array[], uint szArray) {
+void shuffleIndexes(uint16_t array[], uint16_t szArray) {
     //populates the indexes in ascending order
-    for (uint x = 0; x < szArray; x++) {
+    for (uint16_t x = 0; x < szArray; x++) {
         array[x] = x;
     }
     //shuffle indexes
-    uint swIter = (szArray >> 1) + (szArray >> 3);
-    for (uint x = 0; x < swIter; x++) {
-        uint r = random16(0, szArray);
-        uint tmp = array[x];
+    uint16_t swIter = (szArray >> 1) + (szArray >> 3);
+    for (uint16_t x = 0; x < swIter; x++) {
+        uint16_t r = random16(0, szArray);
+        uint16_t tmp = array[x];
         array[x] = array[r];
         array[r] = tmp;
     }
 }
 
-void offTrailColor(CRGB arr[], uint x) {
+void offTrailColor(CRGB arr[], uint16_t x) {
     if (x < 1) {
         arr[x] = CRGB::Black;
         return;
@@ -101,7 +110,7 @@ void offTrailColor(CRGB arr[], uint x) {
     arr[x - 1] = CRGB::Black;
 }
 
-void setTrailColor(CRGB arr[], uint x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness) {
+void setTrailColor(CRGB arr[], uint16_t x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness) {
     arr[x] = color;
     arr[x] %= dotBrightness;
     if (x < 1) {
@@ -110,13 +119,13 @@ void setTrailColor(CRGB arr[], uint x, CRGB color, uint8_t dotBrightness, uint8_
     arr[x - 1] = color.nscale8_video(trailBrightness);
 }
 
-//copy arrays using memcpy (arguably fastest way) - no checks are made on the length copied vs actual length of both arrays
-void copyArray(CRGB *src, CRGB *dest, size_t length) {
+//copy arrays using memcpy (arguably the fastest way) - no checks are made on the length copied vs actual length of both arrays
+void copyArray(CRGB *src, CRGB *dest, uint16_t length) {
     memcpy(dest, src, sizeof(src[0]) * length);
 }
 
 // copy arrays using pointer loops - one of the faster ways. No checks are made on the validity of offsets, length for both arrays
-void copyArray(const CRGB *src, uint srcOfs, CRGB *dest, uint destOfs, size_t length) {
+void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, uint16_t length) {
     const CRGB *srSt = src + srcOfs;
     CRGB *dsSt = &dest[destOfs];
     for (uint x = 0; x < length; x++) {
@@ -124,7 +133,7 @@ void copyArray(const CRGB *src, uint srcOfs, CRGB *dest, uint destOfs, size_t le
     }
 }
 
-bool isAnyLedOn(CRGB arr[], uint szArray, CRGB backg) {
+bool isAnyLedOn(CRGB arr[], uint16_t szArray, CRGB backg) {
     for (uint x = 0; x < szArray; x++) {
         if (arr[x] != backg)
             return true;
@@ -132,11 +141,11 @@ bool isAnyLedOn(CRGB arr[], uint szArray, CRGB backg) {
     return false;
 }
 
-void fillArray(CRGB *src, size_t szSrc, CRGB color) {
+void fillArray(CRGB *src, uint16_t szSrc, CRGB color) {
     fill_solid(src, (int)szSrc, color);
 }
 
-void fillArray(const CRGB *src, size_t srcLength, CRGB *array, size_t arrLength, uint arrOfs) {
+void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs) {
     size_t curFrameIndex = arrOfs;
     while (curFrameIndex < arrLength) {
         size_t len = capu(curFrameIndex + srcLength, arrLength) - curFrameIndex;
@@ -145,12 +154,12 @@ void fillArray(const CRGB *src, size_t srcLength, CRGB *array, size_t arrLength,
     }
 }
 
-void showFill(const CRGB frame[], uint szFrame) {
+void showFill(const CRGB frame[], uint16_t szFrame) {
     fillArray(frame, szFrame, FastLED.leds(), FastLED.size());
     FastLED.show();
 }
 
-void pushFrame(const CRGB frame[], uint szFrame, uint ofsDest, bool repeat) {
+void pushFrame(const CRGB frame[], uint16_t szFrame, uint16_t ofsDest, bool repeat) {
     CRGB *strip = FastLED.leds();
     int szStrip = FastLED.size();
     if (repeat)
@@ -161,7 +170,7 @@ void pushFrame(const CRGB frame[], uint szFrame, uint ofsDest, bool repeat) {
     }
 }
 
-CRGB *mirrorLow(CRGB array[], uint szArray) {
+CRGB *mirrorLow(CRGB array[], uint16_t szArray) {
     uint swaps = szArray >> 1;
     for (int x = 0; x < swaps; x++) {
         array[szArray - x - 1] = array[x];
@@ -169,7 +178,7 @@ CRGB *mirrorLow(CRGB array[], uint szArray) {
     return array;
 }
 
-CRGB *mirrorHigh(CRGB array[], uint szArray) {
+CRGB *mirrorHigh(CRGB array[], uint16_t szArray) {
     uint swaps = szArray >> 1;
     for (uint x = 0; x < swaps; x++) {
         array[x] = array[szArray - x - 1];
@@ -177,7 +186,7 @@ CRGB *mirrorHigh(CRGB array[], uint szArray) {
     return array;
 }
 
-CRGB *reverseArray(CRGB array[], uint szArray) {
+CRGB *reverseArray(CRGB array[], uint16_t szArray) {
     uint swaps = szArray >> 1;
     for (int x = 0; x < swaps; x++) {
         CRGB tmp = array[x];
@@ -187,16 +196,56 @@ CRGB *reverseArray(CRGB array[], uint szArray) {
     return array;
 }
 
-CRGB *cloneArray(const CRGB src[], CRGB dest[], size_t length) {
+CRGB *cloneArray(const CRGB src[], CRGB dest[], uint16_t length) {
     copyArray(src, 0, dest, 0, length);
     return dest;
+}
+
+bool turnOff() {
+    static uint16_t led = 0;
+    static uint16_t xOffNow = 0;
+    static uint16_t szOffNow = turnOffSeq[xOffNow];
+    static bool setOff = false;
+    static bool allOff = false;
+
+    EVERY_N_MILLISECONDS(25) {
+        int totalLum = 0;
+        for (uint16_t x = 0; x < szOffNow; x++) {
+            uint16_t xled = stripShuffleIndex[(led + x) % NUM_PIXELS];
+            FastLED.leds()[xled].fadeToBlackBy(12);
+            totalLum += FastLED.leds()[xled].getLuma();
+        }
+        FastLED.show();
+        setOff = totalLum < 4;
+    }
+
+    EVERY_N_MILLISECONDS(1200) {
+        if (setOff) {
+            led = inc(led, szOffNow, NUM_PIXELS);
+            xOffNow = capu(xOffNow + 1, arrSize(turnOffSeq) - 1);
+            szOffNow = turnOffSeq[xOffNow];
+            setOff = false;
+        }
+        allOff = !isAnyLedOn(FastLED.leds(), FastLED.size(), CRGB::Black);
+    }
+    //if we're turned off all LEDs, reset the static variables for next time
+    if (allOff) {
+        led = 0;
+        xOffNow = 0;
+        szOffNow = turnOffSeq[xOffNow];
+        setOff = false;
+        allOff = false;
+        return true;
+    }
+
+    return false;
 }
 
 bool turnOffJuggle() {
     static bool allOff = false;
     EVERY_N_MILLISECONDS(50) {
         uint numDots = 4;
-        uint dotBpm = 10;
+        uint dotBpm = 7;
         for (uint i = 0; i < numDots; i++) {
             leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS-1)].fadeToBlackBy(224);
         }
