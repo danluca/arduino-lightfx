@@ -206,7 +206,7 @@ void FxA2::loop() {
         a2Timer.setPeriod(speed);
     }
 
-    EVERY_N_SECONDS(37) {
+    EVERY_N_SECONDS(61) {
         mode = TurnOff;
     }
 }

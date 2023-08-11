@@ -11,8 +11,38 @@ WiFiServer server(80);
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
 
+bool wifi_connect() {
+    //static IP address - such that we can have a known location for config page
+    WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
+    Log.infoln("Connecting to WiFI '%s'", ssid);  // print the network name (SSID);
+    // attempt to connect to WiFi network:
+    uint attCount = 0;
+    while (status != WL_CONNECTED) {
+        if (attCount > 60)
+            stateLED(CRGB::Red);
+        Log.infoln(F("Attempting to connect..."));
+
+        // Connect to WPA/WPA2 network
+        status = WiFi.begin(ssid, pass);
+        // wait 10 seconds for connection to succeed:
+        delay(10000);
+        attCount++;
+    }
+    bool result = status == WL_CONNECTED;
+    if (result) {
+        int resPing = WiFi.ping(WiFi.gatewayIP());
+        if (resPing >= 0)
+            Log.infoln(F("Gateway ping successful: %d ms"), resPing);
+        else
+            Log.warningln(F("Failed pinging the gateway - will retry later"));
+    }
+    server.begin();                           // start the web server on port 80
+    printWifiStatus();                        // you're connected now, so print out the status
+
+    return result;
+}
+
 bool wifi_setup() {
-  bool result = false;
   // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
     Log.warningln(F("Communication with WiFi module failed!"));
@@ -26,61 +56,62 @@ bool wifi_setup() {
   
   //enable low power mode - web server is not the primary function of this module
   WiFi.lowPowerMode();
-  //static IP address - such that we can have a known location for config page
-  WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
-  Log.infoln("Connecting to WiFI '%s'", ssid);  // print the network name (SSID);
-  // attempt to connect to WiFi network:
-  uint attCount = 0;
-  while (status != WL_CONNECTED) {
-    if (attCount > 60)
-      stateLED(CRGB::Red);
-    Log.infoln(F("Attempting to connect..."));
 
-    // Connect to WPA/WPA2 network
-    status = WiFi.begin(ssid, pass);
-    // wait 10 seconds for connection to succeed:
-    delay(10000);
-    attCount++;
-  }
-  result = status == WL_CONNECTED;
-
-  // initialize the IMU (Inertial Measurement Unit)
-  if (!IMU.begin()) {
-    Log.errorln(F("Failed to initialize IMU!"));
-    stateLED(CRGB::Red);
-    result = false;
-    //rtos::ThisThread::terminate();
-    while (true) {
-      yield();
-    } 
-  }
-
-  //read the time
-  bool ntpTimeAvailable = ntp_sync();
-  setSyncProvider(curUnixTime);
-  paletteFactory.adjustHoliday();
-  result = result && ntpTimeAvailable;
-
-  server.begin();                           // start the web server on port 80
-  printWifiStatus();                        // you're connected now, so print out the status  
-  return result;
+  return wifi_connect();
 }
 
+bool imu_setup() {
+    // initialize the IMU (Inertial Measurement Unit)
+    if (!IMU.begin()) {
+        Log.errorln(F("Failed to initialize IMU!"));
+        stateLED(CRGB::Red);
+        //rtos::ThisThread::terminate();
+        while (true) {
+            yield();
+        }
+    }
+    // print the board temperature
+    bool result = IMU.temperatureAvailable();
+    if (result) {
+        int temperature_deg = 0;
+        IMU.readTemperature(temperature_deg);
+        Log.infoln(F("Board temperature %d °C"), temperature_deg);
+    }
+    return result;
+}
+
+bool time_setup() {
+    //read the time
+    bool ntpTimeAvailable = ntp_sync();
+    setSyncProvider(curUnixTime);
+    paletteFactory.adjustHoliday();
+    if (timeStatus() != timeNotSet) {
+        char timeBuf[20];
+        sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
+        Log.infoln(F("Current time %s"), timeBuf);
+    } else
+        Log.warningln(F("Current time not available - NTP sync failed"));
+    return ntpTimeAvailable;
+}
 
 void wifi_loop() {
   EVERY_N_MINUTES(15) {
     if (WiFi.status() != WL_CONNECTED) {
       Log.warningln(F("WiFi Connection lost - re-connecting..."));
       status = WL_CONNECTION_LOST;
+      stateLED(CRGB::Orange);
       server.clearWriteError();
-      wifi_setup();
+      if (wifi_connect())
+          stateLED(CRGB::Indigo);
     } else if (WiFi.ping(WiFi.gatewayIP()) < 0) {
         //ping test - can we ping the router? if not, disconnect and re-connect again, something must've gotten stale with the connection
         Log.warningln(F("Ping test failed, WiFi Connection unusable - re-connecting..."));
+        stateLED(CRGB::Orange);
         WiFi.disconnect();
         status = WL_CONNECTION_LOST;
         server.clearWriteError();
-        wifi_setup();
+        if (wifi_connect())
+            stateLED(CRGB::Indigo);
     }
     if (!timeClient.isTimeSet()) {
         bool ntpTimeAvailable = ntp_sync();
@@ -88,7 +119,9 @@ void wifi_loop() {
         if (ntpTimeAvailable) {
             setSyncProvider(curUnixTime);
             paletteFactory.adjustHoliday();
-        }
+            stateLED(CRGB::Indigo);
+        } else
+            stateLED(CRGB::Green);
     }
   }
   webserver();
@@ -111,20 +144,6 @@ void printWifiStatus() {
   // print the received signal strength:
   long rssi = WiFi.RSSI();
   Log.infoln(F("Signal strength (RSSI): %d dBm"), rssi);
-
-  // print the board temperature
-  if (IMU.temperatureAvailable()) {
-    int temperature_deg = 0;
-    IMU.readTemperature(temperature_deg);
-    Log.infoln(F("Board temperature %d °C"), temperature_deg);
-  }
-
-  if (timeStatus() != timeNotSet) {
-      char timeBuf[20];
-      sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
-      Log.infoln(F("Current time %s"), timeBuf);
-  } else
-    Log.warningln(F("Current time not available - NTP sync failed"));
 
   // print where to go in a browser:
   Log.infoln(F("To see this page in action, open a browser to http://%p"), ip);

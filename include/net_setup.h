@@ -22,6 +22,8 @@ void setupStateLED();
 void stateLED(CRGB color);
 
 bool wifi_setup();
+bool imu_setup();
+bool time_setup();
 void webserver();
 void wifi_loop();
 void printWifiStatus();
