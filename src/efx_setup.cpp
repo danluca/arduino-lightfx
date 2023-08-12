@@ -206,17 +206,20 @@ bool turnOff() {
     static uint16_t xOffNow = 0;
     static uint16_t szOffNow = turnOffSeq[xOffNow];
     static bool setOff = false;
-    static bool allOff = false;
+    bool allOff = false;
 
     EVERY_N_MILLISECONDS(25) {
-        int totalLum = 0;
+        uint8_t ledsOn = 0;
         for (uint16_t x = 0; x < szOffNow; x++) {
             uint16_t xled = stripShuffleIndex[(led + x) % NUM_PIXELS];
             FastLED.leds()[xled].fadeToBlackBy(12);
-            totalLum += FastLED.leds()[xled].getLuma();
+            if (FastLED.leds()[xled].getLuma() < 4)
+                FastLED.leds()[xled] = BKG;
+            else
+                ledsOn++;
         }
         FastLED.show();
-        setOff = totalLum < 4;
+        setOff = ledsOn == 0;
     }
 
     EVERY_N_MILLISECONDS(1200) {
@@ -226,7 +229,7 @@ bool turnOff() {
             szOffNow = turnOffSeq[xOffNow];
             setOff = false;
         }
-        allOff = !isAnyLedOn(FastLED.leds(), FastLED.size(), CRGB::Black);
+        allOff = !isAnyLedOn(FastLED.leds(), FastLED.size(), BKG);
     }
     //if we're turned off all LEDs, reset the static variables for next time
     if (allOff) {
@@ -234,7 +237,6 @@ bool turnOff() {
         xOffNow = 0;
         szOffNow = turnOffSeq[xOffNow];
         setOff = false;
-        allOff = false;
         return true;
     }
 
@@ -242,12 +244,12 @@ bool turnOff() {
 }
 
 bool turnOffJuggle() {
-    static bool allOff = false;
+    bool allOff = false;
     EVERY_N_MILLISECONDS(50) {
         uint numDots = 4;
         uint dotBpm = 7;
         for (uint i = 0; i < numDots; i++) {
-            leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS-1)].fadeToBlackBy(224);
+            leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS-1)].fadeToBlackBy(192);
         }
         FastLED.show();
         allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);

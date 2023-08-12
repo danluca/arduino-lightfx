@@ -113,6 +113,7 @@ void wifi_loop() {
         if (wifi_connect())
             stateLED(CRGB::Indigo);
     }
+
     if (!timeClient.isTimeSet()) {
         bool ntpTimeAvailable = ntp_sync();
         Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");

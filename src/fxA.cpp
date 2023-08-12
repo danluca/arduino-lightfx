@@ -168,7 +168,7 @@ void FxA2::makeDot() {
 
 void FxA2::loop() {
     if (mode == TurnOff) {
-        if (turnOff()) reset();
+        if (turnOffJuggle()) reset();
         return;
     }
     EVERY_N_MILLISECONDS_I(a2Timer, speed) {
@@ -212,7 +212,7 @@ void FxA2::loop() {
 }
 
 const char *FxA2::description() {
-    return "FXA2: Tetris, fixed size dot randomly spaced";
+    return "FXA2: Randomly sized and spaced segments moving on entire strip";
 }
 
 void FxA2::describeConfig(JsonArray &json) {
