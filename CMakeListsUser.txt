@@ -3,6 +3,7 @@ include_directories("${ENV_HOME_PATH}/.platformio/packages/framework-arduino-mbe
 include_directories("${ENV_HOME_PATH}/.platformio/packages/framework-arduino-mbed/cores/arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040")
 include_directories("${ENV_HOME_PATH}/.platformio/packages/framework-arduino-mbed/cores/arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/boards/include")
 include_directories("${ENV_HOME_PATH}/.platformio/packages/framework-arduino-mbed/cores/arduino/mbed/cmsis/CMSIS_5/CMSIS/TARGET_CORTEX_M/Include")
+include_directories("${ENV_HOME_PATH}/.platformio/packages/framework-arduino-mbed/cores/arduino/mbed/storage/filesystem/littlefsv2/include")
 
 include_directories("${ENV_HOME_PATH}/.platformio/packages/framework-arduino-mbed/cores/arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_base/include")
 include_directories("${ENV_HOME_PATH}/.platformio/packages/framework-arduino-mbed/cores/arduino/mbed/targets/TARGET_RASPBERRYPI/TARGET_RP2040/pico-sdk/common/pico_binary_info/include")

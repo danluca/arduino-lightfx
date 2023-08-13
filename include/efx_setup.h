@@ -38,6 +38,8 @@ void stateLED(CRGB color);
 
 void ledStripInit();
 
+void fsInit();
+
 void showFill(const CRGB frame[], uint16_t szFrame);
 
 void shiftRight(CRGB arr[], uint16_t szArr, uint16_t hiViewport, uint16_t pos = 1, CRGB feedLeft = BKG);
@@ -99,6 +101,8 @@ void fxk_register();
 void fx_setup();
 
 void fx_run();
+
+void saveState();
 
 // Classes - OOP rules for embedded!
 

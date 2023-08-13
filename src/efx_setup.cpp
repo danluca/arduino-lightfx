@@ -1,5 +1,8 @@
 #include "efx_setup.h"
 #include "log.h"
+#include "TimeLib.h"
+#include <mbed/storage/filesystem/littlefsv2/include/littlefsv2/LittleFileSystem2.h>
+#include <mbed/storage/blockdevice/include/blockdevice/BlockDevice.h>
 
 //~ Global variables definition
 CRGB leds[NUM_PIXELS];
@@ -32,6 +35,54 @@ void ledStripInit() {
     FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
     FastLED.setBrightness(BRIGHTNESS);
     FastLED.clear(true);
+}
+
+// This will take the system's default block device
+mbed::BlockDevice *bd = mbed::BlockDevice::get_default_instance();
+mbed::LittleFileSystem2 *fsPtr;
+void fsInit() {
+    mbed::LittleFileSystem2 fs("fs");
+    fsPtr = &fs;
+    int err = fs.mount(bd);
+    if (err) {
+        Log.warningln("Could not mount the file system - re-formatting...");
+        err = fs.reformat(bd);
+        if (err)
+            Log.errorln("Failed to reformat file system (error %d) - FS won't be usable", err);
+        else
+            Log.infoln("File system reformat successful");
+    } else
+        Log.infoln("Successfully mounted the file system");
+}
+
+void saveState() {
+    FILE *f = fopen("/fs/lastExec.txt", "r+");
+    if (!f) {
+        f = fopen("/fs/lastExec.txt", "w+");
+        if (f)
+            Log.infoln("Successfully created lastExec file");
+        else
+            Log.errorln("Failed to create lastExec file");
+    } else {
+        Log.infoln("Successfully opened existing lastExec file");
+        char buffer[512];
+        size_t count = fread(buffer, 1, 512, f);
+        Log.infoln("lastExec contents: %s", buffer);
+    }
+    if (f) {
+        fprintf(f, "lastRun=%4d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
+        int err = fclose(f);
+        if (err < 0)
+            Log.errorln("Error saving the lastExec file: %d", err);
+        else
+            Log.infoln("Successfully saved the lastExec file (%d)", err);
+    }
+
+    if (fsPtr) {
+        int err = fsPtr->unmount();
+        if (err)
+            Log.errorln("Failed to unmount the file system %d", err);
+    }
 }
 
 //~ General Utilities ---------------------------------------------------------
