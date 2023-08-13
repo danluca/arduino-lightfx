@@ -1,8 +1,7 @@
 #include "efx_setup.h"
 #include "log.h"
+#include <LittleFS_Mbed_RP2040.h>
 #include "TimeLib.h"
-#include <mbed/storage/filesystem/littlefsv2/include/littlefsv2/LittleFileSystem2.h>
-#include <mbed/storage/blockdevice/include/blockdevice/BlockDevice.h>
 
 //~ Global variables definition
 CRGB leds[NUM_PIXELS];
@@ -38,25 +37,19 @@ void ledStripInit() {
 }
 
 // This will take the system's default block device
-mbed::BlockDevice *bd = mbed::BlockDevice::get_default_instance();
-mbed::LittleFileSystem2 *fsPtr;
+LittleFS_MBED *fsPtr;
+char fileName[] = MBED_LITTLEFS_FILE_PREFIX "/lastExec.txt";
+
 void fsInit() {
-    mbed::LittleFileSystem2 fs("fs");
-    fsPtr = &fs;
-    int err = fs.mount(bd);
-    if (err) {
-        Log.warningln("Could not mount the file system - re-formatting...");
-        err = fs.reformat(bd);
-        if (err)
-            Log.errorln("Failed to reformat file system (error %d) - FS won't be usable", err);
-        else
-            Log.infoln("File system reformat successful");
-    } else
+    fsPtr = new LittleFS_MBED();
+    if (!fsPtr->init())
+        Log.errorln("Could not mount the file system...");
+    else
         Log.infoln("Successfully mounted the file system");
 }
 
 void saveState() {
-    FILE *f = fopen("/fs/lastExec.txt", "r+");
+    FILE *f = fopen(fileName, "r+");
     if (!f) {
         f = fopen("/fs/lastExec.txt", "w+");
         if (f)
@@ -65,11 +58,13 @@ void saveState() {
             Log.errorln("Failed to create lastExec file");
     } else {
         Log.infoln("Successfully opened existing lastExec file");
-        char buffer[512];
-        size_t count = fread(buffer, 1, 512, f);
-        Log.infoln("lastExec contents: %s", buffer);
-    }
-    if (f) {
+        char buff[512];
+        bzero(buff, 512);
+        size_t count = fread((uint8_t *)buff, 511, 1, f);
+        if (count)
+            Log.infoln("lastExec contents [%d bytes]: %s", count, buff);
+
+        //update file
         fprintf(f, "lastRun=%4d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
         int err = fclose(f);
         if (err < 0)
