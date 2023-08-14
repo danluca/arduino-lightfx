@@ -32,6 +32,20 @@ extern volatile bool fxBump;
 
 typedef void (*setupFunc)();
 
+/**
+ * Viewport definition packed as a 4-byte unsigned integer - uint32_t
+ */
+struct Viewport {
+    uint16_t low;
+    uint16_t high;
+
+    explicit Viewport(uint16_t high);
+    Viewport(uint16_t low, uint16_t high);
+    uint16_t size() const;
+};
+
+
+
 void setupStateLED();
 
 void stateLED(CRGB color);
@@ -42,9 +56,9 @@ void fsInit();
 
 void showFill(const CRGB frame[], uint16_t szFrame);
 
-void shiftRight(CRGB arr[], uint16_t szArr, uint16_t hiViewport, uint16_t pos = 1, CRGB feedLeft = BKG);
+void shiftRight(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos = 1, CRGB feedLeft = BKG);
 
-void shiftLeft(CRGB arr[], uint16_t szArr, uint16_t hiViewport, uint16_t pos = 1, CRGB feedRight = BKG);
+void shiftLeft(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos = 1, CRGB feedRight = BKG);
 
 void shuffleIndexes(uint16_t array[], uint16_t szArray);
 
@@ -103,8 +117,6 @@ void fx_setup();
 void fx_run();
 
 void saveState();
-
-// Classes - OOP rules for embedded!
 
 //base class/interface for all effects
 class LedEffect {

@@ -51,7 +51,7 @@ void fsInit() {
 void saveState() {
     FILE *f = fopen(fileName, "r+");
     if (!f) {
-        f = fopen("/fs/lastExec.txt", "w+");
+        f = fopen(fileName, "w+");
         if (f)
             Log.infoln("Successfully created lastExec file");
         else
@@ -59,11 +59,16 @@ void saveState() {
     } else {
         Log.infoln("Successfully opened existing lastExec file");
         char buff[512];
-        bzero(buff, 512);
-        size_t count = fread((uint8_t *)buff, 511, 1, f);
-        if (count)
-            Log.infoln("lastExec contents [%d bytes]: %s", count, buff);
-
+        memset(buff, 0, 512);
+        size_t charsRead = 1;
+        Log.infoln("Contents of lastExec file:");
+        while (charsRead) {
+            charsRead = fread((uint8_t *)buff, 1, 512, f);
+            if (charsRead)
+                Log.info("%s", buff);
+        }
+    }
+    if (f) {
         //update file
         fprintf(f, "lastRun=%4d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
         int err = fclose(f);
@@ -74,8 +79,8 @@ void saveState() {
     }
 
     if (fsPtr) {
-        int err = fsPtr->unmount();
-        if (err)
+        bool err = fsPtr->unmount();
+        if (!err)
             Log.errorln("Failed to unmount the file system %d", err);
     }
 }
@@ -86,43 +91,44 @@ void saveState() {
  * First item of the array (arr[0]) is used as seed to fill the new elements entering left
  * @param arr array
  * @param szArr size of the array
- * @param hiViewport upper limit of the shifting area
+ * @param vwp limits of the shifting area
  * @param pos how many positions to shift right
  * @param feedLeft the color to introduce from the left as we shift the array
  */
-void shiftRight(CRGB arr[], uint16_t szArr, uint16_t hiViewport, uint16_t pos, CRGB feedLeft) {
-    if (pos == 0)
+void shiftRight(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos, CRGB feedLeft) {
+    if ((pos == 0) || (vwp.size() == 0))
         return;
     CRGB seed = feedLeft;
-    uint16_t hiShiftArea = capu(hiViewport, szArr);
-    if (pos >= hiShiftArea) {
-        fill_solid(arr, hiShiftArea, seed);
+    uint16_t hiArr = capu(vwp.high, szArr);
+    if (pos >= vwp.size()) {
+        fill_solid(arr + vwp.low, vwp.size(), seed);
         return;
     }
-    for (uint16_t x = hiShiftArea; x > 0; x--) {
+    for (uint16_t x = hiArr; x > vwp.low; x--) {
         uint16_t y = x-1;
         arr[y] = y < pos ? seed : arr[y - pos];
     }
 }
+
 /**
  * Shifts the content of an array to the left by the number of positions specified
  * The elements entering right are filled with current's array last value (arr[szArr-1])
  * @param arr array
  * @param szArr size of the array
- * @param hiViewport upper limit of the shifting area
+ * @param vwp limits of the shifting area
  * @param pos how many positions to shift left
  * @param feedRight the color to introduce from the right as we shift the array
  */
-void shiftLeft(CRGB arr[], uint16_t szArr, uint16_t hiViewport, uint16_t pos, CRGB feedRight) {
-    if (pos == 0)
+void shiftLeft(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos, CRGB feedRight) {
+    if ((pos == 0) || (vwp.size() == 0))
         return;
     CRGB seed = feedRight;
-    uint16_t hiShiftArea = capu(hiViewport, szArr);
-    if (pos >= hiShiftArea) {
-        fill_solid(arr, hiShiftArea, seed);
+    uint16_t hiArr = capu(vwp.high, szArr);
+    if (pos >= vwp.size()) {
+        fill_solid(arr + vwp.low, hiArr, seed);
         return;
     }
-    for (uint16_t x = 0; x < hiShiftArea; x++) {
+    for (uint16_t x = vwp.low; x < hiArr; x++) {
         uint16_t y = x + pos;
         arr[x] = y < szArr ? arr[y] : seed;
     }
@@ -188,7 +194,7 @@ bool isAnyLedOn(CRGB arr[], uint16_t szArray, CRGB backg) {
 }
 
 void fillArray(CRGB *src, uint16_t szSrc, CRGB color) {
-    fill_solid(src, (int)szSrc, color);
+    fill_solid(src, szSrc, color);
 }
 
 void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs) {
@@ -423,3 +429,10 @@ void LedEffect::baseConfig(JsonObject &json) {
     json["registryIndex"] = getRegistryIndex();
 }
 
+Viewport::Viewport(uint16_t high) : Viewport(0, high) {}
+
+Viewport::Viewport(uint16_t low, uint16_t high) : low(low), high(high) {}
+
+uint16_t Viewport::size() const {
+    return qsuba(high, low);
+}

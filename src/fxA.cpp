@@ -16,7 +16,7 @@ volatile uint16_t curPos = 0;
 OpMode mode = Chase;
 uint16_t szStack = 0;
 uint16_t stripShuffleIndex[NUM_PIXELS];
-CRGB frame[NUM_PIXELS];
+CRGB frame[NUM_PIXELS]; //note the CRGBSet class as well
 
 void fxa_register() {
     static FxA1 fxA1;
@@ -62,7 +62,7 @@ uint16_t fxa_stackAdjust(CRGB array[], uint16_t szArray, uint16_t szStackSeg) {
         return szStack;
     }
     if (colorIndex < 16) {
-        shiftRight(array, szArray, 1);
+        shiftRight(array, szArray, (Viewport)szArray, 1);
         fxa_incStackSize(-1, szArray);
     } else if (inr(colorIndex, 16, 32) || colorIndex == lastColorIndex) {
         fxa_incStackSize((int16_t)-szStackSeg, szArray);
@@ -109,7 +109,7 @@ void FxA1::loop() {
     }
     EVERY_N_MILLISECONDS_I(a1Timer, speed) {
         uint16_t upLimit = FRAME_SIZE - szStack + szStackSeg;
-        shiftRight(frame, FRAME_SIZE, upLimit, 1, curPos < szSegment ? dot[curPos] : BKG);
+        shiftRight(frame, FRAME_SIZE, (Viewport)upLimit, 1, curPos < szSegment ? dot[curPos] : BKG);
         if (curPos >= (upLimit-szStackSeg))
             stack(dot[0], frame, upLimit, szStackSeg);
         showFill(frame, FRAME_SIZE);
@@ -175,11 +175,11 @@ void FxA2::loop() {
         static CRGB feed = BKG;
         switch (movement) {
             case forward:
-                shiftRight(leds, NUM_PIXELS, NUM_PIXELS, 1, feed);
+                shiftRight(leds, NUM_PIXELS, (Viewport)NUM_PIXELS, 1, feed);
                 speed = beatsin8(1, 50, 200);
                 break;
             case backward:
-                shiftLeft(leds, NUM_PIXELS, NUM_PIXELS, 1, feed);
+                shiftLeft(leds, NUM_PIXELS, (Viewport)NUM_PIXELS, 1, feed);
                 speed = beatsin8(258, 40, 200);
                 break;
             case pause: speed = 5000; movement = backward; break;
@@ -251,9 +251,9 @@ void FxA3::loop() {
     EVERY_N_MILLISECONDS_I(a3Timer, speed) {
         uint16_t szViewport = FRAME_SIZE;
         if (bFwd)
-            shiftRight(frame, FRAME_SIZE, szViewport, 1, curPos < szSegment ? dot[curPos] : BKG);
+            shiftRight(frame, FRAME_SIZE, (Viewport)szViewport, 1, curPos < szSegment ? dot[curPos] : BKG);
         else
-            shiftLeft(frame, FRAME_SIZE, szViewport, 1, (szViewport - curPos) < szSegment ? dot[szViewport-curPos] : BKG);
+            shiftLeft(frame, FRAME_SIZE, (Viewport)szViewport, 1, (szViewport - curPos) < szSegment ? dot[szViewport-curPos] : BKG);
         if (bFwd && (curPos >= (szViewport - szStackSeg)))
             frame[szViewport - 1] = dot[szSegment - 1];
         showFill(frame, FRAME_SIZE);
