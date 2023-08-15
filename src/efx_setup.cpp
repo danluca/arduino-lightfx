@@ -87,11 +87,6 @@ void saveState() {
             Log.infoln("Successfully saved the lastExec file (%d)", err);
     }
 
-    if (fsPtr) {
-        bool err = fsPtr->unmount();
-        if (!err)
-            Log.errorln("Failed to unmount the file system %d", err);
-    }
 }
 
 //~ General Utilities ---------------------------------------------------------

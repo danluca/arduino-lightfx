@@ -54,7 +54,10 @@
 
 
 #if !defined(RP2040_FLASH_SIZE)
-    #define RP2040_FLASH_SIZE         (8 * 1024 * 1024)
+    //actual amount of flash on Nano RP2040 connect is 16MB per data sheet https://content.arduino.cc/assets/ABX00053-datasheet.pdf
+    //the platform is configured to use 2MB of flash space - plenty for common needs. For the filesystem, we allocate space at the end of 4MB space.
+    //if the platform is updated to a higher theshold of flash utilization, revisit this boundary below
+    #define RP2040_FLASH_SIZE         (4 * 1024 * 1024)
 #endif
 
 #if !defined(RP2040_FS_LOCATION_END)
@@ -77,8 +80,8 @@
 #define LITTLEFS_FILE_PREFIX   "/" LITTLEFS_NAME
 
 
-static FlashIAPBlockDevice bd(XIP_BASE + RP2040_FS_START, (RP2040_FS_SIZE_KB * 1024));
-static mbed::LittleFileSystem fs(LITTLEFS_NAME);    //this can also be LittleFileSystemv2 for more features
+static FlashIAPBlockDevice fsBD(XIP_BASE + RP2040_FS_START, (RP2040_FS_SIZE_KB * 1024));
+static mbed::LittleFileSystem lfs(LITTLEFS_NAME);    //this can also be LittleFileSystemv2 for more features
 
 class LittleFSWrapper {
 public:
@@ -95,7 +98,7 @@ public:
         Log.infoln(F("Initializing LittleFS with a size of %d KB"), RP2040_FS_SIZE_KB);
 #endif
         if (!mounted) {
-            int err = fs.mount(&bd);
+            int err = lfs.mount(&fsBD);
             if (err) {
                 Log.errorln(F("LittleFS failed to mount: %d (%s). Reformatting..."), err, strerror(err));
                 err = reformat() ? 0 : -5;
@@ -108,7 +111,7 @@ public:
             struct statvfs stat;
             int err = statvfs(LITTLEFS_FILE_PREFIX "/", &stat);
             if (err == 0)
-                Log.infoln(F("LittleFS stats - ID %u, capacity %u bytes, available %u bytes, available for unprivileged %u bytes"),
+                Log.infoln(F("LittleFS stats - ID %u, capacity %u B, available %u B, available for unprivileged %u B"),
                            stat.f_fsid, stat.f_bsize*stat.f_blocks, stat.f_bsize*stat.f_bfree, stat.f_bsize*stat.f_bavail);
             else
                 Log.errorln(F("Cannot gather LittleFS stats: %d (%s)"), err, strerror(err));
@@ -119,7 +122,7 @@ public:
 
     bool unmount() {
         if (mounted) {
-            int err = fs.unmount();
+            int err = lfs.unmount();
             if (err == 0)
                 Log.infoln(F("Successfully unmounted LittleFS"));
             else {
@@ -132,9 +135,9 @@ public:
         return true;
     }
 
-    bool reformat() {
+    static bool reformat() {
         Log.warningln(F("Reformatting LittleFS - all data will be lost!"));
-        int err = fs.reformat(&bd);
+        int err = lfs.reformat(&fsBD);
         if (err)
             Log.errorln(F("LittleFS failed to re-format: %d (%s)"), err, strerror(err));
         return err == 0;
