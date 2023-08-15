@@ -1,0 +1,30 @@
+{
+  "name": "LittleFSWrapper",
+  "keywords": "littlefs,littlefs-mbed,filesystem,file-system,storage,flash-storage,rp2040,nano-rp2040-connect",
+  "description": "LittleFSWrapper is the archived public library https://github.com/khoih-prog/LittleFS_Mbed_RP2040 adapted to Nano RP2040 Connect board and the context of the lightfx project",
+  "version": "1.2",
+  "authors": [
+    {
+    "name": "Khoi Hoang",
+    "url": "https://github.com/khoih-prog",
+    "maintainer": false
+    },
+    {
+      "name": "Dan Luca",
+      "url": "https://github.com/danluca",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danluca/arduino-lightfx"
+  },
+  "homepage": "https://github.com/danluca/arduino-lightfx/lib/LittleFSWrapper",
+  "license": "GPL-3.0-or-later",
+  "frameworks": ["arduino"],
+  "platforms": ["raspberrypi"],
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
+  }
+}

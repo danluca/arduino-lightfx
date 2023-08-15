@@ -182,7 +182,7 @@ void FxA2::loop() {
                 shiftLeft(leds, NUM_PIXELS, (Viewport)NUM_PIXELS, 1, feed);
                 speed = beatsin8(258, 40, 200);
                 break;
-            case pause: speed = 5000; movement = backward; break;
+            case pause: speed = 3000; movement = backward; break;
         }
         FastLED.show();
 
@@ -227,7 +227,7 @@ const char *FxA2::name() {
 }
 
 //=====================================
-//FX A3
+//FX A3 - TODO: review the movement
 FxA3::FxA3() {
     registryIndex = fxRegistry.registerEffect(this);
 }
@@ -266,7 +266,7 @@ void FxA3::loop() {
             szSegment = random8(2, MAX_DOT_SIZE);
             makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
         }
-        if (curPos == szViewport)
+        if (curPos == (szViewport+szSegment-szStackSeg))
             bFwd= !bFwd;
 
         a3Timer.setPeriod(speed);
@@ -287,7 +287,7 @@ const char *FxA3::name() {
     return "FXA3";
 }
 
-// FX A4
+// FX A4 - TODO: revisit adding halloween specific flickering to a different effect; this is the same as FxA1
 void FxA4::setup() {
     szSegment = 2;
     fxa_setup();
@@ -352,7 +352,7 @@ const char *FxA4::name() {
     return "FXA4";
 }
 
-// FX A5
+// FX A5 - TODO: revisit, effect is impractical - only a single segment moving across a large strip and slowly building a stack
 void FxA5::setup() {
     szSegment = 1;
     fxa_setup();

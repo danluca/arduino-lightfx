@@ -1,6 +1,8 @@
 #include "efx_setup.h"
 #include "log.h"
-#include <LittleFS_Mbed_RP2040.h>
+// increase the amount of space for file system to 128kB (default 64kB)
+#define RP2040_FS_SIZE_KB   (128)
+#include <LittleFSWrapper.h>
 #include "TimeLib.h"
 
 //~ Global variables definition
@@ -36,22 +38,29 @@ void ledStripInit() {
     FastLED.clear(true);
 }
 
-// This will take the system's default block device
-LittleFS_MBED *fsPtr;
-char fileName[] = MBED_LITTLEFS_FILE_PREFIX "/lastExec.txt";
+LittleFSWrapper *fsPtr;
+char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
 
 void fsInit() {
-    fsPtr = new LittleFS_MBED();
-    if (!fsPtr->init())
-        Log.errorln("Could not mount the file system...");
-    else
+#ifndef DISABLE_LOGGING
+    mbed::BlockDevice *bd = mbed::BlockDevice::get_default_instance();
+    bd->init();
+    Log.infoln(F("Default BlockDevice type %s, size %u B, read size %u B, program size %u B, erase size %u B"),
+               bd->get_type(), bd->size(), bd->get_read_size(), bd->get_program_size(), bd->get_erase_size());
+    bd->deinit();
+#endif
+
+    fsPtr = new LittleFSWrapper();
+    if (fsPtr->init()) {
         Log.infoln("Successfully mounted the file system");
+    } else
+        Log.errorln("Could not mount the file system...");
 }
 
 void saveState() {
-    FILE *f = fopen(fileName, "r+");
+    FILE *f = fopen(stateFileName, "r+");
     if (!f) {
-        f = fopen(fileName, "w+");
+        f = fopen(stateFileName, "w+");
         if (f)
             Log.infoln("Successfully created lastExec file");
         else
