@@ -16,7 +16,7 @@ volatile uint16_t curPos = 0;
 OpMode mode = Chase;
 uint16_t szStack = 0;
 uint16_t stripShuffleIndex[NUM_PIXELS];
-CRGB frame[NUM_PIXELS]; //note the CRGBSet class as well
+CRGBArray<NUM_PIXELS> frame;
 
 void fxa_register() {
     static FxA1 fxA1;
@@ -38,6 +38,7 @@ void fxa_setup() {
     colorIndex = lastColorIndex = 0;
     curPos = 0;
     speed = 100;
+    brightness = 224;
 }
 
 ///////////////////////////////////////
@@ -112,12 +113,17 @@ void FxA1::loop() {
         shiftRight(frame, FRAME_SIZE, (Viewport)upLimit, 1, curPos < szSegment ? dot[curPos] : BKG);
         if (curPos >= (upLimit-szStackSeg))
             stack(dot[0], frame, upLimit, szStackSeg);
-        showFill(frame, FRAME_SIZE);
+        pushFrame(frame, FRAME_SIZE, 0, true);
+
+        if (paletteFactory.currentHoliday() == Halloween)
+            fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
+
+        FastLED.show();
 
         curPos = inc(curPos, 1, upLimit);
         //update speed if in next segment of 16 leds
         if (!bConstSpeed && (curPos % 16 == 15) && random8(0, 2)) {
-            speed = random16(30, 211);
+            speed = random16(40, 171);
         }
         a1Timer.setPeriod(speed);
         if (curPos == 0) {
@@ -176,14 +182,16 @@ void FxA2::loop() {
         switch (movement) {
             case forward:
                 shiftRight(leds, NUM_PIXELS, (Viewport)NUM_PIXELS, 1, feed);
-                speed = beatsin8(1, 50, 200);
+                speed = beatsin8(1, 60, 150);
                 break;
             case backward:
                 shiftLeft(leds, NUM_PIXELS, (Viewport)NUM_PIXELS, 1, feed);
-                speed = beatsin8(258, 40, 200);
+                speed = beatsin8(258, 50, 150);
                 break;
             case pause: speed = 3000; movement = backward; break;
         }
+        if (paletteFactory.currentHoliday() == Halloween)
+            fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
         FastLED.show();
 
         curPos = inc(curPos, 1, NUM_PIXELS);
@@ -227,7 +235,6 @@ const char *FxA2::name() {
 }
 
 //=====================================
-//FX A3 - TODO: review the movement
 FxA3::FxA3() {
     registryIndex = fxRegistry.registerEffect(this);
 }
@@ -254,15 +261,19 @@ void FxA3::loop() {
             shiftRight(frame, FRAME_SIZE, (Viewport)szViewport, 1, curPos < szSegment ? dot[curPos] : BKG);
         else
             shiftLeft(frame, FRAME_SIZE, (Viewport)szViewport, 1, (szViewport - curPos) < szSegment ? dot[szViewport-curPos] : BKG);
-        if (bFwd && (curPos >= (szViewport - szStackSeg)))
-            frame[szViewport - 1] = dot[szSegment - 1];
-        showFill(frame, FRAME_SIZE);
+//        if (bFwd && (curPos >= (szViewport - szStackSeg)))
+//            frame[curPos] = dot[0];
+        pushFrame(frame, FRAME_SIZE, 0, true);
+        if (paletteFactory.currentHoliday() == Halloween)
+            fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
+        FastLED.show();
+
         if (bFwd) curPos++; else curPos--;
         if (curPos == 0) {
             bFwd = !bFwd;
             lastColorIndex = colorIndex;
             colorIndex = random8();
-            speed = random8(30, 211);
+            speed = random8(40, 171);
             szSegment = random8(2, MAX_DOT_SIZE);
             makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
         }
@@ -287,13 +298,26 @@ const char *FxA3::name() {
     return "FXA3";
 }
 
-// FX A4 - TODO: revisit adding halloween specific flickering to a different effect; this is the same as FxA1
+// FX A4
 void FxA4::setup() {
-    szSegment = 2;
+    szSegment = 3;
     fxa_setup();
     palette = paletteFactory.mainPalette();
-    szStackSeg = 1;
+    szStackSeg = 2;
+    brightness = 192;
     mode = Chase;
+    curBkg = BKG;
+    makeDot(ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND), szSegment);
+}
+
+void FxA4::makeDot(CRGB color, uint16_t szDot) {
+    CRGB c1 = color;
+    CRGB c2 = ColorFromPalette(palette, colorIndex<<2, brightness, LINEARBLEND);
+    fill_gradient(dot, szDot, rgb2hsv_approximate(c1), rgb2hsv_approximate(c2));
+//    for (uint16_t x = 1; x < szDot; x++) {
+//        dot[x] = color;
+//        dot[x] %= brightness;
+//    }
 }
 
 void FxA4::loop() {
@@ -303,39 +327,45 @@ void FxA4::loop() {
         return;
     }
 
-//    EVERY_N_MILLIS(speed << 2) {
-//        FastLED.setBrightness(random8(40, 225));
-//    }
-
     EVERY_N_MILLISECONDS_I(a4Timer, speed) {
-        uint upLimit = FRAME_SIZE - szStack;
-        setTrailColor(frame, curPos,
-                      ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND),
-                      brightness, dimmed);
-        if (curPos == (upLimit - 1))
-            frame[curPos - 1] = frame[curPos];
+        Viewport v1(0, FRAME_SIZE), v2(FRAME_SIZE, FRAME_SIZE*2);
+        curBkg = ColorFromPalette(palette, beatsin8(11), 4, LINEARBLEND);
+        uint8_t ss = curPos % (szSegment+spacing);
+        shiftRight(frame, FRAME_SIZE, v1, 1, ss < szSegment ? dot[ss] : curBkg);
+        shiftLeft(frame, FRAME_SIZE*2, v2, 1, curPos < szStackSeg ? ColorFromPalette(palette, -colorIndex, brightness, LINEARBLEND) : BKG);
+
         pushFrame(frame, FRAME_SIZE, 0, true);
-        fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
+        for (uint16_t x = 0; x < NUM_PIXELS; x++) {
+            uint8_t xf = FRAME_SIZE+(x%FRAME_SIZE);
+            leds[x] += (leds[x] > curBkg) && frame[xf] ? CRGB::White : frame[xf];
+            if (xf > (FRAME_SIZE-curPos-szStackSeg))
+                leds[x].fadeToBlackBy(48);
+        }
+
+        if (paletteFactory.currentHoliday() == Halloween)
+            fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
         FastLED.show();
 
-        // Turn our current led back to black for the next loop around
-        if (curPos < (upLimit - 1)) {
-            offTrailColor(frame, curPos);
-        }
-        curPos = inc(curPos, 1, upLimit);
+
+        curPos = inc(curPos, 1, FRAME_SIZE);
         if (curPos == 0) {
-            fxa_stackAdjust(frame, FRAME_SIZE, szStackSeg);
-            mode = szStack == FRAME_SIZE ? TurnOff : Chase;
             lastColorIndex = colorIndex;
             colorIndex = random8();
-            speed = random16(30, 211);
+            szSegment = beatsin8(21, 3, 7);
+            spacing = beatsin8(15, szStackSeg+4, 22);
+            speed = random16(40, 171);
+            makeDot(ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND), szSegment);
+            a4Timer.setPeriod(speed);
         }
-        a4Timer.setPeriod(speed);
+    }
+
+    EVERY_N_SECONDS(61) {
+        mode = TurnOff;
     }
 }
 
 const char *FxA4::description() {
-    return "FXA4: 36 pixel segments, moving 1 pixel dot flickering";
+    return "FXA4: pixel segments moving opposite directions";
 }
 
 FxA4::FxA4() {
@@ -352,13 +382,19 @@ const char *FxA4::name() {
     return "FXA4";
 }
 
-// FX A5 - TODO: revisit, effect is impractical - only a single segment moving across a large strip and slowly building a stack
 void FxA5::setup() {
-    szSegment = 1;
     fxa_setup();
     palette = paletteFactory.mainPalette();
-    szStackSeg = 1;
+    background = ColorFromPalette(palette, colorIndex, brightness-64, LINEARBLEND);
     mode = Chase;
+}
+
+void FxA5::makeFrame() {
+    ovr.fill_solid(ColorFromPalette(palette, lastColorIndex, brightness-64, LINEARBLEND));
+    CRGB newClr = ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND);
+    for (CRGB& pix : ovr) {
+        nblend(pix,newClr, (64-(&pix-ovr.leds))<<6);
+    }
 }
 
 void FxA5::loop() {
@@ -372,34 +408,32 @@ void FxA5::loop() {
     }
 
     EVERY_N_MILLISECONDS_I(a5Timer, speed) {
-        uint upLimit = NUM_PIXELS - szStack;
-        setTrailColor(leds, curPos,
-                      ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND),
-                      brightness, dimmed);
-        if (curPos == (upLimit - 1))
-            leds[curPos - 1] = leds[curPos];
+        CRGBSet seg(leds, FRAME_SIZE);
+        CRGBSet strip(leds, NUM_PIXELS);
+        shiftRight(seg, 1, ovr[curPos]);
+        replicateSet(seg, strip);
         FastLED.show();
 
-        if (curPos < (upLimit - 1)) {
-            offTrailColor(leds, curPos);
-        }
-        curPos = inc(curPos, 1, upLimit);
+        curPos = inc(curPos, 1, FRAME_SIZE);
         if (curPos == 0) {
-            fxa_stackAdjust(leds, NUM_PIXELS, szStackSeg);
-            mode = szStack == NUM_PIXELS ? TurnOff : Chase;
             lastColorIndex = colorIndex;
             colorIndex = random8();
-            speed = random16(25, 221);
+            makeFrame();
+            speed = random16(40, 171);
             a5Timer.setPeriod(speed);
         }
+    }
+
+    EVERY_N_SECONDS(61) {
+        mode = TurnOff;
     }
 }
 
 const char *FxA5::description() {
-    return "FXA5: Moving single pixel dot with stacking";
+    return "FXA5: Moving a color swath on top of another";
 }
 
-FxA5::FxA5() {
+FxA5::FxA5() : ovr(frame(0, FRAME_SIZE)), background(BKG) {
     registryIndex = fxRegistry.registerEffect(this);
 }
 

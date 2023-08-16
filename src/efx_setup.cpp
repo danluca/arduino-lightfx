@@ -51,10 +51,8 @@ void fsInit() {
 #endif
 
     fsPtr = new LittleFSWrapper();
-    if (fsPtr->init()) {
-        Log.infoln("Successfully mounted the file system");
-    } else
-        Log.errorln("Could not mount the file system...");
+    if (fsPtr->init())
+        Log.infoln("Filesystem OK");
 }
 
 void saveState() {
@@ -114,6 +112,19 @@ void shiftRight(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos, CRGB fee
     }
 }
 
+void shiftRight(CRGBSet& set, uint16_t pos, CRGB feedLeft) {
+    if ((pos == 0) || (set.size() == 0))
+        return;
+    if (pos >= set.size()) {
+        set.fill_solid(feedLeft);
+        return;
+    }
+    for (uint16_t x = set.size(); x > 0; x--) {
+        uint16_t y = x - 1;
+        set[y] = y < pos ? feedLeft : set[y-pos];
+    }
+}
+
 /**
  * Shifts the content of an array to the left by the number of positions specified
  * The elements entering right are filled with current's array last value (arr[szArr-1])
@@ -137,6 +148,35 @@ void shiftLeft(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos, CRGB feed
         arr[x] = y < szArr ? arr[y] : seed;
     }
 }
+
+void shiftLeft(CRGBSet &set, uint16_t pos, CRGB feedRight) {
+    if ((pos == 0) || (set.size() == 0))
+        return;
+    if (pos >= set.size()) {
+        set.fill_solid(feedRight);
+        return;
+    }
+    for (uint16_t x = 0; x < set.size(); x++) {
+        uint16_t y = x + pos;
+        set[x] = y < set.size() ? set[y] : feedRight;
+    }
+}
+
+void replicateSet(const CRGBSet& src, CRGBSet& dest) {
+    uint16_t srcSize = abs(src.len);    //src.size() would be more appropriate, but function is not marked const
+    CRGB* srcStart = src.leds;
+    CRGB* srcEnd = src.end_pos;
+    CRGB* destStart = dest;
+
+    for (CRGB& pix : dest) {
+        CRGB* pixPtr = &pix;
+        if ((pixPtr < srcStart) || (pixPtr >= srcEnd)) {
+            //not overlapping the source
+            pix = src[(pixPtr - destStart)%srcSize];
+        }
+    }
+}
+
 /**
  * Populates and shuffles randomly an array of numbers in the range of 0-szArray (array indexes)
  * @param array array of indexes
@@ -268,7 +308,7 @@ bool turnOff() {
         uint8_t ledsOn = 0;
         for (uint16_t x = 0; x < szOffNow; x++) {
             uint16_t xled = stripShuffleIndex[(led + x) % NUM_PIXELS];
-            FastLED.leds()[xled].fadeToBlackBy(12);
+            FastLED.leds()[xled].fadeToBlackBy(18);
             if (FastLED.leds()[xled].getLuma() < 4)
                 FastLED.leds()[xled] = BKG;
             else
@@ -278,7 +318,7 @@ bool turnOff() {
         setOff = ledsOn == 0;
     }
 
-    EVERY_N_MILLISECONDS(1200) {
+    EVERY_N_MILLISECONDS(700) {
         if (setOff) {
             led = inc(led, szOffNow, NUM_PIXELS);
             xOffNow = capu(xOffNow + 1, arrSize(turnOffSeq) - 1);

@@ -8,7 +8,7 @@
 
 const uint MAX_DOT_SIZE = 16;
 const uint8_t dimmed = 20;
-const uint FRAME_SIZE = 36;
+const uint FRAME_SIZE = 50;
 enum OpMode {
     TurnOff, Chase
 };
@@ -20,7 +20,7 @@ extern uint8_t colorIndex;
 extern uint8_t lastColorIndex;
 extern uint16_t szStack;
 extern OpMode mode;
-extern CRGB frame[NUM_PIXELS];
+extern CRGBArray<NUM_PIXELS> frame;
 extern volatile uint16_t speed;
 extern volatile uint16_t curPos;
 
@@ -119,6 +119,8 @@ protected:
     void makeDot(CRGB color, uint16_t szDot);
     uint8_t szSegment = 5;
     uint8_t szStackSeg = 3;
+    uint8_t spacing = 7;
+    CRGB curBkg;
 };
 
 class FxA5 : public LedEffect {
@@ -136,10 +138,9 @@ public:
     const char *name() override;
 
 protected:
-    CRGB dot[MAX_DOT_SIZE]{};
-    void makeDot(CRGB color, uint16_t szDot);
-    uint8_t szSegment = 2;
-    uint8_t szStackSeg = 1;
+    CRGBSet ovr;
+    CRGB background;
+    void makeFrame();
 };
 
 #endif //LIGHTFX_FXA_H

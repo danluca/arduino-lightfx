@@ -56,7 +56,7 @@
 #if !defined(RP2040_FLASH_SIZE)
     //actual amount of flash on Nano RP2040 connect is 16MB per data sheet https://content.arduino.cc/assets/ABX00053-datasheet.pdf
     //the platform is configured to use 2MB of flash space - plenty for common needs. For the filesystem, we allocate space at the end of 4MB space.
-    //if the platform is updated to a higher theshold of flash utilization, revisit this boundary below
+    //if the platform is updated to a higher threshold of flash utilization, revisit this boundary below
     #define RP2040_FLASH_SIZE         (4 * 1024 * 1024)
 #endif
 
@@ -76,8 +76,9 @@
     #define RP2040_FS_START           (RP2040_FLASH_SIZE - (RP2040_FS_SIZE_KB * 1024))
 #endif
 
-#define LITTLEFS_NAME     "lfs"
-#define LITTLEFS_FILE_PREFIX   "/" LITTLEFS_NAME
+#define LITTLEFS_NAME           "lfs"
+#define LITTLEFS_FILE_PREFIX    "/" LITTLEFS_NAME
+#define LITTLEFS_ROOT_PATH      LITTLEFS_FILE_PREFIX "/"
 
 
 static FlashIAPBlockDevice fsBD(XIP_BASE + RP2040_FS_START, (RP2040_FS_SIZE_KB * 1024));
@@ -106,6 +107,7 @@ public:
                 Log.infoln(F("Successfully mounted LittleFS"));
             mounted = (err == 0);
         }
+
 #ifndef DISABLE_LOGGING
         if (mounted) {
             struct statvfs stat;
@@ -141,6 +143,10 @@ public:
         if (err)
             Log.errorln(F("LittleFS failed to re-format: %d (%s)"), err, strerror(err));
         return err == 0;
+    }
+
+    static const char* getRoot() {
+        return LITTLEFS_ROOT_PATH;
     }
 
 private:

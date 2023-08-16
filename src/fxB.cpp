@@ -169,11 +169,11 @@ void FxB5::setup() {
 }
 
 void FxB5::loop() {
-    EVERY_N_SECONDS(5) {
+    EVERY_N_SECONDS(15) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    EVERY_N_MILLIS(25) {
+    EVERY_N_MILLIS(20) {
         juggle_short();
         FastLED.show();
     }

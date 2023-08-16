@@ -57,8 +57,10 @@ void fsInit();
 void showFill(const CRGB frame[], uint16_t szFrame);
 
 void shiftRight(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos = 1, CRGB feedLeft = BKG);
+void shiftRight(CRGBSet& set, uint16_t pos, CRGB feedLeft);
 
 void shiftLeft(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos = 1, CRGB feedRight = BKG);
+void shiftLeft(CRGBSet& set, uint16_t pos, CRGB feedRight);
 
 void shuffleIndexes(uint16_t array[], uint16_t szArray);
 
@@ -75,6 +77,8 @@ bool isAnyLedOn(CRGB arr[], uint16_t szArray, CRGB backg);
 void fillArray(CRGB *src, uint16_t szSrc, CRGB color);
 
 void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs = 0);
+
+void replicateSet(const CRGBSet& src, CRGBSet& dest);
 
 void pushFrame(const CRGB frame[], uint16_t szFrame, uint16_t ofsDest = 0, bool repeat = false);
 
