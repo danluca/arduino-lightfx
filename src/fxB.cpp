@@ -462,7 +462,7 @@ void ease() {
   static uint16_t lerpVal    = 0;
 
   easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
-  easeInVal+=17;
+  easeInVal+=41;
 
   lerpVal = lerp16by16(0, NUM_PIXELS, easeOutVal);                // Map it to the number of LED's you have.
 
