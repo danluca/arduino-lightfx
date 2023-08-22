@@ -97,21 +97,6 @@ void saveState() {
  * @param pos how many positions to shift right
  * @param feedLeft the color to introduce from the left as we shift the array
  */
-void shiftRight(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos, CRGB feedLeft) {
-    if ((pos == 0) || (vwp.size() == 0))
-        return;
-    CRGB seed = feedLeft;
-    uint16_t hiArr = capu(vwp.high, szArr);
-    if (pos >= vwp.size()) {
-        fill_solid(arr + vwp.low, vwp.size(), seed);
-        return;
-    }
-    for (uint16_t x = hiArr; x > vwp.low; x--) {
-        uint16_t y = x-1;
-        arr[y] = y < pos ? seed : arr[y - pos];
-    }
-}
-
 void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp, uint16_t pos) {
     if ((pos == 0) || (set.size() == 0) || (vwp.low >= set.size()))
         return;
@@ -136,21 +121,6 @@ void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp, uint16_t pos) {
  * @param pos how many positions to shift left
  * @param feedRight the color to introduce from the right as we shift the array
  */
-void shiftLeft(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos, CRGB feedRight) {
-    if ((pos == 0) || (vwp.size() == 0))
-        return;
-    CRGB seed = feedRight;
-    uint16_t hiArr = capu(vwp.high, szArr);
-    if (pos >= vwp.size()) {
-        fill_solid(arr + vwp.low, hiArr, seed);
-        return;
-    }
-    for (uint16_t x = vwp.low; x < hiArr; x++) {
-        uint16_t y = x + pos;
-        arr[x] = y < szArr ? arr[y] : seed;
-    }
-}
-
 void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp, uint16_t pos) {
     if ((pos == 0) || (set.size() == 0) || (vwp.low >= set.size()))
         return;
@@ -165,6 +135,13 @@ void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp, uint16_t pos) {
         set[x] = y < set.size() ? set[y] : feedRight;
     }
 }
+
+/**
+ * Replicate the source set into destination, repeating it as necessary to fill the entire destination
+ * <p>Any overlaps between source and destination are skipped from replication - source set backing array is guaranteed unchanged</p>
+ * @param src source set
+ * @param dest destination set
+ */
 void replicateSet(const CRGBSet& src, CRGBSet& dest) {
     uint16_t srcSize = abs(src.len);    //src.size() would be more appropriate, but function is not marked const
     CRGB* normSrcStart = src.len < 0 ? src.end_pos : src.leds;     //src.reversed() would have been consistent, but function is not marked const
@@ -210,24 +187,6 @@ void shuffleIndexes(uint16_t array[], uint16_t szArray) {
     }
 }
 
-void offTrailColor(CRGB arr[], uint16_t x) {
-    if (x < 1) {
-        arr[x] = CRGB::Black;
-        return;
-    }
-    arr[x] = arr[x - 1];
-    arr[x - 1] = CRGB::Black;
-}
-
-void setTrailColor(CRGB arr[], uint16_t x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness) {
-    arr[x] = color;
-    arr[x] %= dotBrightness;
-    if (x < 1) {
-        return;
-    }
-    arr[x - 1] = color.nscale8_video(trailBrightness);
-}
-
 //copy arrays using memcpy (arguably the fastest way) - no checks are made on the length copied vs actual length of both arrays
 void copyArray(const CRGB *src, CRGB *dest, uint16_t length) {
     memcpy(dest, src, sizeof(src[0]) * length);
@@ -259,22 +218,6 @@ void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLen
     }
 }
 
-void showFill(const CRGB frame[], uint16_t szFrame) {
-    fillArray(frame, szFrame, FastLED.leds(), FastLED.size());
-    FastLED.show();
-}
-
-void pushFrame(const CRGB frame[], uint16_t szFrame, uint16_t ofsDest, bool repeat) {
-    CRGB *strip = FastLED.leds();
-    int szStrip = FastLED.size();
-    if (repeat)
-        fillArray(frame, szFrame, strip, szStrip, ofsDest);
-    else {
-        size_t len = capd(ofsDest + szFrame, szStrip) - ofsDest;
-        copyArray(frame, 0, strip, ofsDest, len);
-    }
-}
-
 CRGB *mirrorLow(CRGB array[], uint16_t szArray) {
     uint swaps = szArray >> 1;
     for (int x = 0; x < swaps; x++) {
@@ -291,21 +234,11 @@ CRGB *mirrorHigh(CRGB array[], uint16_t szArray) {
     return array;
 }
 
-CRGB *reverseArray(CRGB array[], uint16_t szArray) {
-    uint swaps = szArray >> 1;
-    for (int x = 0; x < swaps; x++) {
-        CRGB tmp = array[x];
-        array[x] = array[szArray - x - 1];
-        array[szArray - x - 1] = tmp;
-    }
-    return array;
-}
-
-CRGB *cloneArray(const CRGB src[], CRGB dest[], uint16_t length) {
-    copyArray(src, 0, dest, 0, length);
-    return dest;
-}
-
+/**
+ * Turns off entire strip by random spots, in increasing size until all leds are off
+ * <p>Implemented with timers, no delay - that is why this function needs called repeatedly until it returns true</p>
+ * @return true if all leds are off, false otherwise
+ */
 bool turnOff() {
     static uint16_t led = 0;
     static uint16_t xOffNow = 0;
@@ -348,6 +281,10 @@ bool turnOff() {
     return false;
 }
 
+/**
+ * Turns off entire strip by leveraging the juggle effect
+ * @return true if all leds are off, false otherwise
+ */
 bool turnOffJuggle() {
     bool allOff = false;
     EVERY_N_MILLISECONDS(50) {

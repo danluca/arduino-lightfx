@@ -234,7 +234,7 @@ const char *FxA2::name() const {
     return "FXA2";
 }
 
-//=====================================
+// Fx A3
 FxA3::FxA3() : dot(frame(0, FRAME_SIZE)) {
     registryIndex = fxRegistry.registerEffect(this);
 }
@@ -324,7 +324,7 @@ void FxA4::loop() {
 
     EVERY_N_MILLISECONDS_I(a4Timer, speed) {
         CRGBSet tplR(leds, FRAME_SIZE);
-        CRGBSet tplL = frame(0, FRAME_SIZE);
+        CRGBSet tplL = frame(FRAME_SIZE, FRAME_SIZE*2); //dot is occupying the first FRAME_SIZE items
         CRGBSet others(leds, FRAME_SIZE, NUM_PIXELS);
         curBkg = ColorFromPalette(palette, beatsin8(11), 4, LINEARBLEND);
         uint8_t ss = curPos % (szSegment+spacing);
@@ -378,6 +378,7 @@ const char *FxA4::name() const {
     return "FXA4";
 }
 
+// Fx A5
 void FxA5::setup() {
     fxa_setup();
     palette = paletteFactory.mainPalette();
@@ -389,15 +390,15 @@ void FxA5::setup() {
 void FxA5::makeFrame() {
     ovr.fill_solid(ColorFromPalette(targetPalette, colorIndex, brightness-64, LINEARBLEND));
     CRGB newClr = ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND);
-    for (CRGB& pix : ovr) {
-        nblend(pix,newClr, (&pix-ovr.leds)<<4);
+    for (uint16_t x = 0; x < ovr.size(); x++) {
+        nblend(ovr[x], newClr, x<<4);
     }
 }
 
 void FxA5::loop() {
     if (mode == TurnOff) {
         if (turnOff()) {
-            lastColorIndex = colorIndex = szStack = 0;
+            lastColorIndex = colorIndex = 0;
             mode = Chase;
         }
         return;
@@ -410,7 +411,7 @@ void FxA5::loop() {
         replicateSet(tpl, others);
         FastLED.show();
 
-        curPos = inc(curPos, 1, FRAME_SIZE);
+        incr(curPos, 1, FRAME_SIZE);
         if (curPos == 0) {
             lastColorIndex = colorIndex;
             colorIndex = random8();

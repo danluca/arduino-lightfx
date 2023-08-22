@@ -54,19 +54,11 @@ void ledStripInit();
 
 void fsInit();
 
-void showFill(const CRGB frame[], uint16_t szFrame);
-
-void shiftRight(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos = 1, CRGB feedLeft = BKG);
 void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp = (Viewport)0, uint16_t pos = 1);
 
-void shiftLeft(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos = 1, CRGB feedRight = BKG);
 void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp = (Viewport) 0, uint16_t pos = 1);
 
 void shuffleIndexes(uint16_t array[], uint16_t szArray);
-
-void offTrailColor(CRGB arr[], uint16_t x);
-
-void setTrailColor(CRGB arr[], uint16_t x, CRGB color, uint8_t dotBrightness, uint8_t trailBrightness);
 
 void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
 
@@ -78,18 +70,12 @@ void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLen
 
 void replicateSet(const CRGBSet& src, CRGBSet& dest);
 
-void pushFrame(const CRGB frame[], uint16_t szFrame, uint16_t ofsDest = 0, bool repeat = false);
-
 bool turnOffJuggle();
 
 
 CRGB *mirrorLow(CRGB array[], uint16_t szArray);
 
 CRGB *mirrorHigh(CRGB array[], uint16_t szArray);
-
-CRGB *reverseArray(CRGB array[], uint16_t szArray);
-
-CRGB *cloneArray(const CRGB src[], CRGB dest[], uint16_t length);
 
 bool turnOff();
 
