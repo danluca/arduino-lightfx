@@ -69,7 +69,7 @@ void FxE1::loop() {
 
 }
 
-const char *FxE1::description() {
+const char *FxE1::description() const {
     return "FXE1: twinkle";
 }
 
@@ -95,11 +95,11 @@ void FxE1::ChangeMe() {
     }
 }
 
-const char *FxE1::name() {
+const char *FxE1::name() const {
     return "FXE1";
 }
 
-void FxE1::describeConfig(JsonArray &json) {
+void FxE1::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
@@ -133,7 +133,7 @@ void FxE2::loop() {
 
 }
 
-const char *FxE2::description() {
+const char *FxE2::description() const {
     return "FXE2: beatwave";
 }
 
@@ -151,11 +151,11 @@ void FxE2::beatwave() {
   
 }
 
-const char *FxE2::name() {
+const char *FxE2::name() const {
     return "FXE2";
 }
 
-void FxE2::describeConfig(JsonArray &json) {
+void FxE2::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -184,15 +184,15 @@ void FxE3::loop() {
     }
 }
 
-const char *FxE3::description() {
+const char *FxE3::description() const {
     return "FxE3: sawtooth";
 }
 
-const char *FxE3::name() {
+const char *FxE3::name() const {
     return "FxE3";
 }
 
-void FxE3::describeConfig(JsonArray &json) {
+void FxE3::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -223,15 +223,15 @@ void FxE4::loop() {
 
 }
 
-const char *FxE4::description() {
+const char *FxE4::description() const {
     return "FxE4: serendipitous";
 }
 
-const char *FxE4::name() {
+const char *FxE4::name() const {
     return "FxE4";
 }
 
-void FxE4::describeConfig(JsonArray &json) {
+void FxE4::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }

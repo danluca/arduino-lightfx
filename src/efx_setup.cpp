@@ -112,14 +112,16 @@ void shiftRight(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos, CRGB fee
     }
 }
 
-void shiftRight(CRGBSet& set, uint16_t pos, CRGB feedLeft) {
-    if ((pos == 0) || (set.size() == 0))
+void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp, uint16_t pos) {
+    if ((pos == 0) || (set.size() == 0) || (vwp.low >= set.size()))
         return;
-    if (pos >= set.size()) {
+    if (vwp.size() == 0)
+        vwp = (Viewport)set.size();
+    if (pos >= vwp.size()) {
         set.fill_solid(feedLeft);
         return;
     }
-    for (uint16_t x = set.size(); x > 0; x--) {
+    for (uint16_t x = capu(vwp.high, set.size()); x > vwp.low; x--) {
         uint16_t y = x - 1;
         set[y] = y < pos ? feedLeft : set[y-pos];
     }
@@ -149,30 +151,41 @@ void shiftLeft(CRGB arr[], uint16_t szArr, Viewport vwp, uint16_t pos, CRGB feed
     }
 }
 
-void shiftLeft(CRGBSet &set, uint16_t pos, CRGB feedRight) {
-    if ((pos == 0) || (set.size() == 0))
+void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp, uint16_t pos) {
+    if ((pos == 0) || (set.size() == 0) || (vwp.low >= set.size()))
         return;
-    if (pos >= set.size()) {
+    if (vwp.size() == 0)
+        vwp = (Viewport)set.size();
+    if (pos >= vwp.size()) {
         set.fill_solid(feedRight);
         return;
     }
-    for (uint16_t x = 0; x < set.size(); x++) {
+    for (uint16_t x = vwp.low; x < min(set.size(), vwp.high); x++) {
         uint16_t y = x + pos;
         set[x] = y < set.size() ? set[y] : feedRight;
     }
 }
-
 void replicateSet(const CRGBSet& src, CRGBSet& dest) {
     uint16_t srcSize = abs(src.len);    //src.size() would be more appropriate, but function is not marked const
-    CRGB* srcStart = src.leds;
-    CRGB* srcEnd = src.end_pos;
-    CRGB* destStart = dest;
-
-    for (CRGB& pix : dest) {
-        CRGB* pixPtr = &pix;
-        if ((pixPtr < srcStart) || (pixPtr >= srcEnd)) {
-            //not overlapping the source
-            pix = src[(pixPtr - destStart)%srcSize];
+    CRGB* normSrcStart = src.len < 0 ? src.end_pos : src.leds;     //src.reversed() would have been consistent, but function is not marked const
+    CRGB* normSrcEnd = src.len < 0 ? src.leds : src.end_pos;
+    CRGB* normDestStart = dest.reversed() ? dest.end_pos : dest.leds;
+    CRGB* normDestEnd = dest.reversed() ? dest.leds : dest.end_pos;
+    uint16_t x = 0;
+    if (max(normSrcStart, normDestStart) < min(normSrcEnd, normDestEnd)) {
+        //we have overlap - account for it
+        for (uint16_t y = 0; y < dest.size(); y++) {
+            CRGB* yPtr = &dest[y];
+            if ((yPtr < normSrcStart) || (yPtr >= normSrcEnd)) {
+                (*yPtr) = src[x];
+                incr(x, 1, srcSize);
+            }
+        }
+    } else {
+        //no overlap - simpler assignment code
+        for (uint16_t y = 0; y < dest.size(); y++) {
+            dest[y] = src[x];
+            incr(x, 1, srcSize);
         }
     }
 }
@@ -216,7 +229,7 @@ void setTrailColor(CRGB arr[], uint16_t x, CRGB color, uint8_t dotBrightness, ui
 }
 
 //copy arrays using memcpy (arguably the fastest way) - no checks are made on the length copied vs actual length of both arrays
-void copyArray(CRGB *src, CRGB *dest, uint16_t length) {
+void copyArray(const CRGB *src, CRGB *dest, uint16_t length) {
     memcpy(dest, src, sizeof(src[0]) * length);
 }
 
@@ -235,10 +248,6 @@ bool isAnyLedOn(CRGB arr[], uint16_t szArray, CRGB backg) {
             return true;
     }
     return false;
-}
-
-void fillArray(CRGB *src, uint16_t szSrc, CRGB color) {
-    fill_solid(src, szSrc, color);
 }
 
 void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs) {
@@ -467,7 +476,7 @@ uint LedEffect::getRegistryIndex() const {
     return registryIndex;
 }
 
-void LedEffect::baseConfig(JsonObject &json) {
+void LedEffect::baseConfig(JsonObject &json) const {
     json["description"] = description();
     json["name"] = name();
     json["registryIndex"] = getRegistryIndex();

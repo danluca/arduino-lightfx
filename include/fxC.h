@@ -26,15 +26,15 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
     void animationA();
 
     void animationB();
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 };
 
 class FxC2 : public LedEffect {
@@ -45,11 +45,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 };
 
 class FxC3 : public LedEffect {
@@ -60,11 +60,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 };
 
 class FxC4 : public LedEffect {
@@ -75,11 +75,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 };
 
 class FxC5 : public LedEffect {
@@ -90,11 +90,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 
     void changeParams();
     void matrix();
@@ -115,11 +115,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
     void one_sine_pal(uint8_t colorIndex);
 

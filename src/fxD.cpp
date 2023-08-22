@@ -8,7 +8,7 @@
 //~ Global variables definition
 uint8_t     fade = 8;                                        // How quickly does it fade? Lower = slower fade rate.
 uint8_t     hue = 50;                                       // Starting hue.
-uint8_t     incr = 1;                                        // Incremental value for rotating hues
+uint8_t     delta = 1;                                        // Incremental value for rotating hues
 uint8_t     saturation = 100;                                      // The saturation, where 255 = brilliant colours.
 uint        hueDiff = 256;                                      // Range of random #'s to use for hue
 uint8_t     dotBpm = 30;
@@ -47,7 +47,7 @@ void FxD1::setup() {
 
     fade = 8;
     hue = 50;
-    incr = 3;
+    delta = 3;
     saturation = 224;
     brightness = 255;
     hueDiff = 512;
@@ -64,15 +64,15 @@ void FxD1::loop() {
     }
 }
 
-const char *FxD1::description() {
+const char *FxD1::description() const {
     return "FXD1: Confetti D flashes colours within a limited hue";
 }
 
-const char *FxD1::name() {
+const char *FxD1::name() const {
     return "FXD1";
 }
 
-void FxD1::describeConfig(JsonArray &json) {
+void FxD1::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["localBright"] = brightness;
@@ -84,7 +84,7 @@ void FxD1::confetti() {                                             // random co
   int pos = random16(NUM_PIXELS);                               // Pick an LED at random.
   //leds[pos] += CHSV((hue + random16(hueDiff)) / 4 , saturation, localBright);  // I use 12 bits for hue so that the hue increment isn't too quick.
   leds[pos] += ColorFromPalette(palette, hue, brightness, LINEARBLEND);
-  hue = hue + incr;                                // It increments here.
+  hue = hue + delta;                                // It increments here.
 } // confetti()
 
 
@@ -92,9 +92,9 @@ void FxD1::ChangeMe() {
     static uint8_t secSlot = 0;
     EVERY_N_SECONDS(5) {
         switch (secSlot) {
-            case 0: incr=1; hue=192; saturation=255; fade=2; hueDiff=256; break;  // You can change values here, one at a time , or altogether.
-            case 1: incr=2; hue=128; fade=8; hueDiff=64; break;
-            case 2: incr=3; hue=random16(255); fade=1; hueDiff=16; break;
+            case 0: delta=1; hue=192; saturation=255; fade=2; hueDiff=256; break;  // You can change values here, one at a time , or altogether.
+            case 1: delta=2; hue=128; fade=8; hueDiff=64; break;
+            case 2: delta=3; hue=random16(255); fade=1; hueDiff=16; break;
             default: break;
         }
         secSlot = inc(secSlot, 1, 4);
@@ -125,15 +125,15 @@ void FxD2::loop() {
     }
 }
 
-const char *FxD2::description() {
+const char *FxD2::description() const {
     return "FXD2: dot beat";
 }
 
-const char *FxD2::name() {
+const char *FxD2::name() const {
     return "FXD2";
 }
 
-void FxD2::describeConfig(JsonArray &json) {
+void FxD2::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["bpm"] = dotBpm;
@@ -190,15 +190,15 @@ void FxD3::plasma() {
     }
 }
 
-const char *FxD3::description() {
+const char *FxD3::description() const {
     return "FxD3: plasma";
 }
 
-const char *FxD3::name() {
+const char *FxD3::name() const {
     return "FxD3";
 }
 
-void FxD3::describeConfig(JsonArray &json) {
+void FxD3::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -229,15 +229,15 @@ void FxD4::loop() {
     }
 }
 
-const char *FxD4::description() {
+const char *FxD4::description() const {
     return "FxD4: rainbow marching";
 }
 
-const char *FxD4::name() {
+const char *FxD4::name() const {
     return "FxD4";
 }
 
-void FxD4::describeConfig(JsonArray &json) {
+void FxD4::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -277,15 +277,15 @@ void FxD5::loop() {
     }
 }
 
-const char *FxD5::description() {
+const char *FxD5::description() const {
     return "FxD5: ripples";
 }
 
-const char *FxD5::name() {
+const char *FxD5::name() const {
     return "FxD5";
 }
 
-void FxD5::describeConfig(JsonArray &json) {
+void FxD5::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }

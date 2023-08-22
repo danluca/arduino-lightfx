@@ -33,15 +33,33 @@ void fxh_register() {
 // The dynamic palette shows how you can change the basic 'hue' of the
 // color palette every time through the loop, producing "rainbow fire".
 
-FxH1::FxH1() {
+FxH1::FxH1() : fires{frame(0, 50), frame(50, 100), frame(149, 100)} {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxH1::setup() {
     FastLED.clear(true);
     FastLED.setBrightness(BRIGHTNESS);
-    //Fire palette definition
-    palette = CRGBPalette16(CRGB::Black, CRGB::Red, CRGB::OrangeRed, CRGB::Yellow);
+
+    //Fire palette definition - for New Year get a blue fire
+    switch (paletteFactory.currentHoliday()) {
+        case NewYear: palette = CRGBPalette16( CRGB::Black, CRGB::Blue, CRGB::Aqua,  CRGB::White); break;
+        default: palette = CRGBPalette16(CRGB::Black, CRGB::Red, CRGB::OrangeRed, CRGB::Yellow); break;
+    }
+
+    //clear the fires
+    uint16_t maxSize = 0;
+    for (uint8_t x = 0; x < numFires; x++) {
+        fires[x].fill_solid(BKG);
+        maxSize = max(maxSize, fires[x].size());
+    }
+
+    //initialize the heat map
+    if (hMap.size() < maxSize) {
+        for (uint16_t x = hMap.size(); x < maxSize; x++)
+            hMap.push_back(BKG);
+    } else if (hMap.size() > maxSize)
+        hMap.erase(hMap.begin() + maxSize, hMap.end());
 
     // This first palette is the basic 'black body radiation' colors, which run from black to red to bright yellow to white.
     //gPal = HeatColors_p;
@@ -73,59 +91,59 @@ void FxH1::loop() {
         //   CRGB lightcolor = CHSV(hue,128,255); // half 'whitened', full brightness
         //   gPal = CRGBPalette16( CRGB::Black, darkcolor, lightcolor, CRGB::White);
 
-        Fire2012WithPalette(fire1, FireEnd1 - FireStart1, FireStart1, false);  // run simulation frame 1, using palette colors
-        Fire2012WithPalette(fire2, FireEnd2 - FireStart2, FireStart2, false);  // run simulation frame 2, using palette colors
-        Fire2012WithPalette(fire3, FireEnd3 - FireStart3, FireStart3, true);  // run simulation frame 3, using palette colors
+        for (uint8_t x=0; x<numFires; x++)
+            Fire2012WithPalette(x);  // run simulation frame 1, using palette colors
 
         FastLED.show();  // display this frame
     }
 }
 
-const char *FxH1::description() {
+const char *FxH1::description() const {
     return "FXH1: Fire in 3 segments";
 }
 
-void FxH1::Fire2012WithPalette(int heat[], const uint szArray, const uint stripOffset, bool reverse) {
-    if (szArray > MAX_ENGINE_SIZE)
+void FxH1::Fire2012WithPalette(uint8_t xFire) {
+    //we only have 3 fires (numFires = 3) - abort if called for more than that
+    if (xFire > numFires)
         return;
 
     // Step 1.  Cool down every cell a little
-    for (uint i = 0; i < szArray; i++) {
-        heat[i] = qsub8(heat[i], random8(0, ((COOLING * 10) / szArray) + 2));
+    CRGBSet fire = fires[xFire];
+    for (uint i = 0; i < fire.size(); i++) {
+        hMap[i][xFire] = qsub8(hMap[i][xFire], random8(0, ((COOLING * 10) / fire.size()) + 2));
     }
 
     // Step 2.  Heat from each cell drifts 'up' and diffuses a little
-    for (uint k = szArray - 1; k >= 2; k--) {
-        heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2]) / 3;
+    for (uint16_t k = fire.size() - 1; k >= 2; k--) {
+        hMap[k][xFire] = (hMap[k - 1][xFire] + hMap[k - 2][xFire] + hMap[k - 2][xFire]) / 3;
     }
 
     // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
     if (random8() < SPARKING) {
         int y = random8(7);
-        heat[y] = qadd8(heat[y], random8(160, 255));
+        hMap[y][xFire] = qadd8(hMap[y][xFire], random8(160, 255));
     }
 
     // Step 4.  Map from heat cells to LED colors
-    for (uint j = 0; j < szArray; j++) {
+    for (uint j = 0; j < fire.size(); j++) {
         // Scale the heat value from 0-255 down to 0-240 for best results with color palettes.
-        uint8_t colorindex = scale8(heat[j], 240);
-        CRGB color = ColorFromPalette(palette, colorindex);
-        uint pixelnumber = (reverse ? (szArray - 1 - j) : j) + stripOffset;
-        leds[pixelnumber] = color;
+        uint8_t colorIndex = scale8(hMap[j][xFire], 240);
+        CRGB color = ColorFromPalette(palette, colorIndex);
+        fire[j] = color;
         if (j > random8(5, 9))
-            leds[pixelnumber].nscale8(flameBrightness);
+            fire[j].nscale8(flameBrightness);
     }
 }
 
-const char *FxH1::name() {
+const char *FxH1::name() const {
     return "FXH1";
 }
 
-void FxH1::describeConfig(JsonArray &json) {
+void FxH1::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["flameBrightness"] = flameBrightness;
-    obj["numberOfFires"] = 3;
+    obj["numberOfFires"] = numFires;
 }
 
 
@@ -142,7 +160,7 @@ void FxH2::setup() {
     currentBlending = LINEARBLEND;
     fade = 8;
     hue = 50;
-    incr = 1;
+    delta = 1;
     saturation = 100;
     brightness = 255;
     hueDiff = 256;
@@ -163,7 +181,7 @@ void FxH2::loop() {
 
 }
 
-const char *FxH2::description() {
+const char *FxH2::description() const {
     return "FXH2: confetti H palette";
 }
 
@@ -172,7 +190,7 @@ void FxH2::confetti_pal() {  // random colored speckles that blink in and fade s
     fadeToBlackBy(leds, NUM_PIXELS, fade);  // Low values = slower fade.
     int pos = random16(NUM_PIXELS);             // Pick an LED at random.
     leds[pos] = ColorFromPalette(palette, hue + random16(hueDiff) / 4, brightness, currentBlending);
-    hue = hue + incr;  // It increments here.
+    hue = hue + delta;  // It increments here.
 
 }  // confetti_pal()
 
@@ -182,9 +200,9 @@ void FxH2::ChangeMe() {
     static uint8_t secSlot = 0;
     EVERY_N_SECONDS(5) {
         switch (secSlot) {
-            case 0: targetPalette = paletteFactory.mainPalette(); incr = 1; hue = 192; saturation = 255; fade = 2; hueDiff = 255; break;  // You can change values here, one at a time , or altogether.
-            case 1: targetPalette = paletteFactory.secondaryPalette(); incr = 2; hue = 128; fade = 8; hueDiff = 64; break;
-            case 2: targetPalette = PaletteFactory::randomPalette(); incr = 1; hue = random16(255); fade = 1; hueDiff = 16; break;
+            case 0: targetPalette = paletteFactory.mainPalette(); delta = 1; hue = 192; saturation = 255; fade = 2; hueDiff = 255; break;  // You can change values here, one at a time , or altogether.
+            case 1: targetPalette = paletteFactory.secondaryPalette(); delta = 2; hue = 128; fade = 8; hueDiff = 64; break;
+            case 2: targetPalette = PaletteFactory::randomPalette(); delta = 1; hue = random16(255); fade = 1; hueDiff = 16; break;
             default: break;
 
         }
@@ -192,11 +210,11 @@ void FxH2::ChangeMe() {
     }
 }
 
-const char *FxH2::name() {
+const char *FxH2::name() const {
     return "FXH2";
 }
 
-void FxH2::describeConfig(JsonArray &json) {
+void FxH2::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
@@ -255,15 +273,15 @@ void FxH3::loop() {
 //    }
 }
 
-const char *FxH3::description() {
+const char *FxH3::description() const {
     return "FXH3: filling the strand with colours";
 }
 
-const char *FxH3::name() {
+const char *FxH3::name() const {
     return "FXH3";
 }
 
-void FxH3::describeConfig(JsonArray &json) {
+void FxH3::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["hueDiff"] = hueDiff;

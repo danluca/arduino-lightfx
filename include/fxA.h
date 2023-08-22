@@ -6,7 +6,6 @@
 
 #include "efx_setup.h"
 
-const uint MAX_DOT_SIZE = 16;
 const uint8_t dimmed = 20;
 const uint FRAME_SIZE = 50;
 enum OpMode {
@@ -15,6 +14,7 @@ enum OpMode {
 
 extern const CRGB BKG;
 extern CRGBPalette16 palette;
+extern CRGBPalette16 targetPalette;
 extern uint8_t brightness;
 extern uint8_t colorIndex;
 extern uint8_t lastColorIndex;
@@ -25,11 +25,11 @@ extern volatile uint16_t speed;
 extern volatile uint16_t curPos;
 
 
-void stack(CRGB color, CRGB dest[], uint16_t stackStart, uint16_t szStackSeg);
+void stack(CRGB color, CRGBSet& dest, uint16_t stackStart, uint16_t szStackSeg);
 
 uint16_t fxa_incStackSize(int16_t delta, uint16_t max);
 
-uint16_t fxa_stackAdjust(CRGB array[], uint16_t szArray, uint16_t szStackSeg);
+uint16_t fxa_stackAdjust(CRGBSet& set, uint16_t szStackSeg);
 
 void reset();
 
@@ -41,18 +41,17 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 
 protected:
-    CRGB dot[MAX_DOT_SIZE]{};
+    CRGBSet dot;
     void makeDot(CRGB color, uint16_t szDot);
     uint8_t szSegment = 3;
     uint8_t szStackSeg = 1;
-    bool bConstSpeed = true;
 };
 
 class FxA2 : public LedEffect {
@@ -63,15 +62,15 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
 protected:
     enum Movement {forward, pause, backward};
-    CRGB dot[MAX_DOT_SIZE]{};
+    CRGBSet dot;
     void makeDot();
     uint8_t szSegment = 5;
     Movement movement = forward;
@@ -86,14 +85,14 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
 protected:
-    CRGB dot[MAX_DOT_SIZE]{};
+    CRGBSet dot;
     void makeDot(CRGB color, uint16_t szDot);
     uint8_t szSegment = 5;
     uint8_t szStackSeg = 3;
@@ -108,14 +107,14 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
 protected:
-    CRGB dot[MAX_DOT_SIZE]{};
+    CRGBSet dot;
     void makeDot(CRGB color, uint16_t szDot);
     uint8_t szSegment = 5;
     uint8_t szStackSeg = 3;
@@ -131,15 +130,14 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
 protected:
     CRGBSet ovr;
-    CRGB background;
     void makeFrame();
 };
 

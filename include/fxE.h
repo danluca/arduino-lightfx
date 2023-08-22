@@ -28,13 +28,13 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
     static void twinkle();
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
     static void ChangeMe();
 };
@@ -47,11 +47,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
     void beatwave();
 };
@@ -64,11 +64,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 };
 
 class FxE4 : public LedEffect {
@@ -79,11 +79,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
     void serendipitous();
 protected:

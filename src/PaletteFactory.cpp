@@ -29,6 +29,21 @@ extern const TProgmemRGBPalette16 ChristmasColors_p FL_PROGMEM = {
         CRGB::Gray, CRGB::Gray, CRGB::White, CRGB::White,
         CRGB::DarkGray, CRGB::Black, CRGB::Gray, CRGB::Black
 };
+/**
+ * Partier colors - a derivation on built-in party colors palette
+ */
+ extern const TProgmemPalette16 PartierColors_p FL_PROGMEM = {
+        0x5500AB, 0x84007C, 0xB5004B, 0xE5001B,
+        0xE81700, 0xAB7700, CRGB::Yellow, CRGB::Green,
+        CRGB::LimeGreen, CRGB::DarkTurquoise, CRGB::CornflowerBlue, CRGB::Blue,
+        CRGB::BlueViolet, CRGB::DeepPink, CRGB::Bisque, CRGB::White
+ };
+ extern const TProgmemPalette16 PartierColorsCompl_p FL_PROGMEM = {
+         0x56AB00, 0x008408, 0x00A6B5, 0x008EE5,
+         0x00D1E8, 0x0034AB, 0x8000FF, 0x800080,
+         0xCD3280, 0xD10300, 0xED7864, 0xFFFF00,
+         0x83E22B, 0x1493FF, 0xC6C4FF, 0xDC143C
+ };
 
 /**
  * Figures out the holiday type from a given time - based on month and day elements
@@ -106,7 +121,7 @@ CRGBPalette16 PaletteFactory::mainPalette(const time_t time) {
             return Rainbow_gp;
         case Party:
         default:
-            return PartyColors_p;
+            return PartierColors_p;
     }
 }
 
@@ -123,7 +138,7 @@ CRGBPalette16 PaletteFactory::secondaryPalette(const time_t time) {
             return OceanColors_p;
         case Party:
         default:
-            return PartyColors_p;
+            return PartierColorsCompl_p;
     }
 }
 

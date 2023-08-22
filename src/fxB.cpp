@@ -42,7 +42,7 @@ void FxB1::loop() {
     FastLED.show();
 }
 
-const char *FxB1::description() {
+const char *FxB1::description() const {
     return "FXB1: rainbow";
 }
 
@@ -50,11 +50,11 @@ FxB1::FxB1() {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
-const char *FxB1::name() {
+const char *FxB1::name() const {
     return "FXB1";
 }
 
-void FxB1::describeConfig(JsonArray &json) {
+void FxB1::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
@@ -79,15 +79,15 @@ void FxB2::loop() {
     FastLED.show();
 }
 
-const char *FxB2::description() {
+const char *FxB2::description() const {
     return "FXB2: rainbow with glitter";
 }
 
-const char *FxB2::name() {
+const char *FxB2::name() const {
     return "FXB2";
 }
 
-void FxB2::describeConfig(JsonArray &json) {
+void FxB2::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -110,15 +110,15 @@ void FxB3::loop() {
     FastLED.show();
 }
 
-const char *FxB3::description() {
+const char *FxB3::description() const {
     return "FXB3: confetti B";
 }
 
-const char *FxB3::name() {
+const char *FxB3::name() const {
     return "FXB3";
 }
 
-void FxB3::describeConfig(JsonArray &json) {
+void FxB3::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
@@ -143,15 +143,15 @@ void FxB4::loop() {
   FastLED.show();
 }
 
-const char *FxB4::description() {
+const char *FxB4::description() const {
     return "FXB4: sinelon";
 }
 
-const char *FxB4::name() {
+const char *FxB4::name() const {
     return "FXB4";
 }
 
-void FxB4::describeConfig(JsonArray &json) {
+void FxB4::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
@@ -179,15 +179,15 @@ void FxB5::loop() {
     }
 }
 
-const char *FxB5::description() {
+const char *FxB5::description() const {
     return "FXB5: juggle short segments";
 }
 
-const char *FxB5::name() {
+const char *FxB5::name() const {
     return "FXB5";
 }
 
-void FxB5::describeConfig(JsonArray &json) {
+void FxB5::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
@@ -212,15 +212,15 @@ void FxB6::loop() {
 
 }
 
-const char *FxB6::description() {
+const char *FxB6::description() const {
     return "FXB6: bpm";
 }
 
-const char *FxB6::name() {
+const char *FxB6::name() const {
     return "FXB6";
 }
 
-void FxB6::describeConfig(JsonArray &json) {
+void FxB6::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -242,15 +242,15 @@ void FxB7::loop() {
 
 }
 
-const char *FxB7::description() {
+const char *FxB7::description() const {
     return "FXB7: ease";
 }
 
-const char *FxB7::name() {
+const char *FxB7::name() const {
     return "FXB7";
 }
 
-void FxB7::describeConfig(JsonArray &json) {
+void FxB7::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
@@ -282,15 +282,15 @@ void FxB8::loop() {
 
 }
 
-const char *FxB8::description() {
+const char *FxB8::description() const {
     return "FXB8: fadein";
 }
 
-const char *FxB8::name() {
+const char *FxB8::name() const {
     return "FXB8";
 }
 
-void FxB8::describeConfig(JsonArray &json) {
+void FxB8::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["brightness"] = brightness;
@@ -317,15 +317,15 @@ void FxB9::loop() {
     }
 }
 
-const char *FxB9::description() {
+const char *FxB9::description() const {
     return "FxB9: juggle long segments";
 }
 
-const char *FxB9::name() {
+const char *FxB9::name() const {
     return "FxB9";
 }
 
-void FxB9::describeConfig(JsonArray &json) {
+void FxB9::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }

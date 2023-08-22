@@ -46,11 +46,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 };
 
 class FxB2 : public LedEffect {
@@ -61,11 +61,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 };
 
 class FxB3 : public LedEffect {
@@ -76,11 +76,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 };
 
 class FxB4 : public LedEffect {
@@ -91,11 +91,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 };
 
 class FxB5 : public LedEffect {
@@ -106,11 +106,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 };
 
 class FxB6 : public LedEffect {
@@ -121,11 +121,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 };
 
 class FxB7 : public LedEffect {
@@ -136,11 +136,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 };
 
 class FxB8 : public LedEffect {
@@ -151,11 +151,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 };
 
 class FxB9 : public LedEffect {
@@ -166,11 +166,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 };
 
 

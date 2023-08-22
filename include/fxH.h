@@ -5,20 +5,7 @@
 #define LIGHTFX_FXH_H
 
 #include "efx_setup.h"
-
-#define MAX_ENGINE_SIZE 100
-///////Fire 1///////
-#define FireStart1 0
-#define FireEnd1 49
-
-///////Fire 2///////
-#define FireStart2 50
-#define FireEnd2 99
-
-///////Fire 3///////
-#define FireStart3 100
-#define FireEnd3 200
-
+#include <vector>
 
 #define FRAMES_PER_SECOND 10
 
@@ -28,11 +15,12 @@ extern CRGBPalette16 palette;
 extern CRGBPalette16 targetPalette;
 extern uint8_t fade;
 extern uint8_t hue;
-extern uint8_t incr;
+extern uint8_t delta;
 extern uint8_t saturation;
 extern uint8_t brightness;
 extern uint hueDiff;
 extern uint8_t speed;
+extern CRGBArray<NUM_PIXELS> frame;
 extern TBlendType currentBlending;
 extern const uint8_t maxChanges;
 
@@ -75,9 +63,9 @@ extern const uint8_t maxChanges;
 
 class FxH1 : public LedEffect {
 private:
-    int fire1[MAX_ENGINE_SIZE];
-    int fire2[MAX_ENGINE_SIZE];
-    int fire3[MAX_ENGINE_SIZE];
+    const static uint8_t numFires = 3;
+    CRGBSet fires[numFires];
+    std::vector<CRGB> hMap;
 public:
     FxH1();
 
@@ -85,13 +73,13 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    static void Fire2012WithPalette(int heat[], uint szArray, uint stripOffset, bool reverse);
+    void Fire2012WithPalette(uint8_t xFire);
 };
 
 class FxH2 : public LedEffect {
@@ -102,11 +90,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 
     static void confetti_pal();
 
@@ -121,11 +109,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 };
 
 

@@ -9,7 +9,7 @@
 // Define variables used by the sequences.
 extern uint8_t fade;
 extern uint8_t hue;
-extern uint8_t incr;
+extern uint8_t delta;
 extern uint8_t saturation;
 extern uint hueDiff;
 extern uint8_t dotBpm;
@@ -27,11 +27,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
     void ChangeMe();
 
@@ -46,11 +46,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    const char *description() override;
+    const char *description() const override;
 
     void dot_beat();
 };
@@ -63,11 +63,11 @@ public:
 
     void loop() override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 
     void plasma();
 };
@@ -80,11 +80,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
     void rainbow_march();
 
@@ -142,11 +142,11 @@ public:
 
     void loop() override;
 
-    const char *description() override;
+    const char *description() const override;
 
-    const char *name() override;
+    const char *name() const override;
 
-    void describeConfig(JsonArray &json) override;
+    void describeConfig(JsonArray &json) const override;
 
     void ripples();
 

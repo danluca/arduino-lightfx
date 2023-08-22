@@ -50,7 +50,7 @@ void FxC1::loop() {
     FastLED.show();
 }
 
-const char *FxC1::description() {
+const char *FxC1::description() const {
     return "FXC1: blend between two animations running at the same time";
 }
 
@@ -75,11 +75,11 @@ void FxC1::animationB() {                                               // runni
   }
 }  // animationB()
 
-const char *FxC1::name() {
+const char *FxC1::name() const {
     return "FXC1";
 }
 
-void FxC1::describeConfig(JsonArray &json) {
+void FxC1::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -122,15 +122,15 @@ void FxC2::loop() {
     FastLED.show();
 }
 
-const char *FxC2::description() {
+const char *FxC2::description() const {
     return "FXC2: blur function";
 }
 
-const char *FxC2::name() {
+const char *FxC2::name() const {
     return "FXC2";
 }
 
-void FxC2::describeConfig(JsonArray &json) {
+void FxC2::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -179,18 +179,18 @@ void FxC3::loop() {
 
 }
 
-void FxC3::describeConfig(JsonArray &json) {
+void FxC3::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     obj["xscale"] = xscale;
     obj["yscale"] = yscale;
 }
 
-const char *FxC3::name() {
+const char *FxC3::name() const {
     return "FXC3";
 }
 
-const char *FxC3::description() {
+const char *FxC3::description() const {
     return "FXC3: using Perlin Noise to move a pixel up and down the strand for a random natural movement";
 }
 
@@ -233,15 +233,15 @@ void FxC4::loop() {
     delay(random8(frequency)*100);                              // speed between strikes
 }
 
-const char *FxC4::description() {
+const char *FxC4::description() const {
     return "FxC4: lightnings";
 }
 
-const char *FxC4::name() {
+const char *FxC4::name() const {
     return "FxC4";
 }
 
-void FxC4::describeConfig(JsonArray &json) {
+void FxC4::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -270,15 +270,15 @@ void FxC5::loop() {
 
 }
 
-const char *FxC5::description() {
+const char *FxC5::description() const {
     return "FxC5: matrix";
 }
 
-const char *FxC5::name() {
+const char *FxC5::name() const {
     return "FxC5";
 }
 
-void FxC5::describeConfig(JsonArray &json) {
+void FxC5::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
@@ -348,15 +348,15 @@ void FxC6::loop() {
 //    }
 }
 
-const char *FxC6::description() {
+const char *FxC6::description() const {
     return "FxC6: one sine";
 }
 
-const char *FxC6::name() {
+const char *FxC6::name() const {
     return "FxC6";
 }
 
-void FxC6::describeConfig(JsonArray &json) {
+void FxC6::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
