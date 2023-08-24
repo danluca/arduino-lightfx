@@ -25,10 +25,39 @@
 
 const uint16_t turnOffSeq[] = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 
-extern CRGB leds[NUM_PIXELS];
+extern const uint8_t dimmed;
+extern const uint16_t FRAME_SIZE;
+extern const uint8_t flameBrightness;
+extern const uint8_t sparkBrightness;
 extern const CRGB BKG;
+extern const uint8_t maxChanges;
+enum OpMode { TurnOff, Chase };
+extern CRGB leds[NUM_PIXELS];
+extern CRGBArray<NUM_PIXELS> frame;
 extern uint16_t stripShuffleIndex[NUM_PIXELS];
+extern CRGBPalette16 palette;
+extern CRGBPalette16 targetPalette;
+extern uint8_t brightness;
+extern uint8_t colorIndex;
+extern uint8_t lastColorIndex;
+extern uint16_t szStack;
+extern OpMode mode;
+extern uint8_t gHue;
+extern uint8_t fade;
+extern uint hueDiff;
+extern uint8_t hue;
+extern uint8_t dotBpm;
+extern uint8_t saturation;
+extern uint8_t delta;
+extern TBlendType currentBlending;
+extern bool dirFwd;
+extern int8_t rot;
+extern int twinkrate;
+extern bool randhue;
 extern volatile bool fxBump;
+extern volatile uint16_t speed;
+extern volatile uint16_t curPos;
+
 
 typedef void (*setupFunc)();
 

@@ -7,25 +7,6 @@
 #include "efx_setup.h"
 #include <vector>
 
-#define FRAMES_PER_SECOND 10
-
-const uint8_t flameBrightness = 180;
-const uint8_t sparkBrightness = 255;
-extern CRGBPalette16 palette;
-extern CRGBPalette16 targetPalette;
-extern uint8_t fade;
-extern uint8_t hue;
-extern uint8_t delta;
-extern uint8_t saturation;
-extern uint8_t brightness;
-extern uint hueDiff;
-extern uint8_t speed;
-extern CRGBArray<NUM_PIXELS> frame;
-extern TBlendType currentBlending;
-extern const uint8_t maxChanges;
-
-
-//
 // This basic one-dimensional 'fire' simulation works roughly as follows:
 // There's a underlying array of 'heat' cells, that model the temperature
 // at each point along the line.  Every cycle through the simulation,
@@ -60,6 +41,7 @@ extern const uint8_t maxChanges;
 // Higher chance = more roaring fire.  Lower chance = more flickery fire.
 // Default 120, suggested range 50-200.
 #define SPARKING 150
+#define FRAMES_PER_SECOND 10
 
 class FxH1 : public LedEffect {
 private:

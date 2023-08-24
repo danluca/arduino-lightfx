@@ -4,10 +4,6 @@
  */
 #include "fxB.h"
 
-//~ Global variables definition
-uint8_t gHue = 0;
-CRGBPalette16 targetPalette;
-
 void fxb_register() {
     static FxB1 fxb1;
     static FxB2 fxB2;
@@ -333,7 +329,6 @@ void FxB9::describeConfig(JsonArray &json) const {
 FxB9::FxB9() {
     registryIndex = fxRegistry.registerEffect(this);
 }
-
 
 
 void fadein() {

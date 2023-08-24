@@ -6,19 +6,6 @@
 
 #include "efx_setup.h"
 
-// Define variables used by the sequences.
-extern uint8_t fade;
-extern uint8_t hue;
-extern uint8_t delta;
-extern uint8_t saturation;
-extern uint hueDiff;
-extern uint8_t dotBpm;
-extern uint8_t brightness;
-extern uint8_t speed;
-extern CRGBPalette16 palette;
-extern CRGBPalette16 targetPalette;
-extern const uint8_t maxChanges;
-
 class FxD1 : public LedEffect {
 public:
     FxD1();

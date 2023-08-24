@@ -6,25 +6,6 @@
 
 #include "efx_setup.h"
 
-const uint8_t dimmed = 20;
-const uint FRAME_SIZE = 50;
-enum OpMode {
-    TurnOff, Chase
-};
-
-extern const CRGB BKG;
-extern CRGBPalette16 palette;
-extern CRGBPalette16 targetPalette;
-extern uint8_t brightness;
-extern uint8_t colorIndex;
-extern uint8_t lastColorIndex;
-extern uint16_t szStack;
-extern OpMode mode;
-extern CRGBArray<NUM_PIXELS> frame;
-extern volatile uint16_t speed;
-extern volatile uint16_t curPos;
-
-
 void stack(CRGB color, CRGBSet& dest, uint16_t stackStart, uint16_t szStackSeg);
 
 uint16_t fxa_incStackSize(int16_t delta, uint16_t max);

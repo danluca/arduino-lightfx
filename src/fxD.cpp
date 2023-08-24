@@ -5,16 +5,6 @@
 
 #include "fxD.h"
 
-//~ Global variables definition
-uint8_t     fade = 8;                                        // How quickly does it fade? Lower = slower fade rate.
-uint8_t     hue = 50;                                       // Starting hue.
-uint8_t     delta = 1;                                        // Incremental value for rotating hues
-uint8_t     saturation = 100;                                      // The saturation, where 255 = brilliant colours.
-uint        hueDiff = 256;                                      // Range of random #'s to use for hue
-uint8_t     dotBpm = 30;
-bool dirFwd = true;
-int8_t rot = 1;
-
 void fxd_register() {
     static FxD1 fxD1;
     static FxD2 fxD2;

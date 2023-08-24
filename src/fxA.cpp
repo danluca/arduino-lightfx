@@ -5,18 +5,6 @@
 #include "fxA.h"
 
 //~ Global variables definition for FxA
-const CRGB BKG = CRGB::Black;
-CRGBPalette16 palette;
-uint8_t brightness = 224;
-uint8_t colorIndex = 0;
-uint8_t lastColorIndex = 0;
-
-volatile uint16_t speed = 100;
-volatile uint16_t curPos = 0;
-OpMode mode = Chase;
-uint16_t szStack = 0;
-uint16_t stripShuffleIndex[NUM_PIXELS];
-CRGBArray<NUM_PIXELS> frame;
 
 void fxa_register() {
     static FxA1 fxA1;
@@ -302,6 +290,7 @@ void FxA4::setup() {
     szSegment = 3;
     fxa_setup();
     palette = paletteFactory.mainPalette();
+    targetPalette = paletteFactory.secondaryPalette();
     szStackSeg = 2;
     brightness = 192;
     mode = Chase;
@@ -329,7 +318,7 @@ void FxA4::loop() {
         curBkg = ColorFromPalette(palette, beatsin8(11), 4, LINEARBLEND);
         uint8_t ss = curPos % (szSegment+spacing);
         shiftRight(tplR, ss < szSegment ? dot[ss] : curBkg);
-        shiftLeft(tplL, curPos < szStackSeg ? ColorFromPalette(palette, -colorIndex, brightness, LINEARBLEND) : BKG);
+        shiftLeft(tplL, curPos < szStackSeg ? ColorFromPalette(targetPalette, colorIndex, brightness, LINEARBLEND) : BKG);
         replicateSet(tplR, others);
         for (uint16_t x = 0; x < NUM_PIXELS; x++) {
             uint8_t xf = x%FRAME_SIZE;

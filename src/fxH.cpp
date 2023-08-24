@@ -33,7 +33,7 @@ void fxh_register() {
 // The dynamic palette shows how you can change the basic 'hue' of the
 // color palette every time through the loop, producing "rainbow fire".
 
-FxH1::FxH1() : fires{frame(0, 50), frame(50, 100), frame(149, 100)} {
+FxH1::FxH1() : fires{CRGBSet(leds, 0, 50), CRGBSet(leds, 50, 100), CRGBSet(leds, 149, 100)} {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
@@ -49,9 +49,9 @@ void FxH1::setup() {
 
     //clear the fires
     uint16_t maxSize = 0;
-    for (uint8_t x = 0; x < numFires; x++) {
-        fires[x].fill_solid(BKG);
-        maxSize = max(maxSize, fires[x].size());
+    for (auto & fire : fires) {
+        fire.fill_solid(BKG);
+        maxSize = max(maxSize, fire.size());
     }
 
     //initialize the heat map
@@ -104,7 +104,7 @@ const char *FxH1::description() const {
 
 void FxH1::Fire2012WithPalette(uint8_t xFire) {
     //we only have 3 fires (numFires = 3) - abort if called for more than that
-    if (xFire > numFires)
+    if (xFire >= numFires)
         return;
 
     // Step 1.  Cool down every cell a little
@@ -125,7 +125,7 @@ void FxH1::Fire2012WithPalette(uint8_t xFire) {
     }
 
     // Step 4.  Map from heat cells to LED colors
-    for (uint j = 0; j < fire.size(); j++) {
+    for (uint16_t j = 0; j < fire.size(); j++) {
         // Scale the heat value from 0-255 down to 0-240 for best results with color palettes.
         uint8_t colorIndex = scale8(hMap[j][xFire], 240);
         CRGB color = ColorFromPalette(palette, colorIndex);

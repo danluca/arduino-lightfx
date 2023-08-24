@@ -6,20 +6,6 @@
 
 #include "efx_setup.h"
 
-// Palette definitions
-extern CRGBPalette16 palette;
-extern CRGBPalette16 targetPalette;
-extern uint8_t speed;
-extern uint8_t brightness;
-extern uint8_t fade;
-extern uint8_t hue;
-extern uint8_t saturation;
-extern volatile uint16_t curPos;
-extern TBlendType currentBlending;                                // NOBLEND or LINEARBLEND
-extern const uint8_t maxChanges;
-
-
-
 class FxE1 : public LedEffect {
 public:
     FxE1();

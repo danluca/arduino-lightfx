@@ -4,11 +4,6 @@
  */
 #include "fxE.h"
 
-//~ Global variables definition
-int twinkrate = 100;                                     // The higher the value, the lower the number of twinkles.
-bool randhue =   true;                                     // Do we want random colours all the time? 1 = yes.
-TBlendType    currentBlending;
-
 void fxe_register() {
     static FxE1 fxe1;
     static FxE2 fxE2;

@@ -6,9 +6,38 @@
 #include "TimeLib.h"
 
 //~ Global variables definition
-CRGB leds[NUM_PIXELS];
-EffectRegistry fxRegistry;
+const uint8_t dimmed = 20;
+const uint16_t FRAME_SIZE = 50;
+const uint8_t flameBrightness = 180;
+const uint8_t sparkBrightness = 255;
+const CRGB BKG = CRGB::Black;
 volatile bool fxBump = false;
+volatile uint16_t speed = 100;
+volatile uint16_t curPos = 0;
+
+EffectRegistry fxRegistry;
+CRGB leds[NUM_PIXELS];
+CRGBArray<NUM_PIXELS> frame;
+CRGBPalette16 palette;
+CRGBPalette16 targetPalette;
+TBlendType    currentBlending;
+OpMode mode = Chase;
+uint8_t brightness = 224;
+uint8_t colorIndex = 0;
+uint8_t lastColorIndex = 0;
+uint8_t gHue = 0;
+uint8_t fade = 8;
+uint8_t hue = 50;
+uint8_t delta = 1;
+uint8_t saturation = 100;
+uint8_t dotBpm = 30;
+uint16_t szStack = 0;
+uint16_t stripShuffleIndex[NUM_PIXELS];
+uint hueDiff = 256;
+int8_t rot = 1;
+int twinkrate = 100;
+bool dirFwd = true;
+bool randhue =   true;
 
 //~ Support functions -----------------
 /**

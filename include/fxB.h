@@ -7,16 +7,6 @@
 #include "efx_setup.h"
 //typedef void (*SimplePatternList[])();  // List of patterns to cycle through.  Each is defined as a separate function below.
 
-extern uint8_t gHue;
-extern uint8_t brightness;
-extern CRGBPalette16 palette;
-extern CRGBPalette16 targetPalette;
-extern const uint8_t maxChanges;
-extern uint8_t fade;
-extern uint hueDiff;
-extern uint8_t hue;
-extern uint8_t dotBpm;
-
 void fadein();
 
 void rainbow();

@@ -6,14 +6,6 @@
 
 #include "efx_setup.h"
 
-extern uint8_t brightness;
-extern CRGBPalette16 palette;
-extern CRGBPalette16 targetPalette;
-extern const CRGB BKG;
-extern const uint8_t maxChanges;
-extern uint8_t speed;
-extern uint8_t saturation;
-
 class FxC1 : public LedEffect {
 private:
     CRGB leds2[NUM_PIXELS];
