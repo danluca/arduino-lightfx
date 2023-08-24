@@ -68,7 +68,7 @@ void ledStripInit() {
 }
 
 LittleFSWrapper *fsPtr;
-char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
+const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
 
 void fsInit() {
 #ifndef DISABLE_LOGGING
@@ -82,38 +82,105 @@ void fsInit() {
     fsPtr = new LittleFSWrapper();
     if (fsPtr->init())
         Log.infoln("Filesystem OK");
+
+#ifndef DISABLE_LOGGING
+    Log.infoln(F("Root FS %s contents:"), LittleFSWrapper::getRoot());
+    DIR *d = opendir(LittleFSWrapper::getRoot());
+    struct dirent *e = nullptr;
+    while (e = readdir(d))
+        Log.infoln(F("  %s [%d]"), e->d_name, e->d_type);
+    Log.infoln(F("Dir complete."));
+#endif
+}
+
+#define FILE_BUF_SIZE   256
+#define JSON_DOC_SIZE   512
+
+/**
+ * Reads a text file - if it exists - into a string object
+ * @param fname name of the file to read
+ * @param s string to store contents into
+ * @return number of characters in the file; 0 if file is empty or doesn't exist
+ */
+size_t readTextFile(const char *fname, String *s) {
+    FILE *f = fopen(fname, "r");
+    size_t fsize = 0;
+    if (f) {
+        char buf[FILE_BUF_SIZE];
+        memset(buf, 0, FILE_BUF_SIZE);
+        size_t cread = 1;
+        while (cread = fread(buf, 1, FILE_BUF_SIZE, f)) {
+            s->concat(buf, cread);
+            fsize += cread;
+        }
+        fclose(f);
+        Log.infoln(F("Read %d bytes from %s file"), fsize, fname);
+#ifndef DISABLE_LOGGING
+        Log.traceln(F("File %s content [%d]: %s"), fname, fsize, s->c_str());
+#endif
+    } else
+        Log.errorln(F("Text file %s was not found/could not read"), fname);
+    return fsize;
+}
+
+/**
+ * Writes (overrides if already exists) a file using the string content
+ * @param fname file name to write
+ * @param s contents to write
+ * @return number of bytes written
+ */
+size_t writeTextFile(const char *fname, String *s) {
+    size_t fsize = 0;
+    FILE *f = fopen(fname, "w");
+    if (f) {
+        fsize = fwrite(s->c_str(), sizeof(s->charAt(0)), s->length(), f);
+        fclose(f);
+        Log.infoln(F("File %s has been saved, size %d bytes"), fname, s->length());
+    } else
+        Log.errorln(F("Failed to create file %s for writing"), fname);
+    return fsize;
+}
+
+bool removeFile(const char *fname) {
+    FILE *f = fopen(fname, "r");
+    if (f) {
+        fclose(f);
+        return lfs.remove(fname) == 0;
+    }
+    //file does not exist - return true to the caller, the intent is already fulfilled
+    return true;
+}
+
+void readState() {
+    String json;
+    size_t stateSize = readTextFile(stateFileName, &json);
+    if (stateSize > 0) {
+        StaticJsonDocument<JSON_DOC_SIZE> doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+        deserializeJson(doc, json);
+
+        bool autoAdvance = doc["autoFxRoll"].as<bool>();
+        fxRegistry.autoRoll(autoAdvance);
+
+        uint16_t seed = doc["randomSeed"].as<uint16_t>();
+        random16_set_seed(seed);
+
+        uint16_t fx = doc["curFx"].as<uint16_t>();
+        fxRegistry.nextEffectPos(fx);
+
+        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d"), stateFileName, stateSize,
+                   autoAdvance ? "true" : "false", seed, fx);
+    }
 }
 
 void saveState() {
-    FILE *f = fopen(stateFileName, "r+");
-    if (!f) {
-        f = fopen(stateFileName, "w+");
-        if (f)
-            Log.infoln("Successfully created lastExec file");
-        else
-            Log.errorln("Failed to create lastExec file");
-    } else {
-        Log.infoln("Successfully opened existing lastExec file");
-        char buff[512];
-        memset(buff, 0, 512);
-        size_t charsRead = 1;
-        Log.infoln("Contents of lastExec file:");
-        while (charsRead) {
-            charsRead = fread((uint8_t *)buff, 1, 512, f);
-            if (charsRead)
-                Log.info("%s", buff);
-        }
-    }
-    if (f) {
-        //update file
-        fprintf(f, "lastRun=%4d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
-        int err = fclose(f);
-        if (err < 0)
-            Log.errorln("Error saving the lastExec file: %d", err);
-        else
-            Log.infoln("Successfully saved the lastExec file (%d)", err);
-    }
-
+    StaticJsonDocument<JSON_DOC_SIZE> doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+    doc["randomSeed"] = random16_get_seed();
+    doc["autoFxRoll"] = fxRegistry.isAutoRoll();
+    doc["curFx"] = fxRegistry.curEffectPos();
+    String str;
+    serializeJson(doc, str);
+    if (!writeTextFile(stateFileName, &str))
+        Log.errorln(F("Failed to create/write the status file %s"), stateFileName);
 }
 
 //~ General Utilities ---------------------------------------------------------
@@ -344,6 +411,8 @@ void fx_setup() {
     fxRegistry.setup();
     //ensure the current effect is set up, in case they share global variables
     fxRegistry.getCurrentEffect()->setup();
+
+    readState();
 }
 
 //Run currently selected effect -------
@@ -357,6 +426,7 @@ void fx_run() {
     EVERY_N_MINUTES(5) {
         fxRegistry.nextRandomEffectPos();
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+        saveState();
     }
 
     fxRegistry.loop();
@@ -367,30 +437,30 @@ LedEffect *EffectRegistry::getCurrentEffect() const {
     return effects[currentEffect];
 }
 
-uint EffectRegistry::nextEffectPos(uint efx) {
-    uint prevPos = currentEffect;
+uint16_t EffectRegistry::nextEffectPos(uint16_t efx) {
+    uint16_t prevPos = currentEffect;
     currentEffect = capu(efx, effectsCount-1);
     return prevPos;
 }
 
-uint EffectRegistry::nextEffectPos() {
+uint16_t EffectRegistry::nextEffectPos() {
     if (!autoSwitch)
         return currentEffect;
-    uint prevPos = currentEffect;
+    uint16_t prevPos = currentEffect;
     currentEffect = inc(currentEffect, 1, effectsCount);
     return prevPos;
 }
 
-uint EffectRegistry::curEffectPos() const {
+uint16_t EffectRegistry::curEffectPos() const {
     return currentEffect;
 }
 
-uint EffectRegistry::nextRandomEffectPos() {
+uint16_t EffectRegistry::nextRandomEffectPos() {
     currentEffect = autoSwitch ? random16(0, effectsCount) : currentEffect;
     return currentEffect;
 }
 
-uint EffectRegistry::registerEffect(LedEffect *effect) {
+uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     if (effectsCount < MAX_EFFECTS_COUNT) {
         uint8_t curIndex = effectsCount++;
         effects[curIndex] = effect;
@@ -403,7 +473,7 @@ uint EffectRegistry::registerEffect(LedEffect *effect) {
 }
 
 void EffectRegistry::setup() {
-    for (uint x = 0; x < effectsCount; x++) {
+    for (uint16_t x = 0; x < effectsCount; x++) {
         effects[x]->setup();
     }
 }
@@ -420,12 +490,12 @@ void EffectRegistry::loop() {
 }
 
 void EffectRegistry::describeConfig(JsonArray &json) {
-    for (uint x = 0; x < effectsCount; x++) {
+    for (uint16_t x = 0; x < effectsCount; x++) {
         effects[x]->describeConfig(json);
     }
 }
 
-LedEffect *EffectRegistry::getEffect(uint index) const {
+LedEffect *EffectRegistry::getEffect(uint16_t index) const {
     return effects[capu(index, effectsCount-1)];
 }
 
@@ -438,7 +508,7 @@ bool EffectRegistry::isAutoRoll() const {
 }
 
 // LedEffect
-uint LedEffect::getRegistryIndex() const {
+uint16_t LedEffect::getRegistryIndex() const {
     return registryIndex;
 }
 

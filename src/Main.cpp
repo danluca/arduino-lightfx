@@ -21,7 +21,9 @@ void setup() {
 
     setupStateLED();
 
-    Scheduler.startLoop(&fxTasks, 2048);
+    fsInit();
+
+    Scheduler.startLoop(&fxTasks, 3072);
     Scheduler.startLoop(&micTasks, 1024);
 
     stateLED(CRGB::OrangeRed);    //Wi-Fi connect in progress
@@ -33,9 +35,6 @@ void setup() {
     if (!time_setup())
         stateLED(CRGB::Blue);
 
-    fsInit();
-
-    //saveState();
     //start the web server/fx in a separate thread - turns out the JSON library crashes if not given enough stack size
     // Scheduler.startLoop(wifi_loop, 2048);
 }

@@ -135,6 +135,12 @@ void fx_run();
 
 void saveState();
 
+void readState();
+
+size_t readTextFile(const char *fname, String *s);
+size_t writeTextFile(const char *fname, String *s);
+bool removeFile(const char *fname);
+
 //base class/interface for all effects
 class LedEffect {
 protected:
@@ -152,7 +158,7 @@ public:
 
     void baseConfig(JsonObject &json) const;
 
-    uint getRegistryIndex() const;
+    uint16_t getRegistryIndex() const;
 
     virtual ~LedEffect() = default;     // Destructor
 };
@@ -160,26 +166,26 @@ public:
 class EffectRegistry {
 private:
     LedEffect *effects[MAX_EFFECTS_COUNT];
-    uint currentEffect = 0;
-    uint effectsCount = 0;
-    uint lastEffectRun = 0;
+    uint16_t currentEffect = 0;
+    uint16_t effectsCount = 0;
+    uint16_t lastEffectRun = 0;
     bool autoSwitch = true;
 public:
     EffectRegistry() : effects() {};
 
     LedEffect *getCurrentEffect() const;
 
-    LedEffect *getEffect(uint index) const;
+    LedEffect *getEffect(uint16_t index) const;
 
-    uint nextEffectPos(uint efx);
+    uint16_t nextEffectPos(uint16_t efx);
 
-    uint nextEffectPos();
+    uint16_t nextEffectPos();
 
-    uint curEffectPos() const;
+    uint16_t curEffectPos() const;
 
-    uint nextRandomEffectPos();
+    uint16_t nextRandomEffectPos();
 
-    uint registerEffect(LedEffect *effect);
+    uint16_t registerEffect(LedEffect *effect);
 
     void setup();
 
