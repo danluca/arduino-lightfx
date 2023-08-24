@@ -13,13 +13,6 @@ void fxd_register() {
     static FxD5 fxD5;
 }
 
-void fxd_setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
-    targetPalette = paletteFactory.mainPalette();
-    palette = paletteFactory.mainPalette();
-}
-
 /**
  * Confetti
  * By: Mark Kriegsman
@@ -33,7 +26,7 @@ FxD1::FxD1() {
 }
 
 void FxD1::setup() {
-    fxd_setup();
+    resetGlobals();
 
     fade = 8;
     hue = 50;
@@ -41,8 +34,7 @@ void FxD1::setup() {
     saturation = 224;
     brightness = 255;
     hueDiff = 512;
-    speed = 20;
-
+    speed = 30;
 }
 
 void FxD1::loop() {
@@ -103,7 +95,7 @@ FxD2::FxD2() {
 }
 
 void FxD2::setup() {
-    fxd_setup();
+    resetGlobals();
     dotBpm = 21;
     fade = 31;
 }
@@ -145,7 +137,8 @@ void FxD2::dot_beat() {
 } // dot_beat()
 
 void FxD3::setup() {
-    fxd_setup();
+    resetGlobals();
+    targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
 }
 
@@ -198,11 +191,9 @@ FxD3::FxD3() {
 }
 
 void FxD4::setup() {
-    fxd_setup();
+    resetGlobals();
     hue = 0;
     hueDiff = 1;
-    dirFwd = true;
-    rot = 1;
 }
 
 void FxD4::loop() {
@@ -254,7 +245,7 @@ void FxD4::rainbow_march() {
 }
 
 void FxD5::setup() {
-    fxd_setup();
+    resetGlobals();
 }
 
 void FxD5::loop() {

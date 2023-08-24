@@ -11,22 +11,6 @@ void fxe_register() {
     static FxE4 fxE4;
 }
 
-void fxe_setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
-    currentBlending = LINEARBLEND;
-    palette = paletteFactory.secondaryPalette();
-    targetPalette = paletteFactory.mainPalette();
-    twinkrate = 100;
-    speed =  10;
-    fade =   8;
-    hue =  50;
-    saturation = 255;
-    brightness = 255;
-    randhue = true;
-    curPos = 0;
-}
-
 /**
  * Display Template for FastLED
  * By: Andrew Tuline
@@ -41,7 +25,10 @@ FxE1::FxE1() {
 }
 
 void FxE1::setup() {
-    fxe_setup();
+    resetGlobals();
+    speed = 20;
+    saturation = 255;
+    brightness = 224;
 }
 
 void FxE1::loop() {
@@ -99,7 +86,6 @@ void FxE1::describeConfig(JsonArray &json) const {
     baseConfig(obj);
     obj["brightness"] = brightness;
 }
-// e01_ChangeMe()
 
 //=====================================
 FxE2::FxE2() {
@@ -107,9 +93,11 @@ FxE2::FxE2() {
 }
 
 void FxE2::setup() {
-    fxe_setup();
+    resetGlobals();
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
+    saturation = 255;
+    brightness = 224;
 }
 
 void FxE2::loop() {
@@ -118,7 +106,7 @@ void FxE2::loop() {
         FastLED.show();
     }
 
-    EVERY_N_MILLISECONDS(500) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
     }
 
@@ -134,7 +122,6 @@ const char *FxE2::description() const {
 
 
 void FxE2::beatwave() {
-  
   uint8_t wave1 = beatsin8(9, 0, 255);                        // That's the same as beatsin8(9);
   uint8_t wave2 = beatsin8(8, 0, 255);
   uint8_t wave3 = beatsin8(7, 0, 255);
@@ -155,24 +142,21 @@ void FxE2::describeConfig(JsonArray &json) const {
     baseConfig(obj);
 }
 
+//Fx E3
 void FxE3::setup() {
-    fxe_setup();
+    resetGlobals();
 }
 
 void FxE3::loop() {
-    static bool fwd = true;
     EVERY_N_MILLISECONDS_I(e3Timer, 400) {
-        uint8_t adv = random8(1, 16);
-        CRGB clr = fwd ? ColorFromPalette(palette, random8(), 255, currentBlending) : BKG;
-        for (uint8_t x = 0; x < adv; x++) {
-            int16_t pos = fwd ? curPos + x : NUM_PIXELS - 1 - curPos - x;
-            pos = capr(pos, 0, NUM_PIXELS-1);
-            leds[pos] = clr;
-        }
+        uint8_t adv = random8(1, 9);
+        uint16_t newPos = inc(curPos, adv, NUM_PIXELS);
+        CRGBSet seg(leds, dirFwd?curPos:NUM_PIXELS-curPos, dirFwd?newPos:NUM_PIXELS-newPos);
+        seg = dirFwd ? ColorFromPalette(palette, random8(), brightness, currentBlending) : BKG;
         FastLED.show();
-        uint newPos = inc(curPos, adv, NUM_PIXELS);
         if (newPos < curPos) {
-            fwd = !fwd;     //curPos rolled over
+            newPos = 0;
+            dirFwd = !dirFwd;     //curPos rolled over
         }
         curPos = newPos;
         e3Timer.setPeriod(150 + random16(901));
@@ -196,8 +180,9 @@ FxE3::FxE3() {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
+//Fx E4
 void FxE4::setup() {
-    fxe_setup();
+    resetGlobals();
     X = Xorig;
     Y = Yorig;
 }

@@ -14,19 +14,10 @@ void fxa_register() {
     static FxA5 fxA5;
 }
 
-void fxa_setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
-    fill_solid(frame, NUM_PIXELS, BKG);
-
-    palette = paletteFactory.mainPalette();
-    //shuffle led indexes
-    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-    reset();
-    colorIndex = lastColorIndex = 0;
-    curPos = 0;
-    speed = 100;
-    brightness = 224;
+void resetStack() {
+    frame.fill_solid(BKG);
+    szStack = 0;
+    mode = Chase;
 }
 
 ///////////////////////////////////////
@@ -59,12 +50,6 @@ uint16_t fxa_stackAdjust(CRGBSet& set, uint16_t szStackSeg) {
 }
 
 
-void reset() {
-    fill_solid(frame, FRAME_SIZE, BKG);
-    szStack = 0;
-    mode = Chase;
-}
-
 ///////////////////////////////////////
 // Effect Definitions - setup and loop
 ///////////////////////////////////////
@@ -75,7 +60,7 @@ FxA1::FxA1() : dot(frame(0, FRAME_SIZE)) {
 }
 
 void FxA1::setup() {
-    fxa_setup();
+    resetGlobals();
     makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
@@ -91,7 +76,7 @@ void FxA1::makeDot(CRGB color, uint16_t szDot) {
 void FxA1::loop() {
     if (mode == TurnOff) {
         if (turnOff())
-            reset();
+            resetStack();
         return;
     }
     EVERY_N_MILLISECONDS_I(a1Timer, speed) {
@@ -145,7 +130,7 @@ FxA2::FxA2() : dot(frame(0, FRAME_SIZE)) {
 }
 
 void FxA2::setup() {
-    fxa_setup();
+    resetGlobals();
     makeDot();
 }
 
@@ -159,7 +144,7 @@ void FxA2::makeDot() {
 
 void FxA2::loop() {
     if (mode == TurnOff) {
-        if (turnOffJuggle()) reset();
+        if (turnOffJuggle()) resetStack();
         return;
     }
     EVERY_N_MILLISECONDS_I(a2Timer, speed) {
@@ -228,7 +213,7 @@ FxA3::FxA3() : dot(frame(0, FRAME_SIZE)) {
 }
 
 void FxA3::setup() {
-    fxa_setup();
+    resetGlobals();
     makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
     bFwd = true;
 }
@@ -288,12 +273,9 @@ const char *FxA3::name() const {
 // FX A4
 void FxA4::setup() {
     szSegment = 3;
-    fxa_setup();
-    palette = paletteFactory.mainPalette();
-    targetPalette = paletteFactory.secondaryPalette();
+    resetGlobals();
     szStackSeg = 2;
     brightness = 192;
-    mode = Chase;
     curBkg = BKG;
     makeDot(ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND), szSegment);
 }
@@ -307,7 +289,7 @@ void FxA4::makeDot(CRGB color, uint16_t szDot) {
 void FxA4::loop() {
     if (mode == TurnOff) {
         if (turnOff())
-            reset();
+            resetStack();
         return;
     }
 
@@ -369,15 +351,12 @@ const char *FxA4::name() const {
 
 // Fx A5
 void FxA5::setup() {
-    fxa_setup();
-    palette = paletteFactory.mainPalette();
-    targetPalette = paletteFactory.secondaryPalette();
+    resetGlobals();
     makeFrame();
-    mode = Chase;
 }
 
 void FxA5::makeFrame() {
-    ovr.fill_solid(ColorFromPalette(targetPalette, colorIndex, brightness-64, LINEARBLEND));
+    ovr.fill_solid(ColorFromPalette(targetPalette, colorIndex, brightness>>1, LINEARBLEND));
     CRGB newClr = ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND);
     for (uint16_t x = 0; x < ovr.size(); x++) {
         nblend(ovr[x], newClr, x<<4);

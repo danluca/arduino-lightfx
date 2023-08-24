@@ -12,8 +12,6 @@ uint16_t fxa_incStackSize(int16_t delta, uint16_t max);
 
 uint16_t fxa_stackAdjust(CRGBSet& set, uint16_t szStackSeg);
 
-void reset();
-
 class FxA1 : public LedEffect {
 public:
     FxA1();

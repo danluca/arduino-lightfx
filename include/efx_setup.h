@@ -37,22 +37,22 @@ extern CRGBArray<NUM_PIXELS> frame;
 extern uint16_t stripShuffleIndex[NUM_PIXELS];
 extern CRGBPalette16 palette;
 extern CRGBPalette16 targetPalette;
+extern OpMode mode;
 extern uint8_t brightness;
 extern uint8_t colorIndex;
 extern uint8_t lastColorIndex;
-extern uint16_t szStack;
-extern OpMode mode;
-extern uint8_t gHue;
 extern uint8_t fade;
-extern uint hueDiff;
 extern uint8_t hue;
 extern uint8_t dotBpm;
 extern uint8_t saturation;
 extern uint8_t delta;
+extern uint8_t twinkrate;
+extern uint16_t szStack;
+extern uint16_t hueDiff;
 extern TBlendType currentBlending;
 extern bool dirFwd;
 extern int8_t rot;
-extern int twinkrate;
+extern int32_t dist;
 extern bool randhue;
 extern volatile bool fxBump;
 extern volatile uint16_t speed;
@@ -108,6 +108,7 @@ CRGB *mirrorHigh(CRGB array[], uint16_t szArray);
 
 bool turnOff();
 
+void resetGlobals();
 
 void fxa_register();
 

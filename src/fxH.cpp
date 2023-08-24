@@ -38,12 +38,12 @@ FxH1::FxH1() : fires{CRGBSet(leds, 0, 50), CRGBSet(leds, 50, 100), CRGBSet(leds,
 }
 
 void FxH1::setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
+    resetGlobals();
 
     //Fire palette definition - for New Year get a blue fire
     switch (paletteFactory.currentHoliday()) {
         case NewYear: palette = CRGBPalette16( CRGB::Black, CRGB::Blue, CRGB::Aqua,  CRGB::White); break;
+        case Christmas: palette = CRGBPalette16(CRGB::Red, CRGB::White, CRGB::Green); break;
         default: palette = CRGBPalette16(CRGB::Black, CRGB::Red, CRGB::OrangeRed, CRGB::Yellow); break;
     }
 
@@ -155,22 +155,14 @@ FxH2::FxH2() {
 }
 
 void FxH2::setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
-    currentBlending = LINEARBLEND;
-    fade = 8;
-    hue = 50;
-    delta = 1;
-    saturation = 100;
-    brightness = 255;
-    hueDiff = 256;
-    speed = 15;
+    resetGlobals();
+    speed = 40;
 }
 
 void FxH2::loop() {
     ChangeMe();  // Check the demo loop for changes to the variables.
 
-    EVERY_N_MILLISECONDS(300) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);  // AWESOME palette blending capability.
     }
 
@@ -185,14 +177,15 @@ const char *FxH2::description() const {
     return "FXH2: confetti H palette";
 }
 
-void FxH2::confetti_pal() {  // random colored speckles that blink in and fade smoothly
+void FxH2::confetti_pal() {
+    // random colored speckles that blink in and fade smoothly
 
     fadeToBlackBy(leds, NUM_PIXELS, fade);  // Low values = slower fade.
     int pos = random16(NUM_PIXELS);             // Pick an LED at random.
     leds[pos] = ColorFromPalette(palette, hue + random16(hueDiff) / 4, brightness, currentBlending);
     hue = hue + delta;  // It increments here.
 
-}  // confetti_pal()
+}
 
 
 // A time (rather than loop) based demo sequencer. This gives us full control over the length of each sequence.
@@ -250,10 +243,8 @@ FxH3::FxH3() {
 }
 
 void FxH3::setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
+    resetGlobals();
     hueDiff = 15;
-    speed = 100;
     hue = random8();
 }
 

@@ -8,8 +8,7 @@
 
 class FxC1 : public LedEffect {
 private:
-    CRGB leds2[NUM_PIXELS];
-    CRGB leds3[NUM_PIXELS];
+    CRGBSet setA, setB;
 
 public:
     FxC1();
@@ -93,7 +92,6 @@ public:
 
 protected:
     uint8_t  palIndex = 95;
-    bool     fwd = true;
     bool     hueRot = false;                                     // Does the hue rotate? 1 = yes
     uint8_t  bgClr = 0;
     uint8_t  bgBri = 0;
@@ -120,7 +118,6 @@ protected:
     int phase = 0;                                            // Phase change value gets calculated.
     uint8_t cutoff = 192;                                     // You can change the cutoff value to display this wave. Lower value = longer wave.
     int delay = 30;                                           // You can change the delay. Also you can change the speed global variable.
-    bool fwd = true;                                          // moving direction
     uint8_t bgclr = 0;                                        // A rotating background colour.
     uint8_t bgbright = 10;                                    // Brightness of background colour
 

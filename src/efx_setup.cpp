@@ -11,6 +11,7 @@ const uint16_t FRAME_SIZE = 50;
 const uint8_t flameBrightness = 180;
 const uint8_t sparkBrightness = 255;
 const CRGB BKG = CRGB::Black;
+const uint8_t maxChanges = 24;
 volatile bool fxBump = false;
 volatile uint16_t speed = 100;
 volatile uint16_t curPos = 0;
@@ -25,19 +26,19 @@ OpMode mode = Chase;
 uint8_t brightness = 224;
 uint8_t colorIndex = 0;
 uint8_t lastColorIndex = 0;
-uint8_t gHue = 0;
 uint8_t fade = 8;
 uint8_t hue = 50;
 uint8_t delta = 1;
 uint8_t saturation = 100;
 uint8_t dotBpm = 30;
+uint8_t twinkrate = 100;
 uint16_t szStack = 0;
 uint16_t stripShuffleIndex[NUM_PIXELS];
-uint hueDiff = 256;
+uint16_t hueDiff = 256;
 int8_t rot = 1;
-int twinkrate = 100;
+int32_t dist = 1;
 bool dirFwd = true;
-bool randhue =   true;
+bool randhue = true;
 
 //~ Support functions -----------------
 /**
@@ -184,6 +185,43 @@ void saveState() {
 }
 
 //~ General Utilities ---------------------------------------------------------
+/**
+ * Resets the state of all global variables, including the state of the LED strip. Suitable for a clean slate
+ * start of a new Fx
+ * <p>This needs to account for ALL global variables</p>
+ */
+void resetGlobals() {
+    //turn off the LEDs on the strip and the frame buffer
+    FastLED.clear(true);
+    FastLED.setBrightness(BRIGHTNESS);
+    frame.fill_solid(BKG);
+
+    palette = paletteFactory.mainPalette();
+    targetPalette = paletteFactory.secondaryPalette();
+    currentBlending = LINEARBLEND;
+    mode = Chase;
+    brightness = 224;
+    colorIndex = lastColorIndex = 0;
+    curPos = 0;
+    speed = 100;
+    fade = 8;
+    hue = 50;
+    delta = 1;
+    saturation = 100;
+    dotBpm = 30;
+    twinkrate = 100;
+    szStack = 0;
+    hueDiff = 256;
+    rot = 1;
+    dist = 1;
+    dirFwd = true;
+    randhue = true;
+    fxBump = false;
+
+    //shuffle led indexes
+    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+}
+
 /**
  * Shifts the content of an array to the right by the number of positions specified
  * First item of the array (arr[0]) is used as seed to fill the new elements entering left

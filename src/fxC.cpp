@@ -14,11 +14,6 @@ void fxc_register() {
     static FxC6 fxC6;
 }
 
-void fxc_setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
-}
-
 /**
  * aanimations
  * By: Can't recall where I found this. Maybe Stefan Petrick.
@@ -27,13 +22,12 @@ void fxc_setup() {
  * Date: January, 2017
  * This sketch demonstrates how to blend between two animations running at the same time.
  */
-FxC1::FxC1() {
+FxC1::FxC1() : setA(frame), setB(leds, NUM_PIXELS) {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxC1::setup() {
-    fxc_setup();
-    palette = paletteFactory.mainPalette();
+    resetGlobals();
     brightness = 176;
 }
 
@@ -42,9 +36,9 @@ void FxC1::loop() {
     animationB();                                               // render the second animation into leds3
 
     uint8_t ratio = beatsin8(2);                                // Alternate between 0 and 255 every minute
-
-    for (int i = 0; i < NUM_PIXELS; i++) {                        // mix the 2 arrays together
-        leds[i] = blend( leds2[i], leds3[i], ratio );
+    //combine all into setB (it is backed by the strip)
+    for (uint16_t x = 0; x < setB.size(); x++) {
+        setB[x] = blend(setA[x], setB[x], ratio);
     }
 
     FastLED.show();
@@ -54,26 +48,21 @@ const char *FxC1::description() const {
     return "FXC1: blend between two animations running at the same time";
 }
 
-void FxC1::animationA() {                                             // running red stripe.
+void FxC1::animationA() {
+    for (uint16_t x = 0; x<setA.size(); x++) {
+        uint8_t clrIndex = (millis() / 10) + (x * 12);    // speed, length
+        if (clrIndex > 128) clrIndex = 0;
+        setA[x] = ColorFromPalette(palette, clrIndex, dim8_raw(clrIndex << 1), LINEARBLEND);
+    }
+}
 
-  for (int i = 0; i < NUM_PIXELS; i++) {
-    uint8_t red = (millis() / 10) + (i * 12);                    // speed, length
-    if (red > 128) red = 0;
-    //leds2[i] = CRGB(red, 0, 0);
-    leds2[i] = ColorFromPalette(palette, red, dim8_raw(red << 1), LINEARBLEND);
-  }
-} // animationA()
-
-
-
-void FxC1::animationB() {                                               // running green stripe in opposite direction.
-  for (int i = 0; i < NUM_PIXELS; i++) {
-    uint8_t green = (millis() / 5) - (i * 12);                    // speed, length
-    if (green > 128) green = 0;
-//    leds3[i] = CRGB(0, green, 0);
-    leds3[i] = ColorFromPalette(palette, 255-green, dim8_raw(green << 1), LINEARBLEND);
-  }
-}  // animationB()
+void FxC1::animationB() {
+    for (uint16_t x = 0; x<setB.size(); x++) {
+        uint8_t clrIndex = (millis() / 5) - (x * 12);    // speed, length
+        if (clrIndex > 128) clrIndex = 0;
+        setB[x] = ColorFromPalette(palette, 255-clrIndex, dim8_raw(clrIndex << 1), LINEARBLEND);
+    }
+}
 
 const char *FxC1::name() const {
     return "FXC1";
@@ -101,7 +90,7 @@ FxC2::FxC2() {
 }
 
 void FxC2::setup() {
-    fxc_setup();
+    resetGlobals();
 }
 
 void FxC2::loop() {
@@ -143,17 +132,15 @@ void FxC2::describeConfig(JsonArray &json) const {
  * We've used sine waves and counting to move pixels around a strand. In this case, I'm using Perlin Noise to move a pixel up and down the strand.
  * The advantage here is that it provides random natural movement without requiring lots of fancy math by joe programmer.
  */
-static int32_t dist;                                               // A moving location for our noise generator.
 const uint32_t xscale = 8192;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 const uint32_t yscale = 7680;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
-const uint8_t maxChanges = 24;                                      // Value for blending between palettes.
 
 FxC3::FxC3() {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxC3::setup() {
-    fxc_setup();
+    resetGlobals();
     brightness = 128;
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
@@ -199,8 +186,7 @@ FxC4::FxC4() {
 }
 
 void FxC4::setup() {
-    fxc_setup();
-    palette = paletteFactory.mainPalette();
+    resetGlobals();
     brightness = BRIGHTNESS;
 }
 
@@ -247,7 +233,7 @@ void FxC4::describeConfig(JsonArray &json) const {
 }
 
 void FxC5::setup() {
-    fxc_setup();
+    resetGlobals();
     palette = paletteFactory.secondaryPalette();
     targetPalette = paletteFactory.mainPalette();
     saturation = 255;
@@ -291,10 +277,10 @@ void FxC5::changeParams() {
     static uint8_t secSlot = 0;
     EVERY_N_SECONDS(5) {
         switch(secSlot) {
-            case 0: speed=50; palIndex=95; bgClr=140; bgBri=4; hueRot=true; break;
-            case 1: targetPalette = paletteFactory.mainPalette(); fwd=false; bgBri=0; hueRot=true; break;
-            case 2: targetPalette = paletteFactory.secondaryPalette(); speed=30; palIndex=0; bgClr=50; bgBri=8; hueRot=false; fwd=true; break;
-            case 3: targetPalette = PaletteFactory::randomPalette(0, millis()); speed=80; bgBri = 16; bgClr=96; palIndex=random8(); break;
+            case 0: speed=75; palIndex=95; bgClr=140; bgBri=4; hueRot=true; break;
+            case 1: targetPalette = paletteFactory.mainPalette(); dirFwd=false; bgBri=0; hueRot=true; break;
+            case 2: targetPalette = paletteFactory.secondaryPalette(); speed=45; palIndex=0; bgClr=50; bgBri=8; hueRot=false; dirFwd=true; break;
+            case 3: targetPalette = PaletteFactory::randomPalette(0, millis()); speed=95; bgBri = 16; bgClr=96; palIndex=random8(); break;
             case 4: palIndex=random8(); hueRot=true; break;
             default: break;
         }
@@ -306,21 +292,18 @@ void FxC5::changeParams() {
 void FxC5::matrix() {
     if (hueRot) palIndex++;
 
-    if (random8(90) > 80)
-        leds[fwd?0:(NUM_PIXELS-1)] = ColorFromPalette(palette, palIndex, brightness, LINEARBLEND);
+    CRGBSet seg(leds, 0, FRAME_SIZE);
+    CRGBSet others(leds, FRAME_SIZE, NUM_PIXELS);
+    CRGB feed = random8(90) > 80 ? ColorFromPalette(palette, palIndex, brightness, LINEARBLEND) : CHSV(bgClr, saturation, bgBri);
+    if (dirFwd)
+        shiftRight(seg, feed);
     else
-        leds[fwd?0:(NUM_PIXELS-1)] = CHSV(bgClr, saturation, bgBri);
-
-    if (fwd)
-        for (int i = NUM_PIXELS-1; i >0 ; i-- ) leds[i] = leds[i-1];
-    else
-        for (int i = 0; i < NUM_PIXELS-1 ; i++ ) leds[i] = leds[i+1];
+        shiftLeft(seg, feed);
+    replicateSet(seg, others);
 }
 
 void FxC6::setup() {
-    fxc_setup();
-    speed = 8;
-    fwd = true;
+    resetGlobals();
     palette = paletteFactory.secondaryPalette();
     targetPalette = paletteFactory.mainPalette();
 }
@@ -335,8 +318,8 @@ void FxC6::loop() {
     }
 
     EVERY_N_SECONDS(1) {
-        fwd = secSlot == 6;
-        if (fwd)
+        dirFwd = secSlot == 6;
+        if (dirFwd)
             nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
         secSlot = inc(secSlot, 1, 7);
     }
@@ -367,10 +350,10 @@ FxC6::FxC6() {
 
 void FxC6::one_sine_pal(uint8_t colorIndex) {
     // This is the heart of this program. Sure is short.
-    phase = fwd ? phase - speed : phase + speed;
+    phase = dirFwd ? phase - speed : phase + speed;
 
-    for (int k=0; k<NUM_PIXELS; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
-        int thisBright = qsubd(cubicwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
+    for (uint16_t k=0; k<NUM_PIXELS; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
+        uint8_t thisBright = qsubd(cubicwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
         leds[k] = CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
         leds[k] += ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
         colorIndex +=3;

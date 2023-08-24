@@ -16,24 +16,17 @@ void fxb_register() {
     static FxB9 fxB9;
 }
 
-void fxb_setup() {
-    FastLED.clear(true);
-    FastLED.setBrightness(BRIGHTNESS);
-    targetPalette = paletteFactory.mainPalette();
-    palette = paletteFactory.secondaryPalette();
-    gHue = 0;
-    brightness = 148;
-}
-
 //FXB1
 void FxB1::setup() {
-    fxb_setup();
+    resetGlobals();
+    hue = 0;
+    brightness = 148;
 }
 
 void FxB1::loop() {
     EVERY_N_MILLISECONDS(50) {
         rainbow();
-        gHue+=2;
+        hue+=2;
     }
     FastLED.show();
 }
@@ -63,13 +56,15 @@ FxB2::FxB2() {
 }
 
 void FxB2::setup() {
-    fxb_setup();
+    resetGlobals();
+    hue = 0;
+    brightness = 148;
 }
 
 void FxB2::loop() {
     EVERY_N_MILLISECONDS(50) {
         rainbowWithGlitter();
-        gHue+=2;
+        hue+=2;
     }
 
     FastLED.show();
@@ -94,13 +89,15 @@ FxB3::FxB3() {
 }
 
 void FxB3::setup() {
-    fxb_setup();
+    resetGlobals();
+    hue = 0;
+    brightness = 148;
 }
 
 void FxB3::loop() {
     EVERY_N_MILLISECONDS(50) {
         fxb_confetti();
-        gHue+=2;
+        hue+=2;
     }
 
     FastLED.show();
@@ -127,13 +124,15 @@ FxB4::FxB4() {
 }
 
 void FxB4::setup() {
-    fxb_setup();
+    resetGlobals();
+    hue = 0;
+    brightness = 148;
 }
 
 void FxB4::loop() {
   EVERY_N_MILLISECONDS(50) {
     sinelon();
-    gHue+=2;
+    hue+=2;
   }
 
   FastLED.show();
@@ -160,7 +159,7 @@ FxB5::FxB5() {
 }
 
 void FxB5::setup() {
-    fxb_setup();
+    resetGlobals();
     brightness = BRIGHTNESS;
 }
 
@@ -196,13 +195,15 @@ FxB6::FxB6() {
 }
 
 void FxB6::setup() {
-    fxb_setup();
+    resetGlobals();
+    hue = 0;
+    brightness = 148;
 }
 
 void FxB6::loop() {
     EVERY_N_MILLISECONDS(50) {
         bpm();
-        gHue += 2;  // slowly cycle the "base color" through the rainbow
+        hue += 2;  // slowly cycle the "base color" through the rainbow
         FastLED.show();
     }
 
@@ -227,7 +228,9 @@ FxB7::FxB7() {
 }
 
 void FxB7::setup() {
-    fxb_setup();
+    resetGlobals();
+    hue = 0;
+    brightness = 148;
 }
 
 void FxB7::loop() {
@@ -259,11 +262,13 @@ FxB8::FxB8() {
 }
 
 void FxB8::setup() {
-    fxb_setup();
+    resetGlobals();
+    hue = 0;
+    brightness = 148;
 }
 
 void FxB8::loop() {
-    EVERY_N_MILLISECONDS(500) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
@@ -294,7 +299,7 @@ void FxB8::describeConfig(JsonArray &json) const {
 }
 
 void FxB9::setup() {
-    fxb_setup();
+    resetGlobals();
     brightness = BRIGHTNESS;
     fade = 2;   // How long should the trails be. Very low value = longer trails.
     hueDiff = 16;   // Incremental change in hue between each dot.
@@ -330,7 +335,7 @@ FxB9::FxB9() {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
-
+//~ Supporting functions ----------------------------------
 void fadein() {
 
   random16_set_seed(535);                                                           // The randomizer needs to be re-set each time through the loop in order for the 'random' numbers to be the same each time through.
@@ -342,16 +347,13 @@ void fadein() {
 
   random16_set_seed(millis() >> 5);                                                      // Re-randomizing the random number seed for other routines.
 
-} // fadein()
-
+}
 
 void rainbow() {
 
-  fill_rainbow(leds, NUM_PIXELS, gHue, 7);  // FastLED's built-in rainbow generator.
+  fill_rainbow(leds, NUM_PIXELS, hue, 7);  // FastLED's built-in rainbow generator.
 
-}  // rainbow()
-
-
+}
 
 void rainbowWithGlitter() {
 
@@ -359,9 +361,7 @@ void rainbowWithGlitter() {
   nscale8(leds, NUM_PIXELS, brightness);
   addGlitter(80);
 
-}  // rainbowWithGlitter()
-
-
+}
 
 void addGlitter(fract8 chanceOfGlitter) {
 
@@ -369,40 +369,37 @@ void addGlitter(fract8 chanceOfGlitter) {
     leds[random16(NUM_PIXELS)] += CRGB::White;
   }
 
-}  // addGlitter()
+}
 
-
-
-void fxb_confetti() {  // Random colored speckles that blink in and fade smoothly.
+void fxb_confetti() {
+    // Random colored speckles that blink in and fade smoothly.
 
   fadeToBlackBy(leds, NUM_PIXELS, 10);
   int pos = random16(NUM_PIXELS);
-  leds[pos] += CHSV(gHue + random8(64), 200, 255);
+  leds[pos] += CHSV(hue + random8(64), 200, 255);
 
-}  // confetti()
+}
 
-
-
-void sinelon() {  // A colored dot sweeping back and forth, with fading trails.
+void sinelon() {
+    // A colored dot sweeping back and forth, with fading trails.
 
   fadeToBlackBy(leds, NUM_PIXELS, 20);
   int pos = beatsin16(13, 0, NUM_PIXELS - 1);
-  leds[pos] += CHSV(gHue, 255, 192);
+  leds[pos] += CHSV(hue, 255, 192);
 
-}  // sinelon()
+}
 
-
-
-void bpm() {  // Colored stripes pulsing at a defined Beats-Per-Minute.
+void bpm() {
+    // Colored stripes pulsing at a defined Beats-Per-Minute.
 
   uint8_t BeatsPerMinute = 62;
   uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
 
   for (int i = 0; i < NUM_PIXELS; i++) {  //9948
-    leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
+    leds[i] = ColorFromPalette(palette, hue + (i * 2), beat - hue + (i * 10));
   }
 
-}  // bpm()
+}
 
 /**
  * See juggle effect in the demoReel100_button example of FastLED-Demos repository
@@ -419,7 +416,7 @@ void juggle_short() {
     dothue += 32;
   }
 
-}  // juggle()
+}
 
 /**
  * See juggle_pal - Originally by: Mark Kriegsman; Modified By: Andrew Tuline
@@ -449,7 +446,7 @@ void juggle_long() {
         leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS - 1)] += ColorFromPalette(palette, curHue , brightness, LINEARBLEND);    // Munge the values and pick a colour from the palette
         curHue += hueDiff;
     }
-}   //juggle_pal()
+}
 
 void ease() {
   static uint16_t easeOutVal = 0;
@@ -461,8 +458,8 @@ void ease() {
 
   lerpVal = lerp16by16(0, NUM_PIXELS, easeOutVal);                // Map it to the number of LED's you have.
 
-  leds[lerpVal] = ColorFromPalette(palette, gHue + (easeInVal << 1), 40 + easeOutVal);
+  leds[lerpVal] = ColorFromPalette(palette, hue + (easeInVal << 1), 40 + easeOutVal);
   fadeToBlackBy(leds, NUM_PIXELS, 1);                          // 8 bit, 1 = slow fade, 255 = fast fade
-  gHue+=2;
+  hue+=2;
  
-} // ease()
+}
