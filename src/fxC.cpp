@@ -306,6 +306,7 @@ void FxC6::setup() {
     resetGlobals();
     palette = paletteFactory.secondaryPalette();
     targetPalette = paletteFactory.mainPalette();
+    speed = 8;
 }
 
 void FxC6::loop() {

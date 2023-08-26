@@ -95,7 +95,7 @@ bool time_setup() {
 }
 
 void wifi_loop() {
-  EVERY_N_MINUTES(15) {
+  EVERY_N_MINUTES(7) {
     if (WiFi.status() != WL_CONNECTED) {
       Log.warningln(F("WiFi Connection lost - re-connecting..."));
       status = WL_CONNECTION_LOST;
@@ -103,7 +103,7 @@ void wifi_loop() {
       server.clearWriteError();
       if (wifi_connect())
           stateLED(CRGB::Indigo);
-    } else if (WiFi.ping(WiFi.gatewayIP()) < 0) {
+    } else if (WiFi.ping(WiFi.gatewayIP(), 64) < 0) {
         //ping test - can we ping the router? if not, disconnect and re-connect again, something must've gotten stale with the connection
         Log.warningln(F("Ping test failed, WiFi Connection unusable - re-connecting..."));
         stateLED(CRGB::Orange);
@@ -112,7 +112,8 @@ void wifi_loop() {
         server.clearWriteError();
         if (wifi_connect())
             stateLED(CRGB::Indigo);
-    }
+    } else
+        Log.infoln(F("WiFi Ok"));
 
     if (!timeClient.isTimeSet()) {
         bool ntpTimeAvailable = ntp_sync();

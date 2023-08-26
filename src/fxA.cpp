@@ -89,9 +89,12 @@ void FxA1::loop() {
         replicateSet(tpl, others);
 
         if (paletteFactory.currentHoliday() == Halloween)
-            fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
+            FastLED.show(random8(32, FastLED.getBrightness())); //add a flicker
+        else
+            FastLED.show();
+//            fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
 
-        FastLED.show();
+//        FastLED.show();
 
         curPos = inc(curPos, 1, upLimit);
         if (curPos == 0) {
@@ -164,9 +167,9 @@ void FxA2::loop() {
         }
         replicateSet(tpl, others);
         if (paletteFactory.currentHoliday() == Halloween)
-            fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
-        FastLED.show();
-
+            FastLED.show(random8(32, FastLED.getBrightness())); //add a flicker
+        else
+            FastLED.show();
         incr(curPos, 1, NUM_PIXELS);
         uint8_t ss = curPos % (szSegment+spacing);
         if (ss == 0) {
@@ -237,8 +240,9 @@ void FxA3::loop() {
             shiftLeft(tpl, (FRAME_SIZE - curPos) < szSegment ? dot[FRAME_SIZE-curPos] : BKG);
         replicateSet(tpl, others);
         if (paletteFactory.currentHoliday() == Halloween)
-            fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
-        FastLED.show();
+            FastLED.show(random8(32, FastLED.getBrightness())); //add a flicker
+        else
+            FastLED.show();
 
         if (bFwd) curPos++; else curPos--;
         if (curPos == 0) {
@@ -310,8 +314,9 @@ void FxA4::loop() {
         }
 
         if (paletteFactory.currentHoliday() == Halloween)
-            fadeLightBy(leds, NUM_PIXELS, random8(0, 133)); //add a flicker
-        FastLED.show();
+            FastLED.show(random8(32, FastLED.getBrightness())); //add a flicker
+        else
+            FastLED.show();
 
 
         incr(curPos, 1, FRAME_SIZE);
