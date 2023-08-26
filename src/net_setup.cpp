@@ -10,6 +10,24 @@ int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
+/**
+ * Convenience to translate into number of bars the WiFi signal strength received from {@code WiFi.RSSI()}
+ * <p>This Android article has been used for reference - https://android.stackexchange.com/questions/176320/rssi-range-for-wifi-icons </p>
+ * @param rssi the RSSI value from WiFi system
+ * @return number of bars as signal level - between 0 (no signal, connection likely lost) through 4 bars (strong signal)
+ */
+uint8_t barSignalLevel(int32_t rssi) {
+    const uint8_t numLevels = 5;
+    const int16_t minRSSI = -100;
+    const int16_t maxRSSI = -55;
+    if (rssi <= minRSSI)
+        return 0;
+    else if (rssi >= maxRSSI)
+        return numLevels - 1;
+    float inRange = maxRSSI-minRSSI;
+    float outRange = numLevels - 1;
+    return (uint8_t )((float)(rssi - minRSSI) * outRange / inRange);
+}
 
 bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
@@ -103,17 +121,22 @@ void wifi_loop() {
       server.clearWriteError();
       if (wifi_connect())
           stateLED(CRGB::Indigo);
-    } else if (WiFi.ping(WiFi.gatewayIP(), 64) < 0) {
-        //ping test - can we ping the router? if not, disconnect and re-connect again, something must've gotten stale with the connection
-        Log.warningln(F("Ping test failed, WiFi Connection unusable - re-connecting..."));
-        stateLED(CRGB::Orange);
-        WiFi.disconnect();
-        status = WL_CONNECTION_LOST;
-        server.clearWriteError();
-        if (wifi_connect())
-            stateLED(CRGB::Indigo);
-    } else
-        Log.infoln(F("WiFi Ok"));
+    } else {
+        int gwPingTime = WiFi.ping(WiFi.gatewayIP(), 64);
+        int32_t rssi = WiFi.RSSI();
+        uint8_t wifiBars = barSignalLevel(rssi);
+        if ((gwPingTime < 0) || (wifiBars < 3)) {
+            //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
+            Log.warningln(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable - re-connecting..."), rssi, wifiBars);
+            stateLED(CRGB::Orange);
+            WiFi.disconnect();
+            status = WL_CONNECTION_LOST;
+            server.clearWriteError();
+            if (wifi_connect())
+                stateLED(CRGB::Indigo);
+        } else
+            Log.infoln(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%d bars)"), gwPingTime, rssi, wifiBars);
+    }
 
     if (!timeClient.isTimeSet()) {
         bool ntpTimeAvailable = ntp_sync();
@@ -144,8 +167,8 @@ void printWifiStatus() {
   Log.infoln(F("MAC Address %x:%x:%x:%x:%x:%x"), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   // print the received signal strength:
-  long rssi = WiFi.RSSI();
-  Log.infoln(F("Signal strength (RSSI): %d dBm"), rssi);
+  int32_t rssi = WiFi.RSSI();
+  Log.infoln(F("Signal strength (RSSI) %d dBm; %d bars"), rssi, barSignalLevel(rssi));
 
   // print where to go in a browser:
   Log.infoln(F("To see this page in action, open a browser to http://%p"), ip);
