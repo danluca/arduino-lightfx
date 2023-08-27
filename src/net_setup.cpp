@@ -141,8 +141,11 @@ bool wifi_check() {
 void wifi_reconnect() {
     status = WL_CONNECTION_LOST;
     stateLED(CRGB::Orange);
-    WiFi.disconnect();
     server.clearWriteError();
+    WiFiClient client = server.available();
+    if (client) client.stop();
+    WiFi.disconnect();
+    server = WiFiServer(80);    //new server instance
     if (wifi_connect())
         stateLED(CRGB::Indigo);
 }
