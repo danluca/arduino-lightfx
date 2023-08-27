@@ -22,7 +22,7 @@ public:
     CRGBPalette16 mainPalette(time_t time = 0);
     CRGBPalette16 secondaryPalette(time_t time = 0);
     void forceHoliday(Holiday hday);
-    void adjustHoliday(time_t time = 0);
+    Holiday adjustHoliday(time_t time = 0);
     Holiday currentHoliday() const;
     static CRGBPalette16 randomPalette(uint8_t ofsHue = 0, time_t time = 0);
 };

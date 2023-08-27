@@ -147,8 +147,9 @@ void PaletteFactory::forceHoliday(const Holiday hday) {
     holiday = hday;
 }
 
-void PaletteFactory::adjustHoliday(const time_t time) {
+Holiday PaletteFactory::adjustHoliday(const time_t time) {
     holiday = overrideHoliday ? holiday : (time == 0 ? ::currentHoliday() : getHoliday(time));
+    return holiday;
 }
 
 Holiday PaletteFactory::currentHoliday() const {

@@ -101,51 +101,63 @@ bool imu_setup() {
 bool time_setup() {
     //read the time
     bool ntpTimeAvailable = ntp_sync();
+    Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     setSyncProvider(curUnixTime);
-    paletteFactory.adjustHoliday();
+    Holiday hday = paletteFactory.adjustHoliday();
     if (timeStatus() != timeNotSet) {
         char timeBuf[20];
         sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
         Log.infoln(F("Current time %s"), timeBuf);
     } else
         Log.warningln(F("Current time not available - NTP sync failed"));
+    Log.infoln(F("Current holiday is %s"), holidayToString(hday));
     return ntpTimeAvailable;
+}
+
+/**
+ * WiFi connection check
+ * @return true if all is ok, false if connection unusable
+ */
+bool wifi_check() {
+    if (WiFi.status() != WL_CONNECTED) {
+        Log.warningln(F("WiFi Connection lost"));
+        return false;
+    }
+    int gwPingTime = WiFi.ping(WiFi.gatewayIP(), 64);
+    int32_t rssi = WiFi.RSSI();
+    uint8_t wifiBars = barSignalLevel(rssi);
+    if ((gwPingTime < 0) || (wifiBars < 3)) {
+        //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
+        Log.warningln(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable"), rssi, wifiBars);
+        return false;
+    }
+    Log.infoln(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%d bars)"), gwPingTime, rssi, wifiBars);
+    return true;
+}
+
+/**
+ * Similar with wifi_connect, but with some preamble cleanup
+ */
+void wifi_reconnect() {
+    status = WL_CONNECTION_LOST;
+    stateLED(CRGB::Orange);
+    WiFi.disconnect();
+    server.clearWriteError();
+    if (wifi_connect())
+        stateLED(CRGB::Indigo);
 }
 
 void wifi_loop() {
   EVERY_N_MINUTES(7) {
-    if (WiFi.status() != WL_CONNECTED) {
-      Log.warningln(F("WiFi Connection lost - re-connecting..."));
-      status = WL_CONNECTION_LOST;
-      stateLED(CRGB::Orange);
-      server.clearWriteError();
-      if (wifi_connect())
-          stateLED(CRGB::Indigo);
-    } else {
-        int gwPingTime = WiFi.ping(WiFi.gatewayIP(), 64);
-        int32_t rssi = WiFi.RSSI();
-        uint8_t wifiBars = barSignalLevel(rssi);
-        if ((gwPingTime < 0) || (wifiBars < 3)) {
-            //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
-            Log.warningln(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable - re-connecting..."), rssi, wifiBars);
-            stateLED(CRGB::Orange);
-            WiFi.disconnect();
-            status = WL_CONNECTION_LOST;
-            server.clearWriteError();
-            if (wifi_connect())
-                stateLED(CRGB::Indigo);
-        } else
-            Log.infoln(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%d bars)"), gwPingTime, rssi, wifiBars);
+    if (!wifi_check()) {
+        Log.warningln(F("WiFi connection unusable/lost - reconnecting..."));
+        wifi_reconnect();
     }
 
     if (!timeClient.isTimeSet()) {
-        bool ntpTimeAvailable = ntp_sync();
-        Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
-        if (ntpTimeAvailable) {
-            setSyncProvider(curUnixTime);
-            paletteFactory.adjustHoliday();
+        if (time_setup())
             stateLED(CRGB::Indigo);
-        } else
+        else
             stateLED(CRGB::Green);
     }
   }
