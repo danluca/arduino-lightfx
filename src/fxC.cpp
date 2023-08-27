@@ -103,10 +103,11 @@ void FxC2::loop() {
 
     // The color of each point shifts over time, each at a different speed.
     uint16_t ms = millis();
-    leds[(i+j)/2] = CHSV( ms / 29, 200, 255);
-    leds[(j+k)/2] = CHSV( ms / 41, 200, 255);
-    leds[(k+i)/2] = CHSV( ms / 73, 200, 255);
-    leds[(k+i+j)/3] = CHSV( ms / 53, 200, 255);
+    bool isHalloween = paletteFactory.currentHoliday() == Halloween;
+    leds[(i+j)/2] = isHalloween ? ColorFromPalette(palette, ms/29) : CHSV( ms / 29, 200, 255);
+    leds[(j+k)/2] = isHalloween ? ColorFromPalette(palette, ms/41) : CHSV( ms / 41, 200, 255);
+    leds[(k+i)/2] = isHalloween ? ColorFromPalette(palette, ms/73) : CHSV( ms / 73, 200, 255);
+    leds[(k+i+j)/3] = isHalloween ? ColorFromPalette(palette, ms/53) : CHSV( ms / 53, 200, 255);
 
     FastLED.show();
 }
@@ -141,7 +142,7 @@ FxC3::FxC3() {
 
 void FxC3::setup() {
     resetGlobals();
-    brightness = 128;
+    brightness = 255;
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
     dist = random();
@@ -149,19 +150,21 @@ void FxC3::setup() {
 
 void FxC3::loop() {
     EVERY_N_MILLISECONDS(25) {
-        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
-
         uint16_t locn = inoise16(xscale, dist+yscale) % 0xFFFF;           // Get a new pixel location from moving noise.
         uint16_t pixlen = map(locn,0,0xFFFF,0,NUM_PIXELS);                     // Map that to the length of the strand.
-        leds[pixlen] = ColorFromPalette(palette, pixlen % 256, 255, LINEARBLEND);   // Use that value for both the location as well as the palette index colour for the pixel.
+        leds[pixlen] = ColorFromPalette(palette, pixlen % 256, brightness, LINEARBLEND);   // Use that value for both the location as well as the palette index colour for the pixel.
 
         dist += beatsin16(10,128,8192);                                                // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
         fadeToBlackBy(leds, NUM_PIXELS, 4);
         FastLED.show();
     }
-
-    EVERY_N_SECONDS(5) {                                        // Change the target palette to a random one every 5 seconds.
-        targetPalette = PaletteFactory::randomPalette();
+    EVERY_N_SECONDS(1) {
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
+    }
+    if (paletteFactory.currentHoliday() != Halloween) {
+        EVERY_N_SECONDS(10) {
+            targetPalette = PaletteFactory::randomPalette();
+        }
     }
 
 }
@@ -191,32 +194,35 @@ void FxC4::setup() {
 }
 
 void FxC4::loop() {
-    static uint8_t frequency = 50;                                       // controls the interval between strikes
+    static uint8_t frequency = 10;                                       // controls the interval between strikes
     static uint8_t flashes = 12;                                          //the upper limit of flashes per strike
     static uint dimmer = 1;
     static uint8_t ledstart;                                             // Starting location of a flash
     static uint8_t ledlen;                                               // Length of a flash
 
-    ledstart = random8(NUM_PIXELS);                               // Determine starting location of flash
-    ledlen = random8(NUM_PIXELS-ledstart);                        // Determine length of flash (not to go beyond NUM_LEDS-1)
+    EVERY_N_SECONDS_I(fxc4Timer, 1+random8(frequency)) {
+        ledstart = random8(NUM_PIXELS);                               // Determine starting location of flash
+        ledlen = random8(NUM_PIXELS - ledstart);                        // Determine length of flash (not to go beyond NUM_LEDS-1)
 
-    for (int flashCounter = 0; flashCounter < random8(5,flashes); flashCounter++) {
-        if(flashCounter == 0) dimmer = 5;                         // the brightness of the leader is scaled down by a factor of 5
-        else dimmer = random8(1,3);                               // return strokes are brighter than the leader
+        for (int flashCounter = 0; flashCounter < random8(5, flashes); flashCounter++) {
+            if (flashCounter == 0)
+                dimmer = 5;                         // the brightness of the leader is scaled down by a factor of 5
+            else
+                dimmer = random8(1, 3);                               // return strokes are brighter than the leader
 
-        CRGB color = ColorFromPalette(palette, random8(), brightness/dimmer, LINEARBLEND);
-        fill_solid(leds+ledstart,ledlen,color);
-        FastLED.show();                       // Show a section of LED's
-        delay(random8(4,10));                                     // each flash only lasts 4-10 milliseconds
-        fill_solid(leds+ledstart,ledlen,BKG);           // Clear the section of LED's
-        FastLED.show();
+            CRGB color = ColorFromPalette(palette, random8(), brightness / dimmer, LINEARBLEND);
+            fill_solid(leds + ledstart, ledlen, color);
+            FastLED.show();                       // Show a section of LED's
+            delay(random8(4, 10));                                     // each flash only lasts 4-10 milliseconds
+            fill_solid(leds + ledstart, ledlen, BKG);           // Clear the section of LED's
+            FastLED.show();
 
-        if (flashCounter == 0) delay (250);                       // longer speed until next flash after the leader
+            if (flashCounter == 0) delay(250);                       // longer speed until next flash after the leader
 
-        delay(50+random8(100));                                   // shorter speed between strokes
-    } // for()
-
-    delay(random8(frequency)*100);                              // speed between strikes
+            delay(50 + random8(100));                                   // shorter speed between strokes
+        }
+        fxc4Timer.setPeriod(1+random8(frequency));    // speed between strikes
+    }
 }
 
 const char *FxC4::description() const {
@@ -302,6 +308,7 @@ void FxC5::matrix() {
     replicateSet(seg, others);
 }
 
+// Fx C6
 void FxC6::setup() {
     resetGlobals();
     palette = paletteFactory.secondaryPalette();
@@ -355,7 +362,7 @@ void FxC6::one_sine_pal(uint8_t colorIndex) {
 
     for (uint16_t k=0; k<NUM_PIXELS; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
         uint8_t thisBright = qsubd(cubicwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
-        leds[k] = CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
+        leds[k] = paletteFactory.currentHoliday() == Halloween ? ColorFromPalette(palette, bgclr, bgbright) : CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
         leds[k] += ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
         colorIndex +=3;
     }

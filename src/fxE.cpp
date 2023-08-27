@@ -34,7 +34,7 @@ void FxE1::setup() {
 void FxE1::loop() {
     ChangeMe();                                                 // Check the demo loop for changes to the variables.
 
-    EVERY_N_MILLISECONDS(500) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
     }
 
@@ -44,11 +44,12 @@ void FxE1::loop() {
         fxe1Timer.setPeriod(speed);
     }
 
-    EVERY_N_SECONDS(10) {                                        // Change the target palette to a random one every 10 seconds.
-        //static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
-        targetPalette = PaletteFactory::randomPalette();
+    if (paletteFactory.currentHoliday() != Halloween) {
+        EVERY_N_SECONDS(10) {
+            //static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
+            targetPalette = PaletteFactory::randomPalette();
+        }
     }
-
 }
 
 const char *FxE1::description() const {
@@ -110,16 +111,16 @@ void FxE2::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
     }
 
-    EVERY_N_SECONDS(15) {                                        // Change the target palette to a random one every 15 seconds.
-        targetPalette = PaletteFactory::randomPalette(0, millis());
+    if (paletteFactory.currentHoliday() != Halloween) {
+        EVERY_N_SECONDS(15) {
+            targetPalette = PaletteFactory::randomPalette(0, millis());
+        }
     }
-
 }
 
 const char *FxE2::description() const {
     return "FXE2: beatwave";
 }
-
 
 void FxE2::beatwave() {
   uint8_t wave1 = beatsin8(9, 0, 255);                        // That's the same as beatsin8(9);
@@ -188,12 +189,14 @@ void FxE4::setup() {
 }
 
 void FxE4::loop() {
-    EVERY_N_SECONDS(5) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);  // Blend towards the target palette
     }
 
-    EVERY_N_SECONDS(30) {
-        targetPalette = PaletteFactory::randomPalette(random8());
+    if (paletteFactory.currentHoliday() != Halloween) {
+        EVERY_N_SECONDS(30) {
+            targetPalette = PaletteFactory::randomPalette(random8());
+        }
     }
 
     EVERY_N_MILLISECONDS(50) {

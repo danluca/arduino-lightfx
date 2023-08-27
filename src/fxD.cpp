@@ -83,6 +83,7 @@ void FxD1::ChangeMe() {
     }
 }
 
+// Fx D2
 /**
  * dots By: John Burroughs
  * Modified by: Andrew Tuline
@@ -128,9 +129,9 @@ void FxD2::dot_beat() {
   uint16_t outer = beatsin16(dotBpm, 0, NUM_PIXELS-1);               // Move entire length
   uint16_t middle = beatsin16(dotBpm, NUM_PIXELS/3, NUM_PIXELS/3*2);   // Move 1/3 to 2/3
 
-  leds[middle] = ColorFromPalette(palette, 0);
-  leds[inner] = ColorFromPalette(palette, 127);
-  leds[outer] = ColorFromPalette(palette, 255);
+  leds[middle] = ColorFromPalette(palette, beatsin8(10));
+  leds[inner] = ColorFromPalette(palette, beatsin8(11, 0, 255, 0, 127));
+  leds[outer] = ColorFromPalette(palette, beatsin8(12, 0, 255, 0, 255));
 
   nscale8(leds, NUM_PIXELS, 255-fade);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeVal);
 
@@ -161,13 +162,13 @@ void FxD3::loop() {
 }
 
 void FxD3::plasma() {
-    int thisPhase = beatsin8(6,-64,64);                           // Setting phase change for a couple of waves.
-    int thatPhase = beatsin8(7,-64,64);
+    uint8_t thisPhase = beatsin8(6,-64,64);                           // Setting phase change for a couple of waves.
+    uint8_t thatPhase = beatsin8(7,-64,64);
 
     for (int k=0; k<NUM_PIXELS; k++) {                              // For each of the LED's in the strand, set a localBright based on a wave as follows:
 
-        int colorIndex = cubicwave8((k*23)+thisPhase)/2 + cos8((k*15)+thatPhase)/2;           // Create a wave and add a phase change and add another wave with its own phase change.. Hey, you can even change the frequencies if you wish.
-        int thisBright = qsuba(colorIndex, beatsin8(7,0,96));                                 // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
+        uint8_t colorIndex = cubicwave8((k*23)+thisPhase)/2 + cos8((k*15)+thatPhase)/2;           // Create a wave and add a phase change and add another wave with its own phase change.. Hey, you can even change the frequencies if you wish.
+        uint8_t thisBright = qsuba(colorIndex, beatsin8(7,0,96));                                 // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
 
         leds[k] = ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);  // Let's now add the foreground colour.
     }
@@ -241,7 +242,13 @@ void FxD4::update_params(uint8_t slot) {
 
 void FxD4::rainbow_march() {
     if (dirFwd) hue += rot; else hue-= rot;                                       // I could use signed math, but 'dirFwd' works with other routines.
-    fill_rainbow(leds, NUM_PIXELS, hue, hueDiff);           // I don't change hueDiff on the fly as it's too fast near the end of the strip.
+    if (paletteFactory.currentHoliday() == Halloween)
+        fill_gradient_RGB(leds, NUM_PIXELS,
+          ColorFromPalette(palette, hue, brightness),
+          ColorFromPalette(palette, hue+128, brightness),
+          ColorFromPalette(palette, 255-hue, brightness));
+    else
+        fill_rainbow(leds, NUM_PIXELS, hue, hueDiff);           // I don't change hueDiff on the fly as it's too fast near the end of the strip.
 }
 
 void FxD5::setup() {

@@ -17,9 +17,9 @@ NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time fr
  * @return number of bars as signal level - between 0 (no signal, connection likely lost) through 4 bars (strong signal)
  */
 uint8_t barSignalLevel(int32_t rssi) {
-    const uint8_t numLevels = 5;
-    const int16_t minRSSI = -100;
-    const int16_t maxRSSI = -55;
+    const static uint8_t numLevels = 5;
+    const static int16_t minRSSI = -100;
+    const static int16_t maxRSSI = -55;
     if (rssi <= minRSSI)
         return 0;
     else if (rssi >= maxRSSI)
