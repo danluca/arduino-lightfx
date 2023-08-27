@@ -32,7 +32,7 @@ void FxB1::loop() {
 }
 
 void rainbow() {
-    if (paletteFactory.currentHoliday() == Halloween)
+    if (paletteFactory.isHolidayLimitedHue())
         fill_gradient_RGB(leds, NUM_PIXELS,
             ColorFromPalette(palette, hue, brightness),
             ColorFromPalette(palette, hue+128, brightness),
@@ -130,7 +130,7 @@ void fxb_confetti() {
 
     fadeToBlackBy(leds, NUM_PIXELS, 10);
     int pos = random16(NUM_PIXELS);
-    if (paletteFactory.currentHoliday() == Halloween)
+    if (paletteFactory.isHolidayLimitedHue())
         leds[pos] += ColorFromPalette(palette, hue + random8(64));
     else
         leds[pos] += CHSV(hue + random8(64), 200, 255);
@@ -175,7 +175,7 @@ void sinelon() {
     // A colored dot sweeping back and forth, with fading trails.
     fadeToBlackBy(leds, NUM_PIXELS, 20);
     int pos = beatsin16(13, 0, NUM_PIXELS - 1);
-    if (paletteFactory.currentHoliday() == Halloween)
+    if (paletteFactory.isHolidayLimitedHue())
         leds[pos] += ColorFromPalette(palette, hue, brightness);
     else
         leds[pos] += CHSV(hue, 255, brightness);
@@ -207,7 +207,7 @@ void FxB5::setup() {
 }
 
 void FxB5::loop() {
-    EVERY_N_SECONDS(15) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
@@ -361,8 +361,10 @@ void FxB8::loop() {
         FastLED.show();
     }
 
-    EVERY_N_SECONDS(10) {                                                        // Change the target palette to a random one every 10 seconds.
-        targetPalette = PaletteFactory::randomPalette(random8());
+    if (!paletteFactory.isHolidayLimitedHue()) {
+        EVERY_N_SECONDS(10) {
+            targetPalette = PaletteFactory::randomPalette(random8());
+        }
     }
 }
 
@@ -402,7 +404,7 @@ void FxB9::setup() {
 }
 
 void FxB9::loop() {
-    EVERY_N_SECONDS(5) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 

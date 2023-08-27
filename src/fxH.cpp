@@ -160,13 +160,13 @@ void FxH2::setup() {
 }
 
 void FxH2::loop() {
-    ChangeMe();  // Check the demo loop for changes to the variables.
+    ChangeMe();
 
     EVERY_N_SECONDS(2) {
-        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);  // AWESOME palette blending capability.
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    EVERY_N_MILLISECONDS(speed) {  // FastLED based non-blocking speed to update/display the sequence.
+    EVERY_N_MILLISECONDS(speed) {
         confetti_pal();
         FastLED.show();
     }
@@ -179,7 +179,6 @@ const char *FxH2::description() const {
 
 void FxH2::confetti_pal() {
     // random colored speckles that blink in and fade smoothly
-
     fadeToBlackBy(leds, NUM_PIXELS, fade);  // Low values = slower fade.
     int pos = random16(NUM_PIXELS);             // Pick an LED at random.
     leds[pos] = ColorFromPalette(palette, hue + random16(hueDiff) / 4, brightness, currentBlending);
@@ -187,15 +186,13 @@ void FxH2::confetti_pal() {
 
 }
 
-
-// A time (rather than loop) based demo sequencer. This gives us full control over the length of each sequence.
 void FxH2::ChangeMe() {
     static uint8_t secSlot = 0;
     EVERY_N_SECONDS(5) {
         switch (secSlot) {
             case 0: targetPalette = paletteFactory.mainPalette(); delta = 1; hue = 192; saturation = 255; fade = 2; hueDiff = 255; break;  // You can change values here, one at a time , or altogether.
             case 1: targetPalette = paletteFactory.secondaryPalette(); delta = 2; hue = 128; fade = 8; hueDiff = 64; break;
-            case 2: targetPalette = PaletteFactory::randomPalette(); delta = 1; hue = random16(255); fade = 1; hueDiff = 16; break;
+            case 2: if (!paletteFactory.isHolidayLimitedHue()) targetPalette = PaletteFactory::randomPalette(); delta = 1; hue = random16(255); fade = 1; hueDiff = 16; break;
             default: break;
 
         }
@@ -213,7 +210,6 @@ void FxH2::describeConfig(JsonArray &json) const {
     obj["brightness"] = brightness;
     obj["speed"] = speed;
 }
-// ChangeMe()
 
 /**
  * fill_colours - TBD whether to keep, too close to rainbow march, etc.
@@ -233,10 +229,6 @@ void FxH2::describeConfig(JsonArray &json) const {
  * https://github.com/FastLED/FastLED/wiki/Pixel-reference#predefined-colors-list
  *
  */
-// Colours defined for below
-//long firstval = 0xff00ff;
-//CRGB rgbval(50,0,500);
-//CHSV hsvval(100,255,200);
 
 FxH3::FxH3() {
     registryIndex = fxRegistry.registerEffect(this);
@@ -251,17 +243,18 @@ void FxH3::setup() {
 void FxH3::loop() {
     // fill_rainbow section
     EVERY_N_MILLISECONDS(speed) {
-        //fill_rainbow(leds, NUM_PIXELS, hue, hueDiff);            // Use FastLED's fill_rainbow routine.
-        //fill_solid(leds, NUM_PIXELS, 0);                                // Clear the strip for. . .
-        //below leds+1 is the same as &leds[1]
-        fill_rainbow(leds + 1, NUM_PIXELS - 2, hue, hueDiff);        // One pixel border at each end.
+        //below leds+1 is the same as &leds[1] - One pixel border at each end.
+        if (paletteFactory.isHolidayLimitedHue())
+            fill_gradient_RGB(leds + 1, NUM_PIXELS - 2,
+              ColorFromPalette(palette, hue, brightness),
+              ColorFromPalette(palette, hue+128, brightness),
+              ColorFromPalette(palette, 255-hue, brightness));
+        else
+            fill_rainbow(leds + 1, NUM_PIXELS - 2, hue, hueDiff);
         hue += 3;
         FastLED.show();
     }
 
-//    EVERY_N_SECONDS(1) {
-//        hue += 10;
-//    }
 }
 
 const char *FxH3::description() const {

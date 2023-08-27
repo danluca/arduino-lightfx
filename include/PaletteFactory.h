@@ -24,6 +24,7 @@ public:
     void forceHoliday(Holiday hday);
     Holiday adjustHoliday(time_t time = 0);
     Holiday currentHoliday() const;
+    bool isHolidayLimitedHue() const;
     static CRGBPalette16 randomPalette(uint8_t ofsHue = 0, time_t time = 0);
 };
 

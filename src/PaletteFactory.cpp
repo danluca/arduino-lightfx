@@ -156,6 +156,10 @@ Holiday PaletteFactory::currentHoliday() const {
     return holiday;
 }
 
+bool PaletteFactory::isHolidayLimitedHue() const {
+    return currentHoliday() == Halloween;
+}
+
 CRGBPalette16 PaletteFactory::randomPalette(uint8_t ofsHue, time_t time) {
     if (time > 0)
         random16_add_entropy(time >> 4);

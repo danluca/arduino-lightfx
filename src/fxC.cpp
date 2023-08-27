@@ -103,11 +103,10 @@ void FxC2::loop() {
 
     // The color of each point shifts over time, each at a different speed.
     uint16_t ms = millis();
-    bool isHalloween = paletteFactory.currentHoliday() == Halloween;
-    leds[(i+j)/2] = isHalloween ? ColorFromPalette(palette, ms/29) : CHSV( ms / 29, 200, 255);
-    leds[(j+k)/2] = isHalloween ? ColorFromPalette(palette, ms/41) : CHSV( ms / 41, 200, 255);
-    leds[(k+i)/2] = isHalloween ? ColorFromPalette(palette, ms/73) : CHSV( ms / 73, 200, 255);
-    leds[(k+i+j)/3] = isHalloween ? ColorFromPalette(palette, ms/53) : CHSV( ms / 53, 200, 255);
+    leds[(i+j)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/29) : CHSV( ms / 29, 200, 255);
+    leds[(j+k)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/41) : CHSV( ms / 41, 200, 255);
+    leds[(k+i)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/73) : CHSV( ms / 73, 200, 255);
+    leds[(k+i+j)/3] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/53) : CHSV( ms / 53, 200, 255);
 
     FastLED.show();
 }
@@ -158,10 +157,10 @@ void FxC3::loop() {
         fadeToBlackBy(leds, NUM_PIXELS, 4);
         FastLED.show();
     }
-    EVERY_N_SECONDS(1) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
-    if (paletteFactory.currentHoliday() != Halloween) {
+    if (!paletteFactory.isHolidayLimitedHue()) {
         EVERY_N_SECONDS(10) {
             targetPalette = PaletteFactory::randomPalette();
         }
@@ -250,7 +249,7 @@ void FxC5::setup() {
 void FxC5::loop() {
     changeParams();
 
-    EVERY_N_SECONDS(1) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
@@ -286,7 +285,7 @@ void FxC5::changeParams() {
             case 0: speed=75; palIndex=95; bgClr=140; bgBri=4; hueRot=true; break;
             case 1: targetPalette = paletteFactory.mainPalette(); dirFwd=false; bgBri=0; hueRot=true; break;
             case 2: targetPalette = paletteFactory.secondaryPalette(); speed=45; palIndex=0; bgClr=50; bgBri=8; hueRot=false; dirFwd=true; break;
-            case 3: targetPalette = PaletteFactory::randomPalette(0, millis()); speed=95; bgBri = 16; bgClr=96; palIndex=random8(); break;
+            case 3: if (!paletteFactory.isHolidayLimitedHue()) targetPalette = PaletteFactory::randomPalette(0, millis()); speed=95; bgBri = 16; bgClr=96; palIndex=random8(); break;
             case 4: palIndex=random8(); hueRot=true; break;
             default: break;
         }
@@ -362,7 +361,7 @@ void FxC6::one_sine_pal(uint8_t colorIndex) {
 
     for (uint16_t k=0; k<NUM_PIXELS; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
         uint8_t thisBright = qsubd(cubicwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
-        leds[k] = paletteFactory.currentHoliday() == Halloween ? ColorFromPalette(palette, bgclr, bgbright) : CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
+        leds[k] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, bgclr, bgbright) : CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
         leds[k] += ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
         colorIndex +=3;
     }

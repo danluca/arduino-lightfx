@@ -35,7 +35,7 @@ void FxE1::loop() {
     ChangeMe();                                                 // Check the demo loop for changes to the variables.
 
     EVERY_N_SECONDS(2) {
-        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
     EVERY_N_MILLISECONDS_I(fxe1Timer, speed) {                           // FastLED based non-blocking speed to update/display the sequence.
@@ -44,7 +44,7 @@ void FxE1::loop() {
         fxe1Timer.setPeriod(speed);
     }
 
-    if (paletteFactory.currentHoliday() != Halloween) {
+    if (!paletteFactory.isHolidayLimitedHue()) {
         EVERY_N_SECONDS(10) {
             //static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
             targetPalette = PaletteFactory::randomPalette();
@@ -108,10 +108,10 @@ void FxE2::loop() {
     }
 
     EVERY_N_SECONDS(2) {
-        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);   // AWESOME palette blending capability.
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    if (paletteFactory.currentHoliday() != Halloween) {
+    if (!paletteFactory.isHolidayLimitedHue()) {
         EVERY_N_SECONDS(15) {
             targetPalette = PaletteFactory::randomPalette(0, millis());
         }
@@ -190,10 +190,10 @@ void FxE4::setup() {
 
 void FxE4::loop() {
     EVERY_N_SECONDS(2) {
-        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);  // Blend towards the target palette
+        nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    if (paletteFactory.currentHoliday() != Halloween) {
+    if (!paletteFactory.isHolidayLimitedHue()) {
         EVERY_N_SECONDS(30) {
             targetPalette = PaletteFactory::randomPalette(random8());
         }

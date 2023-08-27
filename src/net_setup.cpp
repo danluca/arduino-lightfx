@@ -137,6 +137,8 @@ bool wifi_check() {
 
 /**
  * Similar with wifi_connect, but with some preamble cleanup
+ * Watch out: https://github.com/arduino/nina-fw/issues/63 - after WiFi reconnect, the server seems to stop working (returns disconnected clients?)
+ * Should we invoke a board reset instead? (NVIC_SystemReset)
  */
 void wifi_reconnect() {
     status = WL_CONNECTION_LOST;
@@ -145,9 +147,10 @@ void wifi_reconnect() {
     WiFiClient client = server.available();
     if (client) client.stop();
     WiFi.disconnect();
-    server = WiFiServer(80);    //new server instance
+    delay(2000);    //let disconnect state settle
     if (wifi_connect())
         stateLED(CRGB::Indigo);
+    //NVIC_SystemReset();
 }
 
 void wifi_loop() {

@@ -149,14 +149,14 @@ void FxD3::loop() {
         FastLED.show();
     }
 
-    EVERY_N_SECONDS(1) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-
-    EVERY_N_SECONDS(20) {                                 // Change the target palette to a random one every 5 seconds.
-        uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
-        targetPalette = PaletteFactory::randomPalette(baseC);
+    if (!paletteFactory.isHolidayLimitedHue()) {
+        EVERY_N_SECONDS(20) {
+            targetPalette = PaletteFactory::randomPalette(random8());
+        }
     }
 
 }
@@ -242,7 +242,7 @@ void FxD4::update_params(uint8_t slot) {
 
 void FxD4::rainbow_march() {
     if (dirFwd) hue += rot; else hue-= rot;                                       // I could use signed math, but 'dirFwd' works with other routines.
-    if (paletteFactory.currentHoliday() == Halloween)
+    if (paletteFactory.isHolidayLimitedHue())
         fill_gradient_RGB(leds, NUM_PIXELS,
           ColorFromPalette(palette, hue, brightness),
           ColorFromPalette(palette, hue+128, brightness),
@@ -256,7 +256,7 @@ void FxD5::setup() {
 }
 
 void FxD5::loop() {
-    EVERY_N_SECONDS(5) {
+    EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
     EVERY_N_MILLISECONDS(100) {
