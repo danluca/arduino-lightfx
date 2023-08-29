@@ -4,6 +4,8 @@
  */
 #include "fxF.h"
 
-void fxf_register() {
+using namespace FxF;
+
+void FxF::fxRegister() {
 
 }

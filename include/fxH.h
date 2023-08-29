@@ -7,6 +7,7 @@
 #include "efx_setup.h"
 #include <vector>
 
+namespace FxH {
 // This basic one-dimensional 'fire' simulation works roughly as follows:
 // There's a underlying array of 'heat' cells, that model the temperature
 // at each point along the line.  Every cycle through the simulation,
@@ -43,60 +44,60 @@
 #define SPARKING 150
 #define FRAMES_PER_SECOND 10
 
-class FxH1 : public LedEffect {
-private:
-    const static uint8_t numFires = 3;
-    CRGBSet fires[numFires];
-    std::vector<CRGB> hMap;
-public:
-    FxH1();
+    class FxH1 : public LedEffect {
+    private:
+        const static uint8_t numFires = 2;
+        CRGBSet fires[numFires];
+        std::vector<CRGB> hMap;
+    public:
+        FxH1();
 
-    void setup() override;
+        void setup() override;
 
-    void loop() override;
+        void loop() override;
 
-    void describeConfig(JsonArray &json) const override;
+        void describeConfig(JsonArray &json) const override;
 
-    const char *name() const override;
+        const char *name() const override;
 
-    const char *description() const override;
+        const char *description() const override;
 
-    void Fire2012WithPalette(uint8_t xFire);
-};
+        void Fire2012WithPalette(uint8_t xFire);
+    };
 
-class FxH2 : public LedEffect {
-public:
-    FxH2();
+    class FxH2 : public LedEffect {
+    public:
+        FxH2();
 
-    void setup() override;
+        void setup() override;
 
-    void loop() override;
+        void loop() override;
 
-    void describeConfig(JsonArray &json) const override;
+        void describeConfig(JsonArray &json) const override;
 
-    const char *name() const override;
+        const char *name() const override;
 
-    const char *description() const override;
+        const char *description() const override;
 
-    static void confetti_pal();
+        static void confetti_pal();
 
-    static void ChangeMe();
-};
+        static void updateParams();
+    };
 
-class FxH3 : public LedEffect {
-public:
-    FxH3();
+    class FxH3 : public LedEffect {
+    public:
+        FxH3();
 
-    void setup() override;
+        void setup() override;
 
-    void loop() override;
+        void loop() override;
 
-    const char *description() const override;
+        const char *description() const override;
 
-    void describeConfig(JsonArray &json) const override;
+        void describeConfig(JsonArray &json) const override;
 
-    const char *name() const override;
-};
-
+        const char *name() const override;
+    };
+}
 
 #endif //LIGHTFX_FXH_H

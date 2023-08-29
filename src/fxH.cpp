@@ -4,7 +4,9 @@
  */
 #include "fxH.h"
 
-void fxh_register() {
+using namespace FxH;
+
+void FxH::fxRegister() {
     static FxH1 fxH1;
     static FxH2 fxH2;
     static FxH3 fxH3;
@@ -33,7 +35,7 @@ void fxh_register() {
 // The dynamic palette shows how you can change the basic 'hue' of the
 // color palette every time through the loop, producing "rainbow fire".
 
-FxH1::FxH1() : fires{CRGBSet(leds, 0, 50), CRGBSet(leds, 50, 100), CRGBSet(leds, 149, 100)} {
+FxH1::FxH1() : fires{tpl(0, FRAME_SIZE/2-1), tpl(FRAME_SIZE-1, FRAME_SIZE/2)} {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
@@ -94,6 +96,7 @@ void FxH1::loop() {
         for (uint8_t x=0; x<numFires; x++)
             Fire2012WithPalette(x);  // run simulation frame 1, using palette colors
 
+        replicateSet(tpl, others);
         FastLED.show();  // display this frame
     }
 }
@@ -109,7 +112,7 @@ void FxH1::Fire2012WithPalette(uint8_t xFire) {
 
     // Step 1.  Cool down every cell a little
     CRGBSet fire = fires[xFire];
-    for (uint i = 0; i < fire.size(); i++) {
+    for (uint16_t i = 0; i < fire.size(); i++) {
         hMap[i][xFire] = qsub8(hMap[i][xFire], random8(0, ((COOLING * 10) / fire.size()) + 2));
     }
 
@@ -120,7 +123,7 @@ void FxH1::Fire2012WithPalette(uint8_t xFire) {
 
     // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
     if (random8() < SPARKING) {
-        int y = random8(7);
+        uint8_t y = random8(7);
         hMap[y][xFire] = qadd8(hMap[y][xFire], random8(160, 255));
     }
 
@@ -160,7 +163,7 @@ void FxH2::setup() {
 }
 
 void FxH2::loop() {
-    ChangeMe();
+    updateParams();
 
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
@@ -179,14 +182,14 @@ const char *FxH2::description() const {
 
 void FxH2::confetti_pal() {
     // random colored speckles that blink in and fade smoothly
-    fadeToBlackBy(leds, NUM_PIXELS, fade);  // Low values = slower fade.
-    int pos = random16(NUM_PIXELS);             // Pick an LED at random.
-    leds[pos] = ColorFromPalette(palette, hue + random16(hueDiff) / 4, brightness, currentBlending);
+    tpl.fadeToBlackBy(fade);  // Low values = slower fade.
+    uint16_t pos = random16(tpl.size());             // Pick an LED at random.
+    tpl[pos] = ColorFromPalette(palette, hue + random16(hueDiff) / 4, brightness, currentBlending);
     hue = hue + delta;  // It increments here.
-
+    replicateSet(tpl, others);
 }
 
-void FxH2::ChangeMe() {
+void FxH2::updateParams() {
     static uint8_t secSlot = 0;
     EVERY_N_SECONDS(5) {
         switch (secSlot) {
@@ -245,13 +248,13 @@ void FxH3::loop() {
     EVERY_N_MILLISECONDS(speed) {
         //below leds+1 is the same as &leds[1] - One pixel border at each end.
         if (paletteFactory.isHolidayLimitedHue())
-            fill_gradient_RGB(leds + 1, NUM_PIXELS - 2,
-              ColorFromPalette(palette, hue, brightness),
+            tpl(1, FRAME_SIZE-2).fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
               ColorFromPalette(palette, hue+128, brightness),
               ColorFromPalette(palette, 255-hue, brightness));
         else
-            fill_rainbow(leds + 1, NUM_PIXELS - 2, hue, hueDiff);
+            tpl(1, FRAME_SIZE-2).fill_rainbow(hue, hueDiff);
         hue += 3;
+        replicateSet(tpl, others);
         FastLED.show();
     }
 

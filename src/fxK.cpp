@@ -4,6 +4,8 @@
  */
 #include "fxK.h"
 
-void fxk_register() {
+using namespace FxK;
+
+void FxK::fxRegister() {
 
 }

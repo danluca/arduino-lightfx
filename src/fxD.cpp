@@ -5,7 +5,9 @@
 
 #include "fxD.h"
 
-void fxd_register() {
+using namespace FxD;
+
+void FxD::fxRegister() {
     static FxD1 fxD1;
     static FxD2 fxD2;
     static FxD3 fxD3;
@@ -61,13 +63,15 @@ void FxD1::describeConfig(JsonArray &json) const {
 }
 
 
-void FxD1::confetti() {                                             // random colored speckles that blink in and fade smoothly
-  fadeToBlackBy(leds, NUM_PIXELS, fade);                    // Low values = slower fade.
-  int pos = random16(NUM_PIXELS);                               // Pick an LED at random.
-  //leds[pos] += CHSV((hue + random16(hueDiff)) / 4 , saturation, localBright);  // I use 12 bits for hue so that the hue increment isn't too quick.
-  leds[pos] += ColorFromPalette(palette, hue, brightness, LINEARBLEND);
-  hue = hue + delta;                                // It increments here.
-} // confetti()
+void FxD1::confetti() {
+    // random colored speckles that blink in and fade smoothly
+    tpl.fadeToBlackBy(fade);                    // Low values = slower fade.
+    uint16_t pos = random16(tpl.size());    // Pick an LED at random.
+    //tpl[pos] += CHSV((hue + random16(hueDiff)) / 4 , saturation, localBright);  // I use 12 bits for hue so that the hue increment isn't too quick.
+    tpl[pos] += ColorFromPalette(palette, hue, brightness, LINEARBLEND);
+    hue = hue + delta;                                // It increments here.
+    replicateSet(tpl, others);
+}
 
 
 void FxD1::ChangeMe() {
@@ -124,19 +128,20 @@ void FxD2::describeConfig(JsonArray &json) const {
 }
 
 void FxD2::dot_beat() {
+    uint16_t inner = beatsin16(dotBpm, tpl.size()/4, tpl.size()/4*3);    // Move 1/4 to 3/4
+    uint16_t outer = beatsin16(dotBpm, 0, tpl.size()-1);               // Move entire length
+    uint16_t middle = beatsin16(dotBpm, tpl.size()/3, tpl.size()/3*2);   // Move 1/3 to 2/3
 
-  uint16_t inner = beatsin16(dotBpm, NUM_PIXELS/4, NUM_PIXELS/4*3);    // Move 1/4 to 3/4
-  uint16_t outer = beatsin16(dotBpm, 0, NUM_PIXELS-1);               // Move entire length
-  uint16_t middle = beatsin16(dotBpm, NUM_PIXELS/3, NUM_PIXELS/3*2);   // Move 1/3 to 2/3
+    tpl[middle] = ColorFromPalette(palette, beatsin8(10));
+    tpl[inner] = ColorFromPalette(palette, beatsin8(11, 0, 255, 0, 127));
+    tpl[outer] = ColorFromPalette(palette, beatsin8(12, 0, 255, 0, 255));
 
-  leds[middle] = ColorFromPalette(palette, beatsin8(10));
-  leds[inner] = ColorFromPalette(palette, beatsin8(11, 0, 255, 0, 127));
-  leds[outer] = ColorFromPalette(palette, beatsin8(12, 0, 255, 0, 255));
+    tpl.nscale8(255-fade);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeVal);
 
-  nscale8(leds, NUM_PIXELS, 255-fade);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeVal);
+    replicateSet(tpl, others);
+}
 
-} // dot_beat()
-
+// Fx D3
 void FxD3::setup() {
     resetGlobals();
     targetPalette = paletteFactory.mainPalette();
@@ -191,6 +196,7 @@ FxD3::FxD3() {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
+// Fx D4
 void FxD4::setup() {
     resetGlobals();
     hue = 0;
@@ -205,7 +211,7 @@ void FxD4::loop() {
         secSlot = inc(secSlot, 1, 15);
     }
 
-    EVERY_N_MILLISECONDS(20) {
+    EVERY_N_MILLISECONDS(50) {
         rainbow_march();
         FastLED.show();
     }
@@ -243,14 +249,15 @@ void FxD4::update_params(uint8_t slot) {
 void FxD4::rainbow_march() {
     if (dirFwd) hue += rot; else hue-= rot;                                       // I could use signed math, but 'dirFwd' works with other routines.
     if (paletteFactory.isHolidayLimitedHue())
-        fill_gradient_RGB(leds, NUM_PIXELS,
-          ColorFromPalette(palette, hue, brightness),
+        tpl.fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
           ColorFromPalette(palette, hue+128, brightness),
           ColorFromPalette(palette, 255-hue, brightness));
     else
-        fill_rainbow(leds, NUM_PIXELS, hue, hueDiff);           // I don't change hueDiff on the fly as it's too fast near the end of the strip.
+        tpl.fill_rainbow(hue, hueDiff);           // I don't change hueDiff on the fly as it's too fast near the end of the strip.
+    replicateSet(tpl, others);
 }
 
+// Fx D5
 void FxD5::setup() {
     resetGlobals();
 }

@@ -146,6 +146,7 @@ void wifi_reconnect() {
     server.clearWriteError();
     WiFiClient client = server.available();
     if (client) client.stop();
+    Udp.stop();
     WiFi.disconnect();
     delay(2000);    //let disconnect state settle
     if (wifi_connect())

@@ -4,7 +4,10 @@
  */
 #include "fxB.h"
 
-void fxb_register() {
+//~ Global variables definition for FxB
+using namespace FxB;
+
+void FxB::fxRegister() {
     static FxB1 fxb1;
     static FxB2 fxB2;
     static FxB3 fxB3;
@@ -24,21 +27,21 @@ void FxB1::setup() {
 }
 
 void FxB1::loop() {
-    EVERY_N_MILLISECONDS(50) {
+    EVERY_N_MILLISECONDS(60) {
         rainbow();
+        FastLED.show();
         hue+=2;
     }
-    FastLED.show();
 }
 
-void rainbow() {
+void FxB::rainbow() {
     if (paletteFactory.isHolidayLimitedHue())
-        fill_gradient_RGB(leds, NUM_PIXELS,
-            ColorFromPalette(palette, hue, brightness),
+        tpl.fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
             ColorFromPalette(palette, hue+128, brightness),
             ColorFromPalette(palette, 255-hue, brightness));
     else
-        fill_rainbow(leds, NUM_PIXELS, hue, 7);
+        tpl.fill_rainbow(hue, 7);
+    replicateSet(tpl, others);
 }
 
 const char *FxB1::description() const {
@@ -72,21 +75,23 @@ void FxB2::setup() {
 }
 
 void FxB2::loop() {
-    EVERY_N_MILLISECONDS(50) {
+    EVERY_N_MILLISECONDS(60) {
         rainbowWithGlitter();
+        FastLED.show();
         hue+=2;
     }
-
-    FastLED.show();
 }
 
-void rainbowWithGlitter() {
-    rainbow();  // Built-in FastLED rainbow, plus some random sparkly glitter.
+/**
+ * Built-in FastLED rainbow, plus some random sparkly glitter.
+ */
+void FxB::rainbowWithGlitter() {
+    rainbow();
     nscale8(leds, NUM_PIXELS, brightness);
     addGlitter(80);
 }
 
-void addGlitter(fract8 chanceOfGlitter) {
+void FxB::addGlitter(fract8 chanceOfGlitter) {
     if (random8() < chanceOfGlitter) {
         leds[random16(NUM_PIXELS)] += CRGB::White;
     }
@@ -117,23 +122,30 @@ void FxB3::setup() {
 }
 
 void FxB3::loop() {
-    EVERY_N_MILLISECONDS(50) {
-        fxb_confetti();
-        hue+=2;
+    if (mode == TurnOff) {
+        if (turnOffWipe(true))
+            mode = Chase;
     }
 
-    FastLED.show();
+    EVERY_N_MILLISECONDS(50) {
+        fxb_confetti();
+        FastLED.show();
+        hue+=2;
+    }
+    EVERY_N_SECONDS(133) {
+        mode = TurnOff;
+    }
 }
 
-void fxb_confetti() {
+void FxB::fxb_confetti() {
     // Random colored speckles that blink in and fade smoothly.
-
-    fadeToBlackBy(leds, NUM_PIXELS, 10);
-    int pos = random16(NUM_PIXELS);
+    tpl.fadeToBlackBy(10);
+    uint16_t pos = random16(tpl.size());
     if (paletteFactory.isHolidayLimitedHue())
-        leds[pos] += ColorFromPalette(palette, hue + random8(64));
+        tpl[pos] += ColorFromPalette(palette, hue + random8(64));
     else
-        leds[pos] += CHSV(hue + random8(64), 200, 255);
+        tpl[pos] += CHSV(hue + random8(64), 200, 255);
+    replicateSet(tpl, others);
 }
 
 const char *FxB3::description() const {
@@ -163,22 +175,22 @@ void FxB4::setup() {
 }
 
 void FxB4::loop() {
-  EVERY_N_MILLISECONDS(50) {
+  EVERY_N_MILLISECONDS(60) {
     sinelon();
-    hue+=2;
+    FastLED.show();
+    hue+=3;
   }
-
-  FastLED.show();
 }
 
-void sinelon() {
+void FxB::sinelon() {
     // A colored dot sweeping back and forth, with fading trails.
-    fadeToBlackBy(leds, NUM_PIXELS, 20);
-    int pos = beatsin16(13, 0, NUM_PIXELS - 1);
+    tpl.fadeToBlackBy(20);
+    uint16_t pos = beatsin16(14, 0, tpl.size() - 1);
     if (paletteFactory.isHolidayLimitedHue())
-        leds[pos] += ColorFromPalette(palette, hue, brightness);
+        tpl[pos] += ColorFromPalette(palette, hue, brightness);
     else
-        leds[pos] += CHSV(hue, 255, brightness);
+        tpl[pos] += CHSV(hue, 255, brightness);
+    replicateSet(tpl, others);
 }
 
 const char *FxB4::description() const {
@@ -211,7 +223,7 @@ void FxB5::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    EVERY_N_MILLIS(20) {
+    EVERY_N_MILLIS(50) {
         juggle_short();
         FastLED.show();
     }
@@ -221,16 +233,18 @@ void FxB5::loop() {
  * See juggle effect in the demoReel100_button example of FastLED-Demos repository
  * Eight colored dots, weaving in and out of sync with each other.
  */
-void juggle_short() {
-    fadeToBlackBy(leds, NUM_PIXELS, 20);
+void FxB::juggle_short() {
+    const uint16_t segSize = 8;
+    tpl.fadeToBlackBy(20);
     byte dothue = 0;
 
-    for (int i = 0; i < 8; i++) {
-//    leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= CHSV(dothue, 200, 255);
-//  note the |= operator may lead to colors outside the palette - for limited hues palettes (like Halloween) this may not be ideal
-        leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= ColorFromPalette(palette, dothue, brightness, LINEARBLEND);
+    for (uint16_t i = 0; i < segSize; i++) {
+        // leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= CHSV(dothue, 200, 255);
+        // note the |= operator may lead to colors outside the palette - for limited hues palettes (like Halloween) this may not be ideal
+        tpl[beatsin16(i + 7, 0, tpl.size() - 1)] |= ColorFromPalette(palette, dothue, brightness, LINEARBLEND);
         dothue += 32;
     }
+    replicateSet(tpl, others);
 }
 
 const char *FxB5::description() const {
@@ -265,15 +279,14 @@ void FxB6::loop() {
         hue += 2;  // slowly cycle the "base color" through the rainbow
         FastLED.show();
     }
-
 }
 
-void bpm() {
+void FxB::bpm() {
     // Colored stripes pulsing at a defined Beats-Per-Minute.
-    uint8_t BeatsPerMinute = 62;
+    uint8_t BeatsPerMinute = beatsin8(5, 62, 67);
     uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
 
-    for (int i = 0; i < NUM_PIXELS; i++) {  //9948
+    for (uint16_t i = 0; i < NUM_PIXELS; i++) {
         leds[i] = ColorFromPalette(palette, hue + (i * 2), beat - hue + (i * 10));
     }
 }
@@ -303,26 +316,25 @@ void FxB7::setup() {
 }
 
 void FxB7::loop() {
-    EVERY_N_MILLISECONDS(25) {
+    EVERY_N_MILLISECONDS(75) {
         ease();
+        hue+=2;
         FastLED.show();
     }
 
 }
 
-void ease() {
-    static uint16_t easeOutVal = 0;
+void FxB::ease() {
     static uint16_t easeInVal  = 0;
-    static uint16_t lerpVal    = 0;
 
-    easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
-    easeInVal+=41;
+    uint16_t easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
+    easeInVal+=141;
 
-    lerpVal = lerp16by16(0, NUM_PIXELS, easeOutVal);                // Map it to the number of LED's you have.
+    uint16_t lerpVal = lerp16by16(0, tpl.size(), easeOutVal);                // Map it to the number of LED's you have.
 
-    leds[lerpVal] = ColorFromPalette(palette, hue + (easeInVal << 1), 40 + easeOutVal);
-    fadeToBlackBy(leds, NUM_PIXELS, 1);                          // 8 bit, 1 = slow fade, 255 = fast fade
-    hue+=2;
+    tpl[lerpVal] = ColorFromPalette(palette, hue + (easeInVal << 1), max(40,  (uint8_t)easeOutVal));
+    tpl.fadeToBlackBy(4);                          // 8 bit, 1 = slow fade, 255 = fast fade
+    replicateSet(tpl, others);
 }
 
 const char *FxB7::description() const {
@@ -356,7 +368,7 @@ void FxB8::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    EVERY_N_MILLISECONDS(50) {
+    EVERY_N_MILLISECONDS(60) {
         fadein();
         FastLED.show();
     }
@@ -368,13 +380,14 @@ void FxB8::loop() {
     }
 }
 
-void fadein() {
+void FxB::fadein() {
     random16_set_seed(535);                                                           // The randomizer needs to be re-set each time through the loop in order for the 'random' numbers to be the same each time through.
 
-    for (int i = 0; i<NUM_PIXELS; i++) {
+    for (uint16_t i = 0; i<tpl.size(); i++) {
         uint8_t fader = sin8(millis()/random8(10,20));                                  // The random number for each 'i' will be the same every time.
-        leds[i] = ColorFromPalette(palette, i*20, fader, LINEARBLEND);       // Now, let's run it through the palette lookup.
+        tpl[i] = ColorFromPalette(palette, i*20, fader, LINEARBLEND);       // Now, let's run it through the palette lookup.
     }
+    replicateSet(tpl, others);
 
     random16_set_seed(millis() >> 5);                                                      // Re-randomizing the random number seed for other routines.
 }
@@ -396,7 +409,7 @@ void FxB8::describeConfig(JsonArray &json) const {
 
 void FxB9::setup() {
     resetGlobals();
-    brightness = BRIGHTNESS;
+    //brightness = BRIGHTNESS;
     fade = 2;   // How long should the trails be. Very low value = longer trails.
     hueDiff = 16;   // Incremental change in hue between each dot.
     hue = 0;    // Starting hue.
@@ -408,7 +421,7 @@ void FxB9::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    EVERY_N_MILLIS(50) {
+    EVERY_N_MILLIS(60) {
         juggle_long();
         FastLED.show();
     }
@@ -420,7 +433,7 @@ void FxB9::loop() {
  *
  * Juggle just moves some balls back and forth. A single ball could be a Cylon effect. I've added several variables to this simple routine.
  */
-void juggle_long() {
+void FxB::juggle_long() {
     // Routine specific variables
     static uint8_t numDots = 4;                                     // Number of dots in use.
     static uint8_t secSlot = 0;
@@ -436,13 +449,14 @@ void juggle_long() {
     }
 
     uint8_t curHue = hue;                                           // Reset the hue values.
-    fadeToBlackBy(leds, NUM_PIXELS, fade);
+    tpl.fadeToBlackBy(fade);
 
-    for(int i = 0; i < numDots; i++) {
+    for(uint16_t i = 0; i < numDots; i++) {
         //  note the += operator may lead to colors outside the palette (less evident than |= operator) - for limited hues palettes (like Halloween) this may not be ideal
-        leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS - 1)] += ColorFromPalette(palette, curHue , brightness, LINEARBLEND);
+        tpl[beatsin16(dotBpm + i + numDots, 0, tpl.size() - 1)] += ColorFromPalette(palette, curHue , brightness, LINEARBLEND);
         curHue += hueDiff;
     }
+    replicateSet(tpl, others);
 }
 
 const char *FxB9::description() const {

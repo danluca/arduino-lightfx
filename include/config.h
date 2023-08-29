@@ -13,8 +13,8 @@
 
 #define MAX_NUM_PIXELS  1024    //maximum number of pixels supported (equivalent of 330ft LED strips). If more are needed, we'd need to revisit memory allocation and PWM timings
 
-//#define NUM_PIXELS  305    //number of pixels on the house edge strip
-#define NUM_PIXELS  200    //number of pixels on two 16.5ft (5m) strips, one 30Led/m the other 60Led/m density
+//#define NUM_PIXELS  300    //number of pixels on the house edge strip
+#define NUM_PIXELS  384    //number of pixels on the house edge (300 measured + reserve)
 
 // initial global brightness 0-255
 #define BRIGHTNESS 255

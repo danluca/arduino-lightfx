@@ -54,7 +54,7 @@ void mic_run() {
         if (maxSample > 800) {
             fxBump = true;
             random16_add_entropy(abs(maxSample));
-            Log.infoln("Audio max sample over 800: %d", maxSample);
+            Log.infoln("Audio sample: %d", maxSample);
         }
         // Clear the read count
         samplesRead = 0;

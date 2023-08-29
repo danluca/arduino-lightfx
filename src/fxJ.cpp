@@ -4,6 +4,8 @@
  */
 #include "fxJ.h"
 
-void fxj_register() {
+using namespace FxJ;
+
+void FxJ::fxRegister() {
 
 }

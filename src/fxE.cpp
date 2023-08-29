@@ -4,7 +4,9 @@
  */
 #include "fxE.h"
 
-void fxe_register() {
+using namespace FxE;
+
+void FxE::fxRegister() {
     static FxE1 fxe1;
     static FxE2 fxE2;
     static FxE3 fxE3;
@@ -32,7 +34,7 @@ void FxE1::setup() {
 }
 
 void FxE1::loop() {
-    ChangeMe();                                                 // Check the demo loop for changes to the variables.
+    updateParams();                                                 // Check the demo loop for changes to the variables.
 
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
@@ -64,13 +66,11 @@ void FxE1::twinkle() {
   
 } // twinkle()
 
-
-
-void FxE1::ChangeMe() {
+void FxE1::updateParams() {
     static uint8_t secSlot = 0;
     EVERY_N_SECONDS(5) {
         switch (secSlot) {
-            case 0: speed = 10; randhue = true; saturation=255; fade=8; twinkrate=150; break;  // You can change values here, one at a time , or altogether.
+            case 0: speed = 25; randhue = true; saturation=255; fade=8; twinkrate=150; break;  // You can change values here, one at a time , or altogether.
             case 1: speed = 100; randhue = false; hue=random8(); fade=2; twinkrate=20; break;
             default: break;
         }
@@ -88,7 +88,7 @@ void FxE1::describeConfig(JsonArray &json) const {
     obj["brightness"] = brightness;
 }
 
-//=====================================
+// Fx E2
 FxE2::FxE2() {
     registryIndex = fxRegistry.registerEffect(this);
 }
@@ -102,7 +102,7 @@ void FxE2::setup() {
 }
 
 void FxE2::loop() {
-    EVERY_N_MILLIS(50) {
+    EVERY_N_MILLIS(100) {
         beatwave();
         FastLED.show();
     }
@@ -123,15 +123,14 @@ const char *FxE2::description() const {
 }
 
 void FxE2::beatwave() {
-  uint8_t wave1 = beatsin8(9, 0, 255);                        // That's the same as beatsin8(9);
-  uint8_t wave2 = beatsin8(8, 0, 255);
-  uint8_t wave3 = beatsin8(7, 0, 255);
-  uint8_t wave4 = beatsin8(6, 0, 255);
+    uint8_t wave1 = beatsin8(9, 0, 255);                        // That's the same as beatsin8(9);
+    uint8_t wave2 = beatsin8(8, 0, 255);
+    uint8_t wave3 = beatsin8(7, 0, 255);
+    uint8_t wave4 = beatsin8(6, 0, 255);
 
-  for (int i=0; i<NUM_PIXELS; i++) {
-    leds[i] = ColorFromPalette(palette, i + wave1 + wave2 + wave3 + wave4, brightness, currentBlending);
-  }
-  
+    for (uint16_t i=0; i<tpl.size(); i++)
+        tpl[i] = ColorFromPalette(palette, i + wave1 + wave2 + wave3 + wave4, brightness, currentBlending);
+    replicateSet(tpl, others);
 }
 
 const char *FxE2::name() const {
@@ -146,21 +145,39 @@ void FxE2::describeConfig(JsonArray &json) const {
 //Fx E3
 void FxE3::setup() {
     resetGlobals();
+    fade = dimmed;
+    delta = 32;
+    segStart = segEnd = 0;
+    timerSlot = 0;
+    cycles = 10;
 }
 
 void FxE3::loop() {
-    EVERY_N_MILLISECONDS_I(e3Timer, 400) {
-        uint8_t adv = random8(1, 9);
-        uint16_t newPos = inc(curPos, adv, NUM_PIXELS);
-        CRGBSet seg(leds, dirFwd?curPos:NUM_PIXELS-curPos, dirFwd?newPos:NUM_PIXELS-newPos);
-        seg = dirFwd ? ColorFromPalette(palette, random8(), brightness, currentBlending) : BKG;
-        FastLED.show();
-        if (newPos < curPos) {
-            newPos = 0;
-            dirFwd = !dirFwd;     //curPos rolled over
+        EVERY_N_MILLISECONDS(100) {
+        if (timerSlot == 0) {
+            uint8_t adv = random8(1, 5);
+            uint16_t maxIndex = tpl.size() - 1;
+            uint16_t newPos = capu(curPos+adv, maxIndex);
+            segStart = dirFwd ? curPos : maxIndex - curPos;
+            segEnd = dirFwd ? newPos : maxIndex - newPos;
+            fade = dimmed;
+            colorIndex = random8();
+            cycles = dirFwd ? random8(8, 16) : 12;
+            curPos = newPos == maxIndex ? 0 : newPos + 1;
+            if (curPos == 0) {
+                dirFwd = !dirFwd;
+                cycles = 30;
+            }
         }
-        curPos = newPos;
-        e3Timer.setPeriod(150 + random16(901));
+        if (dirFwd)
+            tpl(segStart, segEnd) =  ColorFromPalette(palette, colorIndex, fade, currentBlending);
+        else
+            tpl(segStart, segEnd).fadeToBlackBy(fade);
+        fade = capu(fade + delta, brightness);
+        incr(timerSlot, 1, cycles);
+
+        replicateSet(tpl, others);
+        FastLED.show();
     }
 }
 
@@ -224,22 +241,19 @@ FxE4::FxE4() {
 }
 
 void FxE4::serendipitous() {
-//  Xn = X-(Y/2); Yn = Y+(Xn/2);
-//  Xn = X-Y/2;   Yn = Y+Xn/2;
-  Xn = X-(Y/2); Yn = Y+(X/2.1);
-//    Xn = X-(Y/3); Yn = Y+(X/1.5);
-//  Xn = X-(2*Y); Yn = Y+(X/1.1);
+    //  Xn = X-(Y/2); Yn = Y+(Xn/2);
+    //  Xn = X-Y/2;   Yn = Y+Xn/2;
+    uint16_t Xn = X-(Y/2); uint16_t Yn = Y+(X/2.1); uint16_t Zn = X + Y*2.3;
+    //    Xn = X-(Y/3); Yn = Y+(X/1.5);
+    //  Xn = X-(2*Y); Yn = Y+(X/1.1);
 
     X = Xn;
     Y = Yn;
 
-    index=(sin8(X)+cos8(Y))/2;                            // Guarantees maximum value of 255
+    index=(sin8(X)+cos8(Y))/2;
+    CRGB newcolor = ColorFromPalette(palette, index, map(Zn, 0, 65535, dimmed*3, brightness), LINEARBLEND);
 
-    CRGB newcolor = ColorFromPalette(palette, index, 255, LINEARBLEND);
-
-//  nblend(leds[X%NUM_LEDS-1], newcolor, 224);          // Try and smooth it out a bit. Higher # means less smoothing.
-    nblend(leds[map(X,0,65535,0,NUM_PIXELS)], newcolor, 224); // Try and smooth it out a bit. Higher # means less smoothing.
-
-    fadeToBlackBy(leds, NUM_PIXELS, 16);                    // 8 bit, 1 = slow, 255 = fast
-
+    nblend(tpl[map(X, 0, 65535, 0, tpl.size())], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
+    tpl.fadeToBlackBy(16);                    // 8 bit, 1 = slow, 255 = fast
+    replicateSet(tpl, others);
 }

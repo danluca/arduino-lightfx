@@ -6,4 +6,7 @@
 
 #include "efx_setup.h"
 
+namespace FxI {
+
+}
 #endif //ARDUINO_LIGHTFX_FXI_H

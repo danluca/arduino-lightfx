@@ -4,7 +4,9 @@
  */
 #include "fxI.h"
 
-void fxi_register() {
+using namespace FxI;
+
+void FxI::fxRegister() {
 
 }
 

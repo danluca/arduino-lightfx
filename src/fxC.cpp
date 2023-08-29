@@ -5,7 +5,9 @@
 
 #include "fxC.h"
 
-void fxc_register() {
+using namespace FxC;
+
+void FxC::fxRegister() {
     static FxC1 fxC1;
     static FxC2 fxC2;
     static FxC3 fxC3;
@@ -22,7 +24,7 @@ void fxc_register() {
  * Date: January, 2017
  * This sketch demonstrates how to blend between two animations running at the same time.
  */
-FxC1::FxC1() : setA(frame), setB(leds, NUM_PIXELS) {
+FxC1::FxC1() : setA(frame(0, FRAME_SIZE)), setB(leds, FRAME_SIZE) {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
@@ -32,14 +34,16 @@ void FxC1::setup() {
 }
 
 void FxC1::loop() {
-    animationA();                                               // render the first animation into leds2
-    animationB();                                               // render the second animation into leds3
+    animationA();
+    animationB();
+    CRGBSet others(leds, setB.size(), NUM_PIXELS);
 
-    uint8_t ratio = beatsin8(2);                                // Alternate between 0 and 255 every minute
     //combine all into setB (it is backed by the strip)
+    uint8_t ratio = beatsin8(2);
     for (uint16_t x = 0; x < setB.size(); x++) {
         setB[x] = blend(setA[x], setB[x], ratio);
     }
+    replicateSet(setB, others);
 
     FastLED.show();
 }
@@ -73,7 +77,7 @@ void FxC1::describeConfig(JsonArray &json) const {
     baseConfig(obj);
 }
 
-//=====================================
+//Fx C2
 /**
  * blur
  * By: ????
@@ -95,11 +99,11 @@ void FxC2::setup() {
 
 void FxC2::loop() {
     uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
-    blur1d( leds, NUM_PIXELS, blurAmount);                        // Apply some blurring to whatever's already on the strip, which will eventually go black.
+    tpl.blur1d(blurAmount);                        // Apply some blurring to whatever's already on the strip, which will eventually go black.
 
-    uint16_t  i = beatsin16(  9, 0, NUM_PIXELS);
-    uint16_t  j = beatsin16( 7, 0, NUM_PIXELS);
-    uint16_t  k = beatsin16(  5, 0, NUM_PIXELS);
+    uint16_t  i = beatsin16(  9, 0, tpl.size()-1);
+    uint16_t  j = beatsin16( 7, 0, tpl.size()-1);
+    uint16_t  k = beatsin16(  5, 0, tpl.size()-1);
 
     // The color of each point shifts over time, each at a different speed.
     uint16_t ms = millis();
@@ -108,6 +112,7 @@ void FxC2::loop() {
     leds[(k+i)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/73) : CHSV( ms / 73, 200, 255);
     leds[(k+i+j)/3] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/53) : CHSV( ms / 53, 200, 255);
 
+    replicateSet(tpl, others);
     FastLED.show();
 }
 
@@ -124,6 +129,7 @@ void FxC2::describeConfig(JsonArray &json) const {
     baseConfig(obj);
 }
 
+//Fx C3
 /**
  * inoise8_mover
  * By: Andrew Tuline
@@ -148,13 +154,15 @@ void FxC3::setup() {
 }
 
 void FxC3::loop() {
-    EVERY_N_MILLISECONDS(25) {
+    EVERY_N_MILLISECONDS(35) {
         uint16_t locn = inoise16(xscale, dist+yscale) % 0xFFFF;           // Get a new pixel location from moving noise.
-        uint16_t pixlen = map(locn,0,0xFFFF,0,NUM_PIXELS);                     // Map that to the length of the strand.
-        leds[pixlen] = ColorFromPalette(palette, pixlen % 256, brightness, LINEARBLEND);   // Use that value for both the location as well as the palette index colour for the pixel.
+        uint16_t pixlen = map(locn, 0, 0xFFFF, 0, tpl.size());                     // Map that to the length of the strand.
+        leds[pixlen] = ColorFromPalette(palette, pixlen, brightness, LINEARBLEND);   // Use that value for both the location as well as the palette index colour for the pixel.
 
-        dist += beatsin16(10,128,8192);                                                // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
-        fadeToBlackBy(leds, NUM_PIXELS, 4);
+        dist += beatsin16(10,128,8192);             // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
+        tpl.fadeToBlackBy(4);
+
+        replicateSet(tpl, others);
         FastLED.show();
     }
     EVERY_N_SECONDS(2) {
@@ -183,6 +191,7 @@ const char *FxC3::description() const {
     return "FXC3: using Perlin Noise to move a pixel up and down the strand for a random natural movement";
 }
 
+// Fx C4
 FxC4::FxC4() {
     registryIndex = fxRegistry.registerEffect(this);
 }
@@ -237,6 +246,7 @@ void FxC4::describeConfig(JsonArray &json) const {
     baseConfig(obj);
 }
 
+// Fx C5
 void FxC5::setup() {
     resetGlobals();
     palette = paletteFactory.secondaryPalette();
@@ -285,7 +295,7 @@ void FxC5::changeParams() {
             case 0: speed=75; palIndex=95; bgClr=140; bgBri=4; hueRot=true; break;
             case 1: targetPalette = paletteFactory.mainPalette(); dirFwd=false; bgBri=0; hueRot=true; break;
             case 2: targetPalette = paletteFactory.secondaryPalette(); speed=45; palIndex=0; bgClr=50; bgBri=8; hueRot=false; dirFwd=true; break;
-            case 3: if (!paletteFactory.isHolidayLimitedHue()) targetPalette = PaletteFactory::randomPalette(0, millis()); speed=95; bgBri = 16; bgClr=96; palIndex=random8(); break;
+            case 3: if (!paletteFactory.isHolidayLimitedHue()) targetPalette = PaletteFactory::randomPalette(0, millis()); speed=95; bgBri = 12; bgClr=96; palIndex=random8(); break;
             case 4: palIndex=random8(); hueRot=true; break;
             default: break;
         }
@@ -297,14 +307,18 @@ void FxC5::changeParams() {
 void FxC5::matrix() {
     if (hueRot) palIndex++;
 
-    CRGBSet seg(leds, 0, FRAME_SIZE);
-    CRGBSet others(leds, FRAME_SIZE, NUM_PIXELS);
-    CRGB feed = random8(90) > 80 ? ColorFromPalette(palette, palIndex, brightness, LINEARBLEND) : CHSV(bgClr, saturation, bgBri);
-    if (dirFwd)
-        shiftRight(seg, feed);
+    CRGB feed{};
+    if (random8(90) > 80)
+        feed = ColorFromPalette(palette, palIndex, brightness, LINEARBLEND);
+    else if (paletteFactory.isHolidayLimitedHue())
+        feed = ColorFromPalette(targetPalette, bgClr, bgBri);
     else
-        shiftLeft(seg, feed);
-    replicateSet(seg, others);
+        feed = CHSV(bgClr, saturation, bgBri);
+    if (dirFwd)
+        shiftRight(tpl, feed);
+    else
+        shiftLeft(tpl, feed);
+    replicateSet(tpl, others);
 }
 
 // Fx C6
@@ -331,11 +345,11 @@ void FxC6::loop() {
         secSlot = inc(secSlot, 1, 7);
     }
 
-
-//    EVERY_N_SECONDS(5) {                                          // Change the target palette to a random one every 5 seconds.
-//        static uint8_t baseC = random8();                         // You can use this as a baseline colour if you want similar hues in the next line.
-//        targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 255, random8(128,255)), CHSV(random8(), 192, random8(128,255)), CHSV(random8(), 255, random8(128,255)));
-//    }
+    if (!paletteFactory.isHolidayLimitedHue()) {
+        EVERY_N_SECONDS(10) {
+            targetPalette = PaletteFactory::randomPalette(random8());
+        }
+    }
 }
 
 const char *FxC6::description() const {
@@ -359,11 +373,13 @@ void FxC6::one_sine_pal(uint8_t colorIndex) {
     // This is the heart of this program. Sure is short.
     phase = dirFwd ? phase - speed : phase + speed;
 
-    for (uint16_t k=0; k<NUM_PIXELS; k++) {                                          // For each of the LED's in the strand, set a brightness based on a wave as follows:
+    for (uint16_t k=0; k<tpl.size(); k++) {
+        // For each of the LED's in the strand, set a brightness based on a wave as follows:
         uint8_t thisBright = qsubd(cubicwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
-        leds[k] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, bgclr, bgbright) : CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
-        leds[k] += ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
+        tpl[k] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, bgclr, bgbright) : CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
+        tpl[k] += ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
         colorIndex +=3;
     }
+    replicateSet(tpl, others);
     bgclr++;
 }

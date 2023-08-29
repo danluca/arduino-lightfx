@@ -6,118 +6,128 @@
 
 #include "efx_setup.h"
 
-void stack(CRGB color, CRGBSet& dest, uint16_t stackStart, uint16_t szStackSeg);
+namespace FxA {
+    uint16_t fxa_incStackSize(int16_t delta, uint16_t max);
+    uint16_t fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg);
+    void resetStack();
 
-uint16_t fxa_incStackSize(int16_t delta, uint16_t max);
+    class FxA1 : public LedEffect {
+    public:
+        FxA1();
 
-uint16_t fxa_stackAdjust(CRGBSet& set, uint16_t szStackSeg);
+        void setup() override;
 
-class FxA1 : public LedEffect {
-public:
-    FxA1();
+        void loop() override;
 
-    void setup() override;
+        void describeConfig(JsonArray &json) const override;
 
-    void loop() override;
+        const char *description() const override;
 
-    void describeConfig(JsonArray &json) const override;
+        const char *name() const override;
 
-    const char *description() const override;
+    protected:
+        CRGBSet dot;
 
-    const char *name() const override;
+        void makeDot(CRGB color, uint16_t szDot);
 
-protected:
-    CRGBSet dot;
-    void makeDot(CRGB color, uint16_t szDot);
-    uint8_t szSegment = 3;
-    uint8_t szStackSeg = 1;
-};
+        uint8_t szSegment = 3;
+        uint8_t szStackSeg = 2;
+    };
 
-class FxA2 : public LedEffect {
-public:
-    FxA2();
+    class FxA2 : public LedEffect {
+    public:
+        FxA2();
 
-    void setup() override;
+        void setup() override;
 
-    void loop() override;
+        void loop() override;
 
-    const char *description() const override;
+        const char *description() const override;
 
-    void describeConfig(JsonArray &json) const override;
+        void describeConfig(JsonArray &json) const override;
 
-    const char *name() const override;
+        const char *name() const override;
 
-protected:
-    enum Movement {forward, pause, backward};
-    CRGBSet dot;
-    void makeDot();
-    uint8_t szSegment = 5;
-    Movement movement = forward;
-    uint8_t spacing = 1;
-};
+    protected:
+        enum Movement { forward, pause, backward };
+        CRGBSet dot;
 
-class FxA3 : public LedEffect {
-public:
-    FxA3();
+        void makeDot();
 
-    void setup() override;
+        uint8_t szSegment = 5;
+        Movement movement = forward;
+        uint8_t spacing = 1;
+    };
 
-    void loop() override;
+    class FxA3 : public LedEffect {
+    public:
+        FxA3();
 
-    const char *description() const override;
+        void setup() override;
 
-    void describeConfig(JsonArray &json) const override;
+        void loop() override;
 
-    const char *name() const override;
+        const char *description() const override;
 
-protected:
-    CRGBSet dot;
-    void makeDot(CRGB color, uint16_t szDot);
-    uint8_t szSegment = 5;
-    uint8_t szStackSeg = 3;
-    bool bFwd = true;
-};
+        void describeConfig(JsonArray &json) const override;
 
-class FxA4 : public LedEffect {
-public:
-    FxA4();
+        const char *name() const override;
 
-    void setup() override;
+    protected:
+        CRGBSet dot;
 
-    void loop() override;
+        void makeDot(CRGB color, uint16_t szDot);
 
-    const char *description() const override;
+        uint8_t szSegment = 5;
+        uint8_t szStackSeg = 3;
+        bool bFwd = true;
+    };
 
-    void describeConfig(JsonArray &json) const override;
+    class FxA4 : public LedEffect {
+    public:
+        FxA4();
 
-    const char *name() const override;
+        void setup() override;
 
-protected:
-    CRGBSet dot;
-    void makeDot(CRGB color, uint16_t szDot);
-    uint8_t szSegment = 5;
-    uint8_t szStackSeg = 3;
-    uint8_t spacing = 7;
-    CRGB curBkg;
-};
+        void loop() override;
 
-class FxA5 : public LedEffect {
-public:
-    FxA5();
+        const char *description() const override;
 
-    void setup() override;
+        void describeConfig(JsonArray &json) const override;
 
-    void loop() override;
+        const char *name() const override;
 
-    const char *description() const override;
+    protected:
+        CRGBSet dot;
+        CRGBSet frL;
+        CRGBSet frR;
 
-    void describeConfig(JsonArray &json) const override;
+        void makeDot(CRGB color, uint16_t szDot);
 
-    const char *name() const override;
+        uint8_t szSegment = 5;
+        uint8_t szStackSeg = 3;
+        uint8_t spacing = 7;
+        CRGB curBkg;
+    };
 
-protected:
-    CRGBSet ovr;
-    void makeFrame();
-};
+    class FxA5 : public LedEffect {
+    public:
+        FxA5();
 
+        void setup() override;
+
+        void loop() override;
+
+        const char *description() const override;
+
+        void describeConfig(JsonArray &json) const override;
+
+        const char *name() const override;
+
+    protected:
+        CRGBSet ovr;
+
+        void makeFrame();
+    };
+}
 #endif //LIGHTFX_FXA_H

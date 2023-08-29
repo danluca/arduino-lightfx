@@ -7,7 +7,7 @@
 
 //~ Global variables definition
 const uint8_t dimmed = 20;
-const uint16_t FRAME_SIZE = 50;
+const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
 const uint8_t flameBrightness = 180;
 const uint8_t sparkBrightness = 255;
 const CRGB BKG = CRGB::Black;
@@ -19,6 +19,8 @@ volatile uint16_t curPos = 0;
 EffectRegistry fxRegistry;
 CRGB leds[NUM_PIXELS];
 CRGBArray<NUM_PIXELS> frame;
+CRGBSet tpl(leds, FRAME_SIZE-1);
+CRGBSet others(leds, tpl.size(), NUM_PIXELS-1);
 CRGBPalette16 palette;
 CRGBPalette16 targetPalette;
 TBlendType    currentBlending;
@@ -375,7 +377,7 @@ CRGB *mirrorHigh(CRGB array[], uint16_t szArray) {
  * <p>Implemented with timers, no delay - that is why this function needs called repeatedly until it returns true</p>
  * @return true if all leds are off, false otherwise
  */
-bool turnOff() {
+bool turnOffSpots() {
     static uint16_t led = 0;
     static uint16_t xOffNow = 0;
     static uint16_t szOffNow = turnOffSeq[xOffNow];
@@ -418,25 +420,22 @@ bool turnOff() {
 }
 
 /**
- * Turns off entire strip by leveraging the juggle effect
+ * Turns off entire strip by leveraging the shift right with black feed
  * @return true if all leds are off, false otherwise
  */
-bool turnOffJuggle() {
+bool turnOffWipe(bool rightDir) {
     bool allOff = false;
-    EVERY_N_MILLISECONDS(50) {
-        uint numDots = 4;
-        uint dotBpm = 7;
-        for (uint i = 0; i < numDots; i++) {
-            leds[beatsin16(dotBpm + i + numDots, 0, NUM_PIXELS-1)].fadeToBlackBy(192);
-        }
+    EVERY_N_MILLISECONDS(100) {
+        CRGBSet strip(leds, NUM_PIXELS);
+        if (rightDir)
+            shiftRight(strip, BKG);
+        else
+            shiftLeft(strip, BKG);
         FastLED.show();
         allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
     }
-    if (allOff) {
-        allOff = false;
-        return true;
-    }
-    return false;
+
+    return allOff;
 }
 
 //Setup all effects -------------------

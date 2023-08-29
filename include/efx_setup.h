@@ -16,7 +16,7 @@
 #define capr(x, d, u) (capu(capd(x,d),u))
 #define inr(x, d, u) ((x>=d)&&(x<u))
 #define inc(x, i, u) ((x+i)%u)
-#define incr(x, i, u) (x=(x+i)%u)
+#define incr(x, i, u) x=(x+i)%(u)
 #define arrSize(A) (sizeof(A) / sizeof((A)[0]))
 #define qsubd(x, b) ((x>b)?b:0)                               // Clip. . . . A digital unsigned subtraction macro. if result <0, then x=0. Otherwise, x=b.
 #define qsuba(x, b) ((x>b)?x-b:0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
@@ -34,6 +34,8 @@ extern const uint8_t maxChanges;
 enum OpMode { TurnOff, Chase };
 extern CRGB leds[NUM_PIXELS];
 extern CRGBArray<NUM_PIXELS> frame;
+extern CRGBSet tpl;
+extern CRGBSet others;
 extern uint16_t stripShuffleIndex[NUM_PIXELS];
 extern CRGBPalette16 palette;
 extern CRGBPalette16 targetPalette;
@@ -99,37 +101,47 @@ void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLen
 
 void replicateSet(const CRGBSet& src, CRGBSet& dest);
 
-bool turnOffJuggle();
+bool turnOffWipe(bool rightDir = false);
 
 
 CRGB *mirrorLow(CRGB array[], uint16_t szArray);
 
 CRGB *mirrorHigh(CRGB array[], uint16_t szArray);
 
-bool turnOff();
+bool turnOffSpots();
 
 void resetGlobals();
 
-void fxa_register();
-
-void fxb_register();
-
-void fxc_register();
-
-void fxd_register();
-
-void fxe_register();
-
-void fxf_register();
-
-void fxh_register();
-
-void fxi_register();
-
-void fxj_register();
-
-void fxk_register();
-
+namespace FxA {
+    void fxRegister();
+}
+namespace FxB {
+    void fxRegister();
+}
+namespace FxC {
+    void fxRegister();
+}
+namespace FxD {
+    void fxRegister();
+}
+namespace FxE {
+    void fxRegister();
+}
+namespace FxF {
+    void fxRegister();
+}
+namespace FxH {
+    void fxRegister();
+}
+namespace FxI {
+    void fxRegister();
+}
+namespace FxJ {
+    void fxRegister();
+}
+namespace FxK {
+    void fxRegister();
+}
 void fx_setup();
 
 void fx_run();
@@ -201,7 +213,7 @@ public:
 
 extern EffectRegistry fxRegistry;
 
-const setupFunc categorySetup[] = {fxa_register, fxb_register, fxc_register, fxd_register, fxe_register, fxf_register, fxh_register, fxi_register, fxj_register, fxk_register};
+const setupFunc categorySetup[] = {FxA::fxRegister, FxB::fxRegister, FxC::fxRegister, FxD::fxRegister, FxE::fxRegister, FxF::fxRegister, FxH::fxRegister, FxI::fxRegister, FxJ::fxRegister, FxK::fxRegister};
 
 
 #endif //LIGHTFX_EFX_SETUP_H
