@@ -59,6 +59,7 @@ namespace FxE {
     protected:
         uint16_t segStart{}, segEnd{};
         uint16_t timerSlot{}, cycles{};
+        Movement move = forward;
     };
 
     class FxE4 : public LedEffect {

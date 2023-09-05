@@ -150,6 +150,7 @@ void FxE3::setup() {
     segStart = segEnd = 0;
     timerSlot = 0;
     cycles = 10;
+    move = forward;
 }
 
 void FxE3::loop() {
@@ -158,23 +159,30 @@ void FxE3::loop() {
             uint8_t adv = random8(1, 5);
             uint16_t maxIndex = tpl.size() - 1;
             uint16_t newPos = capu(curPos+adv, maxIndex);
-            segStart = dirFwd ? curPos : maxIndex - curPos;
-            segEnd = dirFwd ? newPos : maxIndex - newPos;
-            fade = dimmed;
-            colorIndex = random8();
-            cycles = dirFwd ? random8(8, 16) : 12;
-            curPos = newPos == maxIndex ? 0 : newPos + 1;
-            if (curPos == 0) {
-                dirFwd = !dirFwd;
-                cycles = 30;
+            switch (move) {
+                case forward: segStart = curPos; segEnd = newPos; cycles = random8(8, 16); break;
+                case backward: segStart = maxIndex - curPos; segEnd = maxIndex - newPos; cycles = 12; break;
             }
+            fade = dimmed;
+            colorIndex = beatsin8(7);
+            curPos = newPos == maxIndex ? 0 : newPos + 1;
         }
-        if (dirFwd)
-            tpl(segStart, segEnd) =  ColorFromPalette(palette, colorIndex, fade, currentBlending);
-        else
-            tpl(segStart, segEnd).fadeToBlackBy(fade);
+        CRGBSet seg = tpl(segStart, segEnd);
+        switch (move) {
+            case forward: seg = ColorFromPalette(palette, colorIndex, fade, currentBlending); break;
+            case backward: seg.fadeToBlackBy(fade); break;
+        }
+
         fade = capu(fade + delta, brightness);
         incr(timerSlot, 1, cycles);
+
+        if ((timerSlot == 0) && (curPos == 0)) {
+            switch (move) {
+                case forward: move = pause; timerSlot = 1; cycles = 30; break;
+                case pause: move = seg ? backward : forward; break;
+                case backward: move = pause; timerSlot = 1; cycles = 20; break;
+            }
+        }
 
         replicateSet(tpl, others);
         FastLED.show();

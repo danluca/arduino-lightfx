@@ -32,6 +32,7 @@ extern const uint8_t sparkBrightness;
 extern const CRGB BKG;
 extern const uint8_t maxChanges;
 enum OpMode { TurnOff, Chase };
+enum Movement { forward, pause, backward };
 extern CRGB leds[NUM_PIXELS];
 extern CRGBArray<NUM_PIXELS> frame;
 extern CRGBSet tpl;

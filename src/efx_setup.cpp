@@ -19,8 +19,8 @@ volatile uint16_t curPos = 0;
 EffectRegistry fxRegistry;
 CRGB leds[NUM_PIXELS];
 CRGBArray<NUM_PIXELS> frame;
-CRGBSet tpl(leds, FRAME_SIZE-1);
-CRGBSet others(leds, tpl.size(), NUM_PIXELS-1);
+CRGBSet tpl(leds, FRAME_SIZE);                        //array length, indexes go from 0 to length-1
+CRGBSet others(leds, tpl.size(), NUM_PIXELS-1); //start and end indexes are inclusive
 CRGBPalette16 palette;
 CRGBPalette16 targetPalette;
 TBlendType    currentBlending;

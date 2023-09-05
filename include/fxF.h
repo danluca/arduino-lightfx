@@ -8,5 +8,19 @@
 
 namespace FxF {
 
+    class FxF1 : public LedEffect {
+    public:
+        FxF1();
+
+        void setup() override;
+
+        void loop() override;
+
+        const char *description() const override;
+
+        const char *name() const override;
+
+        void describeConfig(JsonArray &json) const override;
+    };
 }
 #endif //ARDUINO_LIGHTFX_FXF_H
