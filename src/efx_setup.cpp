@@ -250,6 +250,29 @@ void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp, uint16_t pos) {
 }
 
 /**
+ * Shifts the contents of an CRGBSet to the right in a circular buffer manner - the elements falling off to the right
+ * are entering through the left
+ * @param set the set
+ * @param vwp limits of the shifting area
+ * @param pos how many positions to shift right
+ */
+void loopRight(CRGBSet &set, Viewport vwp, uint16_t pos) {
+    if ((pos == 0) || (set.size() == 0) || (vwp.low >= set.size()))
+        return;
+    if (vwp.size() == 0)
+        vwp = (Viewport)set.size();
+    uint16_t hiMark = capu(vwp.high, set.size());
+    pos = pos % vwp.size();
+    CRGB buf[pos];
+    for (uint16_t x = hiMark; x > vwp.low; x--) {
+        uint16_t y = x - 1;
+        if (hiMark-x < pos)
+            buf[hiMark-x] = set[y];
+        set[y] = y < pos ? buf[pos-y-1] : set[y-pos];
+    }
+}
+
+/**
  * Shifts the content of an array to the left by the number of positions specified
  * The elements entering right are filled with current's array last value (arr[szArr-1])
  * @param arr array
@@ -388,7 +411,7 @@ bool turnOffSpots() {
         uint8_t ledsOn = 0;
         for (uint16_t x = 0; x < szOffNow; x++) {
             uint16_t xled = stripShuffleIndex[(led + x) % NUM_PIXELS];
-            FastLED.leds()[xled].fadeToBlackBy(18);
+            FastLED.leds()[xled].fadeToBlackBy(36);
             if (FastLED.leds()[xled].getLuma() < 4)
                 FastLED.leds()[xled] = BKG;
             else
@@ -398,7 +421,7 @@ bool turnOffSpots() {
         setOff = ledsOn == 0;
     }
 
-    EVERY_N_MILLISECONDS(700) {
+    EVERY_N_MILLISECONDS(500) {
         if (setOff) {
             led = inc(led, szOffNow, NUM_PIXELS);
             xOffNow = capu(xOffNow + 1, arrSize(turnOffSeq) - 1);
@@ -425,7 +448,7 @@ bool turnOffSpots() {
  */
 bool turnOffWipe(bool rightDir) {
     bool allOff = false;
-    EVERY_N_MILLISECONDS(100) {
+    EVERY_N_MILLISECONDS(60) {
         CRGBSet strip(leds, NUM_PIXELS);
         if (rightDir)
             shiftRight(strip, BKG);

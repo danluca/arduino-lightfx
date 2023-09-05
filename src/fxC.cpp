@@ -24,7 +24,7 @@ void FxC::fxRegister() {
  * Date: January, 2017
  * This sketch demonstrates how to blend between two animations running at the same time.
  */
-FxC1::FxC1() : setA(frame(0, FRAME_SIZE)), setB(leds, FRAME_SIZE) {
+FxC1::FxC1() : setA(frame(0, FRAME_SIZE-1)), setB(leds, FRAME_SIZE) {
     registryIndex = fxRegistry.registerEffect(this);
 }
 

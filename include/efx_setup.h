@@ -32,7 +32,6 @@ extern const uint8_t sparkBrightness;
 extern const CRGB BKG;
 extern const uint8_t maxChanges;
 enum OpMode { TurnOff, Chase };
-enum Movement { forward, pause, backward };
 extern CRGB leds[NUM_PIXELS];
 extern CRGBArray<NUM_PIXELS> frame;
 extern CRGBSet tpl;
@@ -87,6 +86,7 @@ void ledStripInit();
 void fsInit();
 
 void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp = (Viewport)0, uint16_t pos = 1);
+void loopRight(CRGBSet &set, Viewport vwp = (Viewport)0, uint16_t pos = 1);
 
 void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp = (Viewport) 0, uint16_t pos = 1);
 

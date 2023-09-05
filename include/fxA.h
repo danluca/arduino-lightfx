@@ -49,6 +49,7 @@ namespace FxA {
         const char *name() const override;
 
     protected:
+        enum Movement { forward, pause, backward };
         void makeDot();
         CRGBSet dot;
         uint8_t szSegment = 5;

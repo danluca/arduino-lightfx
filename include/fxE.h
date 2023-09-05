@@ -57,6 +57,9 @@ namespace FxE {
 
         void describeConfig(JsonArray &json) const override;
     protected:
+        const uint8_t sasquatchSize = 3;
+        enum Movement {forward, backward, sasquatch, pauseF, pauseB};
+        CRGBSet shdOverlay;
         uint16_t segStart{}, segEnd{};
         uint16_t timerSlot{}, cycles{};
         Movement move = forward;

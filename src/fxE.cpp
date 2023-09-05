@@ -146,41 +146,79 @@ void FxE2::describeConfig(JsonArray &json) const {
 void FxE3::setup() {
     resetGlobals();
     fade = dimmed;
-    delta = 32;
+    delta = 18;
     segStart = segEnd = 0;
     timerSlot = 0;
     cycles = 10;
     move = forward;
 }
 
+/**
+ * This is overly complicated for the visual outcome. Either way, I got it to work as intended, but really
+ * not worth it and too brittle.
+ * Good thing that Nano RP2040 is powerful enough to make this fast.
+ */
 void FxE3::loop() {
-        EVERY_N_MILLISECONDS(100) {
+    EVERY_N_MILLISECONDS(60) {
+        uint16_t maxIndex = tpl.size() - 1;
         if (timerSlot == 0) {
-            uint8_t adv = random8(1, 5);
-            uint16_t maxIndex = tpl.size() - 1;
-            uint16_t newPos = capu(curPos+adv, maxIndex);
             switch (move) {
-                case forward: segStart = curPos; segEnd = newPos; cycles = random8(8, 16); break;
-                case backward: segStart = maxIndex - curPos; segEnd = maxIndex - newPos; cycles = 12; break;
+                case sasquatch:
+                    //restore previous content on the sasquatch shadow position
+                    if (segEnd < sasquatchSize-1) {
+                        segStart = 0;
+                        segEnd = curPos;
+                    } else {
+                        tpl[segStart] = shdOverlay[segStart];
+                        segStart = curPos-sasquatchSize+1;
+                        segEnd = curPos;
+                        segEnd = capu(segEnd, maxIndex);
+                    }
+                    cycles = 2;
+                    incr(curPos, 1, tpl.size()+sasquatchSize-1);
+                    break;
+                case forward:
+                case backward:
+                    uint16_t newPos = curPos + random8(1, 5);
+                    newPos = capu(newPos, maxIndex);
+                    if (move == forward) {
+                        segStart = curPos;
+                        segEnd = newPos;
+                        cycles = random8(14, 30);
+                    } else {
+                        segStart = maxIndex - curPos;
+                        segEnd = maxIndex - newPos;
+                        cycles = 12;
+                    }
+                    fade = dimmed;
+                    colorIndex = beatsin8(7);
+                    curPos = newPos == maxIndex ? 0 : (newPos + 1);
+                    break;
             }
-            fade = dimmed;
-            colorIndex = beatsin8(7);
-            curPos = newPos == maxIndex ? 0 : newPos + 1;
+        } else if (timerSlot == 25) {
+            if (move == pauseF)
+                tpl[segEnd] = shdOverlay[segEnd];
         }
+
+        //fading in/out during light movement
         CRGBSet seg = tpl(segStart, segEnd);
         switch (move) {
             case forward: seg = ColorFromPalette(palette, colorIndex, fade, currentBlending); break;
             case backward: seg.fadeToBlackBy(fade); break;
+            case sasquatch: seg[seg.size()-1].fadeToBlackBy(224); break;
         }
 
         fade = capu(fade + delta, brightness);
         incr(timerSlot, 1, cycles);
 
         if ((timerSlot == 0) && (curPos == 0)) {
+            //state machine of movement transitions
             switch (move) {
-                case forward: move = pause; timerSlot = 1; cycles = 30; break;
-                case pause: move = seg ? backward : forward; break;
-                case backward: move = pause; timerSlot = 1; cycles = 20; break;
+                case forward: move = sasquatch; segStart = segEnd = 0; shdOverlay = tpl; break;
+                case sasquatch: move = pauseF; timerSlot = 1; cycles = 50; break;
+                case pauseF: move = backward; break;
+                case backward: move = pauseB; timerSlot = 1; cycles = 30; break;
+                case pauseB: move = forward; break;
             }
         }
 
@@ -190,7 +228,7 @@ void FxE3::loop() {
 }
 
 const char *FxE3::description() const {
-    return "FxE3: sawtooth";
+    return "FxE3: sawtooth back/forth with a shadow running across";
 }
 
 const char *FxE3::name() const {
@@ -202,7 +240,7 @@ void FxE3::describeConfig(JsonArray &json) const {
     baseConfig(obj);
 }
 
-FxE3::FxE3() {
+FxE3::FxE3() : shdOverlay(frame(0, FRAME_SIZE-1)) {
     registryIndex = fxRegistry.registerEffect(this);
 }
 

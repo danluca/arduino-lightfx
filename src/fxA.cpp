@@ -51,7 +51,7 @@ uint16_t FxA::fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg) {
 // Effect Definitions - setup and loop
 ///////////////////////////////////////
 //FX A1
-FxA1::FxA1() : dot(frame(0, FRAME_SIZE)) {
+FxA1::FxA1() : dot(frame(0, FRAME_SIZE-1)) {
     registryIndex = fxRegistry.registerEffect(this);
     dot.fill_solid(BKG);
 }
@@ -121,7 +121,7 @@ const char *FxA1::name() const {
 
 
 // FX A2
-FxA2::FxA2() : dot(frame(0, FRAME_SIZE)) {
+FxA2::FxA2() : dot(frame(0, FRAME_SIZE-1)) {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
@@ -209,7 +209,7 @@ const char *FxA2::name() const {
 }
 
 // Fx A3
-FxA3::FxA3() : dot(frame(0, FRAME_SIZE)) {
+FxA3::FxA3() : dot(frame(0, FRAME_SIZE-1)) {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
@@ -269,8 +269,8 @@ const char *FxA3::name() const {
 }
 
 // FX A4
-FxA4::FxA4() : dot(frame(0, FRAME_SIZE)), frL(frame(FRAME_SIZE, FRAME_SIZE * 2)),
-               frR(frame(FRAME_SIZE * 2, FRAME_SIZE * 3)), curBkg(BKG) {
+FxA4::FxA4() : dot(frame(0, FRAME_SIZE-1)), frL(frame(FRAME_SIZE, FRAME_SIZE*2-1)),
+               frR(frame(FRAME_SIZE*2, FRAME_SIZE*3-1)), curBkg(BKG) {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
@@ -343,7 +343,7 @@ const char *FxA4::name() const {
 }
 
 // Fx A5
-FxA5::FxA5() : ovr(frame(0, FRAME_SIZE)) {
+FxA5::FxA5() : ovr(frame(0, FRAME_SIZE-1)) {
     registryIndex = fxRegistry.registerEffect(this);
 }
 
@@ -355,17 +355,20 @@ void FxA5::setup() {
 void FxA5::makeFrame() {
     uint8_t halfBright = brightness >> 1;
     uint8_t rndBright = random8(halfBright);
-    ovr.fill_solid(ColorFromPalette(targetPalette, colorIndex, halfBright + rndBright, LINEARBLEND));
-    CRGB newClr = ColorFromPalette(palette, colorIndex, halfBright + rndBright, LINEARBLEND);
-    uint16_t seg = ovr.size() >> 1;
-    for (uint16_t x = seg; x < ovr.size(); x++) {
-        nblend(ovr[x], newClr, (x - seg) << 3);
+    bool parity = ovr[0].getParity();
+    CRGBPalette16 &pal = parity ? palette : targetPalette;
+    ovr.fill_solid(ColorFromPalette(pal, lastColorIndex, halfBright + rndBright, LINEARBLEND));
+    CRGB newClr = ColorFromPalette(pal, colorIndex, halfBright + rndBright, LINEARBLEND);
+    uint16_t seg = 4;
+    for (uint16_t x = 0; x < seg; x++) {
+        nblend(ovr[x], newClr, (seg-x-1)*64);
     }
+    ovr[0].setParity(!parity);
 }
 
 void FxA5::loop() {
     if (mode == TurnOff) {
-        if (turnOffSpots()) {
+        if (turnOffWipe()) {
             lastColorIndex = colorIndex = 0;
             mode = Chase;
         }
@@ -373,21 +376,22 @@ void FxA5::loop() {
     }
 
     EVERY_N_MILLISECONDS_I(a5Timer, speed) {
-        shiftRight(tpl, ovr[curPos]);
+        shiftRight(tpl, ovr[capu(curPos, (ovr.size()-1))]);
         replicateSet(tpl, others);
         FastLED.show();
 
-        incr(curPos, 1, tpl.size());
+        incr(curPos, 1, tpl.size()+4);
         if (curPos == 0) {
             lastColorIndex = colorIndex;
-            colorIndex = random8();
+            colorIndex = beat8(7);
             makeFrame();
             speed = 2000;
             a5Timer.setPeriod(speed);
         } else if (curPos == 1) {
             speed = random16(40, 131);
             a5Timer.setPeriod(speed);
-        }
+        } else
+            tpl(tpl.size()-1, capu(curPos+1, (tpl.size()-1))).fadeToBlackBy(12);
     }
 
     EVERY_N_SECONDS(121) {

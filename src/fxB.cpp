@@ -328,13 +328,16 @@ void FxB::ease() {
     static uint16_t easeInVal  = 0;
 
     uint16_t easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
-    easeInVal+=141;
+    easeInVal+=811;         //completes a full 65536 cycle in about 6 seconds, given 75ms execution cadence
 
     uint16_t lerpVal = lerp16by16(0, tpl.size(), easeOutVal);                // Map it to the number of LED's you have.
 
-    tpl[lerpVal] = ColorFromPalette(palette, hue + (easeInVal << 1), max(40,  (uint8_t)easeOutVal));
-    tpl.fadeToBlackBy(4);                          // 8 bit, 1 = slow fade, 255 = fast fade
+    if (lerpVal != szStack) {
+        tpl[lerpVal] = ColorFromPalette(palette, hue + easeInVal / 4, max(40, (uint8_t) easeOutVal));
+    }
+    tpl.fadeToBlackBy(24);                          // 8 bit, 1 = slow fade, 255 = fast fade
     replicateSet(tpl, others);
+    szStack = lerpVal;
 }
 
 const char *FxB7::description() const {
@@ -456,6 +459,7 @@ void FxB::juggle_long() {
         tpl[beatsin16(dotBpm + i + numDots, 0, tpl.size() - 1)] += ColorFromPalette(palette, curHue , brightness, LINEARBLEND);
         curHue += hueDiff;
     }
+    hue += numDots*2;
     replicateSet(tpl, others);
 }
 
