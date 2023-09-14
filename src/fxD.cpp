@@ -289,7 +289,7 @@ void FxD5::ripples() {
     //fadeToBlackBy(leds, NUM_PIXELS, fade);                             // 8 bit, 1 = slow, 255 = fast
     for (auto & r : ripplesData) {
         if (random8() > 224 && !r.Alive()) {
-            r.Init();
+            r.Init(&tpl);
         }
     }
 
@@ -299,9 +299,45 @@ void FxD5::ripples() {
             r.Move();
         }
     }
-
+    replicateSet(tpl, others);
 }
 
 FxD5::FxD5() {
     registryIndex = fxRegistry.registerEffect(this);
 }
+
+// ripple structure API
+void ripple::Move() {
+    if (step == 0) {
+        (*pSeg)[center] = ColorFromPalette(palette, color, rpBright, LINEARBLEND);
+    } else if (step < 12) {
+        uint16_t x = (center + step) % pSeg->size();
+        x = (center + step) >= pSeg->size() ? (pSeg->size() - x - 1) : x;        // we want the "wave" to bounce back from the end, rather than start from the other end
+        (*pSeg)[x] += ColorFromPalette(palette, color + 16, rpBright / step * 2, LINEARBLEND);       // Simple wrap from Marc Miller
+        x = asub(center, step) % pSeg->size();
+        (*pSeg)[x] += ColorFromPalette(palette, color + 16, rpBright / step * 2, LINEARBLEND);
+    }
+    step++;  // Next step.
+}
+
+void ripple::Fade() const {
+    uint16_t lowEndRipple = qsuba(center, step);
+    uint16_t upEndRipple = capu(center + step, pSeg->size()-1);
+    (*pSeg)(lowEndRipple, upEndRipple).fadeToBlackBy(rpFade);
+    for (uint16_t x = lowEndRipple; x < upEndRipple; x++)
+        (*pSeg)[x].fadeToBlackBy(rpFade);
+}
+
+bool ripple::Alive() const {
+    return step < 42;
+}
+
+void ripple::Init(CRGBSet *set) {
+    pSeg = set;
+    center = random8(pSeg->size() / 8, pSeg->size() - pSeg->size() / 8);          // Avoid spawning too close to edge.
+    rpBright = random8(192, 255);                                   // upper range of localBright
+    color = random8();
+    rpFade = random8(96, 176);
+    step = 0;
+}
+
