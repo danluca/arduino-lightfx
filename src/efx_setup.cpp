@@ -569,6 +569,10 @@ bool EffectRegistry::isAutoRoll() const {
     return autoSwitch;
 }
 
+uint16_t EffectRegistry::size() const {
+    return effectsCount;
+}
+
 // LedEffect
 uint16_t LedEffect::getRegistryIndex() const {
     return registryIndex;

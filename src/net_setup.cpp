@@ -7,7 +7,6 @@ const char pass[] = WF_PSW;
 
 int status = WL_IDLE_STATUS;
 
-WiFiServer server(80);
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
 /**
@@ -54,8 +53,8 @@ bool wifi_connect() {
         else
             Log.warningln(F("Failed pinging the gateway - will retry later"));
     }
-    server.begin();                           // start the web server on port 80
-    printWifiStatus();                        // you're connected now, so print out the status
+    server_setup();     // start the web server on port 80
+    printWifiStatus();  // you're connected now, so print out the status
 
     return result;
 }
@@ -93,7 +92,9 @@ bool imu_setup() {
     if (result) {
         int temperature_deg = 0;
         IMU.readTemperature(temperature_deg);
-        Log.infoln(F("Board temperature %d °C"), temperature_deg);
+        // F() macro doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
+        // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
+        Log.infoln(F("Board temperature %d 'C (%F 'F)"), temperature_deg, temperature_deg*9.0/5+32);
     }
     return result;
 }

@@ -202,6 +202,8 @@ public:
 
     uint16_t registerEffect(LedEffect *effect);
 
+    uint16_t size() const;
+
     void setup();
 
     void loop();

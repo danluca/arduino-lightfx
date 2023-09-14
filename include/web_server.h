@@ -7,13 +7,33 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <Arduino_LSM6DSOX.h>
+#include <regex>
 #include "net_setup.h"
-#include "fxA.h"
+#include "efx_setup.h"
 
 #include "index_html.h"
 #include "jquery_min_js.h"
 #include "jquery_ui_min_js.h"
 #include "pixel_css.h"
 #include "pixel_js.h"
+
+namespace web {
+
+    typedef size_t (*reqHandler)(WiFiClient*, String*, String*, String*);
+
+    size_t handleGetConfig(WiFiClient *client, String *uri, String *hd, String *bdy);
+    size_t handleGetStatus(WiFiClient *client, String *uri, String *hd, String *bdy);
+    size_t handleGetWifi(WiFiClient *client, String *uri, String *hd, String *bdy);
+    size_t handleGetCss(WiFiClient *client, String *uri, String *hd, String *bdy);
+    size_t handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy);
+    size_t handleGetHtml(WiFiClient *client, String *uri, String *hd, String *bdy);
+    size_t handleGetRoot(WiFiClient *client, String *uri, String *hd, String *bdy);
+    size_t handlePutConfig(WiFiClient *client, String *uri, String *hd, String *bdy);
+
+    size_t handleInternalError(WiFiClient *client, String *uri, const char * message);
+    size_t handleNotFoundError(WiFiClient *client, String *uri, const char *message);
+
+    void dispatch();
+}
 
 #endif //LIGHTFX_WEB_SERVER_H

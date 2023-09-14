@@ -9,7 +9,7 @@ enum Holiday {None, Party, Halloween, Thanksgiving, Christmas, NewYear};
 
 static Holiday getHoliday(time_t time);
 
-static Holiday currentHoliday();
+Holiday currentHoliday();
 
 Holiday parseHoliday(const String *str);
 
