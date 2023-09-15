@@ -92,9 +92,11 @@ bool imu_setup() {
     if (result) {
         int temperature_deg = 0;
         IMU.readTemperature(temperature_deg);
+#ifndef DISABLE_LOGGING
         // F() macro doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
         // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
         Log.infoln(F("Board temperature %d 'C (%F 'F)"), temperature_deg, temperature_deg*9.0/5+32);
+#endif
     }
     return result;
 }
@@ -102,8 +104,9 @@ bool imu_setup() {
 bool time_setup() {
     //read the time
     bool ntpTimeAvailable = ntp_sync();
-    Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     setSyncProvider(curUnixTime);
+#ifndef DISABLE_LOGGING
+    Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     Holiday hday = paletteFactory.adjustHoliday();
     if (timeStatus() != timeNotSet) {
         char timeBuf[20];
@@ -112,6 +115,7 @@ bool time_setup() {
     } else
         Log.warningln(F("Current time not available - NTP sync failed"));
     Log.infoln(F("Current holiday is %s"), holidayToString(hday));
+#endif
     return ntpTimeAvailable;
 }
 
@@ -188,7 +192,9 @@ void printWifiStatus() {
 
   // print the received signal strength:
   int32_t rssi = WiFi.RSSI();
+#ifndef DISABLE_LOGGING
   Log.infoln(F("Signal strength (RSSI) %d dBm; %d bars"), rssi, barSignalLevel(rssi));
+#endif
 
   // print where to go in a browser:
   Log.infoln(F("To see this page in action, open a browser to http://%p"), ip);

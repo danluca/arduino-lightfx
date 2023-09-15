@@ -25,7 +25,7 @@ using namespace web;
 
 const char hdRootLocation[] PROGMEM = "Location: /";
 const char hdConClose[] PROGMEM = "Connection: close";
-const char hdFmtDate[] PROGMEM = "Date: \"%4d-%02d-%02d %02d:%02d:%02d\"";
+const char hdFmtDate[] PROGMEM = "Date: \"%4d-%02d-%02d %02d:%02d:%02d CST\"";
 const char hdFmtContentDisposition[] PROGMEM = "Content-Disposition: inline; filename=\"%s\"";
 const char msgRequestNotMapped[] PROGMEM = "URI not mapped to a handler on this server";
 const char configJsonFilename[] PROGMEM = "config.json";
@@ -136,7 +136,9 @@ size_t web::handleGetWifi(WiFiClient *client, String *uri, String *hd, String *b
     sz += serializeJson(doc, *client);
     sz += client->println();
 
+#ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handleGetWifi invoked for %s"), uri->c_str());
+#endif
     return sz;
 }
 
@@ -175,7 +177,9 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     sz += serializeJson(doc, *client);
     sz += client->println();
 
+#ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handleGetConfig invoked for %s"), uri->c_str());
+#endif
     return sz;
 }
 
@@ -200,7 +204,9 @@ size_t web::handleGetCss(WiFiClient *client, String *uri, String *hd, String *bd
     sz += client->println(pixel_css);
     sz += client->println();
 
+#ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handleGetCss invoked for %s"), uri->c_str());
+#endif
     return sz;
 }
 
@@ -230,7 +236,9 @@ size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy
         sz += client->println(pixel_js);
     sz += client->println();
 
+#ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handleGetJs invoked for %s"), uri->c_str());
+#endif
     return sz;
 }
 
@@ -255,7 +263,9 @@ size_t web::handleGetHtml(WiFiClient *client, String *uri, String *hd, String *b
     sz += client->println(index_html);
     sz += client->println();
 
+#ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handleGetHtml invoked for %s"), uri->c_str());
+#endif
     return sz;
 }
 
@@ -329,7 +339,9 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     sz += serializeJson(doc, *client);
     sz += client->println();
 
+#ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handleGetStatus invoked for %s"), uri->c_str());
+#endif
     return sz;
 }
 
@@ -367,7 +379,9 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     sz += client->println(hdRootLocation);
     sz += client->println();    //done with headers
 
+#ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handlePutConfig invoked for %s"), uri->c_str());
+#endif
     return sz;
 }
 
@@ -396,7 +410,9 @@ size_t web::handleInternalError(WiFiClient *client, String *uri, const char *mes
     sz += serializeJson(doc, *client);
     sz += client->println();
 
+#ifndef DISABLE_LOGGING
     Log.errorln(F("ERROR Handler handleInternalError for %s invoked: message %s"), uri->c_str(), message);
+#endif
     return sz;
 }
 
@@ -425,12 +441,20 @@ size_t web::handleNotFoundError(WiFiClient *client, String *uri, const char *mes
     sz += serializeJson(doc, *client);
     sz += client->println();
 
+#ifndef DISABLE_LOGGING
     Log.errorln(F("ERROR Handler handleNotFoundError for %s invoked: message %s"), uri->c_str(), message);
+#endif
     return sz;
 }
 
 /**
  * Dispatches an incoming request to its respective handler
+ * <p>Other libraries worth having a look - currently all are archived, some have trouble building</p>
+ * <ul>
+ *  <li>AsyncWebServer library https://github.com/khoih-prog/AsyncWebServer_Ethernet</li>
+ *  <li>AsyncWebServer for Raspberry Pico https://github.com/khoih-prog/AsyncWebServer_rp2040w</li>
+ *  <li>Regular web server https://github.com/khoih-prog/WiFiWebServer</li>
+ * </ul>
  */
 void web::dispatch() {
     WiFiClient client = server.available();
@@ -473,9 +497,6 @@ void web::dispatch() {
                 //default error handler for unmapped requests
                 if (!foundHandler)
                     szResp = handleNotFoundError(&client, &reqUri, msgRequestNotMapped);
-                //TODO: take a look at AsyncWebServer library https://github.com/khoih-prog/AsyncWebServer_Ethernet
-                // https://github.com/khoih-prog/AsyncWebServer_rp2040w
-                // Other possible helpful libraries - https://github.com/khoih-prog/WiFiWebServer
             }
             //done handling
             break;

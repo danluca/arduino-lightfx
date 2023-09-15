@@ -117,8 +117,8 @@ size_t readTextFile(const char *fname, String *s) {
             fsize += cread;
         }
         fclose(f);
-        Log.infoln(F("Read %d bytes from %s file"), fsize, fname);
 #ifndef DISABLE_LOGGING
+        Log.infoln(F("Read %d bytes from %s file"), fsize, fname);
         Log.traceln(F("File %s content [%d]: %s"), fname, fsize, s->c_str());
 #endif
     } else
