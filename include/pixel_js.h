@@ -1,4 +1,4 @@
-const char pixel_js[] PROGMEM = R"===(
+const char pixel_js[] PROGMEM = R"~~~(
 
 // Only one sequence can be selected
 let config = {};
@@ -45,7 +45,7 @@ function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
             let stdiv = $('#statusArea');
-            stdiv.append(`<div id="boardStatus"><h4>Board</h4><p><span>Temperature:</span> ${data.boardTemp} °C (${data.boardTemp*9/5+32} °F)</p></div>`);
+            stdiv.append(`<div id="boardStatus"><h4>Board</h4><p><span>Temperature:</span> ${data.boardTemp} 'C (${data.boardTemp*9/5+32} 'F)</p></div>`);
             stdiv.append(`<div id="wifiStatus"><h4>WiFi</h4><p><span>IP Address:</span> ${data.wifi.IP}</p><p><span>Signal:</span> ${data.wifi.bars} bars</p></div>`);
             stdiv.append(`<div id="fxStatus"><h4>Effects</h4><p><span>Total:</span> ${data.fx.count} effects</p><p><span>Current Effect:</span> ${data.fx.name} [${data.fx.index}]</p>
                 <p><span>Colors:</span> ${data.fx.holiday}</p></div>`);
@@ -96,7 +96,7 @@ function updateAuto() {
         dataType: "json",
         data: JSON.stringify(request),
         success: function (response) {
-            $('#updateStatus').html(`Automatic effects loop ${selectedAuto?'enabled':'disabled'} successfully`).removeClass().addClass("status-ok");
+            $('#updateStatus').html(`Automatic effects loop ${selectedAuto ? 'enabled' : 'disabled'} successfully`).removeClass().addClass("status-ok");
             scheduleClearStatus();
         },
         error: function (request, status, error) {
@@ -119,4 +119,4 @@ function scheduleClearStatus() {
 
 
 
-)===";
+)~~~";

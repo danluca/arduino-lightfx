@@ -1,4 +1,4 @@
-const char pixel_css[] PROGMEM = R"===(
+const char pixel_css[] PROGMEM = R"~~~(
 /* Set padding and margins to 0 then change later
 Helps with cross browser support */
 * {
@@ -92,4 +92,4 @@ footer {
 #settings {
     display: none;
 }
-)===";
+)~~~";

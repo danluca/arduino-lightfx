@@ -25,7 +25,8 @@ using namespace web;
 
 const char hdRootLocation[] PROGMEM = "Location: /";
 const char hdConClose[] PROGMEM = "Connection: close";
-const char hdFmtDate[] PROGMEM = "Date: \"%4d-%02d-%02d %02d:%02d:%02d CST\"";
+const char hdFmtContentLength[] PROGMEM = "Content-Length: %d";
+const char hdFmtDate[] PROGMEM = "Date: %4d-%02d-%02d %02d:%02d:%02d CST";
 const char hdFmtContentDisposition[] PROGMEM = "Content-Disposition: inline; filename=\"%s\"";
 const char msgRequestNotMapped[] PROGMEM = "URI not mapped to a handler on this server";
 const char configJsonFilename[] PROGMEM = "config.json";
@@ -43,7 +44,7 @@ const std::map<std::string, reqHandler> webMappings PROGMEM = {
         {"^GET /status\\.json$",  handleGetStatus},
         {"^GET /wifi\\.json$",    handleGetWifi},
         {"^GET /\\w+\\.css$",     handleGetCss},
-        {"^GET /[\\w.]+\\.js$",      handleGetJs},
+        {"^GET /[\\w.]+\\.js$",   handleGetJs},
         {"^GET /\\w+\\.html$",    handleGetHtml},
         {"^GET /$",               handleGetRoot},
         {"^PUT /fx$",             handlePutConfig}
@@ -88,7 +89,20 @@ size_t writeDateHeader(WiFiClient *client) {
 size_t writeFilenameHeader(WiFiClient *client, const char *fname) {
     int szBuf = snprintf(nullptr, 0, hdFmtContentDisposition, fname) + 1;
     char buf[szBuf];
-    sprintf(buf, hdFmtContentDisposition, wifiJsonFilename);
+    sprintf(buf, hdFmtContentDisposition, fname);
+    return client->println(buf);
+}
+
+/**
+ * Utility to send the Content Length http header with response body length
+ * @param client the web client to write to
+ * @param szContent size of the response body
+ * @return number of bytes written to the client
+ */
+size_t writeContentLengthHeader(WiFiClient *client, uint32_t szContent) {
+    int szBuf = snprintf(nullptr, 0, hdFmtContentLength, szContent) + 1;
+    char buf[szBuf];
+    sprintf(buf, hdFmtContentLength, szContent);
     return client->println(buf);
 }
 
@@ -204,7 +218,7 @@ size_t web::handleGetCss(WiFiClient *client, String *uri, String *hd, String *bd
     sz += client->println();    //done with headers
 
     // response body
-    sz += client->println(pixel_css);
+    sz += client->write(pixel_css);
     sz += client->println();
 
 #ifndef DISABLE_LOGGING
@@ -228,15 +242,37 @@ size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy
     sz += client->println(hdJavascript);
     sz += writeDateHeader(client);
     sz += client->println(hdConClose);
-    sz += client->println();    //done with headers
+    //sz += client->println();    //done with headers
 
     // response body
-    if (uri->endsWith("jquery-ui.min.js"))
-        sz += client->println(jquery_ui_min_js);
-    else if (uri->endsWith("jquery.min.js"))
-        sz += client->println(jquery_min_js);
-    else
-        sz += client->println(pixel_js);
+    if (uri->endsWith("jquery-ui.min.js")) {
+        size_t jsLen = strlen(jquery_ui_min_js);
+        sz += writeContentLengthHeader(client, jsLen);
+        sz += client->println();    //done with headers
+        
+        sz += client->write(jquery_ui_min_js);
+    } else if (uri->endsWith("jquery.min.js")) {
+        size_t jsLen = strlen(jquery_min_js);
+        sz += writeContentLengthHeader(client, jsLen);
+        sz += client->println();    //done with headers
+
+        sz += client->write(jquery_min_js);
+    } else {
+        size_t jsLen = strlen(pixel_js);
+        sz += writeContentLengthHeader(client, jsLen);
+        sz += client->println();    //done with headers
+
+        char buf[1024];
+        size_t szRead = 1;
+        const char *src = pixel_js;
+        while (szRead > 0) {
+            szRead = jsLen > (szRead + 1024) ? 1024 : qsuba(jsLen, szRead);
+            memcpy_P(buf, src, szRead);
+            sz += client->write(buf, szRead);
+            src += szRead;
+        }
+        //sz += client->write(pixel_js);
+    }
     sz += client->println();
 
 #ifndef DISABLE_LOGGING

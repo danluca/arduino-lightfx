@@ -1,4 +1,4 @@
-const char index_html[] PROGMEM = R"===(
+const char index_html[] PROGMEM = R"~~~(
 <!DOCTYPE html>
 <html lang="en">
 
@@ -65,4 +65,4 @@ const char index_html[] PROGMEM = R"===(
 </body>
 
 </html>
-)===";
+)~~~";
