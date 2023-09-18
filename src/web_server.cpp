@@ -43,7 +43,7 @@ const std::map<std::string, reqHandler> webMappings PROGMEM = {
         {"^GET /status\\.json$",  handleGetStatus},
         {"^GET /wifi\\.json$",    handleGetWifi},
         {"^GET /\\w+\\.css$",     handleGetCss},
-        {"^GET /\\w+\\.js$",      handleGetJs},
+        {"^GET /[\\w.]+\\.js$",      handleGetJs},
         {"^GET /\\w+\\.html$",    handleGetHtml},
         {"^GET /$",               handleGetRoot},
         {"^PUT /fx$",             handlePutConfig}
