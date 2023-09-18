@@ -4,3 +4,4 @@ logs/
 CMakeListsPrivate.txt
 cmake-build-*/ 
 secrets.h
+src/www/*.json

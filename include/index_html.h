@@ -7,57 +7,61 @@ const char index_html[] PROGMEM = R"===(
     <title>Luca Light FX</title>
     <link href="pixel.css" rel="stylesheet" type="text/css" />
     <script src="jquery.min.js" type="text/javascript"></script>
-    <script src="jquery-ui.min.js"></script>
+<!--    <script src="jquery-ui.min.js"></script>-->
     <script src="pixel.js" type="text/javascript"></script>
 </head>
 
 <body>
-    <div id="divapplybuttons">
-        <button type="button" id="applybutton" onclick="apply()">Apply</button>
-        <button type="button" id="reversebutton" class="reverse-not-selected" onclick="reverse_toggle()">Reverse</button>
-    </div>
-    <div id="sequences">
-        <h2>Sequences</h2>
-        <ul id="sequences-list">
-        </ul>
-    </div>
-    <div id="options">
-        <div id="speedoption">
-            <h2>Speed</h2>
-            <input type="range" min="0" max="1000" value="100" class="speed-slider" id="speed" onchange="show_speed()" />
-            <p>Delay <span id="speed-val">900</span> ms</p>
-        </div>
-    </div>
-    <div id="colors">
-        <h2>Colors</h2>
-        <div id="divcolors">
-            <ul id="ulcolchosen">
-                <li class="licolchosen"><button id="defaultcolchosen" class="buttoncolchosen" style="background: #ffffff">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</button></li>
-            </ul>
-            <br class="clearall" />
-        </div>
-        <div id="selectcolors">
-            <h3>Add Colors</h3>
-            <ul id="ulcolselect">
-                <li class="licolselect"><button name="ffffff" class="colbutton colwhite">White</button></li>
-                <li class="licolselect"><button name="202020" class="colbutton colgrey">Grey</button></li>
-                <li class="licolselect"><button name="ff0000" class="colbutton colred">Red</button></li>
-                <li class="licolselect"><button name="ffc0cb" class="colbutton colpink">Pink</button></li>
-                <li class="licolselect"><button name="008000" class="colbutton colgreen">Green</button></li>
-                <li class="licolselect"><button name="4bbf5a" class="colbutton collightgreen">Light Green</button></li>
-                <li class="licolselect"><button name="0000ff" class="colbutton colblue">Blue</button></li>
-                <li class="licolselect"><button name="00ffff" class="colbutton colaqua">Aqua</button></li>
-                <li class="licolselect"><button name="800080" class="colbutton colpurple">Purple</button></li>
-                <li class="licolselect"><button name="ffa500" class="colbutton colorange">Orange</button></li>
-                <li class="licolselect"><button name="000000" class="colbutton colblack">Black</button></li>
-            </ul>
-        </div>
-        <br class="clearall" />
-    </div>
-    <div id="divstatus">
-        <h2>LED Status:</h2>
-        <div id="status">status</div>
-    </div>
+    <header>LucaFx - Lucas Style Light Effects</header>
+    <main>
+        <div id="updateStatus"></div>
+        <section id="effects">
+            <h1>Effects</h1>
+            <div id="fxChangeArea">
+                <div id="fxSelectArea">
+                <label for="fxlist" id="fxListLabel">Change current light effect</label>
+                <select id="fxlist" onchange="updateEffect()">
+                    <option value="none">Select an effect</option>
+                </select>
+                </div>
+                <div id="fxAutoChangeArea">
+                    <input type="checkbox" id="autoFxChange" onchange="updateAuto()"/>
+                    <label for="autoFxChange" id="autoFxChangeLabel">Automatic Effect change</label>
+                </div>
+            </div>
+            <div id="curEffectArea">
+                <label for="curEffect" id="curEffectLabel">Current effect: </label>
+                <p id="curEffect"></p>
+                <p id="curEffectId"></p>
+            </div>
+        </section>
+        <section id="time">
+            <h1>Time</h1>
+            <div id="timeChangeArea">
+                <label for="holidayList" id="holidayListLabel">Change current color theme</label>
+                <select id="holidayList">
+
+                </select>
+            </div>
+            <div id="curHolidayArea">
+                <p><span id="curHolidayLabel">Current color theme: </span><span id="curHolidayValue"></span></p>
+            </div>
+        </section>
+        <section id="settings">
+            <h1>Settings</h1>
+            <div id="settingsChange">
+                TBD
+            </div>
+        </section>
+        <section id="status">
+            <h1>Status</h1>
+            <div id="statusArea">
+
+            </div>
+        </section>
+
+    </main>
+    <footer>Copyright &copy; 2023 Dan Luca. All rights reserved.</footer>
 </body>
 
 </html>

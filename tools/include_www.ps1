@@ -21,7 +21,7 @@ function makeHeaderFile([System.IO.FileInfo]$file) {
 pushd $PSScriptRoot
 pushd ../src/www
 
-Get-ChildItem -Attributes !D | ForEach-Object {makeHeaderFile $_}
+Get-ChildItem * -Attributes !D -Exclude *.json | ForEach-Object {makeHeaderFile $_}
 
 popd
 popd

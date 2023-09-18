@@ -111,7 +111,7 @@ bool time_setup() {
     if (timeStatus() != timeNotSet) {
         char timeBuf[20];
         sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
-        Log.infoln(F("Current time %s"), timeBuf);
+        Log.infoln(F("Current time %s CST"), timeBuf);
     } else
         Log.warningln(F("Current time not available - NTP sync failed"));
     Log.infoln(F("Current holiday is %s"), holidayToString(hday));
@@ -214,7 +214,8 @@ void checkFirmwareVersion() {
 ///////////////////////////////////////
 
 time_t curUnixTime() {
-    //Note - the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve this purpose
+  //Note - the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve this purpose
+  //TODO: looks like we'd need to add the CST_OFFSET_SECONDS to the WiFi.getTime() as it returns the UTC
   return timeClient.isTimeSet() ? timeClient.getEpochTime() : WiFi.getTime();
 }
 

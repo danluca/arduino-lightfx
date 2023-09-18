@@ -1,133 +1,119 @@
 
 // Only one sequence can be selected
-var sequence = "";
-var reverse = false;
+let config = {};
 
 $(() => {
 
-    $('#status').html("<p>Status updated!</p>");
-
-    $.getJSON( "sequences.json", {
-        tagmode: "any",
-        format: "json"
-    }) 
+    $.getJSON( "config.json")
     .done(function( data ) {
-        seq_name = "";
-        title = "";
-        description = "";
-        $.each( data, function( i, seq_object ) {
-            $.each (seq_object, function (key, val) {
-                if (key == "seq_name") seq_name = val;
-                if (key == "title") title = val;
-                if (key == "description") description = val;
-                if (key == "group") group = parseInt(val);
-            });
-            // Only show groups up to 3
-            if (group < 4) {
-                // Add to list
-                $('#sequences-list').append ("<li class=\"li-seq-select\">\n<button type=\"button\" id=\""+seq_name+"\"  title=\""+description+"\" class=\"seq-select-btn\" onclick=\"select_sequence('"+seq_name+"')\">"+title+"</button>\n</li>");
-                // if this is the first then set it to the sequence
-                if (sequence == "") sequence = seq_name;
+        config = data;
+        let fx_id = "";
+        let fx_name = "";
+        let fx_description = "";
+        let curFxId = data.curEffect;
+        $.each( data.fx, function( i, fxi ) {
+            fx_id = fxi.registryIndex;
+            fx_name = fxi.name;
+            fx_description = fxi.description;
+
+            // Add to list
+            $('#fxlist').append(`<option class="opt-select" value="${fx_id}">${fx_description}</option>`);
+        });
+        $('#fxlist').val(curFxId);
+        $('#fxlist').attr("currentFxIndex", curFxId);
+        $('#curEffect').html(`${data.curEffectName} - ${data.fx[data.curEffect].description}`);
+        $('#curEffectId').html(`Index: ${data.curEffect}`);
+        $('#autoFxChange').prop("checked", data.auto);
+        $('#curHolidayValue').html(data.holiday);
+        $.each(data.holidayList, function(i, hld) {
+            if (hld == "None") {
+                $('#holidayList').append(`<option class="opt-select" value="${hld}">Automatic</option>`);
+            } else {
+                $('#holidayList').append(`<option class="opt-select" value="${hld}">${hld}</option>`);
             }
         });
-        // Set sequence 
-        set_sequence();
-        
-        
-        $(".colbutton").click(function() {
-            add_color($(this).attr('name'));
+        $('#holidayList').val(data.holiday);
+
+    });
+    getStatus();
+    setInterval(getStatus, 2*60*1000);  //every 2 minutes update status
+
+});
+
+function getStatus() {
+    $.getJSON("status.json")
+        .done(function (data) {
+            let stdiv = $('#statusArea');
+            stdiv.append(`<div id="boardStatus"><h4>Board</h4><p><span>Temperature:</span> ${data.boardTemp} °C (${data.boardTemp*9/5+32} °F)</p></div>`);
+            stdiv.append(`<div id="wifiStatus"><h4>WiFi</h4><p><span>IP Address:</span> ${data.wifi.IP}</p><p><span>Signal:</span> ${data.wifi.bars} bars</p></div>`);
+            stdiv.append(`<div id="fxStatus"><h4>Effects</h4><p><span>Total:</span> ${data.fx.count} effects</p><p><span>Current Effect:</span> ${data.fx.name} [${data.fx.index}]</p>
+                <p><span>Colors:</span> ${data.fx.holiday}</p></div>`);
+            stdiv.append(`<div id="timeStatus"><h4>Time</h4><p><span>NTP synched:</span> ${data.time.ntpSync == 2}</p><p><span>Current Time:</span> ${data.time.date} ${data.time.time} CST</p>
+                <p><span>Holiday:</span> ${data.time.holiday}</p></div>`);
+            //update the current effect tile as well
+            $('#curEffectId').html(`Index: ${data.fx.index}`);
+            let desc = config.fx.find(x=> x.registryIndex === data.fx.index).description
+            $('#curEffect').html(`${data.fx.name} - ${desc}`);
         });
-        
+}
 
-    
-    });
-    
+function updateEffect() {
+    let selectedFx = $('#fxlist').val();
+    if (selectedFx == "none") {
+        return;
+    }
+    if (selectedFx != $('#fxlist').attr("currentFxIndex")) {
+        let request = {};
+        request["effect"] = parseInt(selectedFx);
+        $.ajax({
+            type: "PUT",
+            url: "/fx",
+            contentType: "application/json",
+            dataType: "json",
+            data: JSON.stringify(request),
+            success: function (response) {
+                $('#fxlist').attr("currentFxIndex", selectedFx);
+                $('#updateStatus').html("Effect update successful").removeClass().addClass("status-ok");
+                scheduleClearStatus();
+            },
+            error: function (request, status, error) {
+                $('#updateStatus').html(`Effect update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
+                scheduleClearStatus();
+            }
+        });
+    }
+}
 
-})
-
-// Set all sequences not selected, except one matching sequence
-function set_sequence() {
-    $.each($(".seq-select-btn"), function (i, val) {
-        if (val.id != sequence) {
-          $(this).removeClass('sequence-selected');
+function updateAuto() {
+    let selectedAuto = $('#autoFxChange').prop("checked");
+    let request = {};
+    request["auto"] = selectedAuto;
+    $.ajax({
+        type: "PUT",
+        url: "/fx",
+        contentType: "application/json",
+        dataType: "json",
+        data: JSON.stringify(request),
+        success: function (response) {
+            $('#updateStatus').html(`Automatic effects loop ${selectedAuto?'enabled':'disabled'} successfully`).removeClass().addClass("status-ok");
+            scheduleClearStatus();
+        },
+        error: function (request, status, error) {
+            $('#updateStatus').html(`Automatic effects loop update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
+            $('#autoFxChange').prop("checked", !selectedAuto);
+            scheduleClearStatus();
         }
-        else {
-          $(this).addClass('sequence-selected');
-        }
-    }); 
-}
-
-function select_sequence(seq_name) {
-    sequence = seq_name;
-    set_sequence();
-}
-
-function reverse_toggle() {
-    if (reverse == true) {
-        reverse = false;
-        $("#reversebutton").removeClass('reverse-selected');
-        $("#reversebutton").addClass('reverse-not-selected');
-    }
-    else {
-        reverse = true;
-        $("#reversebutton").removeClass('reverse-not-selected');
-        $("#reversebutton").addClass('reverse-selected');
-    }
-}
-
-function apply() {
-    // Read each of the values and create the url
-    // sequence is in variable sequence
-    // get speed
-    delay = 1000 - document.getElementById("speed").value;
-    // reverse 
-    reverse_str = 0;
-    if (reverse == true) {
-        reverse_str = 1;
-    }
-    // get all colors
-    var color_list = "";
-    $.each($(".chosencolor"), function (i, val) {
-        // if first don't need comma
-        if (color_list != "") color_list += ",";
-        color_list += val.name;
     });
-    // if no colors send default = white
-    if (color_list == "") color_list = "ffffff";
-    url_string = "/set?seq="+sequence+"&delay="+delay+"&reverse="+reverse_str+"&colors="+color_list;
-    $.get( url_string, function (data) {
-        $("#status").html(data);
-    });
-    
-    
 }
 
-function show_speed() {
-    // JQuery does not work well with manual slider
-    // Use normal javascript to get the value
-    speed_val = document.getElementById("speed").value;
-    document.getElementById("speed-val").innerHTML = 1000-speed_val;
-    
+function updateHoliday() {
+
 }
 
-
-function remove_color(this_button) {
-    this_button.closest('li').remove();
-    // check if this was the list button - in which case show default
-    if (!($(".chosencolor")[0])) {
-        $("#defaultcolchosen").show();
-    }
+function scheduleClearStatus() {
+    setTimeout(function () {
+        $('#updateStatus').removeClass().html("");
+    }, 5000);
 }
-
-
-function add_color(this_color) {
-    // hide the default if not already hidden
-    $("#defaultcolchosen").hide();
-    // Add this list element
-    // chosencolor class is not for css, but for iterating over the 
-    // chosen colors (excluding default)
-    $("#ulcolchosen").append("<li class=\"licolchosen\"><button name=\""+this_color+"\" class=\"buttoncolchosen chosencolor\" style=\"background:#"+this_color+"\" onclick=\"remove_color($(this))\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</button></li>");
-}
-
 
 

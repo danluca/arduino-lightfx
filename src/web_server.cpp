@@ -167,6 +167,9 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     doc["auto"] = fxRegistry.isAutoRoll();
     doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
     doc["holiday"] = holidayToString(paletteFactory.currentHoliday());
+    JsonArray hldList = doc.createNestedArray("holidayList");
+    for (uint8_t hi = None; hi <= NewYear; hi++)
+        hldList.add(holidayToString(static_cast<Holiday>(hi)));
     time_t curTime = now();
     char datetime[20];
     sprintf(datetime, "%4d-%02d-%02d %02d:%02d:%02d", year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
