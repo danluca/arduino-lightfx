@@ -1,37 +1,37 @@
 #include "web_server.h"
 #include "log.h"
 
-const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
-const char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
-const char http404Status[] PROGMEM = "HTTP/1.1 404 Not Found";
-const char http500Status[] PROGMEM = "HTTP/1.1 500 Internal Server Error";
+static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
+static const char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
+static const char http404Status[] PROGMEM = "HTTP/1.1 404 Not Found";
+static const char http500Status[] PROGMEM = "HTTP/1.1 500 Internal Server Error";
 
-const char hdHtml[] PROGMEM = R"===(Content-type: text/html
+static const char hdHtml[] PROGMEM = R"===(Content-type: text/html
 Server: rp2040-luca/1.0.0)===";
 
-const char hdCss[] PROGMEM = R"===(Content-type: text/css
+static const char hdCss[] PROGMEM = R"===(Content-type: text/css
 Server: rp2040-luca/1.0.0
 Cache-Control: public, max-age=2592000, immutable)===";
 
-const char hdJavascript[] PROGMEM = R"===(Content-type: text/javascript
+static const char hdJavascript[] PROGMEM = R"===(Content-type: text/javascript
 Server: rp2040-luca/1.0.0
 Cache-Control: public, max-age=2592000, immutable)===";
 
-const char hdJson[] PROGMEM = R"===(Content-type: application/json
+static const char hdJson[] PROGMEM = R"===(Content-type: application/json
 Server: rp2040-luca/1.0.0
 Cache-Control: no-cache, no-store)===";
 
 using namespace web;
 
-const char hdRootLocation[] PROGMEM = "Location: /";
-const char hdConClose[] PROGMEM = "Connection: close";
-const char hdFmtContentLength[] PROGMEM = "Content-Length: %d";
-const char hdFmtDate[] PROGMEM = "Date: %4d-%02d-%02d %02d:%02d:%02d CST";
-const char hdFmtContentDisposition[] PROGMEM = "Content-Disposition: inline; filename=\"%s\"";
-const char msgRequestNotMapped[] PROGMEM = "URI not mapped to a handler on this server";
-const char configJsonFilename[] PROGMEM = "config.json";
-const char wifiJsonFilename[] PROGMEM = "wifi.json";
-const char statusJsonFilename[] PROGMEM = "status.json";
+static const char hdRootLocation[] PROGMEM = "Location: /";
+static const char hdConClose[] PROGMEM = "Connection: close";
+static const char hdFmtContentLength[] PROGMEM = "Content-Length: %d";
+static const char hdFmtDate[] PROGMEM = "Date: %4d-%02d-%02d %02d:%02d:%02d CST";
+static const char hdFmtContentDisposition[] PROGMEM = "Content-Disposition: inline; filename=\"%s\"";
+static const char msgRequestNotMapped[] PROGMEM = "URI not mapped to a handler on this server";
+static const char configJsonFilename[] PROGMEM = "config.json";
+static const char wifiJsonFilename[] PROGMEM = "wifi.json";
+static const char statusJsonFilename[] PROGMEM = "status.json";
 
 /**
  * Web handler mappings - static in nature and stored in flash
@@ -39,7 +39,7 @@ const char statusJsonFilename[] PROGMEM = "status.json";
  * handles the respective requests.
  * If more request mappings are needed - add them here, following the pattern
  */
-const std::map<std::string, reqHandler> webMappings PROGMEM = {
+static const std::map<std::string, reqHandler> webMappings PROGMEM = {
         {"^GET /config\\.json$",  handleGetConfig},
         {"^GET /status\\.json$",  handleGetStatus},
         {"^GET /wifi\\.json$",    handleGetWifi},
@@ -52,6 +52,8 @@ const std::map<std::string, reqHandler> webMappings PROGMEM = {
 
 // global server object - through WiFi module
 WiFiServer server(80);
+//size of the buffer for buffering the response
+static const uint16_t WEB_BUFFER_SIZE = 1024;
 
 /**
  * Start the server
@@ -104,6 +106,29 @@ size_t writeContentLengthHeader(WiFiClient *client, uint32_t szContent) {
     char buf[szBuf];
     sprintf(buf, hdFmtContentLength, szContent);
     return client->println(buf);
+}
+
+/**
+ * Utility to write large text contents (stored in PROGMEM) using buffering. It has been noted the WiFiClient chokes for strings larger than 4k
+ * @param client the web client to write to
+ * @param src source textual content to write
+ * @param srcSize number of bytes to write - this is arguably same as <code>strLen(src)</code> (where src is a null-terminated string). However,
+ * saving the trouble of traversing the char array one more time for determining the length. It is needed before-hand to write the content length header.
+ * @return number of bytes written to the client
+ */
+size_t writeLargeP(WiFiClient *client, const char *src, uint32_t srcSize) {
+    char buf[WEB_BUFFER_SIZE+1];    //room for null terminated string
+    size_t pos = 0, sz = 0;
+    const char *srcPos = src;
+    while ((srcSize-pos) > 0) {
+        size_t szRead = srcSize > (pos+WEB_BUFFER_SIZE) ? WEB_BUFFER_SIZE : qsuba(srcSize, pos);
+        memcpy_P(buf, srcPos, szRead);
+        buf[szRead+1] = 0;  //ensure we have a null terminating character
+        sz += client->write(buf, szRead);
+        srcPos += szRead;
+        pos += szRead;
+    }
+    return sz;
 }
 
 /**
@@ -215,10 +240,12 @@ size_t web::handleGetCss(WiFiClient *client, String *uri, String *hd, String *bd
     sz += client->println(hdCss);
     sz += writeDateHeader(client);
     sz += client->println(hdConClose);
+    size_t cssLen = strlen(pixel_css);
+    sz += writeContentLengthHeader(client, cssLen);
     sz += client->println();    //done with headers
 
     // response body
-    sz += client->write(pixel_css);
+    sz += writeLargeP(client, pixel_css, cssLen);
     sz += client->println();
 
 #ifndef DISABLE_LOGGING
@@ -242,37 +269,20 @@ size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy
     sz += client->println(hdJavascript);
     sz += writeDateHeader(client);
     sz += client->println(hdConClose);
-    //sz += client->println();    //done with headers
+
+    // figure out which JS source we need
+    const char* src = pixel_js;
+    if (uri->endsWith("jquery-ui.min.js"))
+        src = jquery_ui_min_js;
+    else if (uri->endsWith("jquery.min.js"))
+        src = jquery_min_js;
+    // determine size
+    size_t jsLen = strlen(src);
+    sz += writeContentLengthHeader(client, jsLen);
+    sz += client->println();    //done with headers
 
     // response body
-    if (uri->endsWith("jquery-ui.min.js")) {
-        size_t jsLen = strlen(jquery_ui_min_js);
-        sz += writeContentLengthHeader(client, jsLen);
-        sz += client->println();    //done with headers
-        
-        sz += client->write(jquery_ui_min_js);
-    } else if (uri->endsWith("jquery.min.js")) {
-        size_t jsLen = strlen(jquery_min_js);
-        sz += writeContentLengthHeader(client, jsLen);
-        sz += client->println();    //done with headers
-
-        sz += client->write(jquery_min_js);
-    } else {
-        size_t jsLen = strlen(pixel_js);
-        sz += writeContentLengthHeader(client, jsLen);
-        sz += client->println();    //done with headers
-
-        char buf[1024];
-        size_t szRead = 1;
-        const char *src = pixel_js;
-        while (szRead > 0) {
-            szRead = jsLen > (szRead + 1024) ? 1024 : qsuba(jsLen, szRead);
-            memcpy_P(buf, src, szRead);
-            sz += client->write(buf, szRead);
-            src += szRead;
-        }
-        //sz += client->write(pixel_js);
-    }
+    sz += writeLargeP(client, src, jsLen);
     sz += client->println();
 
 #ifndef DISABLE_LOGGING
