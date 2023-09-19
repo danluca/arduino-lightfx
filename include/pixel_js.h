@@ -47,7 +47,7 @@ function getStatus() {
         .done(function (data) {
             let stdiv = $('#statusArea');
             let brdStat = $('#boardStatus');
-            if (!brdStat) {
+            if (!brdStat.length) {
                 stdiv.append("<div id=\"boardStatus\"></div>");
                 stdiv.append("<div id=\"wifiStatus\"></div>");
                 stdiv.append("<div id=\"fxStatus\"></div>");
