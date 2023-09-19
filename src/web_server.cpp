@@ -355,7 +355,9 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     // WiFi
     JsonObject wifi = doc.createNestedObject("wifi");
     wifi["IP"] = WiFi.localIP();         //IP Address
-    wifi["bars"] = barSignalLevel(WiFi.RSSI());  //Wi-Fi signal level
+    int32_t rssi = WiFi.RSSI();
+    wifi["bars"] = barSignalLevel(rssi);  //Wi-Fi signal level
+    wifi["rssi"] = rssi;
     // Fx
     JsonObject fx = doc.createNestedObject("fx");
     fx["count"] = fxRegistry.size();

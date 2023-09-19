@@ -45,24 +45,30 @@ function getStatus() {
         .done(function (data) {
             let stdiv = $('#statusArea');
             stdiv.append(`<div id="boardStatus"><h4>Board</h4><p><span>Temperature:</span> ${data.boardTemp} 'C (${data.boardTemp*9/5+32} 'F)</p></div>`);
-            stdiv.append(`<div id="wifiStatus"><h4>WiFi</h4><p><span>IP Address:</span> ${data.wifi.IP}</p><p><span>Signal:</span> ${data.wifi.bars} bars</p></div>`);
+            stdiv.append(`<div id="wifiStatus"><h4>WiFi</h4><p><span>IP Address:</span> ${data.wifi.IP}</p><p><span>Signal:</span> ${data.wifi.bars} bars (${data.wifi.rssi} dB)</p></div>`);
             stdiv.append(`<div id="fxStatus"><h4>Effects</h4><p><span>Total:</span> ${data.fx.count} effects</p><p><span>Current Effect:</span> ${data.fx.name} [${data.fx.index}]</p>
                 <p><span>Colors:</span> ${data.fx.holiday}</p></div>`);
             stdiv.append(`<div id="timeStatus"><h4>Time</h4><p><span>NTP synched:</span> ${data.time.ntpSync == 2}</p><p><span>Current Time:</span> ${data.time.date} ${data.time.time} CST</p>
                 <p><span>Holiday:</span> ${data.time.holiday}</p></div>`);
-            //update the current effect tile as well
+            //update the current effect tiles as well
             $('#curEffectId').html(`Index: ${data.fx.index}`);
-            let desc = config.fx.find(x=> x.registryIndex === data.fx.index).description
+            let desc = config.fx.find(x=> x.registryIndex === data.fx.index)?.description ?? "N/A";
             $('#curEffect').html(`${data.fx.name} - ${desc}`);
+            $('#fxlist').val(data.fx.index);
+            $('#fxlist').attr("currentFxIndex", data.fx.index);
+            $('#curHolidayValue').html(data.fx.holiday);
+            $('#holidayList').val(data.fx.holiday);
+            $('#holidayList').attr("currentColorTheme", data.fx.holiday);
         });
 }
 
 function updateEffect() {
-    let selectedFx = $('#fxlist').val();
+    let fxlst = $('#fxlist');
+    let selectedFx = fxlst.val();
     if (selectedFx == "none") {
         return;
     }
-    if (selectedFx != $('#fxlist').attr("currentFxIndex")) {
+    if (selectedFx != fxlst.attr("currentFxIndex")) {
         let request = {};
         request["effect"] = parseInt(selectedFx);
         $.ajax({
@@ -72,12 +78,13 @@ function updateEffect() {
             dataType: "json",
             data: JSON.stringify(request),
             success: function (response) {
-                $('#fxlist').attr("currentFxIndex", selectedFx);
+                fxlst.attr("currentFxIndex", selectedFx);
                 $('#updateStatus').html("Effect update successful").removeClass().addClass("status-ok");
                 scheduleClearStatus();
             },
             error: function (request, status, error) {
                 $('#updateStatus').html(`Effect update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
+                fxlst.val(fxlst.attr("currentFxIndex"));
                 scheduleClearStatus();
             }
         });
@@ -107,7 +114,28 @@ function updateAuto() {
 }
 
 function updateHoliday() {
-
+    let hldlst = $('#holidayList');
+    let selHld = hldlst.val();
+    let request = {};
+    request["holiday"] = selHld;
+    $.ajax({
+        type: "PUT",
+        url: "/fx",
+        contentType: "application/json",
+        dataType: "json",
+        data: JSON.stringify(request),
+        success: function (response) {
+            $('#updateStatus').html("Color theme update successful").removeClass().addClass("status-ok");
+            hldlst.attr("currentColorTheme", selHld);
+            $('#curHolidayValue').html(selHld);
+            scheduleClearStatus();
+        },
+        error: function (request, status, error) {
+            $('#updateStatus').html(`Color theme update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
+            hldlst.val(hldlst.attr("currentColorTheme"));
+            scheduleClearStatus();
+        }
+    });
 }
 
 function scheduleClearStatus() {
