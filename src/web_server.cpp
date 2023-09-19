@@ -306,10 +306,14 @@ size_t web::handleGetHtml(WiFiClient *client, String *uri, String *hd, String *b
     sz += client->println(hdHtml);
     sz += writeDateHeader(client);
     sz += client->println(hdConClose);
+
+    // determine size
+    size_t szHtml = strlen(index_html);
+    sz += writeContentLengthHeader(client, szHtml);
     sz += client->println();    //done with headers
 
     // response body
-    sz += client->println(index_html);
+    sz += writeLargeP(client, index_html, szHtml);
     sz += client->println();
 
 #ifndef DISABLE_LOGGING
@@ -412,13 +416,20 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     if (error)
         return handleInternalError(client, uri, error.c_str());
 
+    StaticJsonDocument<128> resp;
+    JsonObject upd = resp.createNestedObject("updates");
     bool autoAdvance = !doc.containsKey("auto") || doc["auto"].as<bool>();
     fxRegistry.autoRoll(autoAdvance);
-    if (doc.containsKey("effect"))
-        fxRegistry.nextEffectPos(abs(doc["effect"].as<int>()));
+    upd["auto"] = autoAdvance;
+    if (doc.containsKey("effect")) {
+        uint16_t nextFx = doc["effect"].as<uint16_t >();
+        fxRegistry.nextEffectPos(nextFx);
+        upd["effect"] = nextFx;
+    }
     if (doc.containsKey("holiday")) {
         String userHoliday = doc["holiday"].as<String>();
         paletteFactory.forceHoliday(parseHoliday(&userHoliday));
+        upd["holiday"] = userHoliday;
     }
 #ifndef DISABLE_LOGGING
     Log.infoln(F("FX: Current running effect updated to %u, autoswitch %s, holiday %s"),
@@ -426,9 +437,16 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
 #endif
 
     //main status and headers
-    size_t sz = client->println(http303Status);
-    sz += client->println(hdRootLocation);
+    resp["status"] = true;
+
+    size_t sz = client->println(http200Status);
+    sz += client->println(hdJson);
+    sz += writeDateHeader(client);
+    sz += client->println(hdConClose);
     sz += client->println();    //done with headers
+
+    sz += serializeJson(resp, *client);
+    sz += client->println();
 
 #ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handlePutConfig invoked for %s"), uri->c_str());
