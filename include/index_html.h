@@ -39,7 +39,7 @@ const char index_html[] PROGMEM = R"~~~(
             <h1>Time</h1>
             <div id="timeChangeArea">
                 <label for="holidayList" id="holidayListLabel">Change current color theme</label>
-                <select id="holidayList">
+                <select id="holidayList" onchange="updateHoliday()">
 
                 </select>
             </div>

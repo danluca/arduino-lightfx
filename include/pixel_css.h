@@ -32,6 +32,7 @@ footer {
     border-radius: 10px;
     padding: 2em 1em;
     margin-top: 2em;
+    background-color: #F4F4FD;
 }
 
 #effects #fxChangeArea, #time #timeChangeArea {
