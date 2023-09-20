@@ -149,12 +149,12 @@ void wifi_reconnect() {
     status = WL_CONNECTION_LOST;
     stateLED(CRGB::Orange);
     server.clearWriteError();
-//    WiFiClient client = server.available();
-//    if (client) client.stop();
-//    Udp.stop();
-//    WiFi.disconnect();
-//    WiFi.end();
-//    delay(2000);    //let disconnect state settle
+    WiFiClient client = server.available();
+    if (client) client.stop();
+    Udp.stop();
+    WiFi.disconnect();
+    WiFi.end();
+    delay(2000);    //let disconnect state settle
     if (wifi_connect())
         stateLED(CRGB::Indigo);
     //NVIC_SystemReset();
