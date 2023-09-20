@@ -7,6 +7,7 @@ Helps with cross browser support */
    
 header {
     background-color: #6666ff;
+    background: linear-gradient(60deg, rgba(131,58,180,1) 0%, rgba(102,102,255,1) 50%, rgba(253,72,29,1) 100%);
     width: 100%;
     height: 120px;
     font-family: Helvetica, sans-serif;
@@ -59,7 +60,7 @@ footer {
     margin-left: 50%;
 }
 
-#effects #curEffectArea label {
+#curEffectLabel {
     color: #7f7fBf;
     display: block;
     padding: 5px 0;
@@ -89,6 +90,33 @@ footer {
     text-align: center;
 }
 
+#status {
+    height: 18em;
+}
+
 #settings {
     display: none;
+}
+
+.red {
+    color: red;
+}
+
+dt {
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}
+
+dd {
+    color: #7f7f7f;
+    margin-left: 1em;
+}
+dl div {
+    float: left;
+    width: 27%;
+}
+dd span {
+    color: black;
 }

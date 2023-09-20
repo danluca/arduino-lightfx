@@ -44,21 +44,16 @@ $(() => {
 function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
-            let stdiv = $('#statusArea');
-            let brdStat = $('#boardStatus');
-            if (!brdStat.length) {
-                stdiv.append("<div id=\"boardStatus\"></div>");
-                stdiv.append("<div id=\"wifiStatus\"></div>");
-                stdiv.append("<div id=\"fxStatus\"></div>");
-                stdiv.append("<div id=\"timeStatus\"></div>");
-                brdStat = $('#boardStatus');
-            }
-            brdStat.html(`<h4>Board</h4><p><span>Temperature:</span> ${data.boardTemp} 'C (${data.boardTemp*9/5+32} 'F)</p>`);
-            $('#wifiStatus').html(`<h4>WiFi</h4><p><span>IP Address:</span> ${data.wifi.IP}</p><p><span>Signal:</span> ${data.wifi.bars} bars (${data.wifi.rssi} dB)</p>`);
-            $('#fxStatus').html(`<h4>Effects</h4><p><span>Total:</span> ${data.fx.count} effects</p><p><span>Current Effect:</span> ${data.fx.name} [${data.fx.index}]</p>
-                    <p><span>Colors:</span> ${data.fx.holiday}</p>`);
-            $('#timeStatus').html(`<h4>Time</h4><p><span>NTP synched:</span> ${data.time.ntpSync == 2}</p><p><span>Current Time:</span> ${data.time.date} ${data.time.time} CST</p>
-                    <p><span>Holiday:</span> ${data.time.holiday}</p>`);
+            $('#status h1').removeClass('red');
+            $('#boardTemp').html(`${data.boardTemp} 'C (${data.boardTemp*9/5+32} 'F)`);
+            $('#wfIpAddress').html(`${data.wifi.IP}`);
+            $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
+            $('#fxCount').html(`${data.fx.count} effects`);
+            $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
+            $('#fxCurHoliday').html(`${data.fx.holiday}`);
+            $('#timeNtp').html(`${data.time.ntpSync == 2}`);
+            $('#timeCurrent').html(`${data.time.date} ${data.time.time} CST`);
+            $('#timeHoliday').html(`${data.time.holiday}`);
 
             //update the current effect tiles as well
             $('#curEffectId').html(`Index: ${data.fx.index}`);
@@ -71,6 +66,10 @@ function getStatus() {
             let hdlst = $('#holidayList');
             hdlst.val(data.fx.holiday);
             hdlst.attr("currentColorTheme", data.fx.holiday);
+        })
+        .fail(function (req, textStatus, error){
+            console.log(`status.json call failed ${textStatus} - ${error}`);
+            $('#status h1').addClass('red');
         });
 }
 

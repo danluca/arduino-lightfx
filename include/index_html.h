@@ -30,7 +30,7 @@ const char index_html[] PROGMEM = R"~~~(
                 </div>
             </div>
             <div id="curEffectArea">
-                <label for="curEffect" id="curEffectLabel">Current effect: </label>
+                <p id="curEffectLabel">Current effect: </p>
                 <p id="curEffect"></p>
                 <p id="curEffectId"></p>
             </div>
@@ -55,9 +55,29 @@ const char index_html[] PROGMEM = R"~~~(
         </section>
         <section id="status">
             <h1>Status</h1>
-            <div id="statusArea">
-
-            </div>
+            <dl id="statusArea">
+                <div>
+                <dt>Board</dt>
+                <dd>Temperature: <span id="boardTemp"></span></dd>
+                </div>
+                <div>
+                <dt>WiFi</dt>
+                <dd>IP Address: <span id="wfIpAddress"></span></dd>
+                <dd>Signal: <span id="wfSignal"></span></dd>
+                </div>
+                <div>
+                <dt>Effects</dt>
+                <dd>Total: <span id="fxCount"></span></dd>
+                <dd>Current: <span id="fxCurEffect"></span></dd>
+                <dd>Color Theme: <span id="fxCurHoliday"></span></dd>
+                </div>
+                <div>
+                <dt>Time</dt>
+                <dd>NTP sync: <span id="timeNtp"></span></dd>
+                <dd>Current time: <span id="timeCurrent"></span></dd>
+                <dd>Holiday: <span id="timeHoliday"></span></dd>
+                </div>
+            </dl>
         </section>
 
     </main>
