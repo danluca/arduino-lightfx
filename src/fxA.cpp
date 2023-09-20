@@ -188,7 +188,7 @@ void FxA2::loop() {
         a2Timer.setPeriod(speed);
     }
 
-    EVERY_N_SECONDS(121) {
+    EVERY_N_SECONDS(127) {
         mode = TurnOff;
     }
 }
@@ -323,7 +323,7 @@ void FxA4::loop() {
         }
     }
 
-    EVERY_N_SECONDS(121) {
+    EVERY_N_SECONDS(127) {
         mode = TurnOff;
     }
 }
@@ -349,6 +349,8 @@ FxA5::FxA5() : ovr(frame(0, FRAME_SIZE-1)) {
 
 void FxA5::setup() {
     resetGlobals();
+    lastColorIndex = 3;
+    colorIndex = 7;
     makeFrame();
 }
 
@@ -369,7 +371,6 @@ void FxA5::makeFrame() {
 void FxA5::loop() {
     if (mode == TurnOff) {
         if (turnOffWipe()) {
-            lastColorIndex = colorIndex = 0;
             mode = Chase;
         }
         return;
@@ -394,7 +395,7 @@ void FxA5::loop() {
             tpl(tpl.size()-1, capu(curPos+1, (tpl.size()-1))).fadeToBlackBy(12);
     }
 
-    EVERY_N_SECONDS(121) {
+    EVERY_N_SECONDS(127) {
         mode = TurnOff;
     }
 }

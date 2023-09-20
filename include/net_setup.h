@@ -6,8 +6,6 @@
 
 #include <WiFiNINA.h>
 #include <NTPClient.h>
-//#include <WiFiUdp.h>
-#include <FastLED.h>
 #include <Arduino_LSM6DSOX.h>
 #include <TimeLib.h>
 #include "secrets.h"

@@ -7,7 +7,6 @@ const char index_html[] PROGMEM = R"~~~(
     <title>Luca Light FX</title>
     <link href="pixel.css" rel="stylesheet" type="text/css" />
     <script src="jquery.min.js" type="text/javascript"></script>
-<!--    <script src="jquery-ui.min.js"></script>-->
     <script src="pixel.js" type="text/javascript"></script>
 </head>
 

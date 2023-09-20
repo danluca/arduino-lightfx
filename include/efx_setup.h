@@ -6,10 +6,9 @@
 #define LIGHTFX_EFX_SETUP_H
 
 #include "mic.h"
-#include <FastLED.h>
+#include "PaletteFactory.h"
 #include <ArduinoJson.h>
 #include "config.h"
-#include "PaletteFactory.h"
 
 #define capd(x, d) ((x<d)?d:x)
 #define capu(x, u) ((x>u)?u:x)
