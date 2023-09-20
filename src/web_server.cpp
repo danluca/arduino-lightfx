@@ -116,7 +116,7 @@ size_t writeContentLengthHeader(WiFiClient *client, uint32_t szContent) {
  * saving the trouble of traversing the char array one more time for determining the length. It is needed before-hand to write the content length header.
  * @return number of bytes written to the client
  */
-size_t writeLargeP(WiFiClient *client, const char *src, uint32_t srcSize) {
+size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
     char buf[WEB_BUFFER_SIZE+1];    //room for null terminated string
     size_t pos = 0, sz = 0;
     const char *srcPos = src;

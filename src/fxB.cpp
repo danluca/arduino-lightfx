@@ -133,7 +133,8 @@ void FxB3::loop() {
         hue+=2;
     }
     EVERY_N_SECONDS(133) {
-        mode = TurnOff;
+        if (countLedsOn(&tpl) > 10)
+            mode = TurnOff;
     }
 }
 

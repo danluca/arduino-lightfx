@@ -189,7 +189,8 @@ void FxA2::loop() {
     }
 
     EVERY_N_SECONDS(127) {
-        mode = TurnOff;
+        if (countLedsOn(&tpl) > 10)
+            mode = TurnOff;
     }
 }
 
@@ -324,7 +325,8 @@ void FxA4::loop() {
     }
 
     EVERY_N_SECONDS(127) {
-        mode = TurnOff;
+        if (countLedsOn(&tpl) > 10)
+            mode = TurnOff;
     }
 }
 
@@ -396,7 +398,8 @@ void FxA5::loop() {
     }
 
     EVERY_N_SECONDS(127) {
-        mode = TurnOff;
+        if (countLedsOn(&tpl) > 10)
+            mode = TurnOff;
     }
 }
 

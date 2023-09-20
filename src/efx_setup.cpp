@@ -362,12 +362,29 @@ void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, u
     }
 }
 
-bool isAnyLedOn(CRGB arr[], uint16_t szArray, CRGB backg) {
+uint16_t countLedsOn(CRGBSet *set, CRGB backg) {
+    uint8_t bkgLuma = backg.getLuma();
+    uint16_t ledsOn = 0;
+    for (auto p: *set)
+        if (p.getLuma() > bkgLuma)
+            ledsOn++;
+
+    return ledsOn;
+}
+
+bool isAnyLedOn(CRGB *arr, uint16_t szArray, CRGB backg) {
+    uint8_t bkgLuma = backg.getLuma();
     for (uint x = 0; x < szArray; x++) {
-        if (arr[x] != backg)
+        if (arr[x].getLuma() > bkgLuma)
             return true;
     }
     return false;
+}
+
+bool isAnyLedOn(CRGBSet *set, CRGB backg) {
+    if (backg == CRGB::Black)
+        return (*set);
+    return isAnyLedOn(set->leds, set->size(), backg);
 }
 
 void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs) {

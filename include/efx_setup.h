@@ -96,7 +96,11 @@ void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
 
 void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, uint16_t length);
 
-bool isAnyLedOn(CRGB arr[], uint16_t szArray, CRGB backg);
+uint16_t countLedsOn(CRGBSet *set, CRGB backg = BKG);
+
+bool isAnyLedOn(CRGBSet *set, CRGB backg = BKG);
+
+bool isAnyLedOn(CRGB *arr, uint16_t szArray, CRGB backg = BKG);
 
 void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs = 0);
 
