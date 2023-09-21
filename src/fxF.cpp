@@ -8,6 +8,7 @@ using namespace FxF;
 
 void FxF::fxRegister() {
     static FxF1 fxF1;
+    static FxF2 fxF2;
 }
 
 FxF1::FxF1() {
@@ -57,3 +58,70 @@ void FxF1::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }
+
+// FxF2
+FxF2::FxF2() : pattern(frame(0, FRAME_SIZE-1)) {
+    registryIndex = fxRegistry.registerEffect(this);
+}
+
+void FxF2::setup() {
+    resetGlobals();
+    hue = 2;
+    hueDiff = 7;
+    makePattern(hue);
+}
+
+void FxF2::loop() {
+    // frame rate - 20fps
+    EVERY_N_MILLISECONDS(50) {
+        double dBreath = (exp(sin(millis()/2400.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;       //(exp(sin(millis()/4000.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;
+        uint8_t breathLum = map(dBreath, 0, 255, 0, BRIGHTNESS);
+        CRGB clr = ColorFromPalette(palette, hue, breathLum, LINEARBLEND);
+        for (CRGBSet::iterator m=pattern.begin(), p=tpl.begin(), me=pattern.end(), pe=tpl.end(); m!=me && p!=pe; ++m, ++p) {
+            if ((*m) == CRGB::White)
+                (*p) = clr;
+        }
+        replicateSet(tpl, others);
+        FastLED.show();
+
+        if (breathLum < 2) {
+            hue += hueDiff;
+            makePattern(hue);
+        }
+    }
+}
+
+void FxF2::makePattern(uint8_t hue) {
+    //clear the pattern, start over
+    pattern = CRGB::Black;
+    uint16_t psz = pattern.size();
+    uint16_t s0 = random8(psz);
+    // pattern of XXXX--XX-X-XX--
+    for (uint16_t i = 0; i < pattern.size(); i+=15) {
+        uint16_t s1 = (i+s0+3)%psz;
+        uint16_t s2 = (s1+3)%psz;
+        uint16_t s3 = (s2+1)%psz;
+        uint16_t s4 = (s3+2)%psz;
+        uint16_t s5 = (s4+2)%psz;
+        uint16_t s6 = (s5+1)%psz;
+
+        pattern(s0, s1) = CRGB::White;
+        pattern(s2, s3) = CRGB::White;
+        pattern[s4] = CRGB::White;
+        pattern(s5, s6) = CRGB::White;
+    }
+}
+
+const char *FxF2::description() const {
+    return "FxF2: Halloween breathe with various color blends";
+}
+
+const char *FxF2::name() const {
+    return "FxF2";
+}
+
+void FxF2::describeConfig(JsonArray &json) const {
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
+}
+

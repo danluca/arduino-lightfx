@@ -7,15 +7,12 @@ $(() => {
     $.getJSON( "config.json")
     .done(function( data ) {
         config = data;
-        let fx_id = "";
-        let fx_name = "";
-        let fx_description = "";
         let curFxId = data.curEffect;
         let fxlst = $('#fxlist');
         $.each( data.fx, function( i, fxi ) {
-            fx_id = fxi.registryIndex;
-            fx_name = fxi.name;
-            fx_description = fxi.description;
+            let fx_id = fxi.registryIndex;
+            //let fx_name = fxi.name;
+            let fx_description = overflowString(fxi.description, 60);
 
             // Add to list
             fxlst.append(`<option class="opt-select" value="${fx_id}">${fx_description}</option>`);
@@ -155,4 +152,9 @@ function scheduleClearStatus() {
     }, 5000);
 }
 
-
+function overflowString(str, ovrThreshold) {
+    if (str.length > ovrThreshold) {
+        return str.substring(0, ovrThreshold-3) + "...";
+    }
+    return str;
+}
