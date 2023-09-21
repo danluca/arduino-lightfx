@@ -95,7 +95,7 @@ void FxF2::makePattern(uint8_t hue) {
     //clear the pattern, start over
     pattern = CRGB::Black;
     uint16_t psz = pattern.size();
-    uint16_t s0 = random8(psz);
+    uint16_t s0 = random8(psz/2);
     // pattern of XXXX--XX-X-XX--
     for (uint16_t i = 0; i < pattern.size(); i+=15) {
         uint16_t s1 = (i+s0+3)%psz;
@@ -105,11 +105,12 @@ void FxF2::makePattern(uint8_t hue) {
         uint16_t s5 = (s4+2)%psz;
         uint16_t s6 = (s5+1)%psz;
 
-        pattern(s0, s1) = CRGB::White;
-        pattern(s2, s3) = CRGB::White;
-        pattern[s4] = CRGB::White;
-        pattern(s5, s6) = CRGB::White;
+        pattern(i, i+3) = CRGB::White;
+        pattern(i+6, i+7) = CRGB::White;
+        pattern[i+9] = CRGB::White;
+        pattern(i+11, i+12) = CRGB::White;
     }
+    loopRight(pattern, (Viewport)0, s0);
 }
 
 const char *FxF2::description() const {
