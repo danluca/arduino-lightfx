@@ -486,23 +486,23 @@ bool turnOffWipe(bool rightDir) {
  * Adjust strip overall brightness according with the time of day - as follows:
  * <p>Up until 8pm use the max brightness - i.e. <code>BRIGHTNESS</code></p>
  * <p>Between 8pm-9pm - reduce to 80% of full brightness, i.e. scale with 204</p>
- * <p>Between 9-10pm - reduce to 70% of full brightness, i.e. scale with 180</p>
- * <p>After 10pm - reduce to 60% of full brightness, i.e. scale with 152</p>
+ * <p>Between 9-10pm - reduce to 60% of full brightness, i.e. scale with 152</p>
+ * <p>After 10pm - reduce to 40% of full brightness, i.e. scale with 102</p>
  */
 uint8_t adjustStripBrightness() {
     if (timeStatus() != timeNotSet) {
         int hr = hour();
         fract8 scale;
         if (hr < 8)
-            scale = 152;
+            scale = 102;
         else if (hr < 20)
             scale = 0;
         else if (hr < 21)
             scale = 204;
         else if (hr < 22)
-            scale = 180;
-        else
             scale = 152;
+        else
+            scale = 102;
         if (scale > 0)
             return scale8(FastLED.getBrightness(), scale);
     }
