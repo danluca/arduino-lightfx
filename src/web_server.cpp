@@ -368,6 +368,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
+    fx["brightness"] = stripBrightness;
     //fx["desc"] = curFx->description();    //variable size string - not really relevant, can be obtained from config
     // Time
     JsonObject time = doc.createNestedObject("time");

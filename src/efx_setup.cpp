@@ -173,8 +173,8 @@ void readState() {
 
         stripBrightness = doc["stripBrightness"].as<uint8_t>();
 
-        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d"), stateFileName, stateSize,
-                   autoAdvance ? "true" : "false", seed, fx);
+        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d"), stateFileName, stateSize,
+                   autoAdvance ? "true" : "false", seed, fx, stripBrightness);
     }
 }
 

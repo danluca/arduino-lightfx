@@ -69,6 +69,7 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Total: <span id="fxCount"></span></dd>
                 <dd>Current: <span id="fxCurEffect"></span></dd>
                 <dd>Color Theme: <span id="fxCurHoliday"></span></dd>
+                <dd>Strip Brightness: <span id="fxBrightness"></span></dd>
                 </div>
                 <div>
                 <dt>Time</dt>

@@ -125,7 +125,7 @@ FxF3::FxF3() {
 }
 
 void FxF3::setup() {
-
+    resetGlobals();
 }
 
 void FxF3::loop() {
