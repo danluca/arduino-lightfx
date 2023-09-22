@@ -26,6 +26,7 @@ CRGBPalette16 targetPalette;
 TBlendType    currentBlending;
 OpMode mode = Chase;
 uint8_t brightness = 224;
+uint8_t stripBrightness = brightness;
 uint8_t colorIndex = 0;
 uint8_t lastColorIndex = 0;
 uint8_t fade = 8;
@@ -170,6 +171,8 @@ void readState() {
         uint16_t fx = doc["curFx"].as<uint16_t>();
         fxRegistry.nextEffectPos(fx);
 
+        stripBrightness = doc["stripBrightness"].as<uint8_t>();
+
         Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d"), stateFileName, stateSize,
                    autoAdvance ? "true" : "false", seed, fx);
     }
@@ -180,6 +183,7 @@ void saveState() {
     doc["randomSeed"] = random16_get_seed();
     doc["autoFxRoll"] = fxRegistry.isAutoRoll();
     doc["curFx"] = fxRegistry.curEffectPos();
+    doc["stripBrightness"] = stripBrightness;
     String str;
     serializeJson(doc, str);
     if (!writeTextFile(stateFileName, &str))
@@ -434,7 +438,7 @@ bool turnOffSpots() {
             else
                 ledsOn++;
         }
-        FastLED.show();
+        FastLED.show(stripBrightness);
         setOff = ledsOn == 0;
     }
 
@@ -471,11 +475,38 @@ bool turnOffWipe(bool rightDir) {
             shiftRight(strip, BKG);
         else
             shiftLeft(strip, BKG);
-        FastLED.show();
+        FastLED.show(stripBrightness);
         allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
     }
 
     return allOff;
+}
+
+/**
+ * Adjust strip overall brightness according with the time of day - as follows:
+ * <p>Up until 8pm use the max brightness - i.e. <code>BRIGHTNESS</code></p>
+ * <p>Between 8pm-9pm - reduce to 80% of full brightness, i.e. scale with 204</p>
+ * <p>Between 9-10pm - reduce to 70% of full brightness, i.e. scale with 180</p>
+ * <p>After 10pm - reduce to 60% of full brightness, i.e. scale with 152</p>
+ */
+uint8_t adjustStripBrightness() {
+    if (timeStatus() != timeNotSet) {
+        int hr = hour();
+        fract8 scale;
+        if (hr < 8)
+            scale = 152;
+        else if (hr < 20)
+            scale = 0;
+        else if (hr < 21)
+            scale = 204;
+        else if (hr < 22)
+            scale = 180;
+        else
+            scale = 152;
+        if (scale > 0)
+            return scale8(FastLED.getBrightness(), scale);
+    }
+    return FastLED.getBrightness();
 }
 
 //Setup all effects -------------------
@@ -505,6 +536,7 @@ void fx_run() {
     EVERY_N_MINUTES(5) {
         fxRegistry.nextRandomEffectPos();
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+        stripBrightness = adjustStripBrightness();
         saveState();
     }
 

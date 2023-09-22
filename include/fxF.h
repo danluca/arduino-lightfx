@@ -41,5 +41,20 @@ namespace FxF {
         void makePattern(uint8_t hue);
         CRGBSet pattern;
     };
+
+    class FxF3 : public LedEffect {
+    public:
+        FxF3();
+
+        void setup() override;
+
+        void loop() override;
+
+        const char *description() const override;
+
+        const char *name() const override;
+
+        void describeConfig(JsonArray &json) const override;
+    };
 }
 #endif //ARDUINO_LIGHTFX_FXF_H

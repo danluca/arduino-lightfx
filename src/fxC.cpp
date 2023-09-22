@@ -45,7 +45,7 @@ void FxC1::loop() {
     }
     replicateSet(setB, others);
 
-    FastLED.show();
+    FastLED.show(stripBrightness);
 }
 
 const char *FxC1::description() const {
@@ -113,7 +113,7 @@ void FxC2::loop() {
     leds[(k+i+j)/3] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/53) : CHSV( ms / 53, 200, 255);
 
     replicateSet(tpl, others);
-    FastLED.show();
+    FastLED.show(stripBrightness);
 }
 
 const char *FxC2::description() const {
@@ -163,7 +163,7 @@ void FxC3::loop() {
         tpl.fadeToBlackBy(4);
 
         replicateSet(tpl, others);
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
@@ -220,10 +220,10 @@ void FxC4::loop() {
 
             CRGB color = ColorFromPalette(palette, random8(), brightness / dimmer, LINEARBLEND);
             fill_solid(leds + ledstart, ledlen, color);
-            FastLED.show();                       // Show a section of LED's
+            FastLED.show(stripBrightness);                       // Show a section of LED's
             delay(random8(4, 10));                                     // each flash only lasts 4-10 milliseconds
             fill_solid(leds + ledstart, ledlen, BKG);           // Clear the section of LED's
-            FastLED.show();
+            FastLED.show(stripBrightness);
 
             if (flashCounter == 0) delay(250);                       // longer speed until next flash after the leader
 
@@ -266,7 +266,7 @@ void FxC5::loop() {
     EVERY_N_MILLISECONDS_I(c5Timer, speed) {
         matrix();
         c5Timer.setPeriod(speed);
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 
 }
@@ -334,7 +334,7 @@ void FxC6::loop() {
 
     EVERY_N_MILLISECONDS_I(c6Timer, delay) {
         one_sine_pal(millis()>>4);
-        FastLED.show();
+        FastLED.show(stripBrightness);
         c6Timer.setPeriod(delay);
     }
 

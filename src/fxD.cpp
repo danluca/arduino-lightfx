@@ -44,7 +44,7 @@ void FxD1::loop() {
 
     EVERY_N_MILLISECONDS(speed) {                           // FastLED based non-blocking speed to update/display the sequence.
         confetti();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 }
 
@@ -108,7 +108,7 @@ void FxD2::setup() {
 void FxD2::loop() {
     EVERY_N_MILLISECONDS(75) {
         dot_beat();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 }
 
@@ -151,7 +151,7 @@ void FxD3::setup() {
 void FxD3::loop() {
     EVERY_N_MILLISECONDS(50) {                                  // FastLED based non-blocking delay to update/display the sequence.
         plasma();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 
     EVERY_N_SECONDS(2) {
@@ -213,7 +213,7 @@ void FxD4::loop() {
 
     EVERY_N_MILLISECONDS(50) {
         rainbow_march();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 }
 
@@ -268,7 +268,7 @@ void FxD5::loop() {
     }
     EVERY_N_MILLISECONDS(100) {
         ripples();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 }
 

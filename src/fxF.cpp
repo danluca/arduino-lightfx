@@ -41,7 +41,7 @@ void FxF1::loop() {
         seg2 |= clr2;
 
         replicateSet(tpl, others);
-        FastLED.show();
+        FastLED.show(stripBrightness);
         hue += hueDiff;
     }
 }
@@ -82,7 +82,7 @@ void FxF2::loop() {
                 (*p) = clr;
         }
         replicateSet(tpl, others);
-        FastLED.show();
+        FastLED.show(stripBrightness);
 
         if (breathLum < 2) {
             hue += hueDiff;
@@ -94,21 +94,14 @@ void FxF2::loop() {
 void FxF2::makePattern(uint8_t hue) {
     //clear the pattern, start over
     pattern = CRGB::Black;
-    uint16_t psz = pattern.size();
-    uint16_t s0 = random8(psz/2);
-    // pattern of XXXX--XX-X-XX--
-    for (uint16_t i = 0; i < pattern.size(); i+=15) {
-        uint16_t s1 = (i+s0+3)%psz;
-        uint16_t s2 = (s1+3)%psz;
-        uint16_t s3 = (s2+1)%psz;
-        uint16_t s4 = (s3+2)%psz;
-        uint16_t s5 = (s4+2)%psz;
-        uint16_t s6 = (s5+1)%psz;
-
-        pattern(i, i+3) = CRGB::White;
-        pattern(i+6, i+7) = CRGB::White;
-        pattern[i+9] = CRGB::White;
-        pattern(i+11, i+12) = CRGB::White;
+    uint16_t s0 = random8(17);
+    // pattern of XXX--XX-X-XX--XXX
+    for (uint16_t i = 0; i < pattern.size(); i+=17) {
+        pattern(i, i+2) = CRGB::White;
+        pattern(i+5, i+6) = CRGB::White;
+        pattern[i+8] = CRGB::White;
+        pattern(i+10, i+11) = CRGB::White;
+        pattern(i+14, i+16) = CRGB::White;
     }
     loopRight(pattern, (Viewport)0, s0);
 }
@@ -122,6 +115,32 @@ const char *FxF2::name() const {
 }
 
 void FxF2::describeConfig(JsonArray &json) const {
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
+}
+
+// FxF3
+FxF3::FxF3() {
+    registryIndex = fxRegistry.registerEffect(this);
+}
+
+void FxF3::setup() {
+
+}
+
+void FxF3::loop() {
+
+}
+
+const char *FxF3::description() const {
+    return "FxF3: Eye Blink";
+}
+
+const char *FxF3::name() const {
+    return "FxF3";
+}
+
+void FxF3::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
 }

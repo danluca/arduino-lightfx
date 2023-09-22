@@ -41,6 +41,7 @@ extern CRGBPalette16 palette;
 extern CRGBPalette16 targetPalette;
 extern OpMode mode;
 extern uint8_t brightness;
+extern uint8_t stripBrightness;
 extern uint8_t colorIndex;
 extern uint8_t lastColorIndex;
 extern uint8_t fade;
@@ -108,6 +109,7 @@ void replicateSet(const CRGBSet& src, CRGBSet& dest);
 
 bool turnOffWipe(bool rightDir = false);
 
+uint8_t adjustStripBrightness();
 
 CRGB *mirrorLow(CRGB array[], uint16_t szArray);
 

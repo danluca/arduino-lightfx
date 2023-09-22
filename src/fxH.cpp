@@ -97,7 +97,7 @@ void FxH1::loop() {
             Fire2012WithPalette(x);  // run simulation frame 1, using palette colors
 
         replicateSet(tpl, others);
-        FastLED.show();  // display this frame
+        FastLED.show(stripBrightness);  // display this frame
     }
 }
 
@@ -171,7 +171,7 @@ void FxH2::loop() {
 
     EVERY_N_MILLISECONDS(speed) {
         confetti_pal();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 
 }
@@ -255,7 +255,7 @@ void FxH3::loop() {
             tpl(1, FRAME_SIZE-2).fill_rainbow(hue, hueDiff);
         hue += 3;
         replicateSet(tpl, others);
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 
 }

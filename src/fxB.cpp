@@ -29,7 +29,7 @@ void FxB1::setup() {
 void FxB1::loop() {
     EVERY_N_MILLISECONDS(60) {
         rainbow();
-        FastLED.show();
+        FastLED.show(stripBrightness);
         hue+=2;
     }
 }
@@ -77,7 +77,7 @@ void FxB2::setup() {
 void FxB2::loop() {
     EVERY_N_MILLISECONDS(60) {
         rainbowWithGlitter();
-        FastLED.show();
+        FastLED.show(stripBrightness);
         hue+=2;
     }
 }
@@ -129,7 +129,7 @@ void FxB3::loop() {
 
     EVERY_N_MILLISECONDS(50) {
         fxb_confetti();
-        FastLED.show();
+        FastLED.show(stripBrightness);
         hue+=2;
     }
     EVERY_N_SECONDS(133) {
@@ -178,7 +178,7 @@ void FxB4::setup() {
 void FxB4::loop() {
   EVERY_N_MILLISECONDS(60) {
     sinelon();
-    FastLED.show();
+    FastLED.show(stripBrightness);
     hue+=3;
   }
 }
@@ -226,7 +226,7 @@ void FxB5::loop() {
 
     EVERY_N_MILLIS(50) {
         juggle_short();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 }
 
@@ -278,7 +278,7 @@ void FxB6::loop() {
     EVERY_N_MILLISECONDS(50) {
         bpm();
         hue += 2;  // slowly cycle the "base color" through the rainbow
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 }
 
@@ -320,7 +320,7 @@ void FxB7::loop() {
     EVERY_N_MILLISECONDS(75) {
         ease();
         hue+=2;
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 
 }
@@ -374,7 +374,7 @@ void FxB8::loop() {
 
     EVERY_N_MILLISECONDS(60) {
         fadein();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 
     if (!paletteFactory.isHolidayLimitedHue()) {
@@ -427,7 +427,7 @@ void FxB9::loop() {
 
     EVERY_N_MILLIS(60) {
         juggle_long();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 }
 

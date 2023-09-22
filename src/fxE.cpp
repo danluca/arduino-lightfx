@@ -42,7 +42,7 @@ void FxE1::loop() {
 
     EVERY_N_MILLISECONDS_I(fxe1Timer, speed) {                           // FastLED based non-blocking speed to update/display the sequence.
         twinkle();
-        FastLED.show();
+        FastLED.show(stripBrightness);
         fxe1Timer.setPeriod(speed);
     }
 
@@ -104,7 +104,7 @@ void FxE2::setup() {
 void FxE2::loop() {
     EVERY_N_MILLIS(100) {
         beatwave();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 
     EVERY_N_SECONDS(2) {
@@ -223,7 +223,7 @@ void FxE3::loop() {
         }
 
         replicateSet(tpl, others);
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 }
 
@@ -264,7 +264,7 @@ void FxE4::loop() {
 
     EVERY_N_MILLISECONDS(50) {
         serendipitous();
-        FastLED.show();
+        FastLED.show(stripBrightness);
     }
 
 }

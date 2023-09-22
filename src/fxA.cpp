@@ -85,9 +85,9 @@ void FxA1::loop() {
         replicateSet(tpl, others);
 
         if (paletteFactory.currentHoliday() == Halloween)
-            FastLED.show(random8(32, FastLED.getBrightness())); //add a flicker
+            FastLED.show(random8(32, stripBrightness)); //add a flicker
         else
-            FastLED.show();
+            FastLED.show(stripBrightness);
 
         incr(curPos, 1, movLimit);
         if (curPos == 0) {
@@ -163,9 +163,9 @@ void FxA2::loop() {
         }
         replicateSet(tpl, others);
         if (paletteFactory.currentHoliday() == Halloween)
-            FastLED.show(random8(32, FastLED.getBrightness())); //add a flicker
+            FastLED.show(random8(32, stripBrightness)); //add a flicker
         else
-            FastLED.show();
+            FastLED.show(stripBrightness);
         incr(curPos, 1, tpl.size());
         uint8_t ss = curPos % (szSegment + spacing);
         if (ss == 0) {
@@ -237,9 +237,9 @@ void FxA3::loop() {
             shiftLeft(tpl, curPos < szSegment ? dot[curPos] : BKG);
         replicateSet(tpl, others);
         if (paletteFactory.currentHoliday() == Halloween)
-            FastLED.show(random8(32, FastLED.getBrightness())); //add a flicker
+            FastLED.show(random8(32, stripBrightness)); //add a flicker
         else
-            FastLED.show();
+            FastLED.show(stripBrightness);
 
         incr(curPos, 1, tpl.size());
         if (curPos == 0) {
@@ -309,9 +309,9 @@ void FxA4::loop() {
         }
         replicateSet(tpl, others);
         if (paletteFactory.currentHoliday() == Halloween)
-            FastLED.show(random8(32, FastLED.getBrightness())); //add a flicker
+            FastLED.show(random8(32, stripBrightness)); //add a flicker
         else
-            FastLED.show();
+            FastLED.show(stripBrightness);
 
         incr(curPos, 1, FRAME_SIZE);
         if (curPos == 0) {
@@ -381,7 +381,7 @@ void FxA5::loop() {
     EVERY_N_MILLISECONDS_I(a5Timer, speed) {
         shiftRight(tpl, ovr[capu(curPos, (ovr.size()-1))]);
         replicateSet(tpl, others);
-        FastLED.show();
+        FastLED.show(stripBrightness);
 
         incr(curPos, 1, tpl.size()+4);
         if (curPos == 0) {
