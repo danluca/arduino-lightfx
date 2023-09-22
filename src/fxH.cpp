@@ -41,6 +41,7 @@ FxH1::FxH1() : fires{tpl(0, FRAME_SIZE/2-1), tpl(FRAME_SIZE-1, FRAME_SIZE/2)} {
 
 void FxH1::setup() {
     resetGlobals();
+    brightness = 216;
 
     //Fire palette definition - for New Year get a blue fire
     switch (paletteFactory.currentHoliday()) {
@@ -134,7 +135,7 @@ void FxH1::Fire2012WithPalette(uint8_t xFire) {
         CRGB color = ColorFromPalette(palette, colorIndex);
         fire[j] = color;
         if (j > random8(5, 9))
-            fire[j].nscale8(flameBrightness);
+            fire[j].nscale8(brightness);
     }
 }
 
@@ -145,7 +146,7 @@ const char *FxH1::name() const {
 void FxH1::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
-    obj["flameBrightness"] = flameBrightness;
+    obj["flameBrightness"] = brightness;
     obj["numberOfFires"] = numFires;
 }
 

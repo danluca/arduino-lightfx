@@ -9,7 +9,6 @@
 const uint8_t dimmed = 20;
 const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
 const uint8_t flameBrightness = 180;
-const uint8_t sparkBrightness = 255;
 const CRGB BKG = CRGB::Black;
 const uint8_t maxChanges = 24;
 volatile bool fxBump = false;
@@ -27,6 +26,7 @@ TBlendType    currentBlending;
 OpMode mode = Chase;
 uint8_t brightness = 224;
 uint8_t stripBrightness = brightness;
+bool stripBrightnessLocked = false;
 uint8_t colorIndex = 0;
 uint8_t lastColorIndex = 0;
 uint8_t fade = 8;
@@ -490,11 +490,11 @@ bool turnOffWipe(bool rightDir) {
  * <p>After 10pm - reduce to 40% of full brightness, i.e. scale with 102</p>
  */
 uint8_t adjustStripBrightness() {
-    if (timeStatus() != timeNotSet) {
+    if (!(stripBrightnessLocked || timeStatus() == timeNotSet)) {
         int hr = hour();
         fract8 scale;
         if (hr < 8)
-            scale = 102;
+            scale = 100;
         else if (hr < 20)
             scale = 0;
         else if (hr < 21)

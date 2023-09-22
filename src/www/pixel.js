@@ -63,7 +63,10 @@ function getStatus() {
             let hdlst = $('#holidayList');
             hdlst.val(data.fx.holiday);
             hdlst.attr("currentColorTheme", data.fx.holiday);
-            $('#fxBrightness').html(`${data.fx.brightness} (${data.fx.brightness/256*100.0} %)`)
+            $('#fxBrightness').html(`${(data.fx.brightness/256*100.0).toFixed(2)} % (${data.fx.brightness}${data.fx.brightnessLocked?' fixed':' auto'})`)
+            let brList = $('#brightList');
+            brList.val(data.fx.brightness);
+            brList.attr("currentBrightness", data.fx.brightness);
         })
         .fail(function (req, textStatus, error){
             console.log(`status.json call failed ${textStatus} - ${error}`);
@@ -142,6 +145,31 @@ function updateHoliday() {
         error: function (request, status, error) {
             $('#updateStatus').html(`Color theme update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
             hldlst.val(hldlst.attr("currentColorTheme"));
+            scheduleClearStatus();
+        }
+    });
+}
+
+function updateBrightness() {
+    let brlst = $('#brightList');
+    let selBr = brlst.val();
+    let request = {};
+    request["brightness"] = selBr;
+    $.ajax({
+        type: "PUT",
+        url: "/fx",
+        contentType: "application/json",
+        dataType: "json",
+        data: JSON.stringify(request),
+        success: function (response) {
+            $('#updateStatus').html("Strip brightness update successful").removeClass().addClass("status-ok");
+            brlst.attr("currentBrightness", selBr);
+            $('#fxBrightness').html(`${(data.fx.brightness/256*100.0).toFixed(2)} % (${data.fx.brightness}${data.fx.brightnessLocked?' fixed':' auto'})`);
+            scheduleClearStatus();
+        },
+        error: function (request, status, error) {
+            $('#updateStatus').html(`Strip brightness update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
+            brlst.val(brlst.attr("currentBrightness"));
             scheduleClearStatus();
         }
     });

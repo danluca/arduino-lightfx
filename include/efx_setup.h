@@ -27,8 +27,6 @@ const uint16_t turnOffSeq[] = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 
 extern const uint8_t dimmed;
 extern const uint16_t FRAME_SIZE;
-extern const uint8_t flameBrightness;
-extern const uint8_t sparkBrightness;
 extern const CRGB BKG;
 extern const uint8_t maxChanges;
 enum OpMode { TurnOff, Chase };
@@ -42,6 +40,7 @@ extern CRGBPalette16 targetPalette;
 extern OpMode mode;
 extern uint8_t brightness;
 extern uint8_t stripBrightness;
+extern bool stripBrightnessLocked;
 extern uint8_t colorIndex;
 extern uint8_t lastColorIndex;
 extern uint8_t fade;

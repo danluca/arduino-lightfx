@@ -18,7 +18,7 @@ const char index_html[] PROGMEM = R"~~~(
             <h1>Effects</h1>
             <div id="fxChangeArea">
                 <div id="fxSelectArea">
-                <label for="fxlist" id="fxListLabel">Change current light effect</label>
+                <label for="fxlist" id="fxListLabel">Current light effect</label>
                 <select id="fxlist" onchange="updateEffect()">
                     <option value="none">Select an effect</option>
                 </select>
@@ -26,6 +26,20 @@ const char index_html[] PROGMEM = R"~~~(
                 <div id="fxAutoChangeArea">
                     <input type="checkbox" id="autoFxChange" onchange="updateAuto()"/>
                     <label for="autoFxChange" id="autoFxChangeLabel">Automatic Effect change</label>
+                    <label for="brightList" id="brightListLabel">Strip brightness</label>
+                    <select id="brightList" onchange="updateBrightness()">
+                        <option value="0">Auto</option>
+                        <option value="255">100%</option>
+                        <option value="230">90%</option>
+                        <option value="204">80%</option>
+                        <option value="180">70%</option>
+                        <option value="152">60%</option>
+                        <option value="128">50%</option>
+                        <option value="102">40%</option>
+                        <option value="77">30%</option>
+                        <option value="51">20%</option>
+                        <option value="25">10%</option>
+                    </select>
                 </div>
             </div>
             <div id="curEffectArea">

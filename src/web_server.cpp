@@ -369,6 +369,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
     fx["brightness"] = stripBrightness;
+    fx["brightnessLocked"] = stripBrightnessLocked;
     //fx["desc"] = curFx->description();    //variable size string - not really relevant, can be obtained from config
     // Time
     JsonObject time = doc.createNestedObject("time");
@@ -416,23 +417,36 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         return handleInternalError(client, uri, error.c_str());
 
     StaticJsonDocument<128> resp;
+    const char strAuto[] = "auto";
+    const char strEffect[] = "effect";
+    const char strHoliday[] = "holiday";
+    const char strBrightness[] = "brightness";
     JsonObject upd = resp.createNestedObject("updates");
-    bool autoAdvance = !doc.containsKey("auto") || doc["auto"].as<bool>();
+    bool autoAdvance = !doc.containsKey(strAuto) || doc[strAuto].as<bool>();
     fxRegistry.autoRoll(autoAdvance);
-    upd["auto"] = autoAdvance;
-    if (doc.containsKey("effect")) {
-        uint16_t nextFx = doc["effect"].as<uint16_t >();
+    upd[strAuto] = autoAdvance;
+    if (doc.containsKey(strEffect)) {
+        uint16_t nextFx = doc[strEffect].as<uint16_t >();
         fxRegistry.nextEffectPos(nextFx);
-        upd["effect"] = nextFx;
+        upd[strEffect] = nextFx;
     }
-    if (doc.containsKey("holiday")) {
-        String userHoliday = doc["holiday"].as<String>();
+    if (doc.containsKey(strHoliday)) {
+        String userHoliday = doc[strHoliday].as<String>();
         paletteFactory.forceHoliday(parseHoliday(&userHoliday));
-        upd["holiday"] = userHoliday;
+        upd[strHoliday] = userHoliday;
+    }
+    if (doc.containsKey(strBrightness)) {
+        uint8_t br = doc[strBrightness].as<uint8_t>();
+        stripBrightnessLocked = br > 0;
+        if (stripBrightnessLocked)
+            stripBrightness = br;
+        upd[strBrightness] = stripBrightness;
+        upd["brightnessLocked"] = stripBrightnessLocked;
     }
 #ifndef DISABLE_LOGGING
-    Log.infoln(F("FX: Current running effect updated to %u, autoswitch %s, holiday %s"),
-               fxRegistry.curEffectPos(), fxRegistry.isAutoRoll()?"true":"false", holidayToString(paletteFactory.currentHoliday()));
+    Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),
+               fxRegistry.curEffectPos(), fxRegistry.isAutoRoll(), holidayToString(paletteFactory.currentHoliday()),
+               stripBrightness, stripBrightnessLocked?"fixed":"automatic");
 #endif
 
     //main status and headers
