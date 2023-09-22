@@ -165,7 +165,7 @@ function updateBrightness() {
         success: function (response) {
             $('#updateStatus').html("Strip brightness update successful").removeClass().addClass("status-ok");
             brlst.attr("currentBrightness", selBr);
-            $('#fxBrightness').html(`${(data.fx.brightness/256*100.0).toFixed(2)} % (${data.fx.brightness}${data.fx.brightnessLocked?' fixed':' auto'})`);
+            $('#fxBrightness').html(`${(response.updates.brightness/256*100.0).toFixed(2)} % (${response.updates.brightness}${response.updates.brightnessLocked?' fixed':' auto'})`);
             scheduleClearStatus();
         },
         error: function (request, status, error) {
