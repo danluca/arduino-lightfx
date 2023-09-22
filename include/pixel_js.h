@@ -64,7 +64,7 @@ function getStatus() {
             let hdlst = $('#holidayList');
             hdlst.val(data.fx.holiday);
             hdlst.attr("currentColorTheme", data.fx.holiday);
-            $('#fxBrightness').html(`${data.fx.brightness} (${data.fx.brightness/256*100.0 %})`)
+            $('#fxBrightness').html(`${data.fx.brightness} (${data.fx.brightness/256*100.0} %)`)
         })
         .fail(function (req, textStatus, error){
             console.log(`status.json call failed ${textStatus} - ${error}`);
