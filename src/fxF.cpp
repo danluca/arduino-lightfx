@@ -5,6 +5,7 @@
 #include "fxF.h"
 #include <vector>
 #include <algorithm>
+#include "log.h"
 
 using namespace FxF;
 
@@ -139,12 +140,14 @@ void FxF3::loop() {
         uint8_t numEyes = 1 + random8(maxEyes);
         for (uint8_t i = 0; i < numEyes; i++) {
             Viewport v = nextEyePos();
+            Log.infoln("Eye %d/%d, found viewport [%d, %d]", i, numEyes, v.low, v.high);
             if (v.size() > 0) {
                 EyeBlink *availEye = findAvailableEye();
                 if (availEye) {
                     availEye->reset(random16(v.low, v.high),
                         ColorFromPalette(palette, hue, brightness, LINEARBLEND));
                     availEye->start();
+                    Log.infoln("Started Eye @ %d, position %d", availEye, availEye->pos);
                     hue += hueDiff;
                 }
             }
@@ -227,10 +230,13 @@ EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
 }
 
 void EyeBlink::step() {
+    Log.infoln("Eye @ pos %d active %T", pos, isActive());
     if (!isActive())
         return;
     CRGBSet eye = (*holderSet)(pos, pos+size-1);
     uint8_t halfEyeSize = eyeSize/2;
+    Log.infoln("BEFORE SM: curStep=%d, curBrightness=%d, brIncr=%d, curLen=%d, curPause=%d, idleTime=%d",
+               curStep, curBrightness, brIncr, curLen, curPause, idleTime);
     switch (curStep) {
         case OpenLid:
             curBrightness = qadd8(curBrightness, brIncr);
@@ -278,6 +284,9 @@ void EyeBlink::step() {
                 curStep = Off;
             break;
     }
+    Log.infoln("AFTER SM: curStep=%d, curBrightness=%d, brIncr=%d, curLen=%d, curPause=%d, idleTime=%d",
+               curStep, curBrightness, brIncr, curLen, curPause, idleTime);
+
 }
 
 void EyeBlink::start() {
