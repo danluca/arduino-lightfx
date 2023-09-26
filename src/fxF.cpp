@@ -154,6 +154,8 @@ void FxF3::loop() {
         //step advance each active eye
         for (auto & eye : eyes)
             eye.step();
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
     }
 }
 
