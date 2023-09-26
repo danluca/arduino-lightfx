@@ -54,3 +54,12 @@ Several light effects are original, many others are inspired from great example 
 ## Details
 The target board is an [Arduino RP 2040](https://docs.arduino.cc/hardware/nano-rp2040-connect) feature packed and powerful in a small package.
 It sports a Wi-Fi module that has been leveraged to host a little web-server to aid in configuring the light effects.
+
+## C++ standard
+The current Arduino libraries are leveraging the **C++ 14** standard, hence the code can be written with this standard 
+level in mind and IDE support can be configured accordingly (if needed).
+
+The confirmation of which C++ standard is currently in use comes from a verbose build with PlatformIO - `pio run -v` after a clean.
+Inspect the compiler `-std=xyz` argument. For instance, `-std=gnu++14` indicates C++ 14 standard is used.
+
+Please see [C++ 14 reference](https://en.cppreference.com/w/cpp/14) for standard details.

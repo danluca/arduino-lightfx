@@ -8,6 +8,7 @@ const char index_html[] PROGMEM = R"~~~(
     <link href="pixel.css" rel="stylesheet" type="text/css" />
     <script src="jquery.min.js" type="text/javascript"></script>
     <script src="pixel.js" type="text/javascript"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
 <body>
@@ -26,6 +27,8 @@ const char index_html[] PROGMEM = R"~~~(
                 <div id="fxAutoChangeArea">
                     <input type="checkbox" id="autoFxChange" onchange="updateAuto()"/>
                     <label for="autoFxChange" id="autoFxChangeLabel">Automatic Effect change</label>
+                </div>
+                <div id="fxBrightChangeArea">
                     <label for="brightList" id="brightListLabel">Strip brightness</label>
                     <select id="brightList" onchange="updateBrightness()">
                         <option value="0">Auto</option>
@@ -67,7 +70,7 @@ const char index_html[] PROGMEM = R"~~~(
             </div>
         </section>
         <section id="status">
-            <h1>Status</h1>
+            <h1 onclick="getStatus()">Status</h1>
             <dl id="statusArea">
                 <div>
                 <dt>Board</dt>

@@ -173,7 +173,7 @@ void readState() {
 
         stripBrightness = doc["stripBrightness"].as<uint8_t>();
 
-        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d"), stateFileName, stateSize,
+        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust)"), stateFileName, stateSize,
                    autoAdvance ? "true" : "false", seed, fx, stripBrightness);
     }
 }
@@ -400,20 +400,134 @@ void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLen
     }
 }
 
-CRGB *mirrorLow(CRGB array[], uint16_t szArray) {
-    uint swaps = szArray >> 1;
+void mirrorLow(CRGBSet &set) {
+    int swaps = set.size()/2;
     for (int x = 0; x < swaps; x++) {
-        array[szArray - x - 1] = array[x];
+        set[set.size() - x - 1] = set[x];
     }
-    return array;
 }
 
-CRGB *mirrorHigh(CRGB array[], uint16_t szArray) {
-    uint swaps = szArray >> 1;
-    for (uint x = 0; x < swaps; x++) {
-        array[x] = array[szArray - x - 1];
+void mirrorHigh(CRGBSet &set) {
+    int swaps = set.size()/2;
+    for (int x = 0; x < swaps; x++) {
+        set[x] = set[set.size() - x - 1];
     }
-    return array;
+}
+
+/**
+ * Adjust the brightness of the given color
+ * <p>Code borrowed from <code>ColorFromPalette</code> function</p>
+ * @param color color to change
+ * @param bright brightness to apply
+ * @return new color instance with desired brightness
+ */
+CRGB adjustBrightness(CRGB color, uint8_t bright) {
+    //inspired from ColorFromPalette implementation of applying brightness factor
+    uint8_t r = color.r, g = color.g, b = color.b;
+    if (brightness != 255) {
+        if (brightness) {
+            ++brightness; // adjust for rounding
+            // Now, since localBright is nonzero, we don't need the full scale8_video logic;
+            // we can just to scale8 and then add one (unless scale8 fixed) to all nonzero inputs.
+            if (r)
+                r = scale8_LEAVING_R1_DIRTY(r, brightness);
+            if (g)
+                g = scale8_LEAVING_R1_DIRTY( g, brightness);
+            if (b)
+                b = scale8_LEAVING_R1_DIRTY( b, brightness);
+            cleanup_R1();
+        } else
+            r = g = b = 0;
+    }
+    return {r, g, b};
+}
+
+/**
+ * Multiply function for color blending purposes - assumes the operands are fractional (n/256) and the result
+ * of multiplying 2 fractional numbers is less than both numbers (e.g. 0.2 x 0.3 = 0.06). Special handling for operand values of 255 (i.e. 1.0)
+ * <p>f(a,b) = a*b</p>
+ * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
+ * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
+ * @return (a*b)/256
+ * @see https://en.wikipedia.org/wiki/Blend_modes
+ */
+uint8_t bmul8(uint8_t a, uint8_t b) {
+    if (a==255)
+        return b;
+    if (b==255)
+        return a;
+    return ((uint16_t)a*(uint16_t)b)/256;
+}
+
+/**
+ * Screen two 8 bit operands for color blending purposes - assumes the operands are fractional (n/256)
+ * <p>f(a,b)=1-(1-a)*(1-b)</p>
+ * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
+ * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
+ * @return 255-bmul8(255-a, 255-b)
+ * @see https://en.wikipedia.org/wiki/Blend_modes
+ */
+uint8_t bscr8(uint8_t a, uint8_t b) {
+    return 255-bmul8(255-a, 255-b);
+}
+
+/**
+ * Overlay two 8 bit operands for color blending purposes - assumes the operands are fractional (n/256)
+ * <p>f(a,b)=2*a*b, if a<0.5; 1-2*(1-a)*(1-b), otherwise</p>
+ * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
+ * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
+ * @return the 8 bit value per formula above
+ * @see https://en.wikipedia.org/wiki/Blend_modes
+ */
+uint8_t bovl8(uint8_t a, uint8_t b) {
+    if (a < 128)
+        return bmul8(a, b)*2;
+    return 255-bmul8(255-a, 255-b)*2;
+}
+
+/**
+ * Blend multiply 2 color sets
+ * @param blendLayer base color set, which is also the target set (the one receiving the result)
+ * @param topLayer color set to multiply with
+ * @see https://en.wikipedia.org/wiki/Blend_modes
+ */
+void blendMultiply(CRGBSet &blendLayer, const CRGBSet &topLayer) {
+    for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp) {
+        CRGB &cbt = (*bt), &ctp = (*tp);
+        cbt.r = bmul8(cbt.r, ctp.r);
+        cbt.g = bmul8(cbt.g, ctp.g);
+        cbt.b = bmul8(cbt.b, ctp.b);
+    }
+}
+
+/**
+ * Blend screen 2 color sets
+ * @param blendLayer base color set, which is also the target set (the one receiving the result)
+ * @param topLayer color set to screen with
+ * @see https://en.wikipedia.org/wiki/Blend_modes
+ */
+void blendScreen(CRGBSet &blendLayer, const CRGBSet &topLayer) {
+    for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp) {
+        CRGB &cbt = (*bt), &ctp = (*tp);
+        cbt.r = bscr8(cbt.r, ctp.r);
+        cbt.g = bscr8(cbt.g, ctp.g);
+        cbt.b = bscr8(cbt.b, ctp.b);
+    }
+}
+
+/**
+ * Blend overlay 2 color sets
+ * @param blendLayer base color set, which is also the target set (the one receiving the result)
+ * @param topLayer color set to overlay with
+ * @see https://en.wikipedia.org/wiki/Blend_modes
+ */
+void blendOverlay(CRGBSet &blendLayer, const CRGBSet &topLayer) {
+    for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp) {
+        CRGB &cbt = (*bt), &ctp = (*tp);
+        cbt.r = bovl8(cbt.r, ctp.r);
+        cbt.g = bovl8(cbt.g, ctp.g);
+        cbt.b = bovl8(cbt.b, ctp.b);
+    }
 }
 
 /**

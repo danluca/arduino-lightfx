@@ -110,13 +110,21 @@ bool turnOffWipe(bool rightDir = false);
 
 uint8_t adjustStripBrightness();
 
-CRGB *mirrorLow(CRGB array[], uint16_t szArray);
+void mirrorLow(CRGBSet &set);
 
-CRGB *mirrorHigh(CRGB array[], uint16_t szArray);
+void mirrorHigh(CRGBSet &set);
 
 bool turnOffSpots();
 
 void resetGlobals();
+
+uint8_t bmul8(uint8_t a, uint8_t b);
+uint8_t bscr8(uint8_t a, uint8_t b);
+uint8_t bovl8(uint8_t a, uint8_t b);
+void blendMultiply(CRGBSet &blendLayer, const CRGBSet &topLayer);
+void blendScreen(CRGBSet &blendLayer, const CRGBSet &topLayer);
+void blendOverlay(CRGBSet &blendLayer, const CRGBSet &topLayer);
+CRGB adjustBrightness(CRGB color, uint8_t bright);
 
 namespace FxA {
     void fxRegister();

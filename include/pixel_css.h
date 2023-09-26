@@ -26,6 +26,7 @@ footer {
     text-align: center;
     font-size: 12pt;
     margin-top: 2em;
+    width: 95%;
 }
 
 #effects, #time, #status, #settings {
@@ -34,10 +35,12 @@ footer {
     padding: 2em 1em;
     margin-top: 2em;
     background-color: #F4F4FD;
+    float: left;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 #effects #fxChangeArea, #time #timeChangeArea {
-    width: 49%;
     float: left;
 }
 
@@ -47,13 +50,14 @@ footer {
     padding: 5px 0;
 }
 
-#effects #fxChangeArea #fxAutoChangeArea, #curHolidayLabel, #holidayListLabel {
+#fxChangeArea #fxAutoChangeArea, #fxChangeArea #fxBrightChangeArea, #curHolidayLabel, #holidayListLabel {
     color: #7f7f7f;
-    padding: 1em 0;
+    padding-top: 1em;
+    padding-right: 2em;
+    float: left;
 }
 
 #brightListLabel {
-    margin-left: 5em;
 }
 
 #effects #fxChangeArea #fxlist {
@@ -62,7 +66,7 @@ footer {
 }
 
 #effects #curEffectArea, #time #curHolidayArea {
-    margin-left: 50%;
+    float: left;
 }
 
 #curEffectLabel {
@@ -95,16 +99,16 @@ footer {
     text-align: center;
 }
 
-#status {
-    height: 18em;
-}
-
 #settings {
     display: none;
 }
 
 .red {
     color: red;
+}
+
+main {
+    display: flow-root;
 }
 
 dt {
@@ -118,12 +122,15 @@ dd {
     color: #7f7f7f;
     margin-left: 1em;
 }
+
 dl div {
     float: left;
-    width: 27%;
+    width: 220pt;
 }
+
 dd span {
     color: black;
 }
+
 
 )~~~";

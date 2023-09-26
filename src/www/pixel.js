@@ -91,6 +91,7 @@ function updateEffect() {
             data: JSON.stringify(request),
             success: function (response) {
                 fxlst.attr("currentFxIndex", selectedFx);
+                $('#curEffect').html(`${config.fx[selectedFx].name} - ${config.fx[selectedFx].description}`)
                 $('#updateStatus').html("Effect update successful").removeClass().addClass("status-ok");
                 scheduleClearStatus();
             },
