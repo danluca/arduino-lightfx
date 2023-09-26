@@ -230,17 +230,20 @@ EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
 }
 
 void EyeBlink::step() {
-    Log.infoln("Eye @ pos %d active %T", pos, isActive());
+    Log.infoln("Eye @ pos %d active %T, color %X:%X:%X", pos, isActive(), color.r, color.g, color.b);
     if (!isActive())
         return;
     CRGBSet eye = (*holderSet)(pos, pos+size-1);
     uint8_t halfEyeSize = eyeSize/2;
     Log.infoln("BEFORE SM: curStep=%d, curBrightness=%d, brIncr=%d, curLen=%d, curPause=%d, idleTime=%d",
                curStep, curBrightness, brIncr, curLen, curPause, idleTime);
+    uint8_t x = 0;
     switch (curStep) {
         case OpenLid:
             curBrightness = qadd8(curBrightness, brIncr);
             eye[eyeSize+halfEyeSize+eyeGapSize+curLen] = eye[eyeSize+halfEyeSize+eyeGapSize-curLen] = eye[halfEyeSize+curLen] = eye[halfEyeSize-curLen] = adjustBrightness(color, curBrightness);
+            x = eyeSize+halfEyeSize+eyeGapSize+curLen;
+            Log.infoln("COLOR O  : eye[%d]=%X:%X:%X", x, eye[x].r, eye[x].g, eye[x].b);
             if (curBrightness == 255) {
                 curBrightness = 0;
                 curLen++;
@@ -261,6 +264,8 @@ void EyeBlink::step() {
         case CloseLid:
             curBrightness = qsub8(curBrightness, brIncr);
             eye[eyeSize*2+eyeGapSize-curLen] = eye[eyeSize+eyeGapSize+curLen] = eye[eyeSize-curLen] = eye[curLen] = adjustBrightness(color, curBrightness);
+            x = eyeSize*2+eyeGapSize-curLen;
+            Log.infoln("COLOR C  : eye[%d]=%X:%X:%X", x, eye[x].r, eye[x].g, eye[x].b);
             if (curBrightness == 0) {
                 curBrightness = 255;
                 curLen++;
@@ -284,7 +289,7 @@ void EyeBlink::step() {
                 curStep = Off;
             break;
     }
-    Log.infoln("AFTER SM: curStep=%d, curBrightness=%d, brIncr=%d, curLen=%d, curPause=%d, idleTime=%d",
+    Log.infoln("AFTER  SM: curStep=%d, curBrightness=%d, brIncr=%d, curLen=%d, curPause=%d, idleTime=%d",
                curStep, curBrightness, brIncr, curLen, curPause, idleTime);
 
 }
