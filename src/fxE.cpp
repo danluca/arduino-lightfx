@@ -174,7 +174,7 @@ void FxE3::loop() {
                         segEnd = curPos;
                         segEnd = capu(segEnd, maxIndex);
                     }
-                    cycles = 2;
+                    cycles = 1;
                     incr(curPos, 1, tpl.size()+sasquatchSize-1);
                     break;
                 case forward:
@@ -185,12 +185,15 @@ void FxE3::loop() {
                         segStart = curPos;
                         segEnd = newPos;
                         cycles = random8(14, 30);
+                        fade = dimmed;
+                        delta = 18;
                     } else {
                         segStart = maxIndex - curPos;
                         segEnd = maxIndex - newPos;
-                        cycles = 12;
+                        cycles = 7;     //faster wiping clean
+                        fade = dimmed*4;
+                        delta = 40;
                     }
-                    fade = dimmed;
                     colorIndex = beatsin8(7);
                     curPos = newPos == maxIndex ? 0 : (newPos + 1);
                     break;

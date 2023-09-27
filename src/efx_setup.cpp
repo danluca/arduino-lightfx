@@ -443,6 +443,31 @@ CRGB adjustBrightness(CRGB color, uint8_t bright) {
 }
 
 /**
+ *
+ * @param x
+ * @param lim
+ * @return
+ * @see https://easings.net/#easeOutBounce
+ */
+uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
+//    function easeOutBounce(x: number): number {
+//            const n1 = 7.5625;
+//            const d1 = 2.75;
+//
+//            if (x < 1 / d1) {
+//                return n1 * x * x;
+//            } else if (x < 2 / d1) {
+//                return n1 * (x -= 1.5 / d1) * x + 0.75;
+//            } else if (x < 2.5 / d1) {
+//                return n1 * (x -= 2.25 / d1) * x + 0.9375;
+//            } else {
+//                return n1 * (x -= 2.625 / d1) * x + 0.984375;
+//            }
+//    }
+    return 0;
+}
+
+/**
  * Multiply function for color blending purposes - assumes the operands are fractional (n/256) and the result
  * of multiplying 2 fractional numbers is less than both numbers (e.g. 0.2 x 0.3 = 0.06). Special handling for operand values of 255 (i.e. 1.0)
  * <p>f(a,b) = a*b</p>
@@ -486,48 +511,77 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
 }
 
 /**
+ * Blend multiply 2 colors
+ * @param blendLayer base color, which is also the target (the one receiving the result)
+ * @param topLayer color to multiply with
+ * @see https://en.wikipedia.org/wiki/Blend_modes
+ */
+void blendMultiply(CRGB &blendRGB, const CRGB &topRGB) {
+    blendRGB.r = bmul8(blendRGB.r, topRGB.r);
+    blendRGB.g = bmul8(blendRGB.g, topRGB.g);
+    blendRGB.b = bmul8(blendRGB.b, topRGB.b);
+}
+
+/**
  * Blend multiply 2 color sets
+ * <p>Wherever either layer was brighter than black, the composite is darker; since each value is less than 1,
+ * their product will be less than each initial value that was greater than zero</p>
  * @param blendLayer base color set, which is also the target set (the one receiving the result)
  * @param topLayer color set to multiply with
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
 void blendMultiply(CRGBSet &blendLayer, const CRGBSet &topLayer) {
-    for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp) {
-        CRGB &cbt = (*bt), &ctp = (*tp);
-        cbt.r = bmul8(cbt.r, ctp.r);
-        cbt.g = bmul8(cbt.g, ctp.g);
-        cbt.b = bmul8(cbt.b, ctp.b);
-    }
+    for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp)
+        blendMultiply(*bt, *tp);
+}
+
+/**
+ * Blend screen 2 colors
+ * @param blendLayer base color, which is also the target (the one receiving the result)
+ * @param topLayer color to screen with
+ * @see https://en.wikipedia.org/wiki/Blend_modes
+ */
+void blendScreen(CRGB &blendRGB, const CRGB &topRGB) {
+    blendRGB.r = bscr8(blendRGB.r, topRGB.r);
+    blendRGB.g = bscr8(blendRGB.g, topRGB.g);
+    blendRGB.b = bscr8(blendRGB.b, topRGB.b);
 }
 
 /**
  * Blend screen 2 color sets
+ * <p>The result is the opposite of Multiply: wherever either layer was darker than white, the composite is brighter. </p>
  * @param blendLayer base color set, which is also the target set (the one receiving the result)
  * @param topLayer color set to screen with
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
 void blendScreen(CRGBSet &blendLayer, const CRGBSet &topLayer) {
-    for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp) {
-        CRGB &cbt = (*bt), &ctp = (*tp);
-        cbt.r = bscr8(cbt.r, ctp.r);
-        cbt.g = bscr8(cbt.g, ctp.g);
-        cbt.b = bscr8(cbt.b, ctp.b);
-    }
+    for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp)
+        blendScreen(*bt, *tp);
+}
+
+/**
+ * Blend overlay 2 colors
+ * @param blendLayer base color, which is also the target (the one receiving the result)
+ * @param topLayer color to overlay with
+ * @see https://en.wikipedia.org/wiki/Blend_modes
+ */
+void blendOverlay(CRGB &blendRGB, const CRGB &topRGB) {
+    blendRGB.r = bovl8(blendRGB.r, topRGB.r);
+    blendRGB.g = bovl8(blendRGB.g, topRGB.g);
+    blendRGB.b = bovl8(blendRGB.b, topRGB.b);
 }
 
 /**
  * Blend overlay 2 color sets
+ * <p>Where the base layer is light, the top layer becomes lighter; where the base layer is dark, the top becomes darker; where the base layer is mid grey,
+ * the top is unaffected. An overlay with the same picture looks like an S-curve. </p>
  * @param blendLayer base color set, which is also the target set (the one receiving the result)
  * @param topLayer color set to overlay with
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
 void blendOverlay(CRGBSet &blendLayer, const CRGBSet &topLayer) {
-    for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp) {
-        CRGB &cbt = (*bt), &ctp = (*tp);
-        cbt.r = bovl8(cbt.r, ctp.r);
-        cbt.g = bovl8(cbt.g, ctp.g);
-        cbt.b = bovl8(cbt.b, ctp.b);
-    }
+    for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp)
+        blendOverlay(*bt, *tp);
 }
 
 /**
@@ -623,6 +677,28 @@ uint8_t adjustStripBrightness() {
     return FastLED.getBrightness();
 }
 
+/**
+ *
+ * @param rgb
+ * @param br
+ * @return
+ */
+CRGB& setBrightness(CRGB &rgb, uint8_t br) {
+    CHSV hsv = toHSV(rgb);
+    hsv.val = br;
+    rgb = toRGB(hsv);
+    return rgb;
+}
+
+/**
+ * Approximate brightness - leverages <code>rgb2hsv_approximate</code>
+ * @param rgb color
+ * @return approximate brightness on HSV scale
+ */
+uint8_t getBrightness(const CRGB &rgb) {
+    return toHSV(rgb).val;
+}
+
 //Setup all effects -------------------
 void fx_setup() {
     ledStripInit();
@@ -641,7 +717,7 @@ void fx_setup() {
 
 //Run currently selected effect -------
 void fx_run() {
-    EVERY_N_SECONDS(10) {
+    EVERY_N_SECONDS(30) {
         if (fxBump) {
             fxRegistry.nextEffectPos();
             fxBump = false;

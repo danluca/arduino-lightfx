@@ -9,6 +9,8 @@ int status = WL_IDLE_STATUS;
 
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
+bool isDST = false;
+
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from {@code WiFi.RSSI()}
  * <p>This Android article has been used for reference - https://android.stackexchange.com/questions/176320/rssi-range-for-wifi-icons </p>
@@ -109,9 +111,17 @@ bool time_setup() {
     Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     Holiday hday = paletteFactory.adjustHoliday();
     if (timeStatus() != timeNotSet) {
+        // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
+        // to the transition, such that we don't need to implement complex Sunday counting rules
+        time_t curTime = now();
+        const uint16_t md = ((month(curTime) & 0xFF)<<8) + (day(curTime) & 0xFF);
+        isDST = md > 0x030C && md < 0x0B05;
+        timeClient.setTimeOffset(isDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS);
+        Log.infoln(F("America/Chicago %s time (month/day=%X), time offset set to %d s"), isDST?"Daylight Savings":"Standard", md, CDT_OFFSET_SECONDS);
+
         char timeBuf[20];
         sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
-        Log.infoln(F("Current time %s CST"), timeBuf);
+        Log.infoln(F("Current time %s %s"), timeBuf, isDST?"CDT":"CST");
     } else
         Log.warningln(F("Current time not available - NTP sync failed"));
     Log.infoln(F("Current holiday is %s"), holidayToString(hday));

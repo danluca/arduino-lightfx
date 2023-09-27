@@ -11,9 +11,11 @@
 #include "secrets.h"
 #include "PaletteFactory.h"
 
-#define CST_OFFSET_SECONDS -21600
+#define CST_OFFSET_SECONDS (-21600)   //Central Standard Time - America/Chicago
+#define CDT_OFFSET_SECONDS  (-18000)  //Central Daylight Time - America/Chicago
 
 extern WiFiServer server;
+extern bool isDST;
 
 void setupStateLED();
 void stateLED(CRGB color);

@@ -313,9 +313,9 @@ void ripple::Move() {
     } else if (step < 12) {
         uint16_t x = (center + step) % pSeg->size();
         x = (center + step) >= pSeg->size() ? (pSeg->size() - x - 1) : x;        // we want the "wave" to bounce back from the end, rather than start from the other end
-        (*pSeg)[x] += ColorFromPalette(palette, color + 16, rpBright / step * 2, LINEARBLEND);       // Simple wrap from Marc Miller
+        (*pSeg)[x] += ColorFromPalette(palette, color + 16, rpBright*2/step, LINEARBLEND);       // Simple wrap from Marc Miller
         x = asub(center, step) % pSeg->size();
-        (*pSeg)[x] += ColorFromPalette(palette, color + 16, rpBright / step * 2, LINEARBLEND);
+        (*pSeg)[x] += ColorFromPalette(palette, color + 16, rpBright*2/step, LINEARBLEND);
     }
     step++;  // Next step.
 }
@@ -324,8 +324,6 @@ void ripple::Fade() const {
     uint16_t lowEndRipple = qsuba(center, step);
     uint16_t upEndRipple = capu(center + step, pSeg->size()-1);
     (*pSeg)(lowEndRipple, upEndRipple).fadeToBlackBy(rpFade);
-    for (uint16_t x = lowEndRipple; x < upEndRipple; x++)
-        (*pSeg)[x].fadeToBlackBy(rpFade);
 }
 
 bool ripple::Alive() const {
@@ -337,7 +335,7 @@ void ripple::Init(CRGBSet *set) {
     center = random8(pSeg->size() / 8, pSeg->size() - pSeg->size() / 8);          // Avoid spawning too close to edge.
     rpBright = random8(192, 255);                                   // upper range of localBright
     color = random8();
-    rpFade = random8(96, 176);
+    rpFade = random8(25, 80);
     step = 0;
 }
 

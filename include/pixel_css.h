@@ -52,7 +52,7 @@ footer {
 
 #fxChangeArea #fxAutoChangeArea, #fxChangeArea #fxBrightChangeArea, #curHolidayLabel, #holidayListLabel {
     color: #7f7f7f;
-    padding-top: 1em;
+    padding-left: 1em;
     padding-right: 2em;
     float: left;
 }
@@ -61,7 +61,6 @@ footer {
 }
 
 #effects #fxChangeArea #fxlist {
-    width: 75%;
     text-overflow: ellipsis;
 }
 

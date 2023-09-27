@@ -229,13 +229,13 @@ Viewport FxF3::nextEyePos() {
  */
 EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
     //initialize the inner fields with default values
-    idleTime = 10;  //10 cycles before this eye can be used again (0.5s at 50ms time base)
+    idleTime = 10;  //10 cycles before this eye can be used again (0.75s at 75ms time base)
     brIncr = 80;    //each step brightness is increased/decreased by this amount
     numBlinks = 2;  //blink twice before deactivating
     curBrightness = 0; //initial brightness starting from black
     curLen = 0;     //eyes closed initially
     pos = 0;        //default position
-    curPause = pauseTime = 20; //pause 1s (with 50ms time base in loop - see every_n_milliseconds speed) between opening/closing lids
+    curPause = pauseTime = 20; //pause 1.5s (with 75ms time base in loop - see every_n_milliseconds speed) between opening/closing lids
 }
 
 /**
@@ -311,10 +311,10 @@ void EyeBlink::start() {
  */
 void EyeBlink::reset(uint16_t curPos, CRGB clr) {
     curStep = Off;
-    idleTime = random16(30, 60);
+    idleTime = random16(50, 135);    //3.7-10.1s of idle time
     brIncr = random8(40, 120);
     numBlinks = random8(2, 6);
-    curPause = pauseTime = random8(20, 40);    //1-2s between opening/closing lids (with 50ms time base in looping)
+    curPause = pauseTime = random8(35, 70);    //2.6-5.2s between opening/closing lids (with 75ms time base in looping)
     pos = curPos;
     color = clr;
     curLen = 0;

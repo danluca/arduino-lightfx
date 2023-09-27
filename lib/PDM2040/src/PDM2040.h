@@ -31,10 +31,10 @@ public:
   virtual ~PDMClass();
 
   int begin(int channels, int sampleRate);
-  void end();
+  void end() const;
 
-  virtual int available();
-  virtual int read(void* buffer, size_t size);
+  virtual size_t available();
+  virtual size_t read(void* buffer, size_t size);
 
   void onReceive(void(*)(void));
 
@@ -42,7 +42,7 @@ public:
   //NANO 33 BLE SENSe min 0 max 80
   //NICLA_VISION min 0 max 8
   void setGain(int gain);
-  void setBufferSize(int bufferSize);
+  void setBufferSize(size_t bufferSize);
   size_t getBufferSize();
 
 // private:

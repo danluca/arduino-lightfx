@@ -213,6 +213,8 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     char datetime[20];
     sprintf(datetime, "%4d-%02d-%02d %02d:%02d:%02d", year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
     doc["currentTime"] = datetime;
+    doc["currentOffset"] = isDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
+    doc["dst"] = isDST;
     JsonArray fxArray = doc.createNestedArray("fx");
     fxRegistry.describeConfig(fxArray);
     //send it out
@@ -381,6 +383,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     time["date"] = timeBuf;
     snprintf(timeBuf, 9, "%02d:%02d:%02d", hour(curTime), minute(curTime), second(curTime));
     time["time"] = timeBuf;
+    time["dst"] = isDST;
     time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
 
     //current temperature

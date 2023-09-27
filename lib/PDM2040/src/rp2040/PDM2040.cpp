@@ -19,7 +19,7 @@ PIO pio;
 int sm;
 
 // PIO program offset
-static int offset;
+static uint offset;
 
 // raw buffers contain PDM data
 #define RAW_BUFFER_SIZE 512 // should be a multiple of (decimation / 8)
@@ -49,7 +49,7 @@ PDMClass::PDMClass(int dinPin, int clkPin, int pwrPin) :
   _dinPin(dinPin),
   _clkPin(clkPin),
   _pwrPin(pwrPin),
-  _onReceive(NULL),
+  _onReceive(nullptr),
   _gain(-1),
   _channels(-1),
   _samplerate(-1),
@@ -58,9 +58,7 @@ PDMClass::PDMClass(int dinPin, int clkPin, int pwrPin) :
 {
 }
 
-PDMClass::~PDMClass()
-{
-}
+PDMClass::~PDMClass() = default;
 
 int PDMClass::begin(int channels, int sampleRate)
 {
@@ -69,7 +67,7 @@ int PDMClass::begin(int channels, int sampleRate)
   // clear the final buffers
   _doubleBuffer.reset();
   finalBuffer = (int16_t*)_doubleBuffer.data();
-  int finalBufferLength = _doubleBuffer.availableForWrite() / sizeof(int16_t);
+  size_t finalBufferLength = _doubleBuffer.availableForWrite() / sizeof(int16_t);
   _doubleBuffer.swap(0);
 
   // The mic accepts an input clock from 1.2 to 3.25 Mhz
@@ -84,7 +82,7 @@ int PDMClass::begin(int channels, int sampleRate)
     mbed_die();
   }
 
-  int rawBufferLength = RAW_BUFFER_SIZE / (decimation / 8);
+  size_t rawBufferLength = RAW_BUFFER_SIZE / (decimation / 8);
   // Saturate number of samples. Remaining bytes are dropped.
   if (rawBufferLength > finalBufferLength) {
     rawBufferLength = finalBufferLength;
@@ -114,8 +112,7 @@ int PDMClass::begin(int channels, int sampleRate)
   // there's two PIO instances, each with four state machines, so this should usually work out fine
   const PIO pios[NUM_PIOS] = { pio0, pio1 };
   // iterate over PIO instances
-  for (unsigned int i = 0; i < NUM_PIOS; i++) {
-    pio = pios[i];
+  for (auto pio : pios) {
     sm = pio_claim_unused_sm(pio, false); // claim a state machine
     if (sm == -1) continue; // skip this PIO if no unused sm
    
@@ -166,8 +163,7 @@ int PDMClass::begin(int channels, int sampleRate)
   return 1;
 }
 
-void PDMClass::end()
-{
+void PDMClass::end() const {
   NVIC_DisableIRQ(DMA_IRQ_1n);
   pio_remove_program(pio, &pdm_pio_program, offset);
   pio_sm_unclaim(pio, sm);
@@ -178,7 +174,7 @@ void PDMClass::end()
   offset = 0;
 }
 
-int PDMClass::available()
+size_t PDMClass::available()
 {
   NVIC_DisableIRQ(DMA_IRQ_1n);
   size_t avail = _doubleBuffer.available();
@@ -186,10 +182,10 @@ int PDMClass::available()
   return avail;
 }
 
-int PDMClass::read(void* buffer, size_t size)
+size_t PDMClass::read(void* buffer, size_t size)
 {
   NVIC_DisableIRQ(DMA_IRQ_1n);
-  int read = _doubleBuffer.read(buffer, size);
+  size_t read = _doubleBuffer.read(buffer, size);
   NVIC_EnableIRQ(DMA_IRQ_1n);
   return read;
 }
@@ -208,9 +204,13 @@ void PDMClass::setGain(int gain)
   }
 }
 
-void PDMClass::setBufferSize(int bufferSize)
+void PDMClass::setBufferSize(size_t bufferSize)
 {
-  _doubleBuffer.setSize(bufferSize);
+  _doubleBuffer.setSize((int)bufferSize);
+}
+
+size_t PDMClass::getBufferSize() {
+    return _doubleBuffer.getSize();
 }
 
 void PDMClass::IrqHandler(bool halftranfer)

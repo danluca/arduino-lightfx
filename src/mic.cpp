@@ -11,10 +11,12 @@
 #define MIC_CHANNELS    1
 // default PCM output frequency - 20kHz for Nano RP2040
 #define PCM_SAMPLE_FREQ 20000
+// the audio signal level beyond which entropy is added and an effect change is triggered
+#define AUDIO_LEVEL_EFFECT_BUMP 2000
 // Buffer to read samples into, each sample is 16-bits
 short sampleBuffer[MIC_SAMPLE_SIZE];
 // Number of audio samples read
-volatile int samplesRead;
+volatile size_t samplesRead;
 
 /**
   * Callback function to process the data from the PDM microphone.
@@ -23,7 +25,7 @@ volatile int samplesRead;
   */
 void onPDMdata() {
     // Query the number of available bytes
-    int bytesAvailable = PDM.available();
+    size_t bytesAvailable = PDM.available();
     // Read into the sample buffer
     PDM.read(sampleBuffer, bytesAvailable);
     // 16-bit, 2 bytes per sample
@@ -47,11 +49,11 @@ void mic_run() {
     // Wait for samples to be read
     if (samplesRead) {
         short maxSample = INT16_MIN;
-        for (int i = 0; i < samplesRead; i++) {
+        for (uint i = 0; i < samplesRead; i++) {
             if (sampleBuffer[i] > maxSample)
                 maxSample = sampleBuffer[i];
         }
-        if (maxSample > 800) {
+        if (maxSample > AUDIO_LEVEL_EFFECT_BUMP) {
             fxBump = true;
             random16_add_entropy(abs(maxSample));
             Log.infoln("Audio sample: %d", maxSample);

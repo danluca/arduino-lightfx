@@ -118,12 +118,23 @@ bool turnOffSpots();
 
 void resetGlobals();
 
+uint16_t easeOutBounce(uint16_t x, uint16_t lim);
+
+CRGB& setBrightness(CRGB& rgb, uint8_t br);
+uint8_t getBrightness(const CRGB& rgb);
+
+inline CHSV toHSV(const CRGB &rgb) { return rgb2hsv_approximate(rgb); }
+inline CRGB toRGB(const CHSV &hsv) { CRGB rgb{}; hsv2rgb_rainbow(hsv, rgb); return rgb; }
+
 uint8_t bmul8(uint8_t a, uint8_t b);
 uint8_t bscr8(uint8_t a, uint8_t b);
 uint8_t bovl8(uint8_t a, uint8_t b);
 void blendMultiply(CRGBSet &blendLayer, const CRGBSet &topLayer);
+void blendMultiply(CRGB &blendRGB, const CRGB &topRGB);
 void blendScreen(CRGBSet &blendLayer, const CRGBSet &topLayer);
+void blendScreen(CRGB &blendRGB, const CRGB &topRGB);
 void blendOverlay(CRGBSet &blendLayer, const CRGBSet &topLayer);
+void blendOverlay(CRGB &blendRGB, const CRGB &topRGB);
 CRGB adjustBrightness(CRGB color, uint8_t bright);
 
 namespace FxA {

@@ -49,7 +49,7 @@ function getStatus() {
             $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
             $('#fxCurHoliday').html(`${data.fx.holiday}`);
             $('#timeNtp').html(`${data.time.ntpSync == 2}`);
-            $('#timeCurrent').html(`${data.time.date} ${data.time.time} CST`);
+            $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
             $('#timeHoliday').html(`${data.time.holiday}`);
 
             //update the current effect tiles as well

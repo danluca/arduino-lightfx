@@ -298,7 +298,7 @@ void FxA4::loop() {
     }
 
     EVERY_N_MILLISECONDS_I(a4Timer, speed) {
-        curBkg = ColorFromPalette(palette, beatsin8(11), 4, LINEARBLEND);
+        curBkg = ColorFromPalette(palette, beatsin8(11), 3, LINEARBLEND);
         uint8_t ss = curPos % (szSegment + spacing);
         shiftRight(frR, ss < szSegment ? dot[ss] : curBkg);
         shiftLeft(frL,

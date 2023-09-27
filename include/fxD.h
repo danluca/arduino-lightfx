@@ -115,7 +115,7 @@ namespace FxD {
 
     protected:
         static const uint8_t maxRipples = 8;
-        Ripple ripplesData[maxRipples];
+        Ripple ripplesData[maxRipples]{};
 
 
     };
