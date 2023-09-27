@@ -439,7 +439,6 @@ CRGB adjustBrightness(CRGB color, uint8_t bright) {
         } else
             r = g = b = 0;
     }
-    dim8_lin()
     return {r, g, b};
 }
 

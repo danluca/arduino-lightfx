@@ -142,14 +142,12 @@ void FxF3::loop() {
         uint8_t numEyes = 1 + random8(maxEyes);
         for (uint8_t i = 0; i < numEyes; i++) {
             Viewport v = nextEyePos();
-            Log.infoln("Eye %d/%d, found viewport [%d, %d]", i, numEyes, v.low, v.high);
             if (v.size() > 0) {
                 EyeBlink *availEye = findAvailableEye();
                 if (availEye) {
                     availEye->reset(random16(v.low, v.high),
                         ColorFromPalette(palette, hue, brightness, LINEARBLEND));
                     availEye->start();
-                    Log.infoln("Started Eye @ %d, position %d", availEye, availEye->pos);
                     hue += hueDiff;
                 }
             }
