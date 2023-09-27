@@ -359,15 +359,15 @@ void FxA5::setup() {
 void FxA5::makeFrame() {
     uint8_t halfBright = brightness >> 1;
     uint8_t rndBright = random8(halfBright);
-    bool parity = ovr[0].getParity();
-    CRGBPalette16 &pal = parity ? palette : targetPalette;
+    bool mainPal = ovr[0].getParity();
+    CRGBPalette16 &pal = mainPal ? palette : targetPalette;
     ovr.fill_solid(ColorFromPalette(pal, lastColorIndex, halfBright + rndBright, LINEARBLEND));
     CRGB newClr = ColorFromPalette(pal, colorIndex, halfBright + rndBright, LINEARBLEND);
-    uint16_t seg = 4;
+    uint16_t seg = 5;
     for (uint16_t x = 0; x < seg; x++) {
-        nblend(ovr[x], newClr, (seg-x-1)*64);
+        nblend(ovr[x], newClr, (seg-x-1)*50);
     }
-    ovr[0].setParity(!parity);
+    ovr[0].setParity(!mainPal);
 }
 
 void FxA5::loop() {

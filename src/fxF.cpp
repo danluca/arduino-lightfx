@@ -129,7 +129,7 @@ FxF3::FxF3() {
 
 void FxF3::setup() {
     resetGlobals();
-    hue = 4;
+    hue = random8();
     hueDiff = 11;
     //reset all eyes
     for (auto & e : eyes)
@@ -153,7 +153,7 @@ void FxF3::loop() {
             }
         }
     }
-    EVERY_N_MILLISECONDS(50) {
+    EVERY_N_MILLISECONDS(75) {
         //step advance each active eye
         for (auto & eye : eyes)
             eye.step();
@@ -176,8 +176,8 @@ void FxF3::describeConfig(JsonArray &json) const {
 }
 
 /**
- * Find the index of first available eye - inactive, that is
- * @return index of first inactive eye, -1 if all eyes are active
+ * Find the first available eye - inactive, that is
+ * @return pointer to first inactive eye, nullptr if all eyes are active
  */
 EyeBlink * FxF3::findAvailableEye() {
     for (auto & eye : eyes) {
@@ -215,7 +215,7 @@ Viewport FxF3::nextEyePos() {
         }
         prevEyeEnd = actEye->pos + EyeBlink::size;
     }
-    //gap between last active eye and high end of template strip
+    //gap between last active eye and upper end of the template strip
     curGap = tpl.size() - prevEyeEnd;
     if (curGap > szGap) {
         posGap = prevEyeEnd;
@@ -224,6 +224,9 @@ Viewport FxF3::nextEyePos() {
     return szGap > EyeBlink::size ? Viewport(posGap, posGap+szGap-EyeBlink::size) : (Viewport)0;
 }
 
+/**
+ * Default constructor - initializes all fields with sensible values
+ */
 EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
     //initialize the inner fields with default values
     idleTime = 10;  //10 cycles before this eye can be used again (0.5s at 50ms time base)
@@ -235,12 +238,14 @@ EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
     curPause = pauseTime = 20; //pause 1s (with 50ms time base in loop - see every_n_milliseconds speed) between opening/closing lids
 }
 
+/**
+ * Advances the state machine of the eye blinker
+ */
 void EyeBlink::step() {
     if (!isActive())
         return;
     CRGBSet eye = (*holderSet)(pos, pos+size-1);
     uint8_t halfEyeSize = eyeSize/2;
-    uint8_t x = 0;
     switch (curStep) {
         case OpenLid:
             curBrightness = qadd8(curBrightness, brIncr);
@@ -290,12 +295,20 @@ void EyeBlink::step() {
     }
 }
 
+/**
+ * Makes the eye active and reset its state machine
+ */
 void EyeBlink::start() {
     curStep = OpenLid;
     curLen = 0;
     curBrightness = 0;
 }
 
+/**
+ * Changes position and color of the eyes, resets all the state machine parameters
+ * @param curPos new position to use
+ * @param clr new color to use
+ */
 void EyeBlink::reset(uint16_t curPos, CRGB clr) {
     curStep = Off;
     idleTime = random16(30, 60);
@@ -307,6 +320,10 @@ void EyeBlink::reset(uint16_t curPos, CRGB clr) {
     curLen = 0;
 }
 
+/**
+ * Is the eye currently active?
+ * @return true if state machine is not in the Off state; false otherwise
+ */
 bool EyeBlink::isActive() const {
     return curStep != Off;
 }
