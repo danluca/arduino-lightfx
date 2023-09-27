@@ -132,6 +132,9 @@ void FxF3::setup() {
     resetGlobals();
     hue = 4;
     hueDiff = 11;
+    //reset all eyes
+    for (auto & e : eyes)
+        e.reset(0, BKG);
 }
 
 void FxF3::loop() {
@@ -199,6 +202,7 @@ Viewport FxF3::nextEyePos() {
         if (e)
             actEyes.push_back(&e);
     }
+    Log.infoln("NEXT_EYE_POS: Found %d active eyes", actEyes.size());
     //if no active eyes (like beginning) return the full tpl strip
     if (actEyes.empty())
         return {0, static_cast<uint16_t>(tpl.size())};
@@ -206,16 +210,23 @@ Viewport FxF3::nextEyePos() {
     //sort active eyes ascending by position - notice the use of lambda expression for custom comparator (available since C++11, we're using C++14) - cool stuff!!
     std::sort(actEyes.begin(), actEyes.end(), [](EyeBlink *a, EyeBlink *b) {return a->pos < b->pos;});
     //find the gaps
-    uint16_t posGap = 0, szGap = 0, prevEyeEnd = 0;
+    uint16_t posGap = 0, szGap = 0, prevEyeEnd = 0, curGap = 0;
     for (auto & actEye : actEyes) {
-        uint16_t curGap = actEye->pos - prevEyeEnd;
-        Log.infoln("eye %d: pos %d, prevEyeEnd %d, curGap %d", actEye, actEye->pos, prevEyeEnd, curGap);
+        curGap = actEye->pos - prevEyeEnd;
+        Log.infoln("NEXT_EYE_POS: eye %d: pos %d, prevEyeEnd %d, curGap %d, szGap %d, posGap %d", actEye, actEye->pos, prevEyeEnd, curGap, szGap, posGap);
         if (curGap > szGap) {
             posGap = prevEyeEnd;
             szGap = curGap;
         }
         prevEyeEnd = actEye->pos + EyeBlink::size;
     }
+    //gap between last active eye and high end of template strip
+    curGap = tpl.size() - prevEyeEnd;
+    if (curGap > szGap) {
+        posGap = prevEyeEnd;
+        szGap = curGap;
+    }
+    Log.infoln("NEXT_EYE_POS: lastGap %d: prevEyeEnd %d, szGap %d, posGap %d", curGap, prevEyeEnd, szGap, posGap);
     return szGap > EyeBlink::size ? Viewport(posGap, posGap+szGap-EyeBlink::size) : (Viewport)0;
 }
 
@@ -231,7 +242,7 @@ EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
 }
 
 void EyeBlink::step() {
-    Log.infoln("Eye @ pos %d active %T, color %X:%X:%X", pos, isActive(), color.r, color.g, color.b);
+    Log.infoln("Eye %d @ pos %d active %T, color %X:%X:%X", this, pos, isActive(), color.r, color.g, color.b);
     if (!isActive())
         return;
     CRGBSet eye = (*holderSet)(pos, pos+size-1);
