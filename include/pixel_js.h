@@ -67,8 +67,10 @@ function getStatus() {
             hdlst.attr("currentColorTheme", data.fx.holiday);
             $('#fxBrightness').html(`${(data.fx.brightness/256*100.0).toFixed(2)} % (${data.fx.brightness}${data.fx.brightnessLocked?' fixed':' auto'})`)
             let brList = $('#brightList');
-            brList.val(data.fx.brightness);
-            brList.attr("currentBrightness", data.fx.brightness);
+            //approximately undo the dimming rules in FastLED library where dimming raw is equivalent with x*x/256
+            let brPerc = Math.round(Math.sqrt(data.fx.brightness * 256)*100/256);
+            brList.val(brPerc);
+            brList.attr("currentBrightness", brPerc);
         })
         .fail(function (req, textStatus, error){
             console.log(`status.json call failed ${textStatus} - ${error}`);
@@ -157,7 +159,7 @@ function updateBrightness() {
     let brlst = $('#brightList');
     let selBr = brlst.val();
     let request = {};
-    request["brightness"] = selBr;
+    request["brightness"] = Math.round(Math.pow(selBr*256/100, 2)/256);
     $.ajax({
         type: "PUT",
         url: "/fx",
@@ -167,7 +169,8 @@ function updateBrightness() {
         success: function (response) {
             $('#updateStatus').html("Strip brightness update successful").removeClass().addClass("status-ok");
             brlst.attr("currentBrightness", selBr);
-            $('#fxBrightness').html(`${(response.updates.brightness/256*100.0).toFixed(2)} % (${response.updates.brightness}${response.updates.brightnessLocked?' fixed':' auto'})`);
+            let brPerc = Math.round(Math.sqrt(data.fx.brightness * 256)*100/256);
+            $('#fxBrightness').html(`${brPerc}% (${response.updates.brightness}${response.updates.brightnessLocked?' fixed':' auto'})`);
             scheduleClearStatus();
         },
         error: function (request, status, error) {

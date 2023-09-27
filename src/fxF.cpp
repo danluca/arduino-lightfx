@@ -270,7 +270,7 @@ void EyeBlink::step() {
                 curLen++;
             }
             if (curLen > halfEyeSize) {
-                curPause = pauseTime;
+                curPause = pauseTime/3; //staying with lids closed is much shorter than with them open
                 curStep = PauseOff;
             }
             break;

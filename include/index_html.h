@@ -32,16 +32,16 @@ const char index_html[] PROGMEM = R"~~~(
                     <label for="brightList" id="brightListLabel">Strip brightness</label>
                     <select id="brightList" onchange="updateBrightness()">
                         <option value="0">Auto</option>
-                        <option value="255">100%</option>
-                        <option value="230">90%</option>
-                        <option value="204">80%</option>
-                        <option value="180">70%</option>
-                        <option value="152">60%</option>
-                        <option value="128">50%</option>
-                        <option value="102">40%</option>
-                        <option value="77">30%</option>
-                        <option value="51">20%</option>
-                        <option value="25">10%</option>
+                        <option value="100">100%</option>
+                        <option value="90">90%</option>
+                        <option value="80">80%</option>
+                        <option value="70">70%</option>
+                        <option value="60">60%</option>
+                        <option value="50">50%</option>
+                        <option value="40">40%</option>
+                        <option value="30">30%</option>
+                        <option value="20">20%</option>
+                        <option value="10">10%</option>
                     </select>
                 </div>
             </div>
