@@ -57,6 +57,7 @@ function getStatus() {
             $('#curEffectId').html(`Index: ${data.fx.index}`);
             let desc = config.fx.find(x=> x.registryIndex === data.fx.index)?.description ?? "N/A";
             $('#curEffect').html(`${data.fx.name} - ${desc}`);
+            $('#autoFxChange').prop("checked", data.fx.auto);
             let fxlst = $('#fxlist');
             fxlst.val(data.fx.index);
             fxlst.attr("currentFxIndex", data.fx.index);

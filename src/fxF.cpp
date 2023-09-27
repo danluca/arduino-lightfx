@@ -209,6 +209,7 @@ Viewport FxF3::nextEyePos() {
     uint16_t posGap = 0, szGap = 0, prevEyeEnd = 0;
     for (auto & actEye : actEyes) {
         uint16_t curGap = actEye->pos - prevEyeEnd;
+        Log.infoln("eye %d: pos %d, prevEyeEnd %d, curGap %d", actEye, actEye->pos, prevEyeEnd, curGap);
         if (curGap > szGap) {
             posGap = prevEyeEnd;
             szGap = curGap;

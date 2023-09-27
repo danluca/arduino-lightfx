@@ -422,9 +422,11 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     const char strHoliday[] = "holiday";
     const char strBrightness[] = "brightness";
     JsonObject upd = resp.createNestedObject("updates");
-    bool autoAdvance = !doc.containsKey(strAuto) || doc[strAuto].as<bool>();
-    fxRegistry.autoRoll(autoAdvance);
-    upd[strAuto] = autoAdvance;
+    if (doc.containsKey(strAuto)) {
+        bool autoAdvance = doc[strAuto].as<bool>();
+        fxRegistry.autoRoll(autoAdvance);
+        upd[strAuto] = autoAdvance;
+    }
     if (doc.containsKey(strEffect)) {
         uint16_t nextFx = doc[strEffect].as<uint16_t >();
         fxRegistry.nextEffectPos(nextFx);
