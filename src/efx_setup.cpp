@@ -439,6 +439,7 @@ CRGB adjustBrightness(CRGB color, uint8_t bright) {
         } else
             r = g = b = 0;
     }
+    dim8_lin()
     return {r, g, b};
 }
 
@@ -618,7 +619,7 @@ uint8_t adjustStripBrightness() {
         else
             scale = 102;
         if (scale > 0)
-            return scale8(FastLED.getBrightness(), scale);
+            return dim8_raw(scale8(FastLED.getBrightness(), scale));
     }
     return FastLED.getBrightness();
 }

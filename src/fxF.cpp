@@ -5,7 +5,6 @@
 #include "fxF.h"
 #include <vector>
 #include <algorithm>
-#include "log.h"
 
 using namespace FxF;
 
@@ -202,7 +201,6 @@ Viewport FxF3::nextEyePos() {
         if (e)
             actEyes.push_back(&e);
     }
-    Log.infoln("NEXT_EYE_POS: Found %d active eyes", actEyes.size());
     //if no active eyes (like beginning) return the full tpl strip
     if (actEyes.empty())
         return {0, static_cast<uint16_t>(tpl.size())};
@@ -213,7 +211,6 @@ Viewport FxF3::nextEyePos() {
     uint16_t posGap = 0, szGap = 0, prevEyeEnd = 0, curGap = 0;
     for (auto & actEye : actEyes) {
         curGap = actEye->pos - prevEyeEnd;
-        Log.infoln("NEXT_EYE_POS: eye %d: pos %d, prevEyeEnd %d, curGap %d, szGap %d, posGap %d", actEye, actEye->pos, prevEyeEnd, curGap, szGap, posGap);
         if (curGap > szGap) {
             posGap = prevEyeEnd;
             szGap = curGap;
@@ -226,7 +223,6 @@ Viewport FxF3::nextEyePos() {
         posGap = prevEyeEnd;
         szGap = curGap;
     }
-    Log.infoln("NEXT_EYE_POS: lastGap %d: prevEyeEnd %d, szGap %d, posGap %d", curGap, prevEyeEnd, szGap, posGap);
     return szGap > EyeBlink::size ? Viewport(posGap, posGap+szGap-EyeBlink::size) : (Viewport)0;
 }
 
@@ -242,20 +238,15 @@ EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
 }
 
 void EyeBlink::step() {
-    Log.infoln("Eye %d @ pos %d active %T, color %X:%X:%X", this, pos, isActive(), color.r, color.g, color.b);
     if (!isActive())
         return;
     CRGBSet eye = (*holderSet)(pos, pos+size-1);
     uint8_t halfEyeSize = eyeSize/2;
-    Log.infoln("BEFORE SM: curStep=%d, curBrightness=%d, brIncr=%d, curLen=%d, curPause=%d, idleTime=%d",
-               curStep, curBrightness, brIncr, curLen, curPause, idleTime);
     uint8_t x = 0;
     switch (curStep) {
         case OpenLid:
             curBrightness = qadd8(curBrightness, brIncr);
             eye[eyeSize+halfEyeSize+eyeGapSize+curLen] = eye[eyeSize+halfEyeSize+eyeGapSize-curLen] = eye[halfEyeSize+curLen] = eye[halfEyeSize-curLen] = adjustBrightness(color, curBrightness);
-            x = eyeSize+halfEyeSize+eyeGapSize+curLen;
-            Log.infoln("COLOR O  : eye[%d]=%X:%X:%X", x, eye[x].r, eye[x].g, eye[x].b);
             if (curBrightness == 255) {
                 curBrightness = 0;
                 curLen++;
@@ -275,9 +266,7 @@ void EyeBlink::step() {
             break;
         case CloseLid:
             curBrightness = qsub8(curBrightness, brIncr);
-            eye[eyeSize*2+eyeGapSize-curLen] = eye[eyeSize+eyeGapSize+curLen] = eye[eyeSize-curLen] = eye[curLen] = adjustBrightness(color, curBrightness);
-            x = eyeSize*2+eyeGapSize-curLen;
-            Log.infoln("COLOR C  : eye[%d]=%X:%X:%X", x, eye[x].r, eye[x].g, eye[x].b);
+            eye[eyeSize*2+eyeGapSize-curLen-1] = eye[eyeSize+eyeGapSize+curLen] = eye[eyeSize-curLen-1] = eye[curLen] = adjustBrightness(color, curBrightness);
             if (curBrightness == 0) {
                 curBrightness = 255;
                 curLen++;
@@ -301,9 +290,6 @@ void EyeBlink::step() {
                 curStep = Off;
             break;
     }
-    Log.infoln("AFTER  SM: curStep=%d, curBrightness=%d, brIncr=%d, curLen=%d, curPause=%d, idleTime=%d",
-               curStep, curBrightness, brIncr, curLen, curPause, idleTime);
-
 }
 
 void EyeBlink::start() {
