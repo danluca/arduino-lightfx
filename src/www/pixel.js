@@ -64,10 +64,10 @@ function getStatus() {
             let hdlst = $('#holidayList');
             hdlst.val(data.fx.holiday);
             hdlst.attr("currentColorTheme", data.fx.holiday);
-            $('#fxBrightness').html(`${(data.fx.brightness/256*100.0).toFixed(2)} % (${data.fx.brightness}${data.fx.brightnessLocked?' fixed':' auto'})`)
-            let brList = $('#brightList');
             //approximately undo the dimming rules in FastLED library where dimming raw is equivalent with x*x/256
             let brPerc = Math.round(Math.sqrt(data.fx.brightness * 256)*100/256);
+            $('#fxBrightness').html(`${brPerc}% (${data.fx.brightness}${data.fx.brightnessLocked?' fixed':' auto'})`)
+            let brList = $('#brightList');
             brList.val(brPerc);
             brList.attr("currentBrightness", brPerc);
         })
