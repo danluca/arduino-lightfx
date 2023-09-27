@@ -424,17 +424,17 @@ void mirrorHigh(CRGBSet &set) {
 CRGB adjustBrightness(CRGB color, uint8_t bright) {
     //inspired from ColorFromPalette implementation of applying brightness factor
     uint8_t r = color.r, g = color.g, b = color.b;
-    if (brightness != 255) {
-        if (brightness) {
-            ++brightness; // adjust for rounding
+    if (bright != 255) {
+        if (bright) {
+            ++bright; // adjust for rounding
             // Now, since localBright is nonzero, we don't need the full scale8_video logic;
             // we can just to scale8 and then add one (unless scale8 fixed) to all nonzero inputs.
             if (r)
-                r = scale8_LEAVING_R1_DIRTY(r, brightness);
+                r = scale8_LEAVING_R1_DIRTY(r, bright);
             if (g)
-                g = scale8_LEAVING_R1_DIRTY( g, brightness);
+                g = scale8_LEAVING_R1_DIRTY( g, bright);
             if (b)
-                b = scale8_LEAVING_R1_DIRTY( b, brightness);
+                b = scale8_LEAVING_R1_DIRTY( b, bright);
             cleanup_R1();
         } else
             r = g = b = 0;

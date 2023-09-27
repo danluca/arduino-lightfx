@@ -153,7 +153,7 @@ void wifi_reconnect() {
     if (client) client.stop();
     Udp.stop();
     WiFi.disconnect();
-    WiFi.end();
+    WiFi.end();     //without this, the re-connected wifi has closed socket clients
     delay(2000);    //let disconnect state settle
     if (wifi_connect())
         stateLED(CRGB::Indigo);
