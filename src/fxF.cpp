@@ -198,7 +198,7 @@ EyeBlink * FxF3::findAvailableEye() {
 Viewport FxF3::nextEyePos() {
     //find active eyes
     std::vector<EyeBlink*> actEyes;
-    for (auto e : eyes) {
+    for (auto & e : eyes) {
         if (e)
             actEyes.push_back(&e);
     }
