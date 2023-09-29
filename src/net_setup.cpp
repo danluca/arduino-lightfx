@@ -107,20 +107,24 @@ bool time_setup() {
     //read the time
     bool ntpTimeAvailable = ntp_sync();
     setSyncProvider(curUnixTime);
-#ifndef DISABLE_LOGGING
-    Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
-    Holiday hday = paletteFactory.adjustHoliday();
-    if (timeStatus() != timeNotSet) {
+    if (ntpTimeAvailable) {
         // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
         // to the transition, such that we don't need to implement complex Sunday counting rules
         time_t curTime = now();
         const uint16_t md = ((month(curTime) & 0xFF)<<8) + (day(curTime) & 0xFF);
         isDST = md > 0x030C && md < 0x0B05;
         timeClient.setTimeOffset(isDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS);
-        Log.infoln(F("America/Chicago %s time (month/day=%X), time offset set to %d s"), isDST?"Daylight Savings":"Standard", md, CDT_OFFSET_SECONDS);
-
+        setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
+    }
+#ifndef DISABLE_LOGGING
+    Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
+    Holiday hday = paletteFactory.adjustHoliday();
+    if (timeStatus() != timeNotSet) {
+        Log.infoln(F("America/Chicago %s time (month/day=%X), time offset set to %d s, current time %s"),
+                   isDST?"Daylight Savings":"Standard", md, isDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
         char timeBuf[20];
-        sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(), month(), day(), hour(), minute(), second());
+        curTime = now();
+        sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
         Log.infoln(F("Current time %s %s"), timeBuf, isDST?"CDT":"CST");
     } else
         Log.warningln(F("Current time not available - NTP sync failed"));

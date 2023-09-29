@@ -30,7 +30,7 @@ public:
   PDMDoubleBuffer();
   virtual ~PDMDoubleBuffer();
 
-  void setSize(int size);
+  void setSize(size_t size);
   size_t getSize();
 
   void reset();
@@ -41,14 +41,14 @@ public:
   size_t peek(void *buffer, size_t size);
   void* data();
   size_t available();
-  void swap(int length = 0);
+  void swap(size_t length = 0);
 
 private:
   uint8_t* _buffer[2] __attribute__((aligned (16)));
-  int _size;
-  volatile int _length[2];
-  volatile int _readOffset[2];
-  volatile int _index; 
+  size_t _size;
+  volatile size_t _length[2];
+  volatile size_t _readOffset[2];
+  volatile size_t _index;
 };
 
 #endif

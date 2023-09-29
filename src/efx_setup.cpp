@@ -464,7 +464,20 @@ uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
 //                return n1 * (x -= 2.625 / d1) * x + 0.984375;
 //            }
 //    }
-    return 0;
+    uint16_t d1 = lim*11/4;
+    uint16_t n1 = lim*121/16;
+    if (x<d1) {
+        return n1*x*x/lim;
+    } else if (x<d1*2) {
+        uint16_t x1 = x - d1*3/2;
+        return n1*x1*x1/lim + lim*3/4;
+    } else if (x<d1*5/2) {
+        uint16_t x1 = x - d1*9/4;
+        return n1*x1*x1/lim + lim*15/16;
+    } else {
+        uint16_t x1 = x - d1*42/16;
+        return n1*x1*x1/lim + lim*63/64;
+    }
 }
 
 /**

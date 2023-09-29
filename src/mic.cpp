@@ -39,10 +39,11 @@ void mic_setup() {
     // Optionally set the gain - Defaults to 20
     PDM.setGain(80);
     if (!PDM.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
-        Log.errorln("Failed to start PDM library! (for microphone sampling)");
+        Log.errorln(F("Failed to start PDM library! (for microphone sampling)"));
         while (true);
     }
     delay(1000);
+    Log.infoln(F("PDM - microphone - setup ok"));
 }
 
 void mic_run() {
@@ -56,7 +57,7 @@ void mic_run() {
         if (maxSample > AUDIO_LEVEL_EFFECT_BUMP) {
             fxBump = true;
             random16_add_entropy(abs(maxSample));
-            Log.infoln("Audio sample: %d", maxSample);
+            Log.infoln(F("Audio sample: %d"), maxSample);
         }
         // Clear the read count
         samplesRead = 0;

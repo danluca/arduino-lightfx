@@ -22,118 +22,106 @@
 #include "PDMDoubleBuffer.h"
 
 PDMDoubleBuffer::PDMDoubleBuffer() :
-  _size(DEFAULT_PDM_BUFFER_SIZE)
-{
-  reset();
+        _size(DEFAULT_PDM_BUFFER_SIZE) {
+    reset();
 }
 
-PDMDoubleBuffer::~PDMDoubleBuffer()
-{
+PDMDoubleBuffer::~PDMDoubleBuffer() {
 }
 
-void PDMDoubleBuffer::setSize(int size)
-{
-  _size = size;
-  reset();
+void PDMDoubleBuffer::setSize(size_t size) {
+    _size = size;
+    reset();
 }
 
-size_t PDMDoubleBuffer::getSize()
-{
-  return _size;
+size_t PDMDoubleBuffer::getSize() {
+    return _size;
 }
 
-void PDMDoubleBuffer::reset()
-{
-  _buffer[0] = (uint8_t*)realloc(_buffer[0], _size);
-  _buffer[1] = (uint8_t*)realloc(_buffer[1], _size);
+void PDMDoubleBuffer::reset() {
+    _buffer[0] = (uint8_t *) realloc(_buffer[0], _size);
+    _buffer[1] = (uint8_t *) realloc(_buffer[1], _size);
 
-  memset(_buffer[0], 0x00, _size);
-  memset(_buffer[1], 0x00, _size);
+    memset(_buffer[0], 0x00, _size);
+    memset(_buffer[1], 0x00, _size);
 
-  _index = 0;
-  _length[0] = 0;
-  _length[1] = 0;
-  _readOffset[0] = 0;
-  _readOffset[1] = 0;
-}
-
-size_t PDMDoubleBuffer::availableForWrite()
-{
-  return (_size - (_length[_index] - _readOffset[_index]));
-}
-
-size_t PDMDoubleBuffer::write(const void *buffer, size_t size)
-{
-  size_t space = availableForWrite();
-
-  if (size > space) {
-    size = space;
-  }
-
-  if (size == 0) {
-    return 0;
-  }
-
-  memcpy(&_buffer[_index][_length[_index]], buffer, size);
-
-  _length[_index] += size;
-
-  return size;
-}
-
-size_t PDMDoubleBuffer::read(void *buffer, size_t size)
-{
-  size_t avail = available();
-
-  if (size > avail) {
-    size = avail;
-  }
-
-  if (size == 0) {
-    return 0;
-  }
-
-  memcpy(buffer, &_buffer[_index][_readOffset[_index]], size);
-  _readOffset[_index] += size;
-
-  return size;
-}
-
-size_t PDMDoubleBuffer::peek(void *buffer, size_t size)
-{
-  size_t avail = available();
-
-  if (size > avail) {
-    size = avail;
-  }
-
-  if (size == 0) {
-    return 0;
-  }
-
-  memcpy(buffer, &_buffer[_index][_readOffset[_index]], size);
-
-  return size;
-}
-
-void* PDMDoubleBuffer::data()
-{
-  return (void*)_buffer[_index];
-}
-
-size_t PDMDoubleBuffer::available()
-{
-  return _length[_index] - _readOffset[_index];
-}
-
-void PDMDoubleBuffer::swap(int length)
-{
-  if (_index == 0) {
-    _index = 1;
-  } else {
     _index = 0;
-  }
+    _length[0] = 0;
+    _length[1] = 0;
+    _readOffset[0] = 0;
+    _readOffset[1] = 0;
+}
 
-  _length[_index] = length;
-  _readOffset[_index] = 0;
+size_t PDMDoubleBuffer::availableForWrite() {
+    return (_size - (_length[_index] - _readOffset[_index]));
+}
+
+size_t PDMDoubleBuffer::write(const void *buffer, size_t size) {
+    size_t space = availableForWrite();
+
+    if (size > space) {
+        size = space;
+    }
+
+    if (size == 0) {
+        return 0;
+    }
+
+    memcpy(&_buffer[_index][_length[_index]], buffer, size);
+
+    _length[_index] += size;
+
+    return size;
+}
+
+size_t PDMDoubleBuffer::read(void *buffer, size_t size) {
+    size_t avail = available();
+
+    if (size > avail) {
+        size = avail;
+    }
+
+    if (size == 0) {
+        return 0;
+    }
+
+    memcpy(buffer, &_buffer[_index][_readOffset[_index]], size);
+    _readOffset[_index] += size;
+
+    return size;
+}
+
+size_t PDMDoubleBuffer::peek(void *buffer, size_t size) {
+    size_t avail = available();
+
+    if (size > avail) {
+        size = avail;
+    }
+
+    if (size == 0) {
+        return 0;
+    }
+
+    memcpy(buffer, &_buffer[_index][_readOffset[_index]], size);
+
+    return size;
+}
+
+void *PDMDoubleBuffer::data() {
+    return (void *) _buffer[_index];
+}
+
+size_t PDMDoubleBuffer::available() {
+    return _length[_index] - _readOffset[_index];
+}
+
+void PDMDoubleBuffer::swap(size_t length) {
+    if (_index == 0) {
+        _index = 1;
+    } else {
+        _index = 0;
+    }
+
+    _length[_index] = length;
+    _readOffset[_index] = 0;
 }
