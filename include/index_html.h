@@ -75,11 +75,13 @@ const char index_html[] PROGMEM = R"~~~(
                 <div>
                 <dt>Board</dt>
                 <dd>Temperature: <span id="boardTemp"></span></dd>
+                <dd>Mbed OS: <span id="mbedVersion"></span></dd>
                 </div>
                 <div>
                 <dt>WiFi</dt>
                 <dd>IP Address: <span id="wfIpAddress"></span></dd>
                 <dd>Signal: <span id="wfSignal"></span></dd>
+                <dd>WiFi FW: <span id="wfVersion"></span></dd>
                 </div>
                 <div>
                 <dt>Effects</dt>

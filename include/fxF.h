@@ -110,6 +110,9 @@ namespace FxF {
         const char *name() const override;
 
         void describeConfig(JsonArray &json) const override;
+
+    protected:
+        CRGBSet set1, set2mir;
     };
 }
 #endif //ARDUINO_LIGHTFX_FXF_H

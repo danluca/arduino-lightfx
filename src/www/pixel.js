@@ -43,8 +43,14 @@ function getStatus() {
         .done(function (data) {
             $('#status h1').removeClass('red');
             $('#boardTemp').html(`${data.boardTemp} 'C (${data.boardTemp*9/5+32} 'F)`);
+            $('#mbedVersion').html(`${data.mbedVersion}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
             $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
+            if (data.wifi.curVersion !== data.wifi.latestVersion) {
+                $('#wfVersion').html(`WiFi NINA v${data.wifi.curVersion} [could upgrade to ${data.wifi.latestVersion}]`);
+            } else {
+                $('#wfVersion').html(`WiFi NINA v${data.wifi.curVersion} (latest)`);
+            }
             $('#fxCount').html(`${data.fx.count} effects`);
             $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
             $('#fxCurHoliday').html(`${data.fx.holiday}`);

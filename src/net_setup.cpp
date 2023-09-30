@@ -216,9 +216,8 @@ void printWifiStatus() {
 }
 
 void checkFirmwareVersion() {
-  String fv = WiFi.firmwareVersion();
+  String fv = WiFiClass::firmwareVersion();
   Log.infoln(F("WiFi firmware version %s"), fv.c_str());
-  //logInfo("WiFi current FW version: %s", fv);
   if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
     Log.warningln(F("Please upgrade the WiFi firmware to %s"), WIFI_FIRMWARE_LATEST_VERSION);
   }

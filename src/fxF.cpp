@@ -12,6 +12,7 @@ void FxF::fxRegister() {
     static FxF1 fxF1;
     static FxF2 fxF2;
     static FxF3 fxF3;
+    static FxF4 fxF4;
 }
 
 FxF1::FxF1() {
@@ -331,10 +332,45 @@ bool EyeBlink::isActive() const {
 // FxF4
 void FxF4::setup() {
     resetGlobals();
+    hue = 0;
+    hueDiff = 7;
+    curPos = 0;
+    delta = 0;
+    dirFwd = true;
+    szStack = 4;    //size of segment
+    brightness = 224;
+    dist = 0;
 }
 
 void FxF4::loop() {
+    EVERY_N_MILLISECONDS_I(fxf4Timer, 50) {
+        if (delta > 0) {
+            CRGB feed = curPos > szStack ? BKG : ColorFromPalette(palette, hue+=hueDiff, brightness, LINEARBLEND);
+            if (dirFwd) {
+                shiftRight(set1, feed);
+                curPos++;
+            } else {
+                shiftLeft(set1, feed);
+                curPos--;
+            }
+            set2mir = set1;
+            delta--;
+        } else {
+            uint16_t easePos = easeOutBounce(dist++, tpl.size()/2-1);
+            delta = asub(easePos, curPos);  //for the current frame size, delta doesn't go above 5. For larger sizes,  the max is 6.
+            dirFwd = easePos > curPos;
+            fxf4Timer.setPeriod(5+(50-delta*8));
+            if (dist == (tpl.size())/2) {
+                //start over
+                curPos = 0;
+                delta = 0;
+                dist = 0;
+            }
+        }
 
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
 }
 
 const char *FxF4::description() const {
@@ -350,6 +386,6 @@ void FxF4::describeConfig(JsonArray &json) const {
     baseConfig(obj);
 }
 
-FxF4::FxF4() {
+FxF4::FxF4() : set1(tpl(0, tpl.size()/2-1)), set2mir(tpl(tpl.size() - 1, tpl.size()/2)) {
     registryIndex = fxRegistry.registerEffect(this);
 }

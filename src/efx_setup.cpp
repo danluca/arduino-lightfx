@@ -8,7 +8,6 @@
 //~ Global variables definition
 const uint8_t dimmed = 20;
 const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
-const uint8_t flameBrightness = 180;
 const CRGB BKG = CRGB::Black;
 const uint8_t maxChanges = 24;
 volatile bool fxBump = false;

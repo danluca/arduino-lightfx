@@ -362,6 +362,8 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     int32_t rssi = WiFi.RSSI();
     wifi["bars"] = barSignalLevel(rssi);  //Wi-Fi signal level
     wifi["rssi"] = rssi;
+    wifi["curVersion"] = WiFiClass::firmwareVersion();
+    wifi["latestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
     // Fx
     JsonObject fx = doc.createNestedObject("fx");
     fx["count"] = fxRegistry.size();
@@ -392,6 +394,8 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
         IMU.readTemperature(temperature_deg);
         doc["boardTemp"] = temperature_deg;
     }
+    snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
+    doc["mbedVersion"] = timeBuf;
 
     //send it out
     sz += serializeJson(doc, *client);
