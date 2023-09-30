@@ -360,11 +360,13 @@ void FxF4::loop() {
             delta = asub(easePos, curPos);  //for the current frame size, delta doesn't go above 5. For larger sizes,  the max is 6.
             dirFwd = easePos > curPos;
             fxf4Timer.setPeriod(10+(50-delta*8));
-            if (dist == (tpl.size()+szStack)/2) {
+            if (dist > (tpl.size()+szStack)/2) {
+                //flash
+                set1[set1.size()-1]=set2mir[set2mir.size()-1]=CRGB::White;
                 //start over
                 curPos = 0;
                 delta = 0;
-                dist = 0;
+                dist = 2;   //short-circuit the values that render to 0
             }
         }
 
