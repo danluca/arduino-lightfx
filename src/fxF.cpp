@@ -356,11 +356,11 @@ void FxF4::loop() {
             set2mir = set1;
             delta--;
         } else {
-            uint16_t easePos = easeOutBounce(dist++, tpl.size()/2-1);
+            uint16_t easePos = easeOutBounce(dist++, tpl.size()/2);
             delta = asub(easePos, curPos);  //for the current frame size, delta doesn't go above 5. For larger sizes,  the max is 6.
             dirFwd = easePos > curPos;
-            fxf4Timer.setPeriod(5+(50-delta*8));
-            if (dist == (tpl.size())/2) {
+            fxf4Timer.setPeriod(10+(50-delta*8));
+            if (dist == (tpl.size()/2+1)) {
                 //start over
                 curPos = 0;
                 delta = 0;
@@ -374,7 +374,7 @@ void FxF4::loop() {
 }
 
 const char *FxF4::description() const {
-    return "FxF4: bouncy segments";
+    return "FxF4: Bouncy segments";
 }
 
 const char *FxF4::name() const {
