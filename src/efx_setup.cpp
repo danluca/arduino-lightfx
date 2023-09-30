@@ -443,41 +443,31 @@ CRGB adjustBrightness(CRGB color, uint8_t bright) {
 }
 
 /**
- *
- * @param x
- * @param lim
- * @return
+ * Ease Out Bounce implementation - leverages the double precision original implementation converted to int in a range
+ * @param x input value
+ * @param lim high limit range
+ * @return the result in [0,lim] inclusive range
  * @see https://easings.net/#easeOutBounce
  */
 uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
-//    function easeOutBounce(x: number): number {
-//            const n1 = 7.5625;
-//            const d1 = 2.75;
-//
-//            if (x < 1 / d1) {
-//                return n1 * x * x;
-//            } else if (x < 2 / d1) {
-//                return n1 * (x -= 1.5 / d1) * x + 0.75;
-//            } else if (x < 2.5 / d1) {
-//                return n1 * (x -= 2.25 / d1) * x + 0.9375;
-//            } else {
-//                return n1 * (x -= 2.625 / d1) * x + 0.984375;
-//            }
-//    }
-    uint16_t d1 = lim*11/4;
-    uint16_t n1 = lim*121/16;
-    if (x<d1) {
-        return n1*x*x/lim;
-    } else if (x<d1*2) {
-        uint16_t x1 = x - d1*3/2;
-        return n1*x1*x1/lim + lim*3/4;
-    } else if (x<d1*5/2) {
-        uint16_t x1 = x - d1*9/4;
-        return n1*x1*x1/lim + lim*15/16;
+    static const double d1 = 2.75;
+    static const double n1 = 7.5625;
+
+    double xf = ((double)x)/lim;
+    double res = 0;
+    if (xf < 1/d1) {
+        res = n1*xf*xf;
+    } else if (xf < 2/d1) {
+        double xf1 = xf - 1.5/d1;
+        res = n1*xf1*xf1 + 0.75;
+    } else if (xf < 2.5/d1) {
+        double xf1 = xf - 2.25/d1;
+        res = n1*xf1*xf1 + 0.9375;
     } else {
-        uint16_t x1 = x - d1*42/16;
-        return n1*x1*x1/lim + lim*63/64;
+        double xf1 = xf - 2.625/d1;
+        res = n1*xf1*xf1 + 0.984375;
     }
+    return (uint16_t )(res * lim);
 }
 
 /**

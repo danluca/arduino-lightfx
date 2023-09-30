@@ -208,7 +208,7 @@ void FxE3::loop() {
         switch (move) {
             case forward: seg = ColorFromPalette(palette, colorIndex, fade, currentBlending); break;
             case backward: seg.fadeToBlackBy(fade); break;
-            case sasquatch: seg[seg.size()-1].fadeToBlackBy(224); break;
+            case sasquatch: seg[seg.size()-1].fadeToBlackBy(252); break;
         }
 
         fade = capu(fade + delta, brightness);

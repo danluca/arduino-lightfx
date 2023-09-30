@@ -96,5 +96,20 @@ namespace FxF {
         static const uint8_t maxEyes = 5;   //correlated with size of a FRAME
         EyeBlink eyes[maxEyes]{};
     };
+
+    class FxF4 : public LedEffect {
+    public:
+        FxF4();
+
+        void setup() override;
+
+        void loop() override;
+
+        const char *description() const override;
+
+        const char *name() const override;
+
+        void describeConfig(JsonArray &json) const override;
+    };
 }
 #endif //ARDUINO_LIGHTFX_FXF_H

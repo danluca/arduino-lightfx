@@ -314,7 +314,7 @@ void EyeBlink::reset(uint16_t curPos, CRGB clr) {
     idleTime = random16(50, 135);    //3.7-10.1s of idle time
     brIncr = random8(40, 120);
     numBlinks = random8(2, 6);
-    curPause = pauseTime = random8(35, 70);    //2.6-5.2s between opening/closing lids (with 75ms time base in looping)
+    curPause = pauseTime = random8(30, 60);    //2.2-4.5s between opening/closing lids (with 75ms time base in looping)
     pos = curPos;
     color = clr;
     curLen = 0;
@@ -326,4 +326,30 @@ void EyeBlink::reset(uint16_t curPos, CRGB clr) {
  */
 bool EyeBlink::isActive() const {
     return curStep != Off;
+}
+
+// FxF4
+void FxF4::setup() {
+    resetGlobals();
+}
+
+void FxF4::loop() {
+
+}
+
+const char *FxF4::description() const {
+    return "FxF4: bouncy segments";
+}
+
+const char *FxF4::name() const {
+    return "FxF4";
+}
+
+void FxF4::describeConfig(JsonArray &json) const {
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
+}
+
+FxF4::FxF4() {
+    registryIndex = fxRegistry.registerEffect(this);
 }

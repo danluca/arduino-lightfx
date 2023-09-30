@@ -165,11 +165,11 @@ void FxC3::loop() {
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
     }
-    EVERY_N_SECONDS(2) {
+    EVERY_N_SECONDS(5) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
     if (!paletteFactory.isHolidayLimitedHue()) {
-        EVERY_N_SECONDS(10) {
+        EVERY_N_SECONDS(25) {
             targetPalette = PaletteFactory::randomPalette();
         }
     }
