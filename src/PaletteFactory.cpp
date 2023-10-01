@@ -53,8 +53,8 @@ extern const TProgmemRGBPalette16 ChristmasColors_p FL_PROGMEM = {
  */
 Holiday colTheme::getHoliday(const time_t time) {
     const uint16_t md = encodeMonthDay(time);
-    //Halloween: Oct 22 through Nov 3
-    if (md > 0xA15 && md < 0xB04)
+    //Halloween: Oct 10 through Nov 3
+    if (md > 0xA0A && md < 0xB04)
         return Halloween;
     //Thanksgiving: Nov 20 through Nov 30
     if (md > 0xB14 && md < 0xB1F)
