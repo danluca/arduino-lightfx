@@ -2,6 +2,7 @@
 #include "config.h"
 #include "log.h"
 
+using namespace colTheme;
 const char ssid[] = WF_SSID;
 const char pass[] = WF_PSW;
 
@@ -25,9 +26,20 @@ uint8_t barSignalLevel(int32_t rssi) {
         return 0;
     else if (rssi >= maxRSSI)
         return numLevels - 1;
-    float inRange = maxRSSI-minRSSI;
+    float inRange = maxRSSI - minRSSI;
     float outRange = numLevels - 1;
-    return (uint8_t )((float)(rssi - minRSSI) * outRange / inRange);
+    return (uint8_t) ((float) (rssi - minRSSI) * outRange / inRange);
+}
+
+/**
+ * Encodes month and day (in this order) into a short unsigned int (2 bytes) such that it can be easily used
+ * for comparisons
+ * @param time (optional) specific time to encode for. If not specified, current time is used.
+ * @return 2 byte encoded month and day
+ */
+uint16_t encodeMonthDay(const time_t time) {
+    time_t theTime = time == 0 ? now() : time;
+    return ((month(theTime) & 0xFF) << 8) + (day(theTime) & 0xFF);
 }
 
 bool wifi_connect() {
@@ -62,21 +74,21 @@ bool wifi_connect() {
 }
 
 bool wifi_setup() {
-  // check for the WiFi module:
-  if (WiFi.status() == WL_NO_MODULE) {
-    Log.warningln(F("Communication with WiFi module failed!"));
-    // don't continue - terminate thread?
-    //rtos::ThisThread::terminate();
-    while (true) {
-      yield();
-    };
-  }
-  checkFirmwareVersion();
-  
-  //enable low power mode - web server is not the primary function of this module
-  WiFi.lowPowerMode();
+    // check for the WiFi module:
+    if (WiFi.status() == WL_NO_MODULE) {
+        Log.warningln(F("Communication with WiFi module failed!"));
+        // don't continue - terminate thread?
+        //rtos::ThisThread::terminate();
+        while (true) {
+            yield();
+        };
+    }
+    checkFirmwareVersion();
 
-  return wifi_connect();
+    //enable low power mode - web server is not the primary function of this module
+    WiFi.lowPowerMode();
+
+    return wifi_connect();
 }
 
 bool imu_setup() {
@@ -107,26 +119,29 @@ bool time_setup() {
     //read the time
     bool ntpTimeAvailable = ntp_sync();
     setSyncProvider(curUnixTime);
+#ifndef DISABLE_LOGGING
+    Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
+#endif
+    Holiday hday = paletteFactory.adjustHoliday();
     if (ntpTimeAvailable) {
         // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
         // to the transition, such that we don't need to implement complex Sunday counting rules
         time_t curTime = now();
-        const uint16_t md = ((month(curTime) & 0xFF)<<8) + (day(curTime) & 0xFF);
+        const uint16_t md = encodeMonthDay(curTime);
         isDST = md > 0x030C && md < 0x0B05;
         timeClient.setTimeOffset(isDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS);
         setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
-    }
 #ifndef DISABLE_LOGGING
-    Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
-    Holiday hday = paletteFactory.adjustHoliday();
-    if (timeStatus() != timeNotSet) {
         Log.infoln(F("America/Chicago %s time (month/day=%X), time offset set to %d s, current time %s"),
                    isDST?"Daylight Savings":"Standard", md, isDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
         char timeBuf[20];
         curTime = now();
         sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
         Log.infoln(F("Current time %s %s"), timeBuf, isDST?"CDT":"CST");
-    } else
+#endif
+    }
+#ifndef DISABLE_LOGGING
+    else
         Log.warningln(F("Current time not available - NTP sync failed"));
     Log.infoln(F("Current holiday is %s"), holidayToString(hday));
 #endif
@@ -147,7 +162,8 @@ bool wifi_check() {
     uint8_t wifiBars = barSignalLevel(rssi);
     if ((gwPingTime < 0) || (wifiBars < 3)) {
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
-        Log.warningln(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable"), rssi, wifiBars);
+        Log.warningln(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable"), rssi,
+                      wifiBars);
         return false;
     }
     Log.infoln(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%d bars)"), gwPingTime, rssi, wifiBars);
@@ -175,52 +191,56 @@ void wifi_reconnect() {
 }
 
 void wifi_loop() {
-  EVERY_N_MINUTES(7) {
-    if (!wifi_check()) {
-        Log.warningln(F("WiFi connection unusable/lost - reconnecting..."));
-        wifi_reconnect();
-    }
+    EVERY_N_MINUTES(7) {
+        if (!wifi_check()) {
+            Log.warningln(F("WiFi connection unusable/lost - reconnecting..."));
+            wifi_reconnect();
+        }
 
-    if (!timeClient.isTimeSet()) {
-        if (time_setup())
-            stateLED(CRGB::Indigo);
-        else
-            stateLED(CRGB::Green);
+        if (!timeClient.isTimeSet()) {
+            if (time_setup())
+                stateLED(CRGB::Indigo);
+            else
+                stateLED(CRGB::Green);
+        }
     }
-  }
-  webserver();
-  yield();
+    EVERY_N_HOURS(12) {
+        Holiday hDay = paletteFactory.adjustHoliday();
+        Log.infoln(F("Current holiday is %s"), holidayToString(hDay));
+    }
+    webserver();
+    yield();
 }
 
 void printWifiStatus() {
-  // print the SSID of the network you're attached to:
-  Log.infoln(F("Connected to SSID: %s"), WiFi.SSID());
+    // print the SSID of the network you're attached to:
+    Log.infoln(F("Connected to SSID: %s"), WiFi.SSID());
 
-  // print your board's IP address:
-  IPAddress ip = WiFi.localIP();
-  Log.infoln(F("IP Address: %p"), ip);
+    // print your board's IP address:
+    IPAddress ip = WiFi.localIP();
+    Log.infoln(F("IP Address: %p"), ip);
 
-  // print your board's MAC address
-  uint8_t mac[WL_MAC_ADDR_LENGTH];
-  WiFi.macAddress(mac);
-  Log.infoln(F("MAC Address %x:%x:%x:%x:%x:%x"), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    // print your board's MAC address
+    uint8_t mac[WL_MAC_ADDR_LENGTH];
+    WiFi.macAddress(mac);
+    Log.infoln(F("MAC Address %x:%x:%x:%x:%x:%x"), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-  // print the received signal strength:
-  int32_t rssi = WiFi.RSSI();
+    // print the received signal strength:
+    int32_t rssi = WiFi.RSSI();
 #ifndef DISABLE_LOGGING
-  Log.infoln(F("Signal strength (RSSI) %d dBm; %d bars"), rssi, barSignalLevel(rssi));
+    Log.infoln(F("Signal strength (RSSI) %d dBm; %d bars"), rssi, barSignalLevel(rssi));
 #endif
 
-  // print where to go in a browser:
-  Log.infoln(F("To see this page in action, open a browser to http://%p"), ip);
+    // print where to go in a browser:
+    Log.infoln(F("To see this page in action, open a browser to http://%p"), ip);
 }
 
 void checkFirmwareVersion() {
-  String fv = WiFiClass::firmwareVersion();
-  Log.infoln(F("WiFi firmware version %s"), fv.c_str());
-  if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
-    Log.warningln(F("Please upgrade the WiFi firmware to %s"), WIFI_FIRMWARE_LATEST_VERSION);
-  }
+    String fv = WiFiClass::firmwareVersion();
+    Log.infoln(F("WiFi firmware version %s"), fv.c_str());
+    if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
+        Log.warningln(F("Please upgrade the WiFi firmware to %s"), WIFI_FIRMWARE_LATEST_VERSION);
+    }
 }
 
 ///////////////////////////////////////
@@ -228,14 +248,14 @@ void checkFirmwareVersion() {
 ///////////////////////////////////////
 
 time_t curUnixTime() {
-  //Note - the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve this purpose
-  //TODO: looks like we'd need to add the CST_OFFSET_SECONDS to the WiFi.getTime() as it returns the UTC
-  return timeClient.isTimeSet() ? timeClient.getEpochTime() : WiFi.getTime();
+    //Note - the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve this purpose
+    //TODO: looks like we'd need to add the CST_OFFSET_SECONDS to the WiFi.getTime() as it returns the UTC
+    return timeClient.isTimeSet() ? timeClient.getEpochTime() : WiFi.getTime();
 }
 
 bool ntp_sync() {
-  timeClient.begin();
-  timeClient.update();
-  timeClient.end();
-  return timeClient.isTimeSet();
+    timeClient.begin();
+    timeClient.update();
+    timeClient.end();
+    return timeClient.isTimeSet();
 }

@@ -5,6 +5,7 @@
 #include "fxH.h"
 
 using namespace FxH;
+using namespace colTheme;
 
 void FxH::fxRegister() {
     static FxH1 fxH1;

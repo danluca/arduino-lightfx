@@ -6,6 +6,7 @@
 #include "fxD.h"
 
 using namespace FxD;
+using namespace colTheme;
 
 void FxD::fxRegister() {
     static FxD1 fxD1;

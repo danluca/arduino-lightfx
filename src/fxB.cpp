@@ -6,6 +6,7 @@
 
 //~ Global variables definition for FxB
 using namespace FxB;
+using namespace colTheme;
 
 void FxB::fxRegister() {
     static FxB1 fxb1;

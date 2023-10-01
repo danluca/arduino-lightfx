@@ -112,7 +112,11 @@ namespace FxF {
         void describeConfig(JsonArray &json) const override;
 
     protected:
+        enum State {Bounce, Reduce, Flash};
+        static const uint8_t dotSize = 4;
+        State state;
         CRGBSet set1, set2mir;
+        uint16_t bouncyCurve[68]{};     //must be equal with FRAME_SIZE
     };
 }
 #endif //ARDUINO_LIGHTFX_FXF_H

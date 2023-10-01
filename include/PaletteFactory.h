@@ -5,29 +5,39 @@
 
 #include <FastLED.h>
 
-enum Holiday {None, Party, Halloween, Thanksgiving, Christmas, NewYear};
+uint16_t encodeMonthDay(time_t time = 0);
 
-static Holiday getHoliday(time_t time);
+namespace colTheme {
+    enum Holiday { None, Party, Halloween, Thanksgiving, Christmas, NewYear };
 
-Holiday currentHoliday();
+    static Holiday getHoliday(time_t time);
 
-Holiday parseHoliday(const String *str);
+    Holiday currentHoliday();
 
-const char* holidayToString(Holiday hday);
+    Holiday parseHoliday(const String *str);
 
-class PaletteFactory {
-    bool overrideHoliday = false;
-    Holiday holiday = None;
-public:
-    CRGBPalette16 mainPalette(time_t time = 0);
-    CRGBPalette16 secondaryPalette(time_t time = 0);
-    void forceHoliday(Holiday hday);
-    Holiday adjustHoliday(time_t time = 0);
-    Holiday currentHoliday() const;
-    bool isHolidayLimitedHue() const;
-    static CRGBPalette16 randomPalette(uint8_t ofsHue = 0, time_t time = 0);
-};
+    const char *holidayToString(Holiday hday);
 
-extern PaletteFactory paletteFactory;
+    class PaletteFactory {
+        bool overrideHoliday = false;
+        Holiday holiday = None;
+    public:
+        CRGBPalette16 mainPalette(time_t time = 0);
+
+        CRGBPalette16 secondaryPalette(time_t time = 0);
+
+        void forceHoliday(Holiday hday);
+
+        Holiday adjustHoliday(time_t time = 0);
+
+        Holiday currentHoliday() const;
+
+        bool isHolidayLimitedHue() const;
+
+        static CRGBPalette16 randomPalette(uint8_t ofsHue = 0, time_t time = 0);
+    };
+}
+
+extern colTheme::PaletteFactory paletteFactory;
 
 #endif //ARDUINO_LIGHTFX_PALETTEFACTORY_H

@@ -6,6 +6,7 @@
 #include "fxC.h"
 
 using namespace FxC;
+using namespace colTheme;
 
 void FxC::fxRegister() {
     static FxC1 fxC1;

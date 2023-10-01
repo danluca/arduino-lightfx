@@ -22,6 +22,7 @@ Server: rp2040-luca/1.0.0
 Cache-Control: no-cache, no-store)===";
 
 using namespace web;
+using namespace colTheme;
 
 static const char hdRootLocation[] PROGMEM = "Location: /";
 static const char hdConClose[] PROGMEM = "Connection: close";

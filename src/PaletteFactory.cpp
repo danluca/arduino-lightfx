@@ -4,6 +4,7 @@
 #include "PaletteFactory.h"
 #include <TimeLib.h>
 
+using namespace colTheme;
 /// Other custom palette definitions
 /**
  * Halloween themed colors - red, orange, purple and black
@@ -50,8 +51,8 @@ extern const TProgmemRGBPalette16 ChristmasColors_p FL_PROGMEM = {
  * @param time
  * @return one of the pre-defined holidays, defaults to Party
  */
-Holiday getHoliday(const time_t time) {
-    const uint16_t md = ((month(time) & 0xFF)<<8) + (day(time) & 0xFF);
+Holiday colTheme::getHoliday(const time_t time) {
+    const uint16_t md = encodeMonthDay(time);
     //Halloween: Oct 22 through Nov 3
     if (md > 0xA15 && md < 0xB04)
         return Halloween;
@@ -68,7 +69,7 @@ Holiday getHoliday(const time_t time) {
     return Party;
 }
 
-Holiday currentHoliday() {
+Holiday colTheme::currentHoliday() {
     return timeStatus() != timeNotSet ? getHoliday(now()) : Party;
 }
 
@@ -77,7 +78,7 @@ Holiday currentHoliday() {
  * @param str
  * @return
  */
-Holiday parseHoliday(const String *str) {
+Holiday colTheme::parseHoliday(const String *str) {
     if (str->equalsIgnoreCase("Halloween"))
         return Halloween;
     else if (str->equalsIgnoreCase("Thanksgiving"))
@@ -89,7 +90,7 @@ Holiday parseHoliday(const String *str) {
     return Party;
 }
 
-const char *holidayToString(const Holiday hday) {
+const char *colTheme::holidayToString(const Holiday hday) {
     switch (hday) {
         case None:
             return "None";

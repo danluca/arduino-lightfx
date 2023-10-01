@@ -6,6 +6,7 @@
 
 //~ Global variables definition for FxA
 using namespace FxA;
+using namespace colTheme;
 
 void FxA::fxRegister() {
     static FxA1 fxA1;

@@ -449,24 +449,24 @@ CRGB adjustBrightness(CRGB color, uint8_t bright) {
  * @see https://easings.net/#easeOutBounce
  */
 uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
-    static const double d1 = 2.75;
-    static const double n1 = 7.5625;
+    static const float d1 = 2.75f;
+    static const float n1 = 7.5625f;
 
-    double xf = ((double)x)/lim;
-    double res = 0;
+    float xf = ((float)x)/(float)lim;
+    float res = 0;
     if (xf < 1/d1) {
         res = n1*xf*xf;
     } else if (xf < 2/d1) {
-        double xf1 = xf - 1.5/d1;
-        res = n1*xf1*xf1 + 0.75;
-    } else if (xf < 2.5/d1) {
-        double xf1 = xf - 2.25/d1;
-        res = n1*xf1*xf1 + 0.9375;
+        float xf1 = xf - 1.5f/d1;
+        res = n1*xf1*xf1 + 0.75f;
+    } else if (xf < 2.5f/d1) {
+        float xf1 = xf - 2.25f/d1;
+        res = n1*xf1*xf1 + 0.9375f;
     } else {
-        double xf1 = xf - 2.625/d1;
-        res = n1*xf1*xf1 + 0.984375;
+        float xf1 = xf - 2.625f/d1;
+        res = n1*xf1*xf1 + 0.984375f;
     }
-    return (uint16_t )(res * lim);
+    return (uint16_t )(res * (float)lim);
 }
 
 /**

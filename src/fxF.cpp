@@ -7,6 +7,7 @@
 #include <algorithm>
 
 using namespace FxF;
+using namespace colTheme;
 
 void FxF::fxRegister() {
     static FxF1 fxF1;
@@ -154,7 +155,7 @@ void FxF3::loop() {
             }
         }
     }
-    EVERY_N_MILLISECONDS(75) {
+    EVERY_N_MILLISECONDS(60) {
         //step advance each active eye
         for (auto & eye : eyes)
             eye.step();
@@ -230,13 +231,13 @@ Viewport FxF3::nextEyePos() {
  */
 EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
     //initialize the inner fields with default values
-    idleTime = 10;  //10 cycles before this eye can be used again (0.75s at 75ms time base)
+    idleTime = 100;  //100 cycles before this eye can be used again (6s at 60ms time base)
     brIncr = 80;    //each step brightness is increased/decreased by this amount
     numBlinks = 2;  //blink twice before deactivating
     curBrightness = 0; //initial brightness starting from black
     curLen = 0;     //eyes closed initially
     pos = 0;        //default position
-    curPause = pauseTime = 20; //pause 1.5s (with 75ms time base in loop - see every_n_milliseconds speed) between opening/closing lids
+    curPause = pauseTime = 20; //pause 1.2s (with 60ms time base in loop - see every_n_milliseconds speed) between opening/closing lids
 }
 
 /**
@@ -312,10 +313,10 @@ void EyeBlink::start() {
  */
 void EyeBlink::reset(uint16_t curPos, CRGB clr) {
     curStep = Off;
-    idleTime = random16(50, 135);    //3.7-10.1s of idle time
-    brIncr = random8(40, 120);
+    idleTime = random16(80, 160);    //5-10s of idle time
+    brIncr = random8(50, 100);
     numBlinks = random8(2, 6);
-    curPause = pauseTime = random8(30, 60);    //2.2-4.5s between opening/closing lids (with 75ms time base in looping)
+    curPause = pauseTime = random8(30, 60);    //1.8-3.6s between opening/closing lids (with 60ms time base in looping)
     pos = curPos;
     color = clr;
     curLen = 0;
@@ -333,41 +334,67 @@ bool EyeBlink::isActive() const {
 void FxF4::setup() {
     resetGlobals();
     hue = 0;
-    hueDiff = 7;
+    hueDiff = 9;
     curPos = 0;
     delta = 0;
     dirFwd = true;
-    szStack = 4;    //size of segment
-    brightness = 224;
+    brightness = 200;
     dist = 0;
 }
 
 void FxF4::loop() {
     EVERY_N_MILLISECONDS_I(fxf4Timer, 50) {
-        if (delta > 0) {
-            CRGB feed = curPos > szStack ? BKG : ColorFromPalette(palette, hue+=hueDiff, brightness, LINEARBLEND);
-            if (dirFwd) {
-                shiftRight(set1, feed);
-                curPos++;
-            } else {
-                shiftLeft(set1, feed);
-                curPos--;
-            }
-            set2mir = set1;
-            delta--;
-        } else {
-            uint16_t easePos = easeOutBounce(dist++, (tpl.size()+szStack)/2);
-            delta = asub(easePos, curPos);  //for the current frame size, delta doesn't go above 5. For larger sizes,  the max is 6.
-            dirFwd = easePos > curPos;
-            fxf4Timer.setPeriod(10+(50-delta*8));
-            if (dist > (tpl.size()+szStack)/2) {
-                //flash
-                set1[set1.size()-1]=set2mir[set2mir.size()-1]=CRGB::White;
-                //start over
-                curPos = 0;
-                delta = 0;
-                dist = 2;   //short-circuit the values that render to 0
-            }
+        uint16_t upLim = (tpl.size() + dotSize)/2;
+        switch (state) {
+            case Bounce:
+                if (delta > 0) {
+                    CRGB feed = curPos > dotSize ? BKG : ColorFromPalette(palette, hue+=hueDiff, brightness, LINEARBLEND);
+                    if (dirFwd) {
+                        shiftRight(set1, feed);
+                        curPos++;
+                    } else {
+                        shiftLeft(set1, feed);
+                        curPos--;
+                    }
+                    set2mir = set1;
+                    delta--;
+                } else {
+                    uint16_t easePos = bouncyCurve[dist++];
+                    if (easePos > 0) {
+                        //skip the 0 values of the bouncy curve
+                        delta = asub(easePos, curPos);  //for the current frame size, delta doesn't go above 5. For larger sizes,  the max is 6.
+                        dirFwd = easePos > curPos;
+                        fxf4Timer.setPeriod(10 + (50 - delta * 8));
+                        if (dist > upLim) {
+                            state = Reduce;
+                            delta = dotSize / 2;
+                        }
+                    }
+                }
+                break;
+            case Reduce:
+                if (delta > 0) {
+                    shiftRight(set1, BKG);
+                    set2mir = set1;
+                    delta--;
+                } else {
+                    state = Flash;
+                    delta = 1;  //1 time cycle for flash
+                }
+                break;
+            case Flash:
+                if (delta > 0) {
+                    set1(set1.size()-dotSize/2, set1.size() - 1) = CRGB::White;
+                    set2mir(set2mir.size()-dotSize/2, set2mir.size() - 1) = CRGB::White;
+                    delta--;
+                } else {
+                    //start over
+                    curPos = 0;
+                    delta = 0;
+                    dist = 0;
+                    state = Bounce;
+                }
+                break;
         }
 
         replicateSet(tpl, others);
@@ -388,6 +415,10 @@ void FxF4::describeConfig(JsonArray &json) const {
     baseConfig(obj);
 }
 
-FxF4::FxF4() : set1(tpl(0, tpl.size()/2-1)), set2mir(tpl(tpl.size() - 1, tpl.size()/2)) {
+FxF4::FxF4() : state(Bounce), set1(tpl(0, tpl.size()/2-1)), set2mir(tpl(tpl.size() - 1, tpl.size()/2)) {
     registryIndex = fxRegistry.registerEffect(this);
+    short upLim = (tpl.size() + dotSize)/2;
+    for (short x = 0; x < upLim; x++)
+        bouncyCurve[x] = easeOutBounce(x, upLim - 1);
+
 }

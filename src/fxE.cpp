@@ -5,6 +5,7 @@
 #include "fxE.h"
 
 using namespace FxE;
+using namespace colTheme;
 
 void FxE::fxRegister() {
     static FxE1 fxe1;
