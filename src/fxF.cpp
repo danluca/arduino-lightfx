@@ -362,12 +362,12 @@ void FxF4::loop() {
                     uint16_t easePos = bouncyCurve[dist++];
                     if (dist > upLim) {
                         state = Reduce;
-                        delta = dotSize / 2;
+                        delta = dotSize-1;
                     } else if (easePos > 0) {
                         //skip the 0 values of the bouncy curve
                         delta = asub(easePos, curPos);  //for the current frame size, delta doesn't go above 5. For larger sizes,  the max is 6.
                         dirFwd = easePos > curPos;
-                        fxf4Timer.setPeriod(10 + (50 - delta * 8));
+                        fxf4Timer.setPeriod(10 + (50 - delta * 8)); //speeds between 60ms - 20ms
                     }
                 }
                 break;
@@ -383,15 +383,18 @@ void FxF4::loop() {
                 break;
             case Flash:
                 if (delta > 0) {
-                    set1(set1.size()-dotSize/2, set1.size() - 1) = CRGB::White;
-                    set2mir(set2mir.size()-dotSize/2, set2mir.size() - 1) = CRGB::White;
+                    set1[set1.size()-1] = set2mir[set2mir.size()-1] = CRGB::White;
                     delta--;
+                    fxf4Timer.setPeriod(10);
                 } else {
+                    //turn off flash pixels
+                    set1[set1.size()-1] = set2mir[set2mir.size()-1] = BKG;
                     //start over
                     curPos = 0;
                     delta = 0;
                     dist = 0;
                     state = Bounce;
+                    fxf4Timer.setPeriod(50);
                 }
                 break;
         }
