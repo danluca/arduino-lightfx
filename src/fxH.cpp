@@ -104,7 +104,7 @@ void FxH1::loop() {
 }
 
 const char *FxH1::description() const {
-    return "FXH1: Fire in 3 segments";
+    return "FXH1: Fire segments";
 }
 
 void FxH1::Fire2012WithPalette(uint8_t xFire) {
@@ -179,7 +179,7 @@ void FxH2::loop() {
 }
 
 const char *FxH2::description() const {
-    return "FXH2: confetti H palette";
+    return "FXH2: confetti H";
 }
 
 void FxH2::confetti_pal() {

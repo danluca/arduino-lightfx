@@ -50,7 +50,7 @@ void FxC1::loop() {
 }
 
 const char *FxC1::description() const {
-    return "FXC1: blend between two animations running at the same time";
+    return "FXC1: blend between two concurrent animations";
 }
 
 void FxC1::animationA() {
@@ -189,7 +189,7 @@ const char *FxC3::name() const {
 }
 
 const char *FxC3::description() const {
-    return "FXC3: using Perlin Noise to move a pixel up and down the strand for a random natural movement";
+    return "FXC3: Perlin Noise for moving up and down the strand";
 }
 
 // Fx C4

@@ -232,7 +232,7 @@ void FxE3::loop() {
 }
 
 const char *FxE3::description() const {
-    return "FxE3: sawtooth back/forth with a shadow running across";
+    return "FxE3: sawtooth back/forth";
 }
 
 const char *FxE3::name() const {

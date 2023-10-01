@@ -257,7 +257,7 @@ void FxA3::loop() {
 }
 
 const char *FxA3::description() const {
-    return "FXA3: Moving variable dot size back and forth on a frame, repeat across whole strip";
+    return "FXA3: Moving variable dot size back and forth";
 }
 
 void FxA3::describeConfig(JsonArray &json) const {

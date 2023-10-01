@@ -50,7 +50,7 @@ void FxD1::loop() {
 }
 
 const char *FxD1::description() const {
-    return "FXD1: Confetti D flashes colours within a limited hue";
+    return "FXD1: Confetti D";
 }
 
 const char *FxD1::name() const {

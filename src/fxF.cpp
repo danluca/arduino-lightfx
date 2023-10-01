@@ -203,7 +203,7 @@ Viewport FxF3::nextEyePos() {
     }
     //if no active eyes (like beginning) return the full tpl strip
     if (actEyes.empty())
-        return {0, static_cast<uint16_t>(tpl.size())};
+        return {0, static_cast<uint16_t>(tpl.size() - EyeBlink::size)};
 
     //sort active eyes ascending by position - notice the use of lambda expression for custom comparator (available since C++11, we're using C++14) - cool stuff!!
     std::sort(actEyes.begin(), actEyes.end(), [](EyeBlink *a, EyeBlink *b) {return a->pos < b->pos;});
@@ -360,15 +360,14 @@ void FxF4::loop() {
                     delta--;
                 } else {
                     uint16_t easePos = bouncyCurve[dist++];
-                    if (easePos > 0) {
+                    if (dist > upLim) {
+                        state = Reduce;
+                        delta = dotSize / 2;
+                    } else if (easePos > 0) {
                         //skip the 0 values of the bouncy curve
                         delta = asub(easePos, curPos);  //for the current frame size, delta doesn't go above 5. For larger sizes,  the max is 6.
                         dirFwd = easePos > curPos;
                         fxf4Timer.setPeriod(10 + (50 - delta * 8));
-                        if (dist > upLim) {
-                            state = Reduce;
-                            delta = dotSize / 2;
-                        }
                     }
                 }
                 break;
