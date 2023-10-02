@@ -116,7 +116,7 @@ namespace FxF {
         static const uint8_t dotSize = 4;
         State state;
         CRGBSet set1, set2mir;
-        uint16_t bouncyCurve[68]{};     //must be equal with FRAME_SIZE
+        uint16_t bouncyCurve[(FRAME_SIZE+dotSize)/2]{};     //must be equal with (FRAME_SIZE+dotSize)/2
     };
 }
 #endif //ARDUINO_LIGHTFX_FXF_H

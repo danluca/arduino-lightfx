@@ -77,7 +77,7 @@ namespace FxA {
         void makeDot(CRGB color, uint16_t szDot);
 
         uint8_t szSegment = 5;
-        uint8_t szStackSeg = 3;
+        //uint8_t szStackSeg = 3;
         bool bFwd = true;
     };
 

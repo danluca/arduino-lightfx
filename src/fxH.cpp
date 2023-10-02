@@ -186,7 +186,7 @@ void FxH2::confetti_pal() {
     // random colored speckles that blink in and fade smoothly
     tpl.fadeToBlackBy(fade);  // Low values = slower fade.
     uint16_t pos = random16(tpl.size());             // Pick an LED at random.
-    tpl[pos] = ColorFromPalette(palette, hue + random16(hueDiff) / 4, brightness, currentBlending);
+    tpl[pos] = ColorFromPalette(palette, hue + random16(hueDiff) / 4, brightness, LINEARBLEND);
     hue = hue + delta;  // It increments here.
     replicateSet(tpl, others);
 }

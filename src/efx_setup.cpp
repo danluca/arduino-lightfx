@@ -7,7 +7,7 @@
 
 //~ Global variables definition
 const uint8_t dimmed = 20;
-const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
+//const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
 const CRGB BKG = CRGB::Black;
 const uint8_t maxChanges = 24;
 volatile bool fxBump = false;
@@ -21,7 +21,6 @@ CRGBSet tpl(leds, FRAME_SIZE);                        //array length, indexes go
 CRGBSet others(leds, tpl.size(), NUM_PIXELS-1); //start and end indexes are inclusive
 CRGBPalette16 palette;
 CRGBPalette16 targetPalette;
-TBlendType    currentBlending;
 OpMode mode = Chase;
 uint8_t brightness = 224;
 uint8_t stripBrightness = brightness;
@@ -203,7 +202,6 @@ void resetGlobals() {
 
     palette = paletteFactory.mainPalette();
     targetPalette = paletteFactory.secondaryPalette();
-    currentBlending = LINEARBLEND;
     mode = Chase;
     brightness = 224;
     colorIndex = lastColorIndex = 0;

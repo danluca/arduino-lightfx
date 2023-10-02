@@ -23,10 +23,10 @@
 
 #define MAX_EFFECTS_COUNT   256
 
-const uint16_t turnOffSeq[] = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
+const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 
 extern const uint8_t dimmed;
-extern const uint16_t FRAME_SIZE;
+//extern const uint16_t FRAME_SIZE;
 extern const CRGB BKG;
 extern const uint8_t maxChanges;
 enum OpMode { TurnOff, Chase };
@@ -51,7 +51,6 @@ extern uint8_t delta;
 extern uint8_t twinkrate;
 extern uint16_t szStack;
 extern uint16_t hueDiff;
-extern TBlendType currentBlending;
 extern bool dirFwd;
 extern int8_t rot;
 extern int32_t dist;

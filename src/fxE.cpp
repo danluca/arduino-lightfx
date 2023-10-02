@@ -62,7 +62,7 @@ const char *FxE1::description() const {
 
 void FxE1::twinkle() {
 
-  if (random8() < twinkrate) leds[random16(NUM_PIXELS)] += ColorFromPalette(palette, (randhue ? random8() : hue), brightness, currentBlending);
+  if (random8() < twinkrate) leds[random16(NUM_PIXELS)] += ColorFromPalette(palette, (randhue ? random8() : hue), brightness, LINEARBLEND);
   fadeToBlackBy(leds, NUM_PIXELS, fade);
   
 } // twinkle()
@@ -130,7 +130,7 @@ void FxE2::beatwave() {
     uint8_t wave4 = beatsin8(6, 0, 255);
 
     for (uint16_t i=0; i<tpl.size(); i++)
-        tpl[i] = ColorFromPalette(palette, i + wave1 + wave2 + wave3 + wave4, brightness, currentBlending);
+        tpl[i] = ColorFromPalette(palette, i + wave1 + wave2 + wave3 + wave4, brightness, LINEARBLEND);
     replicateSet(tpl, others);
 }
 
@@ -207,7 +207,7 @@ void FxE3::loop() {
         //fading in/out during light movement
         CRGBSet seg = tpl(segStart, segEnd);
         switch (move) {
-            case forward: seg = ColorFromPalette(palette, colorIndex, fade, currentBlending); break;
+            case forward: seg = ColorFromPalette(palette, colorIndex, fade, LINEARBLEND); break;
             case backward: seg.fadeToBlackBy(fade); break;
             case sasquatch: seg[seg.size()-1].fadeToBlackBy(252); break;
         }
