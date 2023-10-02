@@ -56,8 +56,8 @@ Holiday colTheme::getHoliday(const time_t time) {
     //Halloween: Oct 1 through Nov 3
     if (md > 0xA01 && md < 0xB04)
         return Halloween;
-    //Thanksgiving: Nov 20 through Nov 30
-    if (md > 0xB14 && md < 0xB1F)
+    //Thanksgiving: Nov 15 through Nov 30
+    if (md > 0xB0F && md < 0xB1F)
         return Thanksgiving;
     //Christmas: Dec 23 through Dec 27
     if (md > 0xC16 && md < 0xC1C)
