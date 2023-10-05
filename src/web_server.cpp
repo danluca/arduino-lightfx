@@ -443,7 +443,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     if (doc.containsKey(strHoliday)) {
         String userHoliday = doc[strHoliday].as<String>();
         paletteFactory.forceHoliday(parseHoliday(&userHoliday));
-        upd[strHoliday] = userHoliday;
+        upd[strHoliday] = paletteFactory.adjustHoliday();
     }
     if (doc.containsKey(strBrightness)) {
         uint8_t br = doc[strBrightness].as<uint8_t>();
