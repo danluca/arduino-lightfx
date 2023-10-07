@@ -24,7 +24,7 @@ void setup() {
     fsInit();
 
     Scheduler.startLoop(&fxTasks, 3072);
-    Scheduler.startLoop(&micTasks, 1024);
+    //Scheduler.startLoop(&micTasks, 1024);
 
     stateLED(CRGB::OrangeRed);    //Wi-Fi connect in progress
     bool wifiOk = wifi_setup();
