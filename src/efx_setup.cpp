@@ -181,17 +181,16 @@ void readState() {
 
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
 
-        if (doc.containsKey(csAudioThreshold))
-            audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
-        if (doc.containsKey(csColorTheme)) {
-            String userHoliday = doc[csColorTheme].as<String>();
-            bool autoColAdj = doc[csAutoColorAdjust].as<bool>();
-            paletteFactory.forceHoliday(colTheme::parseHoliday(&userHoliday));
-            paletteFactory.setAuto(autoColAdj);
-        }
+        audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
+        String savedHoliday = doc[csColorTheme].as<String>();
+        paletteFactory.forceHoliday(colTheme::parseHoliday(&savedHoliday));
+        bool autoColAdj = doc[csAutoColorAdjust].as<bool>();
+        paletteFactory.setAuto(autoColAdj);
+        if (autoColAdj)
+            paletteFactory.adjustHoliday(); //if the date has changed, and we've crossed into another holiday
 
-        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust)"), stateFileName, stateSize,
-                   autoAdvance ? "true" : "false", seed, fx, stripBrightness);
+        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s"),
+                   stateFileName, stateSize, autoAdvance ? "true" : "false", seed, fx, stripBrightness, audioBumpThreshold, colTheme::holidayToString(paletteFactory.currentHoliday()));
     }
 }
 
