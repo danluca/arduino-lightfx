@@ -375,9 +375,10 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     fx["name"] = curFx->name();
     fx["brightness"] = stripBrightness;
     fx["brightnessLocked"] = stripBrightnessLocked;
-    fx["audioThreshold"] = audioBumpThreshold;              //current audio level threshold
+    fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold
     fx["maxAudio"] = maxAudio;                              //what was the max audio level in the last time window
     fx["countAudioOverThreshold"] = countAudioThreshold;    //how many times in the last time window have gone above audio threshold
+    fx["totalAudioBumps"] = totalAudioBumps;                //how many times (in total) have we bumped the effect due to audio level
     //fx["desc"] = curFx->description();    //variable size string - not really relevant, can be obtained from config
     // Time
     JsonObject time = doc.createNestedObject("time");
@@ -432,7 +433,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     const char strEffect[] = "effect";
     const char strHoliday[] = "holiday";
     const char strBrightness[] = "brightness";
-    const char strAudioThreshold[] = "audioThreshold";
+    const char strBrightnessLocked[] = "brightnessLocked";
     JsonObject upd = resp.createNestedObject("updates");
     if (doc.containsKey(strAuto)) {
         bool autoAdvance = doc[strAuto].as<bool>();
@@ -455,11 +456,11 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         if (stripBrightnessLocked)
             stripBrightness = br;
         upd[strBrightness] = stripBrightness;
-        upd["brightnessLocked"] = stripBrightnessLocked;
+        upd[strBrightnessLocked] = stripBrightnessLocked;
     }
-    if (doc.containsKey(strAudioThreshold)) {
-        audioBumpThreshold = doc[strAudioThreshold].as<uint16_t>();
-        upd[strAudioThreshold] = audioBumpThreshold;
+    if (doc.containsKey(csAudioThreshold)) {
+        audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
+        upd[csAudioThreshold] = audioBumpThreshold;
     }
 #ifndef DISABLE_LOGGING
     Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),

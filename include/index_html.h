@@ -74,8 +74,9 @@ const char index_html[] PROGMEM = R"~~~(
             <dl id="statusArea">
                 <div>
                 <dt>Board</dt>
-                <dd>Temperature: <span id="boardTemp"></span></dd>
                 <dd>Mbed OS: <span id="mbedVersion"></span></dd>
+                <dd>Temperature: <span id="boardTemp"></span></dd>
+                <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
                 </div>
                 <div>
                 <dt>WiFi</dt>
@@ -89,6 +90,8 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Current: <span id="fxCurEffect"></span></dd>
                 <dd>Color Theme: <span id="fxCurHoliday"></span></dd>
                 <dd>Strip Brightness: <span id="fxBrightness"></span></dd>
+                <dd>Max Audio Level: <span id="maxAudioLevel"></span>, exceeded <span id="countAudioOver"></span> (in last 5 mins)</dd>
+                <dd>Audio Effect Changes: <span id="totalAudioBumps"></span></dd>
                 </div>
                 <div>
                 <dt>Time</dt>

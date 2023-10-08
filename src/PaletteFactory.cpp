@@ -143,13 +143,25 @@ CRGBPalette16 PaletteFactory::secondaryPalette(const time_t time) {
     }
 }
 
+bool PaletteFactory::isAuto() const {
+    return autoChangeHoliday;
+}
+
+void PaletteFactory::setAuto(bool autoMode) {
+    autoChangeHoliday = autoMode;
+}
+
 void PaletteFactory::forceHoliday(const Holiday hday) {
-    overrideHoliday = hday != None;
-    holiday = hday;
+    bool noPref = hday == None;
+    setAuto(noPref);
+    if (noPref)
+        adjustHoliday();
+    else
+        holiday = hday;
 }
 
 Holiday PaletteFactory::adjustHoliday(const time_t time) {
-    holiday = overrideHoliday ? holiday : (time == 0 ? ::currentHoliday() : getHoliday(time));
+    holiday = autoChangeHoliday ? (time == 0 ? ::currentHoliday() : getHoliday(time)) : holiday;
     return holiday;
 }
 

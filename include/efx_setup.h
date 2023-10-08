@@ -23,7 +23,14 @@
 
 #define MAX_EFFECTS_COUNT   256
 
-const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
+extern const uint16_t turnOffSeq[] PROGMEM;
+extern const char csAutoFxRoll[];
+extern const char csStripBrightness[];
+extern const char csAudioThreshold[];
+extern const char csColorTheme[];
+extern const char csAutoColorAdjust[];
+extern const char csRandomSeed[];
+extern const char csCurFx[];
 
 extern const uint8_t dimmed;
 //extern const uint16_t FRAME_SIZE;
@@ -59,6 +66,7 @@ extern volatile uint16_t audioBumpThreshold;
 //TODO: revisit these
 extern volatile uint16_t maxAudio;
 extern volatile uint16_t countAudioThreshold;
+extern uint16_t totalAudioBumps;
 
 extern volatile bool fxBump;
 extern volatile uint16_t speed;

@@ -45,6 +45,7 @@ function getStatus() {
             $('#status h1').removeClass('red');
             $('#boardTemp').html(`${data.boardTemp} 'C (${data.boardTemp*9/5+32} 'F)`);
             $('#mbedVersion').html(`${data.mbedVersion}`);
+            $('#audioThreshold').html(`${data.fx.audioThreshold}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
             $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
             if (data.wifi.curVersion !== data.wifi.latestVersion) {
@@ -55,6 +56,9 @@ function getStatus() {
             $('#fxCount').html(`${data.fx.count} effects`);
             $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
             $('#fxCurHoliday').html(`${data.fx.holiday}`);
+            $('#maxAudioLevel').html(`${data.fx.maxAudio}`);
+            $('#countAudioOver').html(`${data.fx.countAudioOverThreshold}`);
+            $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
             $('#timeNtp').html(`${data.time.ntpSync == 2}`);
             $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
             $('#timeHoliday').html(`${data.time.holiday}`);

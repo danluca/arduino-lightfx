@@ -19,7 +19,7 @@ namespace colTheme {
     const char *holidayToString(Holiday hday);
 
     class PaletteFactory {
-        bool overrideHoliday = false;
+        bool autoChangeHoliday = true;
         Holiday holiday = None;
     public:
         CRGBPalette16 mainPalette(time_t time = 0);
@@ -33,6 +33,10 @@ namespace colTheme {
         Holiday currentHoliday() const;
 
         bool isHolidayLimitedHue() const;
+
+        bool isAuto() const;
+
+        void setAuto(bool autoMode = true);
 
         static CRGBPalette16 randomPalette(uint8_t ofsHue = 0, time_t time = 0);
     };

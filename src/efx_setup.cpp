@@ -6,7 +6,16 @@
 #include "TimeLib.h"
 
 //~ Global variables definition
+const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 const uint8_t dimmed = 20;
+const char csAutoFxRoll[] = "autoFxRoll";
+const char csStripBrightness[] = "stripBrightness";
+const char csAudioThreshold[] = "audioThreshold";
+const char csColorTheme[] = "colorTheme";
+const char csAutoColorAdjust[] = "autoColorAdjust";
+const char csRandomSeed[] = "randomSeed";
+const char csCurFx[] = "curFx";
+
 //const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
 const CRGB BKG = CRGB::Black;
 const uint8_t maxChanges = 24;
@@ -36,6 +45,7 @@ uint8_t twinkrate = 100;
 uint16_t szStack = 0;
 uint16_t stripShuffleIndex[NUM_PIXELS];
 uint16_t hueDiff = 256;
+uint16_t totalAudioBumps = 0;
 int8_t rot = 1;
 int32_t dist = 1;
 bool dirFwd = true;
@@ -160,16 +170,25 @@ void readState() {
         StaticJsonDocument<JSON_DOC_SIZE> doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
         deserializeJson(doc, json);
 
-        bool autoAdvance = doc["autoFxRoll"].as<bool>();
+        bool autoAdvance = doc[csAutoFxRoll].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
 
-        uint16_t seed = doc["randomSeed"].as<uint16_t>();
+        uint16_t seed = doc[csRandomSeed].as<uint16_t>();
         random16_set_seed(seed);
 
-        uint16_t fx = doc["curFx"].as<uint16_t>();
+        uint16_t fx = doc[csCurFx].as<uint16_t>();
         fxRegistry.nextEffectPos(fx);
 
-        stripBrightness = doc["stripBrightness"].as<uint8_t>();
+        stripBrightness = doc[csStripBrightness].as<uint8_t>();
+
+        if (doc.containsKey(csAudioThreshold))
+            audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
+        if (doc.containsKey(csColorTheme)) {
+            String userHoliday = doc[csColorTheme].as<String>();
+            bool autoColAdj = doc[csAutoColorAdjust].as<bool>();
+            paletteFactory.forceHoliday(colTheme::parseHoliday(&userHoliday));
+            paletteFactory.setAuto(autoColAdj);
+        }
 
         Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust)"), stateFileName, stateSize,
                    autoAdvance ? "true" : "false", seed, fx, stripBrightness);
@@ -178,10 +197,13 @@ void readState() {
 
 void saveState() {
     StaticJsonDocument<JSON_DOC_SIZE> doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
-    doc["randomSeed"] = random16_get_seed();
-    doc["autoFxRoll"] = fxRegistry.isAutoRoll();
-    doc["curFx"] = fxRegistry.curEffectPos();
-    doc["stripBrightness"] = stripBrightness;
+    doc[csRandomSeed] = random16_get_seed();
+    doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
+    doc[csCurFx] = fxRegistry.curEffectPos();
+    doc[csStripBrightness] = stripBrightness;
+    doc[csAudioThreshold] = audioBumpThreshold;
+    doc[csColorTheme] = colTheme::holidayToString(paletteFactory.currentHoliday());
+    doc[csAutoColorAdjust] = paletteFactory.isAuto();
     String str;
     serializeJson(doc, str);
     if (!writeTextFile(stateFileName, &str))
@@ -820,6 +842,7 @@ void fx_run() {
         if (fxBump) {
             fxRegistry.nextEffectPos();
             fxBump = false;
+            totalAudioBumps++;
         }
     }
     EVERY_N_MINUTES(5) {
