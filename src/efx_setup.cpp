@@ -186,11 +186,9 @@ void readState() {
         paletteFactory.forceHoliday(colTheme::parseHoliday(&savedHoliday));
         bool autoColAdj = doc[csAutoColorAdjust].as<bool>();
         paletteFactory.setAuto(autoColAdj);
-        if (autoColAdj)
-            paletteFactory.adjustHoliday(); //if the date has changed, and we've crossed into another holiday
 
         Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s"),
-                   stateFileName, stateSize, autoAdvance ? "true" : "false", seed, fx, stripBrightness, audioBumpThreshold, colTheme::holidayToString(paletteFactory.currentHoliday()));
+                   stateFileName, stateSize, autoAdvance ? "true" : "false", seed, fx, stripBrightness, audioBumpThreshold, savedHoliday.c_str());
     }
 }
 

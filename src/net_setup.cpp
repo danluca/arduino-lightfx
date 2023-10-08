@@ -122,7 +122,7 @@ bool time_setup() {
 #ifndef DISABLE_LOGGING
     Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
 #endif
-    Holiday hday = paletteFactory.adjustHoliday();
+    Holiday hday;
     if (ntpTimeAvailable) {
         // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
         // to the transition, such that we don't need to implement complex Sunday counting rules
@@ -131,6 +131,7 @@ bool time_setup() {
         isDST = md > 0x030C && md < 0x0B05;
         timeClient.setTimeOffset(isDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS);
         setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
+        hday = paletteFactory.adjustHoliday();    //update the holiday for new time
 #ifndef DISABLE_LOGGING
         Log.infoln(F("America/Chicago %s time (month/day=%X), time offset set to %d s, current time %s"),
                    isDST?"Daylight Savings":"Standard", md, isDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
@@ -139,7 +140,8 @@ bool time_setup() {
         sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
         Log.infoln(F("Current time %s %s"), timeBuf, isDST?"CDT":"CST");
 #endif
-    }
+    } else
+        hday = paletteFactory.currentHoliday();
 #ifndef DISABLE_LOGGING
     else
         Log.warningln(F("Current time not available - NTP sync failed"));
