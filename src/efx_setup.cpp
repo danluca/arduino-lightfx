@@ -699,41 +699,7 @@ uint8_t getBrightness(const CRGB &rgb) {
     return toHSV(rgb).val;
 }
 
-//Setup all effects -------------------
-void fx_setup() {
-    ledStripInit();
-    random16_set_seed(millis() >> 2);
-
-    //instantiate effect categories
-    for (auto x : categorySetup)
-        x();
-    //initialize the effects configured in the functions above
-    fxRegistry.setup();
-    //ensure the current effect is set up, in case they share global variables
-    fxRegistry.getCurrentEffect()->setup();
-
-    readState();
-}
-
-//Run currently selected effect -------
-void fx_run() {
-    EVERY_N_SECONDS(30) {
-        if (fxBump) {
-            fxRegistry.nextEffectPos();
-            fxBump = false;
-        }
-    }
-    EVERY_N_MINUTES(5) {
-        fxRegistry.nextRandomEffectPos();
-        shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-        stripBrightness = adjustStripBrightness();
-        saveState();
-    }
-
-    fxRegistry.loop();
-    yield();
-}
-
+// EffectRegistry
 LedEffect *EffectRegistry::getCurrentEffect() const {
     return effects[currentEffect];
 }
@@ -823,10 +789,49 @@ void LedEffect::baseConfig(JsonObject &json) const {
     json["registryIndex"] = getRegistryIndex();
 }
 
+// Viewport
 Viewport::Viewport(uint16_t high) : Viewport(0, high) {}
 
 Viewport::Viewport(uint16_t low, uint16_t high) : low(low), high(high) {}
 
 uint16_t Viewport::size() const {
     return qsuba(high, low);
+}
+
+//Setup all effects -------------------
+void fx_setup() {
+    ledStripInit();
+    random16_set_seed(millis() >> 2);
+
+    //instantiate effect categories
+    for (auto x : categorySetup)
+        x();
+    //initialize the effects configured in the functions above
+    fxRegistry.setup();
+    //ensure the current effect is set up, in case they share global variables
+    fxRegistry.getCurrentEffect()->setup();
+
+    readState();
+}
+
+//Run currently selected effect -------
+void fx_run() {
+    EVERY_N_SECONDS(30) {
+        if (fxBump) {
+            fxRegistry.nextEffectPos();
+            fxBump = false;
+        }
+    }
+    EVERY_N_MINUTES(5) {
+        fxRegistry.nextRandomEffectPos();
+        shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+        stripBrightness = adjustStripBrightness();
+        saveState();
+        //TODO: revisit these
+        countAudioThreshold = 0;
+        maxAudio = 0;
+    }
+
+    fxRegistry.loop();
+    yield();
 }

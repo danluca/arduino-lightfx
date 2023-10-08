@@ -55,6 +55,11 @@ extern bool dirFwd;
 extern int8_t rot;
 extern int32_t dist;
 extern bool randhue;
+extern volatile uint16_t audioBumpThreshold;
+//TODO: revisit these
+extern volatile uint16_t maxAudio;
+extern volatile uint16_t countAudioThreshold;
+
 extern volatile bool fxBump;
 extern volatile uint16_t speed;
 extern volatile uint16_t curPos;

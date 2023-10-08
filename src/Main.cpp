@@ -18,13 +18,15 @@ ThreadTasks micTasks {mic_setup, mic_run};
 void setup() {
     delay(1000);    //safety delay
     log_setup();
+    //disable ADC
+    hw_clear_bits(&adc_hw->cs, ADC_CS_EN_BITS);
 
     setupStateLED();
 
     fsInit();
 
     Scheduler.startLoop(&fxTasks, 3072);
-    //Scheduler.startLoop(&micTasks, 1024);
+    Scheduler.startLoop(&micTasks, 1024);
 
     stateLED(CRGB::OrangeRed);    //Wi-Fi connect in progress
     bool wifiOk = wifi_setup();
