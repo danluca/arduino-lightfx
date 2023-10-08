@@ -14,7 +14,7 @@
 #define MAX_NUM_PIXELS  1024    //maximum number of pixels supported (equivalent of 330ft LED strips). If more are needed, we'd need to revisit memory allocation and PWM timings
 
 //#define NUM_PIXELS  300    //number of pixels on the house edge strip
-#define NUM_PIXELS  384      //number of pixels on the house edge (300 measured + reserve)
+#define NUM_PIXELS  320      //number of pixels on the house edge (300 measured + reserve)
 #define FRAME_SIZE  68       //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBArray must fit at least 3 frames
 
 // initial global brightness 0-255
