@@ -1,34 +1,15 @@
 # arduino-lightfx
 LightFX Arduino code repository for LED strips using WS2811 chip - light effects tailored to my house setup.
 
-## Pre-Requisites
+## Dev Env
 ### Tools
 * Install Python 3.11
   * On Windows: Go to MS Store and look for _Python 3.11_ application. Install it as any other store app
 * Install PlatformIO Core (CLI)
   * [Follow instructions](https://docs.platformio.org/en/latest/core/installation/methods/installer-script.html#local-download-macos-linux-windows) in the docs - I used the local download approach. Use what makes sense for your platform.
-* Install a great IDE
+* Install an IDE
   * [CLion](https://www.jetbrains.com/clion/download) is a great one - however, commercial product (but REALLY Great)
   * [VS Code](https://code.visualstudio.com/) is a great for someone starting with PlatformIO - recommended by the team. Freeware.
-  * [Visual Studio Community](https://visualstudio.microsoft.com/downloads/) is also great, if you're doing already C/C++ development in VStudio. Freeware.
-  * [Arduino IDE](https://www.arduino.cc/en/software) is the officially recommended IDE of the Arduino community (that runs on desktop; there is also a cloud based option that runs in a browser). Freeware.
-
-Which IDE should you choose, ultimately? It depends on what are you comfortable with, the size of your project, etc.
-For a project that fits into 1-2 `.ino` files, the official Arduino IDE is a great option. It's an all in one solution - editor, library manager, compiler, upload, serial monitor, debugger if eligible, etc.
-As the project size increases, the IDE becomes more sluggish, the intellisense takes a noticeable while - and these are the times where intellisense is most valuable.
-The Arduino IDE uses `.ino` files as an optimized C++ file set and processes them as follows:
-* the file with the same name as the sketch (aka project) is the main file
-* all other `.ino` files are concatenated into one in alphabetical order (likely appended to the end of the main file) and compiled that way
-* if the `.ino` include other regular `.h` header files, it seems those are processed/embedded into the caller `.ino` files prior to concatenation.
-* all files in the project are opened at once in the IDE (they cannot be closed)
-
-Personally, as I am working with IntelliJ a lot, I prefer the CLion IDE as it is more responsive. It also uses the [PlatformIO](https://platformio.org) system, 
-which brings a number of benefits:
-* dependency management similar with NodeJS `package.json`
-* automated project initialization, updates, adapting to IDE, etc. from CLI
-* PlatformIO CLion plugin
-* any number of files in the project, follows the standard C++ structure and processing
-
 
 ### Setup
 To create a new project, follow the [instructions on PlatformIO](https://docs.platformio.org/en/stable/core/quickstart.html) site about getting started. There is great documentation
@@ -56,11 +37,27 @@ Several light effects are original, many others are inspired from great example 
 The target board is an [Arduino Nano RP 2040 Connect](https://docs.arduino.cc/hardware/nano-rp2040-connect) feature packed and powerful in a small package - built around dual core Raspberry Pi 2040 microcontroller.
 It sports a Wi-Fi module that has been leveraged to host a little web-server to aid in configuring the light effects.
 
-The Nano RP2040 board has a built-in PDM microphone, which has been enabled as a source of entropy for the random number generator - the PDM library takes about 25-30% 
-of the board's available RAM (264kB) for the audio signal processing.
+The Nano RP2040 board has a built-in PDM microphone, which has been enabled as a source of entropy for the random number generator - the PDM library takes about 20% 
+of the board's available RAM (264kB) for the audio signal processing. Overall, this program uses about 40% of the available RAM - the other 20% are consumed 
+by the OS, FastLED and light effects data.
 
 PIO availability helps a lot with [FastLED](https://github.com/FastLED/FastLED) library performance and effects consistent timings - creating and outputting the PWM 
 signal for controlling the LEDs does not take main CPU cycles and is handled in the background.
+
+The RP2040 chip overall computing power (two ARM cores @ 133MHz) and RAM are leveraged by the design in engaging features that might be challenging for a lesser configuration:
+* multithreading
+* regular expression matching
+* array manipulation
+* sound processing
+* complex math
+* file system
+* web connectivity
+  * web server, JSON REST API
+  * NTP connection for time sync
+
+Note the code is not designed with portability in mind - quite the opposite, it targets Nano RP2040 board and its resources specifically. 
+This avoids code & design complexity and employs a good amount of power reserve for other tasks or more complex lighting effects. 
+It is acknowledged that it sacrifices portability. 
 
 ## Design
 The system is designed as a platform that hosts a number of light effects, has awareness of time and holiday in effect, and changes the current light effect on few criteria.
@@ -74,7 +71,7 @@ The time awareness gives several benefits:
 ### Multi-threading
 Several dedicated threads are defined in the system:
 * Main thread runs the Web Server
-  * as the Web Server implements REST-ful API using JSON data format, the Arduino JSON library needed more memory allocated 
+  * as the Web Server implements REST-ful API using JSON data format, the [Arduino JSON](https://github.com/bblanchon/ArduinoJson) library needed more memory allocated 
   for a dedicated thread. On the main thread, however, no special memory provisions were needed - hence it was left running there.
 * Thread 0 runs the light effects
 * Thread 1 runs the microphone signal processing (PDM to PCM conversion)
@@ -87,13 +84,18 @@ house are connected in a graph with the longest path at about 300 pixels. For WS
 I have used LED strips with a LED density of 30 LED/m - made by BTF-Lighting (part number WS28115M30LW65 on Amazon) - outdoor splash proof rated IP65.
 
 ### Board wrapper
-Nano RP2040 Connect board operates internally at 3.3V, whereas the WS2811 LED strips operate with 12V for main power and 5V for command pin - a 
-LED driver circuit surrounds the board. It uses the main 12V power supplied to the LED strips to scale it down to 5V (LM7805) in order to provide 
-the board with power (note the Arduino board has its own voltage regulator onboard, which makes it accept external power from 5V to 21V, per the specs).
+Nano RP2040 Connect board operates internally at 3.3V, whereas the [WS2811](https://datasheet.lcsc.com/lcsc/1810081420_Worldsemi-WS2811_C114581.pdf) LED strips 
+operate with 12V for main power and 5V for command pin (5V for data/command is unconfirmed by the datasheet, experimentally it has been proven to work) - 
+hence a LED driver circuit surrounds the board. 
+
+It uses the main 12V power supplied to the LED strips to scale it down to 5V (LM7805) in order to provide the board with power (note the Arduino board has its 
+own voltage regulator onboard, which makes it accept external power from 5V to 21V, per the specs).
 The PWM 3.3V signal is run through a level shifter (74HCT125) to 5V for the LED command driver.
 
 This way, a single 3 pin connector is used to connect the board to the LED strip as its controller - it takes 12V power from the strip
 and supplies PWM 5V signal to the LEDs control pin. 
+
+The electronic schematic and PCB designs can be found as [EasyEDA project](https://pro.easyeda.com/editor#id=9c50130b250b4c23b522b4ac978d99bf). 
 
 ## C++ standard
 The current Arduino libraries are leveraging the **C++ 14** standard, hence the code can be written with this standard 
