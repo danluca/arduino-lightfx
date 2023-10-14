@@ -200,30 +200,25 @@ FxC4::FxC4() {
 void FxC4::setup() {
     resetGlobals();
     brightness = BRIGHTNESS;
+    frequency = 10; // controls the interval between strikes (seconds)
+    flashes = 7;   //the upper limit of flashes per strike
 }
 
 void FxC4::loop() {
-    static uint8_t frequency = 10;                                       // controls the interval between strikes
-    static uint8_t flashes = 12;                                          //the upper limit of flashes per strike
-    static uint dimmer = 1;
-    static uint8_t ledstart;                                             // Starting location of a flash
-    static uint8_t ledlen;                                               // Length of a flash
-
     EVERY_N_SECONDS_I(fxc4Timer, 1+random8(frequency)) {
-        ledstart = random8(NUM_PIXELS);                               // Determine starting location of flash
-        ledlen = random8(NUM_PIXELS - ledstart);                        // Determine length of flash (not to go beyond NUM_LEDS-1)
+        uint8_t start = random8(NUM_PIXELS - 8);                               // Determine starting location of flash
+        uint8_t len = random8(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
+        uint8_t flashRound = random8(3, flashes);
+        CRGBSet flash(leds, start, start+len);
 
-        for (int flashCounter = 0; flashCounter < random8(5, flashes); flashCounter++) {
-            if (flashCounter == 0)
-                dimmer = 5;                         // the brightness of the leader is scaled down by a factor of 5
-            else
-                dimmer = random8(1, 3);                               // return strokes are brighter than the leader
-
+        for (uint8_t flashCounter = 0; flashCounter < flashRound; flashCounter++) {
+            // the brightness of the leader is scaled down by a factor of 5; return strokes are brighter than the leader
+            uint8_t dimmer = flashCounter == 0 ? 5 : random8(1, 3);
             CRGB color = ColorFromPalette(palette, random8(), brightness / dimmer, LINEARBLEND);
-            fill_solid(leds + ledstart, ledlen, color);
+            flash = color;
             FastLED.show(stripBrightness);                       // Show a section of LED's
             delay(random8(4, 10));                                     // each flash only lasts 4-10 milliseconds
-            fill_solid(leds + ledstart, ledlen, BKG);           // Clear the section of LED's
+            flash = BKG;
             FastLED.show(stripBrightness);
 
             if (flashCounter == 0) delay(250);                       // longer speed until next flash after the leader

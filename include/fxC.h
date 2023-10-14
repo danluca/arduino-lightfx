@@ -72,6 +72,10 @@ namespace FxC {
         const char *description() const override;
 
         const char *name() const override;
+
+    protected:
+        uint8_t frequency {10};
+        uint8_t flashes {12};
     };
 
     class FxC5 : public LedEffect {
