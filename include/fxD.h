@@ -17,7 +17,7 @@ namespace FxD {
 
         const char *description() const override;
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -34,7 +34,7 @@ namespace FxD {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -50,8 +50,6 @@ namespace FxD {
         void setup() override;
 
         void loop() override;
-
-        void describeConfig(JsonArray &json) const override;
 
         const char *description() const override;
 
@@ -71,8 +69,6 @@ namespace FxD {
         const char *description() const override;
 
         const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
 
         void rainbow_march();
 
@@ -108,8 +104,6 @@ namespace FxD {
         const char *description() const override;
 
         const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
 
         void ripples();
 

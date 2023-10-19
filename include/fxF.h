@@ -19,8 +19,6 @@ namespace FxF {
         const char *description() const override;
 
         const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
     };
 
     class FxF2 : public LedEffect {
@@ -34,8 +32,6 @@ namespace FxF {
         const char *description() const override;
 
         const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
 
     protected:
         void makePattern(uint8_t hue);
@@ -86,8 +82,6 @@ namespace FxF {
 
         const char *name() const override;
 
-        void describeConfig(JsonArray &json) const override;
-
         Viewport nextEyePos();
 
         EyeBlink *findAvailableEye();
@@ -108,8 +102,6 @@ namespace FxF {
         const char *description() const override;
 
         const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
 
     protected:
         enum State {Bounce, Reduce, Flash};

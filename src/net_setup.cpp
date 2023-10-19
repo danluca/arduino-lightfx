@@ -140,11 +140,11 @@ bool time_setup() {
         sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
         Log.infoln(F("Current time %s %s"), timeBuf, isDST?"CDT":"CST");
 #endif
-    } else
+    } else {
         hday = paletteFactory.currentHoliday();
-#ifndef DISABLE_LOGGING
-    else
         Log.warningln(F("Current time not available - NTP sync failed"));
+    }
+#ifndef DISABLE_LOGGING
     Log.infoln(F("Current holiday is %s"), holidayToString(hday));
 #endif
     return ntpTimeAvailable;
@@ -164,8 +164,7 @@ bool wifi_check() {
     uint8_t wifiBars = barSignalLevel(rssi);
     if ((gwPingTime < 0) || (wifiBars < 3)) {
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
-        Log.warningln(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable"), rssi,
-                      wifiBars);
+        Log.warningln(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable"), rssi, wifiBars);
         return false;
     }
     Log.infoln(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%d bars)"), gwPingTime, rssi, wifiBars);
@@ -208,7 +207,9 @@ void wifi_loop() {
     }
     EVERY_N_HOURS(12) {
         Holiday hDay = paletteFactory.adjustHoliday();
+#ifndef DISABLE_LOGGING
         Log.infoln(F("Current holiday is %s"), holidayToString(hDay));
+#endif
     }
     webserver();
     yield();

@@ -39,7 +39,7 @@ namespace FxB {
 
         const char *description() const override;
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
     };
@@ -54,8 +54,6 @@ namespace FxB {
 
         const char *description() const override;
 
-        void describeConfig(JsonArray &json) const override;
-
         const char *name() const override;
     };
 
@@ -67,7 +65,7 @@ namespace FxB {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -82,7 +80,7 @@ namespace FxB {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -97,7 +95,7 @@ namespace FxB {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -112,8 +110,6 @@ namespace FxB {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
-
         const char *name() const override;
 
         const char *description() const override;
@@ -127,7 +123,7 @@ namespace FxB {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -142,7 +138,7 @@ namespace FxB {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -156,8 +152,6 @@ namespace FxB {
         void setup() override;
 
         void loop() override;
-
-        void describeConfig(JsonArray &json) const override;
 
         const char *description() const override;
 

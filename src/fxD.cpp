@@ -8,6 +8,13 @@
 using namespace FxD;
 using namespace colTheme;
 
+//~ Effect description strings stored in flash
+const char fxd1Desc[] PROGMEM = "FXD1: Confetti D";
+const char fxd2Desc[] PROGMEM = "FXD2: dot beat";
+const char fxd3Desc[] PROGMEM = "FxD3: plasma";
+const char fxd4Desc[] PROGMEM = "FxD4: rainbow marching";
+const char fxd5Desc[] PROGMEM = "FxD5: ripples";
+
 void FxD::fxRegister() {
     static FxD1 fxD1;
     static FxD2 fxD2;
@@ -24,9 +31,7 @@ void FxD::fxRegister() {
  *
  * Confetti flashes colours within a limited hue. It's been modified from Mark's original to support a few variables. It's a simple, but great looking routine.
  */
-FxD1::FxD1() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxD1::FxD1() = default;
 
 void FxD1::setup() {
     resetGlobals();
@@ -50,17 +55,17 @@ void FxD1::loop() {
 }
 
 const char *FxD1::description() const {
-    return "FXD1: Confetti D";
+    return String(fxd1Desc).c_str();
 }
 
-const char *FxD1::name() const {
+inline const char *FxD1::name() const {
     return "FXD1";
 }
 
-void FxD1::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxD1::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["localBright"] = brightness;
+    return obj;
 }
 
 
@@ -96,9 +101,7 @@ void FxD1::ChangeMe() {
  *
  * Similar to dots by John Burroughs, but uses the FastLED beatsin8() function instead.
  */
-FxD2::FxD2() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxD2::FxD2() = default;
 
 void FxD2::setup() {
     resetGlobals();
@@ -114,18 +117,18 @@ void FxD2::loop() {
 }
 
 const char *FxD2::description() const {
-    return "FXD2: dot beat";
+    return String(fxd2Desc).c_str();
 }
 
-const char *FxD2::name() const {
+inline const char *FxD2::name() const {
     return "FXD2";
 }
 
-void FxD2::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxD2::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["bpm"] = dotBpm;
     obj["fade"] = 255-fade;
+    return obj;
 }
 
 void FxD2::dot_beat() {
@@ -181,21 +184,14 @@ void FxD3::plasma() {
 }
 
 const char *FxD3::description() const {
-    return "FxD3: plasma";
+    return String(fxd3Desc).c_str();
 }
 
-const char *FxD3::name() const {
+inline const char *FxD3::name() const {
     return "FxD3";
 }
 
-void FxD3::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxD3::FxD3() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxD3::FxD3() = default;
 
 // Fx D4
 void FxD4::setup() {
@@ -219,21 +215,14 @@ void FxD4::loop() {
 }
 
 const char *FxD4::description() const {
-    return "FxD4: rainbow marching";
+    return String(fxd4Desc).c_str();
 }
 
-const char *FxD4::name() const {
+inline const char *FxD4::name() const {
     return "FxD4";
 }
 
-void FxD4::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxD4::FxD4() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxD4::FxD4() = default;
 
 void FxD4::update_params(uint8_t slot) {
     switch (slot) {
@@ -274,16 +263,11 @@ void FxD5::loop() {
 }
 
 const char *FxD5::description() const {
-    return "FxD5: ripples";
+    return String(fxd5Desc).c_str();
 }
 
-const char *FxD5::name() const {
+inline const char *FxD5::name() const {
     return "FxD5";
-}
-
-void FxD5::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
 }
 
 void FxD5::ripples() {
@@ -303,9 +287,7 @@ void FxD5::ripples() {
     replicateSet(tpl, others);
 }
 
-FxD5::FxD5() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxD5::FxD5() = default;
 
 // ripple structure API
 void ripple::Move() {

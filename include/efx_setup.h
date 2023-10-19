@@ -196,6 +196,8 @@ class LedEffect {
 protected:
     uint registryIndex = 0;
 public:
+    LedEffect();
+
     virtual void setup() = 0;
 
     virtual void loop() = 0;
@@ -204,7 +206,7 @@ public:
 
     virtual const char *name() const = 0;
 
-    virtual void describeConfig(JsonArray &json) const = 0;
+    virtual JsonObject& describeConfig(JsonArray &json) const;
 
     void baseConfig(JsonObject &json) const;
 

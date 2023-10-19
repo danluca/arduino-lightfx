@@ -808,6 +808,16 @@ void LedEffect::baseConfig(JsonObject &json) const {
     json["registryIndex"] = getRegistryIndex();
 }
 
+LedEffect::LedEffect() {
+    registryIndex = fxRegistry.registerEffect(this);
+}
+
+JsonObject &LedEffect::describeConfig(JsonArray &json) const {
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
+    return obj;
+}
+
 // Viewport
 Viewport::Viewport(uint16_t high) : Viewport(0, high) {}
 
@@ -841,6 +851,12 @@ void fx_run() {
             fxBump = false;
             totalAudioBumps++;
         }
+        int vcc = analogRead(p26);
+        int temp = analogRead(ADC_TEMP);
+        int vref = analogRead(ADC_VREF);
+        Log.infoln(F("Vcc = %d (? unit)"), vcc);
+        Log.infoln(F("RP2040 Temp = %d (? unit)"), temp);
+        Log.infoln(F("ADC Vref = %d (? unit)"), vref);
     }
     EVERY_N_MINUTES(5) {
         fxRegistry.nextRandomEffectPos();

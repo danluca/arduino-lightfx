@@ -19,7 +19,7 @@ namespace FxE {
 
         static void twinkle();
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -35,8 +35,6 @@ namespace FxE {
         void loop() override;
 
         const char *description() const override;
-
-        void describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -55,7 +53,6 @@ namespace FxE {
 
         const char *name() const override;
 
-        void describeConfig(JsonArray &json) const override;
     protected:
         const uint8_t sasquatchSize = 3;
         enum Movement {forward, backward, sasquatch, pauseF, pauseB};
@@ -77,15 +74,13 @@ namespace FxE {
 
         const char *name() const override;
 
-        void describeConfig(JsonArray &json) const override;
-
         void serendipitous();
 
     protected:
         uint16_t Xorig = 0x012;
         uint16_t Yorig = 0x015;
-        uint16_t X, Y;
-        uint8_t index;
+        uint16_t X{}, Y{};
+        uint8_t index{};
     };
 }
 

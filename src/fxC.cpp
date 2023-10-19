@@ -8,6 +8,14 @@
 using namespace FxC;
 using namespace colTheme;
 
+//~ Effect description strings stored in flash
+const char fxc1Desc[] PROGMEM = "FXC1: blend between two concurrent animations";
+const char fxc2Desc[] PROGMEM = "FXC2: blur function";
+const char fxc3Desc[] PROGMEM = "FXC3: Perlin Noise for moving up and down the strand";
+const char fxc4Desc[] PROGMEM = "FxC4: lightnings";
+const char fxc5Desc[] PROGMEM = "FxC5: matrix";
+const char fxc6Desc[] PROGMEM = "FxC6: one sine";
+
 void FxC::fxRegister() {
     static FxC1 fxC1;
     static FxC2 fxC2;
@@ -26,7 +34,6 @@ void FxC::fxRegister() {
  * This sketch demonstrates how to blend between two animations running at the same time.
  */
 FxC1::FxC1() : setA(frame(0, FRAME_SIZE-1)), setB(leds, FRAME_SIZE) {
-    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxC1::setup() {
@@ -50,7 +57,7 @@ void FxC1::loop() {
 }
 
 const char *FxC1::description() const {
-    return "FXC1: blend between two concurrent animations";
+    return String(fxc1Desc).c_str();
 }
 
 void FxC1::animationA() {
@@ -69,13 +76,8 @@ void FxC1::animationB() {
     }
 }
 
-const char *FxC1::name() const {
+inline const char *FxC1::name() const {
     return "FXC1";
-}
-
-void FxC1::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
 }
 
 //Fx C2
@@ -90,9 +92,7 @@ void FxC1::describeConfig(JsonArray &json) const {
  *
  */
 
-FxC2::FxC2() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxC2::FxC2() = default;
 
 void FxC2::setup() {
     resetGlobals();
@@ -118,16 +118,11 @@ void FxC2::loop() {
 }
 
 const char *FxC2::description() const {
-    return "FXC2: blur function";
+    return String(fxc2Desc).c_str();
 }
 
-const char *FxC2::name() const {
+inline const char *FxC2::name() const {
     return "FXC2";
-}
-
-void FxC2::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
 }
 
 //Fx C3
@@ -142,9 +137,7 @@ void FxC2::describeConfig(JsonArray &json) const {
 const uint32_t xscale = 8192;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 const uint32_t yscale = 7680;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 
-FxC3::FxC3() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxC3::FxC3() = default;
 
 void FxC3::setup() {
     resetGlobals();
@@ -177,25 +170,23 @@ void FxC3::loop() {
 
 }
 
-void FxC3::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxC3::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["xscale"] = xscale;
     obj["yscale"] = yscale;
+    return obj;
 }
 
-const char *FxC3::name() const {
+inline const char *FxC3::name() const {
     return "FXC3";
 }
 
 const char *FxC3::description() const {
-    return "FXC3: Perlin Noise for moving up and down the strand";
+    return String(fxc3Desc).c_str();
 }
 
 // Fx C4
-FxC4::FxC4() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxC4::FxC4() = default;
 
 void FxC4::setup() {
     resetGlobals();
@@ -230,16 +221,11 @@ void FxC4::loop() {
 }
 
 const char *FxC4::description() const {
-    return "FxC4: lightnings";
+    return String(fxc4Desc).c_str();
 }
 
-const char *FxC4::name() const {
+inline const char *FxC4::name() const {
     return "FxC4";
-}
-
-void FxC4::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
 }
 
 // Fx C5
@@ -268,21 +254,14 @@ void FxC5::loop() {
 }
 
 const char *FxC5::description() const {
-    return "FxC5: matrix";
+    return String(fxc5Desc).c_str();
 }
 
-const char *FxC5::name() const {
+inline const char *FxC5::name() const {
     return "FxC5";
 }
 
-void FxC5::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxC5::FxC5() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxC5::FxC5() = default;
 
 void FxC5::changeParams() {
     static uint8_t secSlot = 0;
@@ -349,21 +328,14 @@ void FxC6::loop() {
 }
 
 const char *FxC6::description() const {
-    return "FxC6: one sine";
+    return String(fxc6Desc).c_str();
 }
 
-const char *FxC6::name() const {
+inline const char *FxC6::name() const {
     return "FxC6";
 }
 
-void FxC6::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxC6::FxC6() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxC6::FxC6() = default;
 
 void FxC6::one_sine_pal(uint8_t colorIndex) {
     // This is the heart of this program. Sure is short.

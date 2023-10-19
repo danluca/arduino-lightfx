@@ -24,8 +24,6 @@ namespace FxC {
 
         void animationB();
 
-        void describeConfig(JsonArray &json) const override;
-
         const char *name() const override;
     };
 
@@ -36,8 +34,6 @@ namespace FxC {
         void setup() override;
 
         void loop() override;
-
-        void describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -52,7 +48,7 @@ namespace FxC {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         const char *name() const override;
 
@@ -66,8 +62,6 @@ namespace FxC {
         void setup() override;
 
         void loop() override;
-
-        void describeConfig(JsonArray &json) const override;
 
         const char *description() const override;
 
@@ -85,8 +79,6 @@ namespace FxC {
         void setup() override;
 
         void loop() override;
-
-        void describeConfig(JsonArray &json) const override;
 
         const char *description() const override;
 
@@ -114,8 +106,6 @@ namespace FxC {
         const char *description() const override;
 
         const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
 
         void one_sine_pal(uint8_t colorIndex);
 

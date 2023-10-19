@@ -18,8 +18,11 @@ ThreadTasks micTasks {mic_setup, mic_run};
 void setup() {
     delay(1000);    //safety delay
     log_setup();
+
     //disable ADC
-    hw_clear_bits(&adc_hw->cs, ADC_CS_EN_BITS);
+    //hw_clear_bits(&adc_hw->cs, ADC_CS_EN_BITS);
+    analogReadResolution(12);   //get us the higher resolution of the ADC
+
 
     setupStateLED();
 
