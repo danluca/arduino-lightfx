@@ -31,7 +31,7 @@ void FxD::fxRegister() {
  *
  * Confetti flashes colours within a limited hue. It's been modified from Mark's original to support a few variables. It's a simple, but great looking routine.
  */
-FxD1::FxD1() = default;
+FxD1::FxD1() : LedEffect(fxd1Desc) {}
 
 void FxD1::setup() {
     resetGlobals();
@@ -52,14 +52,6 @@ void FxD1::loop() {
         confetti();
         FastLED.show(stripBrightness);
     }
-}
-
-const char *FxD1::description() const {
-    return String(fxd1Desc).c_str();
-}
-
-inline const char *FxD1::name() const {
-    return "FXD1";
 }
 
 JsonObject & FxD1::describeConfig(JsonArray &json) const {
@@ -101,7 +93,7 @@ void FxD1::ChangeMe() {
  *
  * Similar to dots by John Burroughs, but uses the FastLED beatsin8() function instead.
  */
-FxD2::FxD2() = default;
+FxD2::FxD2() : LedEffect(fxd2Desc) {}
 
 void FxD2::setup() {
     resetGlobals();
@@ -114,14 +106,6 @@ void FxD2::loop() {
         dot_beat();
         FastLED.show(stripBrightness);
     }
-}
-
-const char *FxD2::description() const {
-    return String(fxd2Desc).c_str();
-}
-
-inline const char *FxD2::name() const {
-    return "FXD2";
 }
 
 JsonObject & FxD2::describeConfig(JsonArray &json) const {
@@ -183,17 +167,11 @@ void FxD3::plasma() {
     }
 }
 
-const char *FxD3::description() const {
-    return String(fxd3Desc).c_str();
-}
-
-inline const char *FxD3::name() const {
-    return "FxD3";
-}
-
-FxD3::FxD3() = default;
+FxD3::FxD3() : LedEffect(fxd3Desc) {}
 
 // Fx D4
+FxD4::FxD4() : LedEffect(fxd4Desc) {}
+
 void FxD4::setup() {
     resetGlobals();
     hue = 0;
@@ -213,16 +191,6 @@ void FxD4::loop() {
         FastLED.show(stripBrightness);
     }
 }
-
-const char *FxD4::description() const {
-    return String(fxd4Desc).c_str();
-}
-
-inline const char *FxD4::name() const {
-    return "FxD4";
-}
-
-FxD4::FxD4() = default;
 
 void FxD4::update_params(uint8_t slot) {
     switch (slot) {
@@ -248,6 +216,8 @@ void FxD4::rainbow_march() {
 }
 
 // Fx D5
+FxD5::FxD5() : LedEffect(fxd5Desc) {}
+
 void FxD5::setup() {
     resetGlobals();
 }
@@ -260,14 +230,6 @@ void FxD5::loop() {
         ripples();
         FastLED.show(stripBrightness);
     }
-}
-
-const char *FxD5::description() const {
-    return String(fxd5Desc).c_str();
-}
-
-inline const char *FxD5::name() const {
-    return "FxD5";
 }
 
 void FxD5::ripples() {
@@ -286,8 +248,6 @@ void FxD5::ripples() {
     }
     replicateSet(tpl, others);
 }
-
-FxD5::FxD5() = default;
 
 // ripple structure API
 void ripple::Move() {

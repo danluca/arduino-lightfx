@@ -29,7 +29,7 @@ void FxE::fxRegister() {
  * This is a simple non-blocking FastLED display sequence template.
  *
  */
-FxE1::FxE1() = default;
+FxE1::FxE1() : LedEffect(fxe1Desc) {}
 
 void FxE1::setup() {
     resetGlobals();
@@ -59,11 +59,6 @@ void FxE1::loop() {
     }
 }
 
-const char *FxE1::description() const {
-    return String(fxe1Desc).c_str();
-}
-
-
 void FxE1::twinkle() {
 
   if (random8() < twinkrate) leds[random16(NUM_PIXELS)] += ColorFromPalette(palette, (randhue ? random8() : hue), brightness, LINEARBLEND);
@@ -83,10 +78,6 @@ void FxE1::updateParams() {
     }
 }
 
-inline const char *FxE1::name() const {
-    return "FXE1";
-}
-
 JsonObject & FxE1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
@@ -94,7 +85,7 @@ JsonObject & FxE1::describeConfig(JsonArray &json) const {
 }
 
 // Fx E2
-FxE2::FxE2() = default;
+FxE2::FxE2() : LedEffect(fxe2Desc) {}
 
 void FxE2::setup() {
     resetGlobals();
@@ -121,10 +112,6 @@ void FxE2::loop() {
     }
 }
 
-const char *FxE2::description() const {
-    return String(fxe2Desc).c_str();
-}
-
 void FxE2::beatwave() {
     uint8_t wave1 = beatsin8(9, 0, 255);                        // That's the same as beatsin8(9);
     uint8_t wave2 = beatsin8(8, 0, 255);
@@ -136,12 +123,8 @@ void FxE2::beatwave() {
     replicateSet(tpl, others);
 }
 
-inline const char *FxE2::name() const {
-    return "FXE2";
-}
-
 //Fx E3
-FxE3::FxE3() : shdOverlay(frame(0, FRAME_SIZE-1)) {
+FxE3::FxE3() : LedEffect(fxe3Desc), shdOverlay(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxE3::setup() {
@@ -231,16 +214,8 @@ void FxE3::loop() {
     }
 }
 
-const char *FxE3::description() const {
-    return String(fxe3Desc).c_str();
-}
-
-inline const char *FxE3::name() const {
-    return "FxE3";
-}
-
 //Fx E4
-FxE4::FxE4() = default;
+FxE4::FxE4() : LedEffect(fxe4Desc) {}
 
 void FxE4::setup() {
     resetGlobals();
@@ -264,14 +239,6 @@ void FxE4::loop() {
         FastLED.show(stripBrightness);
     }
 
-}
-
-const char *FxE4::description() const {
-    return String(fxe4Desc).c_str();
-}
-
-inline const char *FxE4::name() const {
-    return "FxE4";
 }
 
 void FxE4::serendipitous() {

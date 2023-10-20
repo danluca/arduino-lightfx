@@ -384,23 +384,21 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     JsonObject time = doc.createNestedObject("time");
     time["ntpSync"] = timeStatus();
     time["millis"] = millis();           //current time in ms
-    time_t curTime = now();
     char timeBuf[21];
-    snprintf(timeBuf, 11, "%4d-%02d-%02d", year(curTime), month(curTime), day(curTime));    //counting the null terminator as well
+    time_t curTime = now();
+    formatDate(timeBuf, curTime);
     time["date"] = timeBuf;
-    snprintf(timeBuf, 9, "%02d:%02d:%02d", hour(curTime), minute(curTime), second(curTime));
+    formatTime(timeBuf, curTime);
     time["time"] = timeBuf;
     time["dst"] = isDST;
     time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
 
     //current temperature
-    if (IMU.temperatureAvailable()) {
-        int temperature_deg = 0;
-        IMU.readTemperature(temperature_deg);
-        doc["boardTemp"] = temperature_deg;
-    }
+    doc["boardTemp"] = boardTemperature();
     snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
     doc["mbedVersion"] = timeBuf;
+    doc["chipTemp"] = chipTemperature();
+    doc["vcc"] = controllerVoltage();
 
     //send it out
     sz += serializeJson(doc, *client);

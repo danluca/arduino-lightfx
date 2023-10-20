@@ -10,6 +10,7 @@
 #include <TimeLib.h>
 #include "secrets.h"
 #include "PaletteFactory.h"
+#include "util.h"
 
 #define CST_OFFSET_SECONDS (-21600)   //Central Standard Time - America/Chicago
 #define CDT_OFFSET_SECONDS  (-18000)  //Central Daylight Time - America/Chicago
@@ -28,8 +29,8 @@ void webserver();
 void wifi_loop();
 void printWifiStatus();
 void checkFirmwareVersion();
+uint8_t barSignalLevel(int32_t rssi);
 time_t curUnixTime();
 bool ntp_sync();
-uint8_t barSignalLevel(int32_t rssi);
 
 #endif //LIGHTFX_NET_SETUP_H

@@ -32,6 +32,8 @@ void FxB::fxRegister() {
 }
 
 //FXB1
+FxB1::FxB1() : LedEffect(fxb1Desc) {}
+
 void FxB1::setup() {
     resetGlobals();
     hue = 0;
@@ -56,15 +58,6 @@ void FxB::rainbow() {
     replicateSet(tpl, others);
 }
 
-const char *FxB1::description() const {
-    return String(fxb1Desc).c_str();
-}
-
-FxB1::FxB1() = default;
-
-inline const char *FxB1::name() const {
-    return "FXB1";
-}
 
 JsonObject & FxB1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
@@ -74,7 +67,7 @@ JsonObject & FxB1::describeConfig(JsonArray &json) const {
 }
 
 //FXB2
-FxB2::FxB2() = default;
+FxB2::FxB2() : LedEffect(fxb2Desc) {}
 
 void FxB2::setup() {
     resetGlobals();
@@ -105,16 +98,8 @@ void FxB::addGlitter(fract8 chanceOfGlitter) {
     }
 }
 
-const char *FxB2::description() const {
-    return String(fxb2Desc).c_str();
-}
-
-inline const char *FxB2::name() const {
-    return "FXB2";
-}
-
 //FXB3
-FxB3::FxB3() = default;
+FxB3::FxB3() : LedEffect(fxb3Desc) {}
 
 void FxB3::setup() {
     resetGlobals();
@@ -150,14 +135,6 @@ void FxB::fxb_confetti() {
     hue+=2;
 }
 
-const char *FxB3::description() const {
-    return String(fxb3Desc).c_str();
-}
-
-inline const char *FxB3::name() const {
-    return "FXB3";
-}
-
 JsonObject & FxB3::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
@@ -166,7 +143,7 @@ JsonObject & FxB3::describeConfig(JsonArray &json) const {
 }
 
 //FXB4
-FxB4::FxB4() = default;
+FxB4::FxB4() : LedEffect(fxb4Desc) {}
 
 void FxB4::setup() {
     resetGlobals();
@@ -193,14 +170,6 @@ void FxB::sinelon() {
     replicateSet(tpl, others);
 }
 
-const char *FxB4::description() const {
-    return String(fxb4Desc).c_str();
-}
-
-inline const char *FxB4::name() const {
-    return "FXB4";
-}
-
 JsonObject & FxB4::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
@@ -209,7 +178,7 @@ JsonObject & FxB4::describeConfig(JsonArray &json) const {
 }
 
 //FXB5
-FxB5::FxB5() = default;
+FxB5::FxB5() : LedEffect(fxb5Desc) {}
 
 void FxB5::setup() {
     resetGlobals();
@@ -245,14 +214,6 @@ void FxB::juggle_short() {
     replicateSet(tpl, others);
 }
 
-const char *FxB5::description() const {
-    return String(fxb5Desc).c_str();
-}
-
-inline const char *FxB5::name() const {
-    return "FXB5";
-}
-
 JsonObject & FxB5::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
@@ -261,7 +222,7 @@ JsonObject & FxB5::describeConfig(JsonArray &json) const {
 }
 
 //FXB6
-FxB6::FxB6() = default;
+FxB6::FxB6() : LedEffect(fxb6Desc) {}
 
 void FxB6::setup() {
     resetGlobals();
@@ -287,16 +248,8 @@ void FxB::bpm() {
     }
 }
 
-const char *FxB6::description() const {
-    return String(fxb6Desc).c_str();
-}
-
-inline const char *FxB6::name() const {
-    return "FXB6";
-}
-
 //FXB7
-FxB7::FxB7() = default;
+FxB7::FxB7() : LedEffect(fxb7Desc) {}
 
 void FxB7::setup() {
     resetGlobals();
@@ -329,14 +282,6 @@ void FxB::ease() {
     szStack = lerpVal;
 }
 
-const char *FxB7::description() const {
-    return String(fxb7Desc).c_str();
-}
-
-inline const char *FxB7::name() const {
-    return "FXB7";
-}
-
 JsonObject & FxB7::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
@@ -344,7 +289,7 @@ JsonObject & FxB7::describeConfig(JsonArray &json) const {
 }
 
 //FXB8
-FxB8::FxB8() = default;
+FxB8::FxB8() : LedEffect(fxb8Desc) {}
 
 void FxB8::setup() {
     resetGlobals();
@@ -379,14 +324,6 @@ void FxB::fadein() {
     replicateSet(tpl, others);
 
     random16_set_seed(millis() >> 5);                                                      // Re-randomizing the random number seed for other routines.
-}
-
-const char *FxB8::description() const {
-    return String(fxb8Desc).c_str();
-}
-
-inline const char *FxB8::name() const {
-    return "FXB8";
 }
 
 JsonObject & FxB8::describeConfig(JsonArray &json) const {
@@ -450,12 +387,4 @@ void FxB::juggle_long() {
     replicateSet(tpl, others);
 }
 
-const char *FxB9::description() const {
-    return String(fxb9Desc).c_str();
-}
-
-inline const char *FxB9::name() const {
-    return "FxB9";
-}
-
-FxB9::FxB9() = default;
+FxB9::FxB9() : LedEffect(fxb9Desc) {}

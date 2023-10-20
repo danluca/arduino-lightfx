@@ -59,7 +59,7 @@ uint16_t FxA::fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg) {
 // Effect Definitions - setup and loop
 ///////////////////////////////////////
 //FX A1
-FxA1::FxA1() : dot(frame(0, FRAME_SIZE-1)) {
+FxA1::FxA1() : LedEffect(fxa1Desc), dot(frame(0, FRAME_SIZE-1)) {
     dot.fill_solid(BKG);
 }
 
@@ -111,10 +111,6 @@ void FxA1::loop() {
     }
 }
 
-const char *FxA1::description() const {
-    return String(fxa1Desc).c_str();
-}
-
 JsonObject & FxA1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
@@ -122,13 +118,8 @@ JsonObject & FxA1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-inline const char *FxA1::name() const {
-    return "FXA1";
-}
-
-
 // FX A2
-FxA2::FxA2() : dot(frame(0, FRAME_SIZE-1)) {
+FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA2::setup() {
@@ -200,10 +191,6 @@ void FxA2::loop() {
     }
 }
 
-const char *FxA2::description() const {
-    return String(fxa2Desc).c_str();
-}
-
 JsonObject & FxA2::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
@@ -211,12 +198,8 @@ JsonObject & FxA2::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-inline const char *FxA2::name() const {
-    return "FXA2";
-}
-
 // Fx A3
-FxA3::FxA3() : dot(frame(0, FRAME_SIZE-1)) {
+FxA3::FxA3() : LedEffect(fxa3Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA3::setup() {
@@ -260,22 +243,14 @@ void FxA3::loop() {
     }
 }
 
-const char *FxA3::description() const {
-    return String(fxa3Desc).c_str();
-}
-
 JsonObject & FxA3::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["palette"] = holidayToString(paletteFactory.currentHoliday());
     return obj;
 }
 
-inline const char *FxA3::name() const {
-    return "FXA3";
-}
-
 // FX A4
-FxA4::FxA4() : dot(frame(0, FRAME_SIZE-1)), frL(frame(FRAME_SIZE, FRAME_SIZE*2-1)),
+FxA4::FxA4() : LedEffect(fxa4Desc), dot(frame(0, FRAME_SIZE-1)), frL(frame(FRAME_SIZE, FRAME_SIZE*2-1)),
                frR(frame(FRAME_SIZE*2, FRAME_SIZE*3-1)), curBkg(BKG) {
 }
 
@@ -334,22 +309,14 @@ void FxA4::loop() {
     }
 }
 
-const char *FxA4::description() const {
-    return String(fxa4Desc).c_str();
-}
-
 JsonObject & FxA4::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["palette"] = holidayToString(paletteFactory.currentHoliday());
     return obj;
 }
 
-inline const char *FxA4::name() const {
-    return "FXA4";
-}
-
 // Fx A5
-FxA5::FxA5() : ovr(frame(0, FRAME_SIZE-1)) {
+FxA5::FxA5() : LedEffect(fxa5Desc), ovr(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA5::setup() {
@@ -406,16 +373,8 @@ void FxA5::loop() {
     }
 }
 
-const char *FxA5::description() const {
-    return String(fxa5Desc).c_str();
-}
-
 JsonObject & FxA5::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["palette"] = holidayToString(paletteFactory.currentHoliday());
     return obj;
-}
-
-inline const char *FxA5::name() const {
-    return "FXA5";
 }

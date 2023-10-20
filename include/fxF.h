@@ -15,10 +15,6 @@ namespace FxF {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
     };
 
     class FxF2 : public LedEffect {
@@ -28,10 +24,6 @@ namespace FxF {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
 
     protected:
         void makePattern(uint8_t hue);
@@ -78,10 +70,6 @@ namespace FxF {
 
         void loop() override;
 
-        const char *description() const override;
-
-        const char *name() const override;
-
         Viewport nextEyePos();
 
         EyeBlink *findAvailableEye();
@@ -98,10 +86,6 @@ namespace FxF {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
 
     protected:
         enum State {Bounce, Reduce, Flash};

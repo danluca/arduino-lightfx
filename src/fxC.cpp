@@ -33,7 +33,7 @@ void FxC::fxRegister() {
  * Date: January, 2017
  * This sketch demonstrates how to blend between two animations running at the same time.
  */
-FxC1::FxC1() : setA(frame(0, FRAME_SIZE-1)), setB(leds, FRAME_SIZE) {
+FxC1::FxC1() : LedEffect(fxc1Desc), setA(frame(0, FRAME_SIZE-1)), setB(leds, FRAME_SIZE) {
 }
 
 void FxC1::setup() {
@@ -56,10 +56,6 @@ void FxC1::loop() {
     FastLED.show(stripBrightness);
 }
 
-const char *FxC1::description() const {
-    return String(fxc1Desc).c_str();
-}
-
 void FxC1::animationA() {
     for (uint16_t x = 0; x<setA.size(); x++) {
         uint8_t clrIndex = (millis() / 10) + (x * 12);    // speed, length
@@ -76,10 +72,6 @@ void FxC1::animationB() {
     }
 }
 
-inline const char *FxC1::name() const {
-    return "FXC1";
-}
-
 //Fx C2
 /**
  * blur
@@ -92,7 +84,7 @@ inline const char *FxC1::name() const {
  *
  */
 
-FxC2::FxC2() = default;
+FxC2::FxC2() : LedEffect(fxc2Desc) {}
 
 void FxC2::setup() {
     resetGlobals();
@@ -117,14 +109,6 @@ void FxC2::loop() {
     FastLED.show(stripBrightness);
 }
 
-const char *FxC2::description() const {
-    return String(fxc2Desc).c_str();
-}
-
-inline const char *FxC2::name() const {
-    return "FXC2";
-}
-
 //Fx C3
 /**
  * inoise8_mover
@@ -137,7 +121,7 @@ inline const char *FxC2::name() const {
 const uint32_t xscale = 8192;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 const uint32_t yscale = 7680;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 
-FxC3::FxC3() = default;
+FxC3::FxC3() : LedEffect(fxc3Desc) {}
 
 void FxC3::setup() {
     resetGlobals();
@@ -177,16 +161,8 @@ JsonObject & FxC3::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-inline const char *FxC3::name() const {
-    return "FXC3";
-}
-
-const char *FxC3::description() const {
-    return String(fxc3Desc).c_str();
-}
-
 // Fx C4
-FxC4::FxC4() = default;
+FxC4::FxC4() : LedEffect(fxc4Desc) {}
 
 void FxC4::setup() {
     resetGlobals();
@@ -220,15 +196,9 @@ void FxC4::loop() {
     }
 }
 
-const char *FxC4::description() const {
-    return String(fxc4Desc).c_str();
-}
-
-inline const char *FxC4::name() const {
-    return "FxC4";
-}
-
 // Fx C5
+FxC5::FxC5() : LedEffect(fxc5Desc) {}
+
 void FxC5::setup() {
     resetGlobals();
     palette = paletteFactory.secondaryPalette();
@@ -252,16 +222,6 @@ void FxC5::loop() {
     }
 
 }
-
-const char *FxC5::description() const {
-    return String(fxc5Desc).c_str();
-}
-
-inline const char *FxC5::name() const {
-    return "FxC5";
-}
-
-FxC5::FxC5() = default;
 
 void FxC5::changeParams() {
     static uint8_t secSlot = 0;
@@ -297,6 +257,8 @@ void FxC5::matrix() {
 }
 
 // Fx C6
+FxC6::FxC6() : LedEffect(fxc6Desc) {}
+
 void FxC6::setup() {
     resetGlobals();
     palette = paletteFactory.secondaryPalette();
@@ -326,16 +288,6 @@ void FxC6::loop() {
         }
     }
 }
-
-const char *FxC6::description() const {
-    return String(fxc6Desc).c_str();
-}
-
-inline const char *FxC6::name() const {
-    return "FxC6";
-}
-
-FxC6::FxC6() = default;
 
 void FxC6::one_sine_pal(uint8_t colorIndex) {
     // This is the heart of this program. Sure is short.

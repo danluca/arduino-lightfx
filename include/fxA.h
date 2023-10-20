@@ -21,10 +21,6 @@ namespace FxA {
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
-        const char *description() const override;
-
-        const char *name() const override;
-
     protected:
         CRGBSet dot;
 
@@ -42,11 +38,7 @@ namespace FxA {
 
         void loop() override;
 
-        const char *description() const override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
 
     protected:
         enum Movement { forward, pause, backward };
@@ -65,11 +57,7 @@ namespace FxA {
 
         void loop() override;
 
-        const char *description() const override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
 
     protected:
         CRGBSet dot;
@@ -89,11 +77,7 @@ namespace FxA {
 
         void loop() override;
 
-        const char *description() const override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
 
     protected:
         CRGBSet dot;
@@ -116,11 +100,7 @@ namespace FxA {
 
         void loop() override;
 
-        const char *description() const override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
 
     protected:
         CRGBSet ovr;

@@ -1,11 +1,8 @@
 #include "efx_setup.h"
 #include "log.h"
-// increase the amount of space for file system to 128kB (default 64kB)
-#define RP2040_FS_SIZE_KB   (128)
-#include <LittleFSWrapper.h>
-#include "TimeLib.h"
 
 //~ Global variables definition
+#define JSON_DOC_SIZE   512
 const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 const uint8_t dimmed = 20;
 const char csAutoFxRoll[] = "autoFxRoll";
@@ -77,90 +74,6 @@ void ledStripInit() {
     FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
     FastLED.setBrightness(BRIGHTNESS);
     FastLED.clear(true);
-}
-
-LittleFSWrapper *fsPtr;
-const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
-
-void fsInit() {
-#ifndef DISABLE_LOGGING
-    mbed::BlockDevice *bd = mbed::BlockDevice::get_default_instance();
-    bd->init();
-    Log.infoln(F("Default BlockDevice type %s, size %u B, read size %u B, program size %u B, erase size %u B"),
-               bd->get_type(), bd->size(), bd->get_read_size(), bd->get_program_size(), bd->get_erase_size());
-    bd->deinit();
-#endif
-
-    fsPtr = new LittleFSWrapper();
-    if (fsPtr->init())
-        Log.infoln("Filesystem OK");
-
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Root FS %s contents:"), LittleFSWrapper::getRoot());
-    DIR *d = opendir(LittleFSWrapper::getRoot());
-    struct dirent *e = nullptr;
-    while (e = readdir(d))
-        Log.infoln(F("  %s [%d]"), e->d_name, e->d_type);
-    Log.infoln(F("Dir complete."));
-#endif
-}
-
-#define FILE_BUF_SIZE   256
-#define JSON_DOC_SIZE   512
-
-/**
- * Reads a text file - if it exists - into a string object
- * @param fname name of the file to read
- * @param s string to store contents into
- * @return number of characters in the file; 0 if file is empty or doesn't exist
- */
-size_t readTextFile(const char *fname, String *s) {
-    FILE *f = fopen(fname, "r");
-    size_t fsize = 0;
-    if (f) {
-        char buf[FILE_BUF_SIZE];
-        memset(buf, 0, FILE_BUF_SIZE);
-        size_t cread = 1;
-        while (cread = fread(buf, 1, FILE_BUF_SIZE, f)) {
-            s->concat(buf, cread);
-            fsize += cread;
-        }
-        fclose(f);
-#ifndef DISABLE_LOGGING
-        Log.infoln(F("Read %d bytes from %s file"), fsize, fname);
-        Log.traceln(F("File %s content [%d]: %s"), fname, fsize, s->c_str());
-#endif
-    } else
-        Log.errorln(F("Text file %s was not found/could not read"), fname);
-    return fsize;
-}
-
-/**
- * Writes (overrides if already exists) a file using the string content
- * @param fname file name to write
- * @param s contents to write
- * @return number of bytes written
- */
-size_t writeTextFile(const char *fname, String *s) {
-    size_t fsize = 0;
-    FILE *f = fopen(fname, "w");
-    if (f) {
-        fsize = fwrite(s->c_str(), sizeof(s->charAt(0)), s->length(), f);
-        fclose(f);
-        Log.infoln(F("File %s has been saved, size %d bytes"), fname, s->length());
-    } else
-        Log.errorln(F("Failed to create file %s for writing"), fname);
-    return fsize;
-}
-
-bool removeFile(const char *fname) {
-    FILE *f = fopen(fname, "r");
-    if (f) {
-        fclose(f);
-        return lfs.remove(fname) == 0;
-    }
-    //file does not exist - return true to the caller, the intent is already fulfilled
-    return true;
 }
 
 void readState() {
@@ -459,77 +372,6 @@ CRGB adjustBrightness(CRGB color, uint8_t bright) {
 }
 
 /**
- * Ease Out Bounce implementation - leverages the double precision original implementation converted to int in a range
- * @param x input value
- * @param lim high limit range
- * @return the result in [0,lim] inclusive range
- * @see https://easings.net/#easeOutBounce
- */
-uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
-    static const float d1 = 2.75f;
-    static const float n1 = 7.5625f;
-
-    float xf = ((float)x)/(float)lim;
-    float res = 0;
-    if (xf < 1/d1) {
-        res = n1*xf*xf;
-    } else if (xf < 2/d1) {
-        float xf1 = xf - 1.5f/d1;
-        res = n1*xf1*xf1 + 0.75f;
-    } else if (xf < 2.5f/d1) {
-        float xf1 = xf - 2.25f/d1;
-        res = n1*xf1*xf1 + 0.9375f;
-    } else {
-        float xf1 = xf - 2.625f/d1;
-        res = n1*xf1*xf1 + 0.984375f;
-    }
-    return (uint16_t )(res * (float)lim);
-}
-
-/**
- * Multiply function for color blending purposes - assumes the operands are fractional (n/256) and the result
- * of multiplying 2 fractional numbers is less than both numbers (e.g. 0.2 x 0.3 = 0.06). Special handling for operand values of 255 (i.e. 1.0)
- * <p>f(a,b) = a*b</p>
- * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @return (a*b)/256
- * @see https://en.wikipedia.org/wiki/Blend_modes
- */
-uint8_t bmul8(uint8_t a, uint8_t b) {
-    if (a==255)
-        return b;
-    if (b==255)
-        return a;
-    return ((uint16_t)a*(uint16_t)b)/256;
-}
-
-/**
- * Screen two 8 bit operands for color blending purposes - assumes the operands are fractional (n/256)
- * <p>f(a,b)=1-(1-a)*(1-b)</p>
- * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @return 255-bmul8(255-a, 255-b)
- * @see https://en.wikipedia.org/wiki/Blend_modes
- */
-uint8_t bscr8(uint8_t a, uint8_t b) {
-    return 255-bmul8(255-a, 255-b);
-}
-
-/**
- * Overlay two 8 bit operands for color blending purposes - assumes the operands are fractional (n/256)
- * <p>f(a,b)=2*a*b, if a<0.5; 1-2*(1-a)*(1-b), otherwise</p>
- * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @return the 8 bit value per formula above
- * @see https://en.wikipedia.org/wiki/Blend_modes
- */
-uint8_t bovl8(uint8_t a, uint8_t b) {
-    if (a < 128)
-        return bmul8(a, b)*2;
-    return 255-bmul8(255-a, 255-b)*2;
-}
-
-/**
  * Blend multiply 2 colors
  * @param blendLayer base color, which is also the target (the one receiving the result)
  * @param topLayer color to multiply with
@@ -808,7 +650,18 @@ void LedEffect::baseConfig(JsonObject &json) const {
     json["registryIndex"] = getRegistryIndex();
 }
 
-LedEffect::LedEffect() {
+LedEffect::LedEffect(const char *description) : desc(description) {
+    //copy into id field the prefix of description (e.g. for a description 'FxA1: awesome lights', copies 'FxA1' into id)
+    for (uint8_t i=0; i<LED_EFFECT_ID_SIZE; i++) {
+        if (description[i] == ':' || description[i] == '\0') {
+            id[i] = '\0';
+            break;
+        }
+        id[i] = description[i];
+    }
+    //in case the prefix in description is larger, ensure id is null terminated (i.e. truncate)
+    id[LED_EFFECT_ID_SIZE-1] = '\0';
+    //register the effect
     registryIndex = fxRegistry.registerEffect(this);
 }
 
@@ -816,6 +669,14 @@ JsonObject &LedEffect::describeConfig(JsonArray &json) const {
     JsonObject obj = json.createNestedObject();
     baseConfig(obj);
     return obj;
+}
+
+const char *LedEffect::name() const {
+    return id;
+}
+
+const char *LedEffect::description() const {
+    return desc;
 }
 
 // Viewport
@@ -851,12 +712,10 @@ void fx_run() {
             fxBump = false;
             totalAudioBumps++;
         }
-        int vcc = analogRead(p26);
-        int temp = analogRead(ADC_TEMP);
-        int vref = analogRead(ADC_VREF);
-        Log.infoln(F("Vcc = %d (? unit)"), vcc);
-        Log.infoln(F("RP2040 Temp = %d (? unit)"), temp);
-        Log.infoln(F("ADC Vref = %d (? unit)"), vref);
+#ifndef DISABLE_LOGGING
+        Log.infoln(F("Board Vcc Voltage %D V"), controllerVoltage());
+        Log.info(F("Chip internal temperature %D 'C"), chipTemperature());
+#endif
     }
     EVERY_N_MINUTES(5) {
         fxRegistry.nextRandomEffectPos();

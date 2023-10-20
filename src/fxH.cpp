@@ -41,7 +41,7 @@ void FxH::fxRegister() {
 // The dynamic palette shows how you can change the basic 'hue' of the
 // color palette every time through the loop, producing "rainbow fire".
 
-FxH1::FxH1() : fires{tpl(0, FRAME_SIZE/2-1), tpl(FRAME_SIZE-1, FRAME_SIZE/2)} {
+FxH1::FxH1() : LedEffect(fxh1Desc), fires{tpl(0, FRAME_SIZE/2-1), tpl(FRAME_SIZE-1, FRAME_SIZE/2)} {
 }
 
 void FxH1::setup() {
@@ -107,10 +107,6 @@ void FxH1::loop() {
     }
 }
 
-const char *FxH1::description() const {
-    return String(fxh1Desc).c_str();
-}
-
 void FxH1::Fire2012WithPalette(uint8_t xFire) {
     //we only have 3 fires (numFires = 3) - abort if called for more than that
     if (xFire >= numFires)
@@ -144,10 +140,6 @@ void FxH1::Fire2012WithPalette(uint8_t xFire) {
     }
 }
 
-inline const char *FxH1::name() const {
-    return "FXH1";
-}
-
 JsonObject & FxH1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["flameBrightness"] = brightness;
@@ -157,7 +149,7 @@ JsonObject & FxH1::describeConfig(JsonArray &json) const {
 
 
 // FxH2
-FxH2::FxH2() = default;
+FxH2::FxH2() : LedEffect(fxh2Desc) {}
 
 void FxH2::setup() {
     resetGlobals();
@@ -176,10 +168,6 @@ void FxH2::loop() {
         FastLED.show(stripBrightness);
     }
 
-}
-
-const char *FxH2::description() const {
-    return String(fxh2Desc).c_str();
 }
 
 void FxH2::confetti_pal() {
@@ -203,10 +191,6 @@ void FxH2::updateParams() {
         }
         secSlot = inc(secSlot, 1, 4);
     }
-}
-
-inline const char *FxH2::name() const {
-    return "FXH2";
 }
 
 JsonObject & FxH2::describeConfig(JsonArray &json) const {
@@ -235,7 +219,7 @@ JsonObject & FxH2::describeConfig(JsonArray &json) const {
  *
  */
 // FxH3
-FxH3::FxH3() = default;
+FxH3::FxH3() : LedEffect(fxh3Desc) {}
 
 void FxH3::setup() {
     resetGlobals();
@@ -258,14 +242,6 @@ void FxH3::loop() {
         FastLED.show(stripBrightness);
     }
 
-}
-
-const char *FxH3::description() const {
-    return String(fxh3Desc).c_str();
-}
-
-inline const char *FxH3::name() const {
-    return "FXH3";
 }
 
 JsonObject & FxH3::describeConfig(JsonArray &json) const {

@@ -23,7 +23,7 @@ void FxF::fxRegister() {
 }
 
 // FxF1
-FxF1::FxF1() = default;
+FxF1::FxF1() : LedEffect(fxf1Desc) {}
 
 void FxF1::setup() {
     resetGlobals();
@@ -56,16 +56,8 @@ void FxF1::loop() {
     }
 }
 
-const char *FxF1::description() const {
-    return String(fxf1Desc).c_str();
-}
-
-inline const char *FxF1::name() const {
-    return "FxF1";
-}
-
 // FxF2
-FxF2::FxF2() : pattern(frame(0, FRAME_SIZE-1)) {
+FxF2::FxF2() : LedEffect(fxf2Desc), pattern(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxF2::setup() {
@@ -110,16 +102,8 @@ void FxF2::makePattern(uint8_t hue) {
     loopRight(pattern, (Viewport)0, s0);
 }
 
-const char *FxF2::description() const {
-    return String(fxf2Desc).c_str();
-}
-
-inline const char *FxF2::name() const {
-    return "FxF2";
-}
-
 // FxF3
-FxF3::FxF3() = default;
+FxF3::FxF3() : LedEffect(fxf3Desc) {}
 
 void FxF3::setup() {
     resetGlobals();
@@ -154,14 +138,6 @@ void FxF3::loop() {
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
     }
-}
-
-const char *FxF3::description() const {
-    return String(fxf3Desc).c_str();
-}
-
-inline const char *FxF3::name() const {
-    return "FxF3";
 }
 
 /**
@@ -391,15 +367,7 @@ void FxF4::loop() {
     }
 }
 
-const char *FxF4::description() const {
-    return String(fxf4Desc).c_str();
-}
-
-inline const char *FxF4::name() const {
-    return "FxF4";
-}
-
-FxF4::FxF4() : state(Bounce), set1(tpl(0, tpl.size()/2-1)), set2mir(tpl(tpl.size() - 1, tpl.size()/2)) {
+FxF4::FxF4() : LedEffect(fxf4Desc), state(Bounce), set1(tpl(0, tpl.size()/2-1)), set2mir(tpl(tpl.size() - 1, tpl.size()/2)) {
     short upLim = (tpl.size() + dotSize)/2;
     for (short x = 0; x < upLim; x++)
         bouncyCurve[x] = easeOutBounce(x, upLim - 1);

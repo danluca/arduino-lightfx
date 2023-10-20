@@ -18,13 +18,9 @@ namespace FxC {
 
         void loop() override;
 
-        const char *description() const override;
-
         void animationA();
 
         void animationB();
-
-        const char *name() const override;
     };
 
     class FxC2 : public LedEffect {
@@ -34,10 +30,6 @@ namespace FxC {
         void setup() override;
 
         void loop() override;
-
-        const char *name() const override;
-
-        const char *description() const override;
     };
 
     class FxC3 : public LedEffect {
@@ -49,10 +41,6 @@ namespace FxC {
         void loop() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
-        const char *description() const override;
     };
 
     class FxC4 : public LedEffect {
@@ -62,10 +50,6 @@ namespace FxC {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
 
     protected:
         uint8_t frequency {10};
@@ -79,10 +63,6 @@ namespace FxC {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
 
         void changeParams();
 
@@ -102,10 +82,6 @@ namespace FxC {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
 
         void one_sine_pal(uint8_t colorIndex);
 

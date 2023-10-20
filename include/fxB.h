@@ -37,11 +37,7 @@ namespace FxB {
 
         void loop() override;
 
-        const char *description() const override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
     };
 
     class FxB2 : public LedEffect {
@@ -51,10 +47,6 @@ namespace FxB {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
     };
 
     class FxB3 : public LedEffect {
@@ -66,10 +58,6 @@ namespace FxB {
         void loop() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
-        const char *description() const override;
     };
 
     class FxB4 : public LedEffect {
@@ -81,10 +69,6 @@ namespace FxB {
         void loop() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
-        const char *description() const override;
     };
 
     class FxB5 : public LedEffect {
@@ -96,10 +80,6 @@ namespace FxB {
         void loop() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
-        const char *description() const override;
     };
 
     class FxB6 : public LedEffect {
@@ -109,10 +89,6 @@ namespace FxB {
         void setup() override;
 
         void loop() override;
-
-        const char *name() const override;
-
-        const char *description() const override;
     };
 
     class FxB7 : public LedEffect {
@@ -124,10 +100,6 @@ namespace FxB {
         void loop() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
-        const char *description() const override;
     };
 
     class FxB8 : public LedEffect {
@@ -139,10 +111,6 @@ namespace FxB {
         void loop() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
-        const char *description() const override;
     };
 
     class FxB9 : public LedEffect {
@@ -152,10 +120,6 @@ namespace FxB {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
     };
 }
 

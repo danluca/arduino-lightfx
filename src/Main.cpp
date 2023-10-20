@@ -21,8 +21,10 @@ void setup() {
 
     //disable ADC
     //hw_clear_bits(&adc_hw->cs, ADC_CS_EN_BITS);
-    analogReadResolution(12);   //get us the higher resolution of the ADC
-
+    //enable ADC, including temp sensor
+    adc_init();
+    adc_set_temp_sensor_enabled(true);
+    analogReadResolution(ADC_RESOLUTION);   //get us the higher resolution of the ADC
 
     setupStateLED();
 

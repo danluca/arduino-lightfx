@@ -15,13 +15,9 @@ namespace FxE {
 
         void loop() override;
 
-        const char *description() const override;
-
         static void twinkle();
 
         JsonObject & describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
 
         static void updateParams();
     };
@@ -34,10 +30,6 @@ namespace FxE {
 
         void loop() override;
 
-        const char *description() const override;
-
-        const char *name() const override;
-
         void beatwave();
     };
 
@@ -48,10 +40,6 @@ namespace FxE {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
 
     protected:
         const uint8_t sasquatchSize = 3;
@@ -69,10 +57,6 @@ namespace FxE {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
 
         void serendipitous();
 

@@ -3,8 +3,10 @@
 #include "log.h"
 
 using namespace colTheme;
-const char ssid[] = WF_SSID;
-const char pass[] = WF_PSW;
+const char ssid[] PROGMEM = WF_SSID;
+const char pass[] PROGMEM = WF_PSW;
+const char fmtDate[] PROGMEM = "%4d-%02d-%02d";
+const char fmtTime[] PROGMEM = "%02d:%02d:%02d";
 
 int status = WL_IDLE_STATUS;
 
@@ -102,17 +104,7 @@ bool imu_setup() {
         }
     }
     // print the board temperature
-    bool result = IMU.temperatureAvailable();
-    if (result) {
-        int temperature_deg = 0;
-        IMU.readTemperature(temperature_deg);
-#ifndef DISABLE_LOGGING
-        // F() macro doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
-        // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
-        Log.infoln(F("Board temperature %d 'C (%F 'F)"), temperature_deg, temperature_deg*9.0/5+32);
-#endif
-    }
-    return result;
+    return boardTemperature() != IMU_TEMPERATURE_NOT_AVAILABLE;
 }
 
 bool time_setup() {
@@ -137,7 +129,7 @@ bool time_setup() {
                    isDST?"Daylight Savings":"Standard", md, isDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
         char timeBuf[20];
         curTime = now();
-        sprintf(timeBuf, "%4d-%02d-%02d %02d:%02d:%02d", year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
+        formatDateTime(timeBuf, curTime);
         Log.infoln(F("Current time %s %s"), timeBuf, isDST?"CDT":"CST");
 #endif
     } else {
@@ -148,6 +140,47 @@ bool time_setup() {
     Log.infoln(F("Current holiday is %s"), holidayToString(hday));
 #endif
     return ntpTimeAvailable;
+}
+
+/**
+ * Formats the time component of the timestamp, using a standard pattern - @see #fmtTime
+ * @param buf buffer to write to. If not null, it must have space for 9 characters
+ * @param time the time to format, if not specified defaults to @see now()
+ * @return number of characters written to the buffer for given time value
+ */
+uint8_t formatTime(char *buf, time_t time) {
+    if (time == 0)
+        time = now();
+    if (buf == nullptr)
+        return snprintf(buf, 0, fmtTime, hour(time), minute(time), second(time));
+    return snprintf(buf, 9, fmtTime, hour(time), minute(time), second(time));   //8 chars + null terminating
+}
+
+/**
+ * Formats the date component of the timestamp, using a standard pattern - @see #fmtDate
+ * @param buf buffer to write to. If not null, it must have space for 11 characters
+ * @param time the time to format, if not specified defaults to @see now()
+ * @return number of characters written to the buffer for given time value
+ */
+uint8_t formatDate(char *buf, time_t time) {
+    if (time == 0)
+        time = now();
+    if (buf == nullptr)
+        return snprintf(buf, 0, fmtDate, year(time), month(time), day(time));
+    return snprintf(buf, 11, fmtDate, year(time), month(time), day(time));   //10 chars + null terminating
+}
+
+uint8_t formatDateTime(char *buf, time_t time) {
+    if (time == 0)
+        time = now();
+    uint8_t sz = formatDate(buf, time);
+    if (buf == nullptr)
+        sz += formatTime(buf, time);
+    else {
+        *(buf + sz) = ' ';  //date - time separation character
+        sz += formatTime( buf+sz+1, time);
+    }
+    return sz;
 }
 
 /**
@@ -262,3 +295,4 @@ bool ntp_sync() {
     timeClient.end();
     return timeClient.isTimeSet();
 }
+

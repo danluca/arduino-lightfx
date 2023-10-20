@@ -6,7 +6,6 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <Arduino_LSM6DSOX.h>
 #include <regex>
 #include "net_setup.h"
 #include "efx_setup.h"
