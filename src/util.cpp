@@ -29,10 +29,13 @@ int boardTemperature() {
 
 float controllerVoltage() {
     const uint avgSize = 8;  //we'll average 8 readings back to back
-    int valSum = 0;
+    uint valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += analogRead(A0);
-    return (float)(valSum*MV3_3/avgSize*(VCC_DIV_R5+VCC_DIV_R4)/VCC_DIV_R5/maxAdc)/1000.0f;
+    Log.infoln(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
+    valSum = valSum*MV3_3/avgSize;
+    valSum = valSum*(VCC_DIV_R5+VCC_DIV_R4)/VCC_DIV_R5/maxAdc;
+    return (float)valSum/1000.0f;
 }
 
 float chipTemperature() {
@@ -40,10 +43,11 @@ float chipTemperature() {
     const uint avgSize = 8;   //we'll average 8 readings back to back
 
     adc_select_input(4);
-    int valSum = 0;
+    uint valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += adc_read();
     adc_select_input(curAdc);   //restore the ADC input selection
+    Log.infoln(F("Internal Temperature %d average reading: %d"), avgSize, valSum/avgSize);
 
     uint tV = valSum*MV3_3/avgSize/maxAdc;   //voltage in mV
     return 27.0f - (float)(tV - 706)/1.721f;
