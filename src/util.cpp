@@ -32,7 +32,7 @@ float controllerVoltage() {
     int valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += analogRead(A0);
-    return (float)(valSum*MV3_3/avgSize/maxAdc)/1000.0f;
+    return (float)(valSum*MV3_3/avgSize*(VCC_DIV_R5+VCC_DIV_R4)/VCC_DIV_R5/maxAdc)/1000.0f;
 }
 
 float chipTemperature() {
