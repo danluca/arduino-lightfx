@@ -12,9 +12,8 @@ const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
 
 LittleFSWrapper *fsPtr;
 
-int boardTemperature() {
-    bool result = IMU.temperatureAvailable();
-    if (result) {
+int boardTemperature(bool bFahrenheit) {
+    if (IMU.temperatureAvailable()) {
         int temperature_deg = 0;
         IMU.readTemperature(temperature_deg);
 #ifndef DISABLE_LOGGING
@@ -22,9 +21,24 @@ int boardTemperature() {
         // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
         Log.infoln(F("Board temperature %d 'C (%F 'F)"), temperature_deg, temperature_deg*9.0/5+32);
 #endif
+        if (bFahrenheit)
+            return temperature_deg*9/5+32;
         return temperature_deg;
     }
     return IMU_TEMPERATURE_NOT_AVAILABLE;
+}
+
+float boardTemperatureFloat(bool bFahrenheit) {
+    if (IMU.temperatureAvailable()) {
+        float tempC = 0.0;
+        IMU.readTemperatureFloat(tempC);
+#ifndef DISABLE_LOGGING
+        Log.infoln(F("Board temperature %D 'C (%D 'F)"), tempC, tempC*9.0/5+32);
+#endif
+        if (bFahrenheit)
+            return tempC*9/5+32;
+        return tempC;
+    }
 }
 
 float controllerVoltage() {

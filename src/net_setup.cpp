@@ -103,6 +103,7 @@ bool imu_setup() {
             yield();
         }
     }
+    Log.infoln(F("IMU sensor ok"));
     // print the board temperature
     return boardTemperature() != IMU_TEMPERATURE_NOT_AVAILABLE;
 }
