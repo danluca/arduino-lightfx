@@ -12,33 +12,20 @@ const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
 
 LittleFSWrapper *fsPtr;
 
-int boardTemperature(bool bFahrenheit) {
+float boardTemperature(bool bFahrenheit) {
     if (IMU.temperatureAvailable()) {
-        int temperature_deg = 0;
-        IMU.readTemperature(temperature_deg);
+        float tempC = 0.0f;
+        IMU.readTemperatureFloat(tempC);
 #ifndef DISABLE_LOGGING
         // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
         // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
-        Log.infoln(F("Board temperature %d 'C (%F 'F)"), temperature_deg, temperature_deg*9.0/5+32);
-#endif
-        if (bFahrenheit)
-            return temperature_deg*9/5+32;
-        return temperature_deg;
-    }
-    return IMU_TEMPERATURE_NOT_AVAILABLE;
-}
-
-float boardTemperatureFloat(bool bFahrenheit) {
-    if (IMU.temperatureAvailable()) {
-        float tempC = 0.0;
-        IMU.readTemperatureFloat(tempC);
-#ifndef DISABLE_LOGGING
         Log.infoln(F("Board temperature %D 'C (%D 'F)"), tempC, tempC*9.0/5+32);
 #endif
         if (bFahrenheit)
-            return tempC*9/5+32;
+            return tempC*9.0f/5+32;
         return tempC;
     }
+    return IMU_TEMPERATURE_NOT_AVAILABLE;
 }
 
 float controllerVoltage() {
@@ -46,6 +33,7 @@ float controllerVoltage() {
     uint valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += analogRead(A0);
+    //TODO: move to traceln
     Log.infoln(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
     valSum = valSum*MV3_3/avgSize;
     valSum = valSum/VCC_DIV_R5*(VCC_DIV_R5+VCC_DIV_R4)/maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
@@ -61,10 +49,14 @@ float chipTemperature() {
     for (uint x = 0; x < avgSize; x++)
         valSum += adc_read();
     adc_select_input(curAdc);   //restore the ADC input selection
+    //TODO: move to traceln
     Log.infoln(F("Internal Temperature %d average reading: %d"), avgSize, valSum/avgSize);
 
     int tV = valSum*MV3_3/avgSize/maxAdc;   //voltage in mV
-    return 27.0f - (float)(tV - 706)/1.721f;
+    //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
+    //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
+    //however per measurements, the slope is more like -11.8978mV per degree
+    return 27.0f - (float)(tV - 706)/11.8978f;
 }
 
 void fsInit() {

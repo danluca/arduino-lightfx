@@ -165,7 +165,7 @@ size_t web::handleGetWifi(WiFiClient *client, String *uri, String *hd, String *b
     doc["bars"] = barSignalLevel(rssi);
     doc["millis"] = millis();           //current time in ms
     //current temperature
-    doc["boardTemp"] = boardTemperatureFloat();
+    doc["boardTemp"] = boardTemperature();
     doc["ntpSync"] = timeStatus();
 
     //send it out
@@ -390,7 +390,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
 
     //current temperature
-    doc["boardTemp"] = boardTemperatureFloat();
+    doc["boardTemp"] = boardTemperature();
     snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
     doc["mbedVersion"] = timeBuf;
     doc["chipTemp"] = chipTemperature();

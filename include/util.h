@@ -12,15 +12,14 @@
 #include "log.h"
 
 
-#define IMU_TEMPERATURE_NOT_AVAILABLE   0xFFFF
+#define IMU_TEMPERATURE_NOT_AVAILABLE   0.001
 
 extern const char stateFileName[];
 
 uint8_t formatTime(char *buf, time_t time = 0);
 uint8_t formatDate(char *buf, time_t time = 0);
 uint8_t formatDateTime(char *buf, time_t time = 0);
-int boardTemperature(bool bFahrenheit = false);
-float boardTemperatureFloat(bool bFahrenheit = false);
+float boardTemperature(bool bFahrenheit = false);
 float chipTemperature();
 float controllerVoltage();
 

@@ -69,6 +69,10 @@ extern volatile uint16_t audioBumpThreshold;
 extern volatile uint16_t maxAudio;
 extern volatile uint16_t countAudioThreshold;
 extern uint16_t totalAudioBumps;
+extern float minVcc;
+extern float maxVcc;
+extern float minTemp;
+extern float maxTemp;
 
 extern volatile bool fxBump;
 extern volatile uint16_t speed;

@@ -93,7 +93,7 @@ bool wifi_setup() {
     return wifi_connect();
 }
 
-bool imu_setup() {
+[[noreturn]] bool imu_setup() {
     // initialize the IMU (Inertial Measurement Unit)
     if (!IMU.begin()) {
         Log.errorln(F("Failed to initialize IMU!"));

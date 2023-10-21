@@ -47,6 +47,10 @@ int8_t rot = 1;
 int32_t dist = 1;
 bool dirFwd = true;
 bool randhue = true;
+float minVcc = 12.0f;
+float maxVcc = 0.0f;
+float minTemp = 100.0f;
+float maxTemp = 0.0f;
 
 //~ Support functions -----------------
 /**
@@ -712,10 +716,18 @@ void fx_run() {
             fxBump = false;
             totalAudioBumps++;
         }
+        float msmt = controllerVoltage();
+        if (msmt < minVcc)
+            minVcc = msmt;
+        if (msmt > maxVcc)
+            maxVcc = msmt;
+        msmt = boardTemperature();
+        if (msmt < minTemp)
+            minTemp = msmt;
+        if (msmt > maxTemp)
+            maxTemp = msmt;
 #ifndef DISABLE_LOGGING
-        Log.infoln(F("Board Vcc Voltage %D V"), controllerVoltage());
-        Log.infoln(F("Chip internal temperature %D 'C"), chipTemperature());
-        Log.infoln(F("Board IMU temperature %D 'C"), boardTemperatureFloat());
+        chipTemperature();
 #endif
     }
     EVERY_N_MINUTES(5) {
