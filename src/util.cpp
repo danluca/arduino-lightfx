@@ -40,7 +40,7 @@ float controllerVoltage() {
     return (float)valSum/1000.0f;
 }
 
-float chipTemperature() {
+float chipTemperature(bool bFahrenheit) {
     uint curAdc = adc_get_selected_input();
     const uint avgSize = 8;   //we'll average 8 readings back to back
 
@@ -56,7 +56,10 @@ float chipTemperature() {
     //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
     //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
     //however per measurements, the slope is more like -11.8978mV per degree
-    return 27.0f - (float)(tV - 706)/11.8978f;
+    float temp = 27.0f - (float)(tV - 706)/11.8978f;
+    if (bFahrenheit)
+        return temp*9.0f/5+32;
+    return temp;
 }
 
 void fsInit() {

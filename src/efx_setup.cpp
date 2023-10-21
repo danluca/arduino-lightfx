@@ -727,7 +727,7 @@ void fx_run() {
         if (msmt > maxTemp)
             maxTemp = msmt;
 #ifndef DISABLE_LOGGING
-        chipTemperature();
+        Log.infoln(F("Chip internal temperature %D 'C"), chipTemperature());
 #endif
     }
     EVERY_N_MINUTES(5) {

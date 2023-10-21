@@ -93,7 +93,7 @@ bool wifi_setup() {
     return wifi_connect();
 }
 
-[[noreturn]] bool imu_setup() {
+bool imu_setup() {
     // initialize the IMU (Inertial Measurement Unit)
     if (!IMU.begin()) {
         Log.errorln(F("Failed to initialize IMU!"));
@@ -105,7 +105,8 @@ bool wifi_setup() {
     }
     Log.infoln(F("IMU sensor ok"));
     // print the board temperature
-    return boardTemperature() != IMU_TEMPERATURE_NOT_AVAILABLE;
+    boardTemperature();
+    return true;
 }
 
 bool time_setup() {

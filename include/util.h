@@ -20,7 +20,7 @@ uint8_t formatTime(char *buf, time_t time = 0);
 uint8_t formatDate(char *buf, time_t time = 0);
 uint8_t formatDateTime(char *buf, time_t time = 0);
 float boardTemperature(bool bFahrenheit = false);
-float chipTemperature();
+float chipTemperature(bool bFahrenheit = false);
 float controllerVoltage();
 
 uint16_t easeOutBounce(uint16_t x, uint16_t lim);

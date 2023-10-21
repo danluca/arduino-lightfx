@@ -23,7 +23,7 @@ void stateLED(CRGB color);
 
 bool wifi_setup();
 
-[[noreturn]] bool imu_setup();
+bool imu_setup();
 bool time_setup();
 void server_setup();
 void webserver();
