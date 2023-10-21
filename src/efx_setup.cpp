@@ -715,6 +715,7 @@ void fx_run() {
 #ifndef DISABLE_LOGGING
         Log.infoln(F("Board Vcc Voltage %D V"), controllerVoltage());
         Log.infoln(F("Chip internal temperature %D 'C"), chipTemperature());
+        Log.infoln(F("Board IMU temperature %d 'C"), boardTemperature());
 #endif
     }
     EVERY_N_MINUTES(5) {

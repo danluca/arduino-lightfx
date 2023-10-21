@@ -212,7 +212,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
     time_t curTime = now();
     char datetime[20];
-    sprintf(datetime, "%4d-%02d-%02d %02d:%02d:%02d", year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
+    formatDateTime(datetime, curTime);
     doc["currentTime"] = datetime;
     doc["currentOffset"] = isDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
     doc["dst"] = isDST;

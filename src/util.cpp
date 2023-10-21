@@ -34,7 +34,7 @@ float controllerVoltage() {
         valSum += analogRead(A0);
     Log.infoln(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
     valSum = valSum*MV3_3/avgSize;
-    valSum = valSum*(VCC_DIV_R5+VCC_DIV_R4)/VCC_DIV_R5/maxAdc;
+    valSum = valSum/VCC_DIV_R5*(VCC_DIV_R5+VCC_DIV_R4)/maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
     return (float)valSum/1000.0f;
 }
 
@@ -49,7 +49,7 @@ float chipTemperature() {
     adc_select_input(curAdc);   //restore the ADC input selection
     Log.infoln(F("Internal Temperature %d average reading: %d"), avgSize, valSum/avgSize);
 
-    uint tV = valSum*MV3_3/avgSize/maxAdc;   //voltage in mV
+    int tV = valSum*MV3_3/avgSize/maxAdc;   //voltage in mV
     return 27.0f - (float)(tV - 706)/1.721f;
 }
 
