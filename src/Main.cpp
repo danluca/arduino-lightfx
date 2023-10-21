@@ -33,12 +33,11 @@ void setup() {
     Scheduler.startLoop(&fxTasks, 3072);
     Scheduler.startLoop(&micTasks, 1024);
 
-    stateLED(CRGB::OrangeRed);    //Wi-Fi connect in progress
+    stateLED(CRGB::OrangeRed);    //Setup in progress
+    imu_setup();
     bool wifiOk = wifi_setup();
     if (wifiOk)
         stateLED(CRGB::Indigo);   //ready to show awesome light effects!
-    if (!imu_setup())
-        stateLED(CRGB::Green);
     if (!time_setup())
         stateLED(CRGB::Blue);
 

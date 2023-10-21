@@ -286,6 +286,7 @@ JsonObject & FxB7::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
 //FXB8
