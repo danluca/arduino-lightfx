@@ -42,12 +42,12 @@ function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
             $('#status h1').removeClass('red');
-            $('#boardTemp').html(`${data.boardTemp} ?C (${data.boardTemp*9/5+32} ?F)`);
-            $('#boardMinTemp').html(data.boardMinTemp);
-            $('#boardMaxTemp').html(data.boardMaxTemp);
-            $('#boardVcc').html(data.vcc);
-            $('#boardMinVcc').html(data.minVcc);
-            $('#boardMaxVcc').html(data.maxVcc);
+            $('#boardTemp').html(`${data.boardTemp.toFixed(2)} °C (${(data.boardTemp*9/5+32).toFixed(2)} °F)`);
+            $('#boardMinTemp').html(data.boardMinTemp.toFixed(2));
+            $('#boardMaxTemp').html(data.boardMaxTemp.toFixed(2));
+            $('#boardVcc').html(data.vcc.toFixed(2));
+            $('#boardMinVcc').html(data.minVcc.toFixed(2));
+            $('#boardMaxVcc').html(data.maxVcc.toFixed(2));
             $('#mbedVersion').html(`${data.mbedVersion}`);
             $('#audioThreshold').html(`${data.fx.audioThreshold}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);

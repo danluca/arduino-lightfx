@@ -352,7 +352,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     sz += client->println();    //done with headers
 
     // response body
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<768> doc;
     // WiFi
     JsonObject wifi = doc.createNestedObject("wifi");
     wifi["IP"] = WiFi.localIP();         //IP Address
@@ -389,10 +389,9 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     time["dst"] = isDST;
     time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
 
-    //current temperature
-    doc["boardTemp"] = boardTemperature();
     snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
     doc["mbedVersion"] = timeBuf;
+    doc["boardTemp"] = boardTemperature();
     doc["chipTemp"] = chipTemperature();
     doc["vcc"] = controllerVoltage();
     doc["minVcc"] = minVcc;
