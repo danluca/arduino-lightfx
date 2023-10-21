@@ -397,8 +397,8 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     doc["vcc"] = controllerVoltage();
     doc["minVcc"] = minVcc;
     doc["maxVcc"] = maxVcc;
-    doc["minBoardTemp"] = minTemp;
-    doc["maxBoardTemp"] = maxTemp;
+    doc["boardMinTemp"] = minTemp;
+    doc["boardMaxTemp"] = maxTemp;
 
     //send it out
     sz += serializeJson(doc, *client);

@@ -173,8 +173,8 @@ void FxC4::setup() {
 
 void FxC4::loop() {
     EVERY_N_SECONDS_I(fxc4Timer, 1+random8(frequency)) {
-        uint8_t start = random8(NUM_PIXELS - 8);                               // Determine starting location of flash
-        uint8_t len = random8(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
+        uint16_t start = random16(NUM_PIXELS - 8);                               // Determine starting location of flash
+        uint16_t len = random16(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
         uint8_t flashRound = random8(3, flashes);
         CRGBSet flash(leds, start, start+len);
 
