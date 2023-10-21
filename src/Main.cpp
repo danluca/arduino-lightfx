@@ -32,11 +32,12 @@ void setup() {
 
     fsInit();
 
+    imu_setup();
+
     Scheduler.startLoop(&fxTasks, 3072);
     Scheduler.startLoop(&micTasks, 1024);
 
     stateLED(CRGB::OrangeRed);    //Setup in progress
-    imu_setup();
     if (wifi_setup())
         stateLED(CRGB::Indigo);   //ready to show awesome light effects!
     if (!time_setup())

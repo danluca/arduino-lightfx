@@ -721,14 +721,15 @@ void fx_run() {
             minVcc = msmt;
         if (msmt > maxVcc)
             maxVcc = msmt;
+#ifndef DISABLE_LOGGING
+        Log.infoln(F("Board Vcc voltage %D V"), msmt);
+        Log.infoln(F("Chip internal temperature %D 'C"), chipTemperature());
+#endif
         msmt = boardTemperature();
         if (msmt < minTemp)
             minTemp = msmt;
         if (msmt > maxTemp)
             maxTemp = msmt;
-#ifndef DISABLE_LOGGING
-        Log.infoln(F("Chip internal temperature %D 'C"), chipTemperature());
-#endif
     }
     EVERY_N_MINUTES(5) {
         fxRegistry.nextRandomEffectPos();
