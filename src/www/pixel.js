@@ -61,8 +61,11 @@ function getStatus() {
             $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
             $('#fxCurHoliday').html(`${data.fx.holiday}`);
             $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
-            let histogram = data.fx.audioHist.each((element, index)=>{`${data.fx.audioThreshold+index*500} - ${data.fx.audioThreshold+(index+1)*500} : ${element}`}).join("<br/>")
-            $('#audioLevelHistogram').html(`${histogram}`);
+            let histogram = [];
+            for (const [elem, ix] of data.fx.audioHist.entries()) {
+                histogram.push(`${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500} : ${elem}`)
+            }
+            $('#audioLevelHistogram').html(`${histogram.join("<br/>")}`);
             $('#timeNtp').html(`${data.time.ntpSync == 2}`);
             $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
             $('#timeHoliday').html(`${data.time.holiday}`);
