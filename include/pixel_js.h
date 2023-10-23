@@ -51,6 +51,7 @@ function getStatus() {
             $('#boardMaxVcc').html(data.maxVcc.toFixed(2));
             $('#mbedVersion').html(`${data.mbedVersion}`);
             $('#audioThreshold').html(`${data.fx.audioThreshold}`);
+            $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
             $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
             if (data.wifi.curVersion !== data.wifi.latestVersion) {
@@ -62,11 +63,9 @@ function getStatus() {
             $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
             $('#fxCurHoliday').html(`${data.fx.holiday}`);
             $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
-            let histogram = [];
-            for (const [elem, ix] of data.fx.audioHist.entries()) {
-                histogram.push(`${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500} : ${elem}`)
-            }
-            $('#audioLevelHistogram').html(`${histogram.join("<br/>")}`);
+            let strHistogram = data.fx.audioHist.map((elem, ix)=>`${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500}${ix===(data.fx.audioHist.length-1)?'+':''} : ${elem}`)
+                .join('<br/>');
+            $('#audioLevelHistogram').html(`${strHistogram}`);
             $('#timeNtp').html(`${data.time.ntpSync == 2}`);
             $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
             $('#timeHoliday').html(`${data.time.holiday}`);

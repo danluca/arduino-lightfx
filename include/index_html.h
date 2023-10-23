@@ -77,6 +77,7 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Mbed OS: <span id="mbedVersion"></span></dd>
                 <dd>Temperature: <span id="boardTemp"></span> [<span id="boardMinTemp"></span> - <span id="boardMaxTemp"></span>] °C</dd>
                 <dd>Vcc: <span id="boardVcc"></span> [<span id="boardMinVcc"></span> - <span id="boardMaxVcc"></span>] V</dd>
+                <dd>Status code: <span id="overallStatus"></span></dd>
                 <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
                 </div>
                 <div>
