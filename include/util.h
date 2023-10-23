@@ -12,13 +12,20 @@
 #include "log.h"
 
 
-#define IMU_TEMPERATURE_NOT_AVAILABLE   0.001
+#define IMU_TEMPERATURE_NOT_AVAILABLE   0.001f
+
+#define SYS_STATUS_WIFI_MASK    0x01
+#define SYS_STATUS_NTP_MASK     0x02
+#define SYS_STATUS_DST_MASK     0x04
+#define SYS_STATUS_MIC_MASK     0x08
+#define SYS_STATUS_FILESYSTEM_MASK     0x10
 
 extern const char stateFileName[];
 
 uint8_t formatTime(char *buf, time_t time = 0);
 uint8_t formatDate(char *buf, time_t time = 0);
 uint8_t formatDateTime(char *buf, time_t time = 0);
+bool isDST(time_t time);
 float boardTemperature(bool bFahrenheit = false);
 float chipTemperature(bool bFahrenheit = false);
 float controllerVoltage();
@@ -34,5 +41,8 @@ size_t readTextFile(const char *fname, String *s);
 size_t writeTextFile(const char *fname, String *s);
 bool removeFile(const char *fname);
 
+uint8_t setStatus(uint8_t bitMask);
+uint8_t resetStatus(uint8_t bitMask);
+bool isStatus(uint8_t bitMask);
 
 #endif //ARDUINO_LIGHTFX_UTIL_H

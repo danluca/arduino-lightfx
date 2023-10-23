@@ -70,7 +70,7 @@ Holiday colTheme::getHoliday(const time_t time) {
 }
 
 Holiday colTheme::currentHoliday() {
-    return timeStatus() != timeNotSet ? getHoliday(now()) : Party;
+    return isStatus(SYS_STATUS_WIFI_MASK) ? getHoliday(now()) : Party;
 }
 
 /**
@@ -161,7 +161,7 @@ void PaletteFactory::forceHoliday(const Holiday hday) {
 }
 
 Holiday PaletteFactory::adjustHoliday(const time_t time) {
-    holiday = autoChangeHoliday ? (time == 0 ? ::currentHoliday() : getHoliday(time)) : holiday;
+    holiday = autoChangeHoliday ? (time == 0 ? colTheme::currentHoliday() : getHoliday(time)) : holiday;
     return holiday;
 }
 

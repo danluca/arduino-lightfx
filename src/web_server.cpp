@@ -210,8 +210,9 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     char datetime[20];
     formatDateTime(datetime, curTime);
     doc["currentTime"] = datetime;
-    doc["currentOffset"] = isDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
-    doc["dst"] = isDST;
+    bool bDST = isStatus(SYS_STATUS_DST_MASK);
+    doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
+    doc["dst"] = bDST;
     JsonArray fxArray = doc.createNestedArray("fx");
     fxRegistry.describeConfig(fxArray);
     //send it out
@@ -386,7 +387,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     time["date"] = timeBuf;
     formatTime(timeBuf, curTime);
     time["time"] = timeBuf;
-    time["dst"] = isDST;
+    time["dst"] = isStatus(SYS_STATUS_DST_MASK);
     time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
 
     snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);

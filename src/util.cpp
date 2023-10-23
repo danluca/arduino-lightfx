@@ -10,6 +10,8 @@
 const uint maxAdc = 1 << ADC_RESOLUTION;
 const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
 
+static uint8_t sysStatus = 0x00;
+
 LittleFSWrapper *fsPtr;
 
 float boardTemperature(bool bFahrenheit) {
@@ -52,11 +54,10 @@ float chipTemperature(bool bFahrenheit) {
     //TODO: move to traceln
     Log.infoln(F("Internal Temperature %d average reading: %d"), avgSize, valSum/avgSize);
 
-    int tV = valSum*MV3_3/avgSize/maxAdc;   //voltage in mV
+    auto tV = (float)(valSum*MV3_3/avgSize/maxAdc);   //voltage in mV
     //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
     //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
-    //however per measurements, the slope is more like -11.8978mV per degree
-    float temp = 27.0f - (float)(tV - 706)/11.8978f;
+    float temp = 27.0f - (tV - CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27)/CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE;
     if (bFahrenheit)
         return temp*9.0f/5+32;
     return temp;
@@ -72,8 +73,10 @@ void fsInit() {
 #endif
 
     fsPtr = new LittleFSWrapper();
-    if (fsPtr->init())
+    if (fsPtr->init()) {
+        setStatus(SYS_STATUS_FILESYSTEM_MASK);
         Log.infoln("Filesystem OK");
+    }
 
 #ifndef DISABLE_LOGGING
     Log.infoln(F("Root FS %s contents:"), LittleFSWrapper::getRoot());
@@ -84,7 +87,6 @@ void fsInit() {
     Log.infoln(F("Dir complete."));
 #endif
 }
-
 
 /**
  * Reads a text file - if it exists - into a string object
@@ -210,4 +212,36 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
     if (a < 128)
         return bmul8(a, b)*2;
     return 255-bmul8(255-a, 255-b)*2;
+}
+
+uint8_t setStatus(uint8_t bitMask) {
+    sysStatus |= bitMask;
+    return sysStatus;
+}
+
+uint8_t resetStatus(uint8_t bitMask) {
+    sysStatus &= (~bitMask);
+    return sysStatus;
+}
+
+bool isStatus(uint8_t bitMask) {
+    return (sysStatus & bitMask);
+}
+
+/**
+ * Encodes month and day (in this order) into a short unsigned int (2 bytes) such that it can be easily used
+ * for comparisons
+ * @param time (optional) specific time to encode for. If not specified, current time is used.
+ * @return 2 byte encoded month and day
+ */
+uint16_t encodeMonthDay(const time_t time) {
+    time_t theTime = time == 0 ? now() : time;
+    return ((month(theTime) & 0xFF) << 8) + (day(theTime) & 0xFF);
+}
+
+bool isDST(time_t time) {
+    // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
+    // to the transition, such that we don't need to implement complex Sunday counting rules
+    const uint16_t md = encodeMonthDay(time);
+    return md > 0x030C && md < 0x0B05;
 }

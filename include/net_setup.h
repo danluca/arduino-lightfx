@@ -16,7 +16,6 @@
 #define CDT_OFFSET_SECONDS  (-18000)  //Central Daylight Time - America/Chicago
 
 extern WiFiServer server;
-extern bool isDST;
 
 void setupStateLED();
 void stateLED(CRGB color);
@@ -28,7 +27,7 @@ bool time_setup();
 void server_setup();
 void webserver();
 void wifi_loop();
-void printWifiStatus();
+void printSuccessfulWifiStatus();
 void checkFirmwareVersion();
 uint8_t barSignalLevel(int32_t rssi);
 time_t curUnixTime();

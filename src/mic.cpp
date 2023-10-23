@@ -43,10 +43,12 @@ void mic_setup() {
     // Optionally set the gain - Defaults to 20
     PDM.setGain(80);
     if (!PDM.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
+        //resetStatus(SYS_STATUS_MIC_MASK); //the default value of the flag is reset (0) and we can't leave the function if PDM doesn't initialize properly
         Log.errorln(F("Failed to start PDM library! (for microphone sampling)"));
-        while (true);
+        while (true) yield();
     }
     delay(1000);
+    setStatus(SYS_STATUS_MIC_MASK);
     Log.infoln(F("PDM - microphone - setup ok"));
 }
 

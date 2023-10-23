@@ -104,8 +104,8 @@ void readState() {
         bool autoColAdj = doc[csAutoColorAdjust].as<bool>();
         paletteFactory.setAuto(autoColAdj);
 
-        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s"),
-                   stateFileName, stateSize, autoAdvance ? "true" : "false", seed, fx, stripBrightness, audioBumpThreshold, savedHoliday.c_str());
+        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T)"),
+                   stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, colTheme::holidayToString(paletteFactory.currentHoliday()), paletteFactory.isAuto());
     }
 }
 
@@ -700,9 +700,9 @@ void fx_setup() {
     //instantiate effect categories
     for (auto x : categorySetup)
         x();
-    //initialize the effects configured in the functions above
-    fxRegistry.setup();
-    //ensure the current effect is set up, in case they share global variables
+    //initialize ALL the effects configured in the functions above
+    //fxRegistry.setup();
+    //ensure the current effect is set up
     fxRegistry.getCurrentEffect()->setup();
 
     readState();
