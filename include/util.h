@@ -41,8 +41,9 @@ size_t readTextFile(const char *fname, String *s);
 size_t writeTextFile(const char *fname, String *s);
 bool removeFile(const char *fname);
 
-uint8_t setStatus(uint8_t bitMask);
-uint8_t resetStatus(uint8_t bitMask);
+const uint8_t setStatus(uint8_t bitMask);
+const uint8_t resetStatus(uint8_t bitMask);
 bool isStatus(uint8_t bitMask);
+const uint8_t getStatus();
 
 #endif //ARDUINO_LIGHTFX_UTIL_H

@@ -35,8 +35,7 @@ float controllerVoltage() {
     uint valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += analogRead(A0);
-    //TODO: move to traceln
-    Log.infoln(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
+    Log.traceln(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
     valSum = valSum*MV3_3/avgSize;
     valSum = valSum/VCC_DIV_R5*(VCC_DIV_R5+VCC_DIV_R4)/maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
     return (float)valSum/1000.0f;
@@ -51,8 +50,7 @@ float chipTemperature(bool bFahrenheit) {
     for (uint x = 0; x < avgSize; x++)
         valSum += adc_read();
     adc_select_input(curAdc);   //restore the ADC input selection
-    //TODO: move to traceln
-    Log.infoln(F("Internal Temperature %d average reading: %d"), avgSize, valSum/avgSize);
+    Log.traceln(F("Internal Temperature %d average reading: %d"), avgSize, valSum/avgSize);
 
     auto tV = (float)(valSum*MV3_3/avgSize/maxAdc);   //voltage in mV
     //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
@@ -214,18 +212,22 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
     return 255-bmul8(255-a, 255-b)*2;
 }
 
-uint8_t setStatus(uint8_t bitMask) {
+const uint8_t setStatus(uint8_t bitMask) {
     sysStatus |= bitMask;
     return sysStatus;
 }
 
-uint8_t resetStatus(uint8_t bitMask) {
+const uint8_t resetStatus(uint8_t bitMask) {
     sysStatus &= (~bitMask);
     return sysStatus;
 }
 
 bool isStatus(uint8_t bitMask) {
     return (sysStatus & bitMask);
+}
+
+const uint8_t getStatus() {
+    return sysStatus;
 }
 
 /**

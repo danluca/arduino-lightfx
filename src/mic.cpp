@@ -18,8 +18,7 @@ short sampleBuffer[MIC_SAMPLE_SIZE];
 // Number of audio samples read
 volatile size_t samplesRead;
 
-volatile uint16_t maxAudio = 0;
-volatile uint16_t countAudioThreshold = 0;
+volatile uint16_t maxAudio[10] {};
 volatile uint16_t audioBumpThreshold = 2000;
 
 /**
@@ -64,9 +63,20 @@ void mic_run() {
             fxBump = true;
             random16_add_entropy(abs(maxSample));
             Log.infoln(F("Audio sample: %d"), maxSample);
-            //TODO: revisit these
-            maxAudio = maxSample;
-            countAudioThreshold++;
+
+            //contribute to the audio histogram - the bins are 500 units wide and tailored around audioBumpThreshold.
+            bool bFoundBin = false;
+            for (uint8_t x = 0; x < AUDIO_HIST_BINS_COUNT; x++) {
+                uint16_t binThr = audioBumpThreshold + (x+1)*500;
+                if (maxSample <= binThr) {
+                    maxAudio[x]++;
+                    bFoundBin = true;
+                    break;
+                }
+            }
+            //if a bin not found, it means it's higher than max bin given the number of bins, place it in the last bin
+            if (!bFoundBin)
+                maxAudio[AUDIO_HIST_BINS_COUNT-1]++;
         }
         // Clear the read count
         samplesRead = 0;

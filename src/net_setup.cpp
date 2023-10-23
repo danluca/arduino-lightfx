@@ -235,6 +235,7 @@ void wifi_loop() {
             else
                 stateLED(CRGB::Green);
         }
+        Log.infoln(F("System status: %X"), getStatus());
     }
     EVERY_N_HOURS(12) {
         Holiday oldHday = paletteFactory.currentHoliday();

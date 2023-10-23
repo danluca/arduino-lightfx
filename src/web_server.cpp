@@ -373,9 +373,10 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     fx["brightness"] = stripBrightness;
     fx["brightnessLocked"] = stripBrightnessLocked;
     fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold
-    fx["maxAudio"] = maxAudio;                              //what was the max audio level in the last time window
-    fx["countAudioOverThreshold"] = countAudioThreshold;    //how many times in the last time window have gone above audio threshold
     fx["totalAudioBumps"] = totalAudioBumps;                //how many times (in total) have we bumped the effect due to audio level
+    JsonArray audioHist = fx.createNestedArray("audioHist");
+    for (uint8_t x = 0; x < AUDIO_HIST_BINS_COUNT; x++)
+        audioHist.add(maxAudio[x]);
     //fx["desc"] = curFx->description();    //variable size string - not really relevant, can be obtained from config
     // Time
     JsonObject time = doc.createNestedObject("time");
@@ -399,6 +400,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     doc["maxVcc"] = maxVcc;
     doc["boardMinTemp"] = minTemp;
     doc["boardMaxTemp"] = maxTemp;
+    doc["overallStatus"] = getStatus();
 
     //send it out
     sz += serializeJson(doc, *client);

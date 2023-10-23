@@ -736,9 +736,6 @@ void fx_run() {
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
         stripBrightness = adjustStripBrightness();
         saveState();
-        //TODO: revisit these
-        countAudioThreshold = 0;
-        maxAudio = 0;
     }
 
     fxRegistry.loop();

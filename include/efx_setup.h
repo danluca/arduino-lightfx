@@ -24,6 +24,7 @@
 
 #define LED_EFFECT_ID_SIZE  6
 #define MAX_EFFECTS_COUNT   256
+#define AUDIO_HIST_BINS_COUNT   10
 
 extern const uint16_t turnOffSeq[] PROGMEM;
 extern const char csAutoFxRoll[];
@@ -65,9 +66,7 @@ extern int8_t rot;
 extern int32_t dist;
 extern bool randhue;
 extern volatile uint16_t audioBumpThreshold;
-//TODO: revisit these
-extern volatile uint16_t maxAudio;
-extern volatile uint16_t countAudioThreshold;
+extern volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT];
 extern uint16_t totalAudioBumps;
 extern float minVcc;
 extern float maxVcc;

@@ -43,6 +43,7 @@ void setup() {
     if (!time_setup())
         stateLED(CRGB::Blue);
 
+    Log.infoln(F("System status: %X"), getStatus());
     //start the web server/fx in a separate thread - turns out the JSON library crashes if not given enough stack size
     // Scheduler.startLoop(wifi_loop, 2048);
 }
