@@ -210,7 +210,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     char datetime[20];
     formatDateTime(datetime, curTime);
     doc["currentTime"] = datetime;
-    bool bDST = isStatus(SYS_STATUS_DST_MASK);
+    bool bDST = isSysStatus(SYS_STATUS_DST);
     doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
     doc["dst"] = bDST;
     JsonArray fxArray = doc.createNestedArray("fx");
@@ -377,7 +377,6 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     JsonArray audioHist = fx.createNestedArray("audioHist");
     for (uint8_t x = 0; x < AUDIO_HIST_BINS_COUNT; x++)
         audioHist.add(maxAudio[x]);
-    //fx["desc"] = curFx->description();    //variable size string - not really relevant, can be obtained from config
     // Time
     JsonObject time = doc.createNestedObject("time");
     time["ntpSync"] = timeStatus();
@@ -388,7 +387,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     time["date"] = timeBuf;
     formatTime(timeBuf, curTime);
     time["time"] = timeBuf;
-    time["dst"] = isStatus(SYS_STATUS_DST_MASK);
+    time["dst"] = isSysStatus(SYS_STATUS_DST);
     time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
 
     snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
@@ -400,7 +399,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     doc["maxVcc"] = maxVcc;
     doc["boardMinTemp"] = minTemp;
     doc["boardMaxTemp"] = maxTemp;
-    doc["overallStatus"] = getStatus();
+    doc["overallStatus"] = getSysStatus();
 
     //send it out
     sz += serializeJson(doc, *client);

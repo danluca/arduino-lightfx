@@ -10,7 +10,7 @@
 const uint maxAdc = 1 << ADC_RESOLUTION;
 const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
 
-static uint8_t sysStatus = 0x00;
+static uint8_t sysStatus = 0x00;    //system status bit array
 
 LittleFSWrapper *fsPtr;
 
@@ -72,7 +72,7 @@ void fsInit() {
 
     fsPtr = new LittleFSWrapper();
     if (fsPtr->init()) {
-        setStatus(SYS_STATUS_FILESYSTEM_MASK);
+        setSysStatus(SYS_STATUS_FILESYSTEM);
         Log.infoln("Filesystem OK");
     }
 
@@ -212,21 +212,21 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
     return 255-bmul8(255-a, 255-b)*2;
 }
 
-const uint8_t setStatus(uint8_t bitMask) {
+const uint8_t setSysStatus(uint8_t bitMask) {
     sysStatus |= bitMask;
     return sysStatus;
 }
 
-const uint8_t resetStatus(uint8_t bitMask) {
+const uint8_t resetSysStatus(uint8_t bitMask) {
     sysStatus &= (~bitMask);
     return sysStatus;
 }
 
-bool isStatus(uint8_t bitMask) {
+bool isSysStatus(uint8_t bitMask) {
     return (sysStatus & bitMask);
 }
 
-const uint8_t getStatus() {
+const uint8_t getSysStatus() {
     return sysStatus;
 }
 
@@ -241,9 +241,9 @@ uint16_t encodeMonthDay(const time_t time) {
     return ((month(theTime) & 0xFF) << 8) + (day(theTime) & 0xFF);
 }
 
-bool isDST(time_t time) {
+bool isDST(const time_t time) {
+    const uint16_t md = encodeMonthDay(time);
     // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
     // to the transition, such that we don't need to implement complex Sunday counting rules
-    const uint16_t md = encodeMonthDay(time);
     return md > 0x030C && md < 0x0B05;
 }

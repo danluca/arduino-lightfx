@@ -70,7 +70,7 @@ Holiday colTheme::getHoliday(const time_t time) {
 }
 
 Holiday colTheme::currentHoliday() {
-    return isStatus(SYS_STATUS_WIFI_MASK) ? getHoliday(now()) : Party;
+    return isSysStatus(SYS_STATUS_WIFI) ? getHoliday(now()) : Party;
 }
 
 /**

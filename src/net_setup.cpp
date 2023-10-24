@@ -50,7 +50,7 @@ bool wifi_connect() {
     }
     bool result = wifiStatus == WL_CONNECTED;
     if (result) {
-        setStatus(SYS_STATUS_WIFI_MASK);
+        setSysStatus(SYS_STATUS_WIFI);
         int resPing = WiFi.ping(WiFi.gatewayIP());
         if (resPing >= 0)
             Log.infoln(F("Gateway ping successful: %d ms"), resPing);
@@ -103,9 +103,9 @@ bool time_setup() {
     Holiday hday;
     if (ntpTimeAvailable) {
         bool bDST = isDST(timeClient.getEpochTime());
-        setStatus(SYS_STATUS_NTP_MASK);
+        setSysStatus(SYS_STATUS_NTP);
         if (bDST) {
-            setStatus(SYS_STATUS_DST_MASK);
+            setSysStatus(SYS_STATUS_DST);
             timeClient.setTimeOffset(CDT_OFFSET_SECONDS);   //getEpochTime calls account for the offset
         } else
             timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
@@ -119,11 +119,11 @@ bool time_setup() {
         Log.infoln(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
 #endif
     } else {
-        resetStatus(SYS_STATUS_NTP_MASK);
+        resetSysStatus(SYS_STATUS_NTP);
         hday = paletteFactory.adjustHoliday();    //update the holiday for new time
         bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
         if (bDST)
-            setStatus(SYS_STATUS_DST_MASK);
+            setSysStatus(SYS_STATUS_DST);
 #ifndef DISABLE_LOGGING
         char timeBuf[20];
         formatDateTime(timeBuf, now());
@@ -184,7 +184,7 @@ uint8_t formatDateTime(char *buf, time_t time) {
  */
 bool wifi_check() {
     if (WiFi.status() != WL_CONNECTED) {
-        resetStatus(SYS_STATUS_WIFI_MASK);
+        resetSysStatus(SYS_STATUS_WIFI);
         Log.warningln(F("WiFi Connection lost"));
         return false;
     }
@@ -192,12 +192,12 @@ bool wifi_check() {
     int32_t rssi = WiFi.RSSI();
     uint8_t wifiBars = barSignalLevel(rssi);
     if ((gwPingTime < 0) || (wifiBars < 3)) {
-        resetStatus(SYS_STATUS_WIFI_MASK);
+        resetSysStatus(SYS_STATUS_WIFI);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
         Log.warningln(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable"), rssi, wifiBars);
         return false;
     }
-    setStatus(SYS_STATUS_WIFI_MASK);
+    setSysStatus(SYS_STATUS_WIFI);
     Log.infoln(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%d bars)"), gwPingTime, rssi, wifiBars);
     return true;
 }
@@ -208,7 +208,7 @@ bool wifi_check() {
  * Should we invoke a board reset instead? (NVIC_SystemReset)
  */
 void wifi_reconnect() {
-    resetStatus(SYS_STATUS_WIFI_MASK);
+    resetSysStatus(SYS_STATUS_WIFI);
     stateLED(CRGB::Orange);
     server.clearWriteError();
     WiFiClient client = server.available();
@@ -235,7 +235,7 @@ void wifi_loop() {
             else
                 stateLED(CRGB::Green);
         }
-        Log.infoln(F("System status: %X"), getStatus());
+        Log.infoln(F("System status: %X"), getSysStatus());
     }
     EVERY_N_HOURS(12) {
         Holiday oldHday = paletteFactory.currentHoliday();
@@ -289,7 +289,7 @@ void checkFirmwareVersion() {
 time_t curUnixTime() {
     if (timeClient.isTimeSet())
         return timeClient.getEpochTime();
-    if (isStatus(SYS_STATUS_WIFI_MASK)) {
+    if (isSysStatus(SYS_STATUS_WIFI)) {
         //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time telling purpose
         //determine what offset to use
         time_t wifiTime = WiFi.getTime() + CST_OFFSET_SECONDS;

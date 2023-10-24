@@ -47,7 +47,7 @@ void mic_setup() {
         while (true) yield();
     }
     delay(1000);
-    setStatus(SYS_STATUS_MIC_MASK);
+    setSysStatus(SYS_STATUS_MIC);
     Log.infoln(F("PDM - microphone - setup ok"));
 }
 

@@ -14,11 +14,11 @@
 
 #define IMU_TEMPERATURE_NOT_AVAILABLE   0.001f
 
-#define SYS_STATUS_WIFI_MASK    0x01
-#define SYS_STATUS_NTP_MASK     0x02
-#define SYS_STATUS_DST_MASK     0x04
-#define SYS_STATUS_MIC_MASK     0x08
-#define SYS_STATUS_FILESYSTEM_MASK     0x10
+#define SYS_STATUS_WIFI    0x01
+#define SYS_STATUS_NTP     0x02
+#define SYS_STATUS_DST     0x04
+#define SYS_STATUS_MIC     0x08
+#define SYS_STATUS_FILESYSTEM     0x10
 
 extern const char stateFileName[];
 
@@ -41,9 +41,9 @@ size_t readTextFile(const char *fname, String *s);
 size_t writeTextFile(const char *fname, String *s);
 bool removeFile(const char *fname);
 
-const uint8_t setStatus(uint8_t bitMask);
-const uint8_t resetStatus(uint8_t bitMask);
-bool isStatus(uint8_t bitMask);
-const uint8_t getStatus();
+const uint8_t setSysStatus(uint8_t bitMask);
+const uint8_t resetSysStatus(uint8_t bitMask);
+bool isSysStatus(uint8_t bitMask);
+const uint8_t getSysStatus();
 
 #endif //ARDUINO_LIGHTFX_UTIL_H
