@@ -64,7 +64,7 @@ function getStatus() {
             $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
             let strHistogram = data.fx.audioHist.map((elem, ix)=>`${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500}${ix===(data.fx.audioHist.length-1)?'+':''} : ${elem}`)
                 .join('<br/>');
-            $('#audioLevelHistogram').html(`<br/>${strHistogram}`);
+            $('#audioLevelHistogram').html(`${strHistogram}`);
             $('#timeNtp').html(`${data.time.ntpSync == 2}`);
             $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
             $('#timeHoliday').html(`${data.time.holiday}`);

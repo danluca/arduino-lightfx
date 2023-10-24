@@ -102,6 +102,11 @@ footer {
     display: none;
 }
 
+#audioLevelHistogram {
+    padding-left: 2em;
+    display: inline-block;
+}
+
 .red {
     color: red;
 }
@@ -133,6 +138,5 @@ dd span {
 .indent2 {
     padding-left: 2em;
 }
-
 
 )~~~";

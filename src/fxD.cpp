@@ -134,6 +134,7 @@ void FxD3::setup() {
     resetGlobals();
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
+    monoColor = random8();
 }
 
 void FxD3::loop() {
@@ -142,7 +143,7 @@ void FxD3::loop() {
         FastLED.show(stripBrightness);
     }
 
-    EVERY_N_SECONDS(2) {
+    EVERY_N_SECONDS(5) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
@@ -159,11 +160,10 @@ void FxD3::plasma() {
     uint8_t thatPhase = beatsin8(7,-64,64);
 
     for (int k=0; k<NUM_PIXELS; k++) {                              // For each of the LED's in the strand, set a localBright based on a wave as follows:
-
         uint8_t colorIndex = cubicwave8((k*23)+thisPhase)/2 + cos8((k*15)+thatPhase)/2;           // Create a wave and add a phase change and add another wave with its own phase change.. Hey, you can even change the frequencies if you wish.
-        uint8_t thisBright = qsuba(colorIndex, beatsin8(7,0,96));                                 // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
-
-        leds[k] = ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);  // Let's now add the foreground colour.
+        uint8_t thisBright = qsuba(colorIndex, beatsin8(7,0,96));              // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
+        uint8_t clr = paletteFactory.isHolidayLimitedHue() ? monoColor : colorIndex;
+        leds[k] = ColorFromPalette(palette, clr, thisBright, LINEARBLEND);  // Let's now add the foreground colour.
     }
 }
 

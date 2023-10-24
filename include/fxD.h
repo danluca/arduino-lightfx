@@ -44,6 +44,8 @@ namespace FxD {
         void loop() override;
 
         void plasma();
+    protected:
+        uint8_t monoColor;
     };
 
     class FxD4 : public LedEffect {
