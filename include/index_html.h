@@ -70,7 +70,7 @@ const char index_html[] PROGMEM = R"~~~(
             </div>
         </section>
         <section id="status">
-            <h1 onclick="getSysStatus()">Status</h1>
+            <h1 onclick="getStatus()">Status</h1>
             <dl id="statusArea">
                 <div>
                 <dt>Board</dt>

@@ -39,7 +39,7 @@ $(() => {
 
 });
 
-function getSysStatus() {
+function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
             $('#status h1').removeClass('red');
