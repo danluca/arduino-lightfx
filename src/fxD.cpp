@@ -134,7 +134,7 @@ void FxD3::setup() {
     resetGlobals();
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
-    monoColor = random8();
+    monoColor = random8(224);   //colors above this index in the Halloween palette are black
 }
 
 void FxD3::loop() {
@@ -151,6 +151,10 @@ void FxD3::loop() {
         EVERY_N_SECONDS(20) {
             targetPalette = PaletteFactory::randomPalette(random8());
         }
+    } else {
+        EVERY_N_SECONDS(45) {
+            monoColor = random8(224);
+        }
     }
 
 }
@@ -162,6 +166,7 @@ void FxD3::plasma() {
     for (int k=0; k<NUM_PIXELS; k++) {                              // For each of the LED's in the strand, set a localBright based on a wave as follows:
         uint8_t colorIndex = cubicwave8((k*23)+thisPhase)/2 + cos8((k*15)+thatPhase)/2;           // Create a wave and add a phase change and add another wave with its own phase change.. Hey, you can even change the frequencies if you wish.
         uint8_t thisBright = qsuba(colorIndex, beatsin8(7,0,96));              // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
+        //plasma becomes slime during Halloween (single color morphing mass)
         uint8_t clr = paletteFactory.isHolidayLimitedHue() ? monoColor : colorIndex;
         leds[k] = ColorFromPalette(palette, clr, thisBright, LINEARBLEND);  // Let's now add the foreground colour.
     }
