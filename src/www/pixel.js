@@ -43,11 +43,9 @@ function getStatus() {
         .done(function (data) {
             $('#status h1').removeClass('red');
             $('#boardTemp').html(`${data.boardTemp.toFixed(2)} °C (${(data.boardTemp*9/5+32).toFixed(2)} °F)`);
-            $('#boardMinTemp').html(data.boardMinTemp.toFixed(2));
-            $('#boardMaxTemp').html(data.boardMaxTemp.toFixed(2));
+            $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(2)} - ${data.boardMaxTemp.toFixed(2)}] °C (chip ${data.chipTemp.toFixed(2)} °C)`);
             $('#boardVcc').html(data.vcc.toFixed(2));
-            $('#boardMinVcc').html(data.minVcc.toFixed(2));
-            $('#boardMaxVcc').html(data.maxVcc.toFixed(2));
+            $('#rangeVcc').html(`[${data.minVcc.toFixed(2)} - ${data.maxVcc.toFixed(2)}] V`);
             $('#mbedVersion').html(`${data.mbedVersion}`);
             $('#audioThreshold').html(`${data.fx.audioThreshold}`);
             $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
@@ -62,7 +60,8 @@ function getStatus() {
             $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
             $('#fxCurHoliday').html(`${data.fx.holiday}`);
             $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
-            let strHistogram = data.fx.audioHist.map((elem, ix)=>`${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500}${ix===(data.fx.audioHist.length-1)?'+':''} : ${elem}`)
+            let strHistogram = data.fx.audioHist.map((elem, ix)=>
+                `${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500}${ix===(data.fx.audioHist.length-1)?'+':''} : ${elem}`)
                 .join('<br/>');
             $('#audioLevelHistogram').html(`${strHistogram}`);
             $('#timeNtp').html(`${data.time.ntpSync == 2}`);

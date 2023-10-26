@@ -147,13 +147,13 @@ void FxD3::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    if (!paletteFactory.isHolidayLimitedHue()) {
-        EVERY_N_SECONDS(20) {
-            targetPalette = PaletteFactory::randomPalette(random8());
-        }
-    } else {
+    if (paletteFactory.isHolidayLimitedHue()) {
         EVERY_N_SECONDS(45) {
             monoColor = random8(224);
+        }
+    } else {
+        EVERY_N_SECONDS(30) {
+            targetPalette = PaletteFactory::randomPalette(random8());
         }
     }
 
