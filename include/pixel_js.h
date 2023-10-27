@@ -176,6 +176,9 @@ function updateBrightness() {
     let selBr = brlst.val();
     let request = {};
     request["brightness"] = Math.round(Math.pow(selBr*256/100, 2)/256);
+    //cap it at 0xFF (1 byte)
+    if (request["brightness"] > 255)
+        request["brightness"] = 255;
     $.ajax({
         type: "PUT",
         url: "/fx",
@@ -185,7 +188,7 @@ function updateBrightness() {
         success: function (response) {
             $('#updateStatus').html("Strip brightness update successful").removeClass().addClass("status-ok");
             brlst.attr("currentBrightness", selBr);
-            let brPerc = Math.round(Math.sqrt(data.fx.brightness * 256)*100/256);
+            let brPerc = Math.round(Math.sqrt(response.updates.brightness * 256)*100/256);
             $('#fxBrightness').html(`${brPerc}% (${response.updates.brightness}${response.updates.brightnessLocked?' fixed':' auto'})`);
             scheduleClearStatus();
         },

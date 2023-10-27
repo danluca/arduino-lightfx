@@ -452,8 +452,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     if (doc.containsKey(strBrightness)) {
         uint8_t br = doc[strBrightness].as<uint8_t>();
         stripBrightnessLocked = br > 0;
-        if (stripBrightnessLocked)
-            stripBrightness = br;
+        stripBrightness = stripBrightnessLocked ? br : adjustStripBrightness();
         upd[strBrightness] = stripBrightness;
         upd[strBrightnessLocked] = stripBrightnessLocked;
     }
