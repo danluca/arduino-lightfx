@@ -20,6 +20,11 @@ header {
     text-shadow: 3px 3px darkblue;
 }
 
+#boardName {
+    text-align: right;
+    padding-right: 2em;
+}
+
 footer {
     color: #AAAAAA;
     text-align: center;

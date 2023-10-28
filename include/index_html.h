@@ -12,7 +12,10 @@ const char index_html[] PROGMEM = R"~~~(
 </head>
 
 <body>
-    <header>LucaFx - Lucas Style Light Effects</header>
+    <header>
+        <div>LucaFx - Lucas Style Light Effects</div>
+        <div>Board: <span id="boardName"></span></div>
+    </header>
     <main>
         <div id="updateStatus"></div>
         <section id="effects">

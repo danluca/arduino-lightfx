@@ -199,6 +199,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     // response body
     StaticJsonDocument<4098> doc;
 
+    doc["boardName"] = BOARD_NAME;
     doc["curEffect"] = String(fxRegistry.curEffectPos());
     doc["auto"] = fxRegistry.isAutoRoll();
     doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();

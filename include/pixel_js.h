@@ -32,7 +32,7 @@ $(() => {
             }
         });
         $('#holidayList').val(data.holiday);
-
+        $('#boardName').html(data.boardName);
     });
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status
