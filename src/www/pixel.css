@@ -20,7 +20,7 @@ header {
     text-shadow: 3px 3px darkblue;
 }
 
-#boardName {
+header div:nth-child(2) {
     text-align: right;
     padding-right: 2em;
 }
