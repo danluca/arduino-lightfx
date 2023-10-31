@@ -66,6 +66,20 @@ namespace FxE {
         uint16_t X{}, Y{};
         uint8_t index{};
     };
+
+    class FxE5 : public LedEffect {
+    public:
+        FxE5();
+
+        void setup() override;
+
+        void loop() override;
+
+    protected:
+        CRGBSet wave2, wave3;
+        uint8_t clr1, clr2, clr3;
+        const uint8_t segSize = 8;
+    };
 }
 
 #endif //LIGHTFX_FXE_H

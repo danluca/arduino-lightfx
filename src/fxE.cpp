@@ -12,12 +12,14 @@ const char fxe1Desc[] PROGMEM = "FXE1: twinkle";
 const char fxe2Desc[] PROGMEM = "FXE2: beat wave";
 const char fxe3Desc[] PROGMEM = "FxE3: sawtooth back/forth";
 const char fxe4Desc[] PROGMEM = "FxE4: serendipitous";
+const char fxe5Desc[] PROGMEM = "FxE5: three single color beat-waves";
 
 void FxE::fxRegister() {
     static FxE1 fxe1;
     static FxE2 fxE2;
     static FxE3 fxE3;
     static FxE4 fxE4;
+    static FxE5 fxE5;
 }
 
 /**
@@ -257,4 +259,47 @@ void FxE4::serendipitous() {
     nblend(tpl[map(X, 0, 65535, 0, tpl.size())], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
     tpl.fadeToBlackBy(16);                    // 8 bit, 1 = slow, 255 = fast
     replicateSet(tpl, others);
+}
+
+// FxE5
+
+
+void FxE5::setup() {
+    resetGlobals();
+    clr1 = random8();
+    clr2 = clr1+64;
+    clr3 = clr2+64;
+}
+
+void FxE5::loop() {
+    EVERY_N_MILLIS(50) {
+        tpl.fadeToBlackBy(30);
+
+        CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
+        CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
+        CRGB col3 = ColorFromPalette(palette, clr3, brightness, LINEARBLEND);
+        uint16_t jitter = random8(0, 32);
+        for (uint16_t x = 0; x < segSize; x++) {
+            tpl[beatsin16(x + 5, 0, tpl.size()-1, 0, 0)] = col1;
+            wave2[beatsin16(x + 5, 0, tpl.size()-1, 0, 16200)] = col2;
+            wave3[(beatsin16(x + 5, 0, tpl.size()-1, 0, 31712)+jitter)%FRAME_SIZE] = col3;
+        }
+
+        tpl += wave2;
+        tpl += wave3;
+        replicateSet(tpl, others);
+
+        FastLED.show(stripBrightness);
+    }
+
+    EVERY_N_SECONDS(27) {
+        clr1 = random8();
+        clr2 = clr1+64;
+        clr3 = clr2+64;
+    }
+
+}
+
+FxE5::FxE5() : LedEffect(fxe5Desc), wave2(frame(0, FRAME_SIZE-1)), wave3(frame(FRAME_SIZE, 2*FRAME_SIZE-1)) {
+    clr1 = clr2 = clr3 = 0;
 }
