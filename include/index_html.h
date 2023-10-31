@@ -80,8 +80,9 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Mbed OS: <span id="mbedVersion"></span></dd>
                 <dd>Temperature: <span id="boardTemp"></span> <br/><span id="rangeTemp" class="indent2"></span></dd>
                 <dd>Vcc: <span id="boardVcc"></span> <br/><span id="rangeVcc" class="indent2"></span></dd>
-                <dd>Status code: <span id="overallStatus"></span></dd>
                 <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
+                <dd>Up Time: <span id="upTime"></span> </dd>
+                <dd>Status code: <span id="overallStatus"></span></dd>
                 </div>
                 <div>
                 <dt>WiFi</dt>

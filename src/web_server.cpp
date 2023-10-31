@@ -401,6 +401,11 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     doc["boardMinTemp"] = minTemp;
     doc["boardMaxTemp"] = maxTemp;
     doc["overallStatus"] = getSysStatus();
+    //ISO8601 format
+    //snprintf(timeBuf, 15, "P%2dDT%2dH%2dM", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
+    //human readable format
+    snprintf(timeBuf, 15, "%2dD %2dH %2dm", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
+    doc["upTime"] = timeBuf;
 
     //send it out
     sz += serializeJson(doc, *client);

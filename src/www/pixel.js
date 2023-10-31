@@ -48,6 +48,7 @@ function getStatus() {
             $('#rangeVcc').html(`[${data.minVcc.toFixed(2)} - ${data.maxVcc.toFixed(2)}] V`);
             $('#mbedVersion').html(`${data.mbedVersion}`);
             $('#audioThreshold').html(`${data.fx.audioThreshold}`);
+            $('#upTime').html(`${data.upTime}`);
             $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
             $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
