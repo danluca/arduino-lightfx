@@ -272,20 +272,17 @@ void FxE5::setup() {
 }
 
 void FxE5::loop() {
-    EVERY_N_MILLIS(50) {
-        tpl.fadeToBlackBy(30);
+    EVERY_N_MILLIS(30) {
+        tpl.fadeToBlackBy(40);
         wave2.fadeToBlackBy(60);
-        wave3.fadeToBlackBy(60);
+        wave3.fadeToBlackBy(70);
 
         CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
         CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
         CRGB col3 = ColorFromPalette(palette, clr3, brightness, LINEARBLEND);
-        uint16_t jitter = random8(0, 32);
-        for (uint16_t x = 0; x < segSize; x++) {
-            tpl[beatsin16(x + 5, 0, tpl.size()-1, 0, 0)] = col1;
-            wave2[beatsin16(x + 5, 0, tpl.size()-1, 0, 16200)] = col2;
-            wave3[(beatsin16(x + 5, 0, tpl.size()-1, 0, 31712)+jitter)%FRAME_SIZE] = col3;
-        }
+        tpl[beatsin16(9, 0, tpl.size()-1, 0, 0)] = col1;
+        wave2[beatsin16(12, 0, tpl.size()-1, 0, 4096)] = col2;
+        wave3[beatsin16(17, 0, tpl.size()-1, 0, 8192)] = col3;
 
         tpl += wave2;
         tpl += wave3;
@@ -295,9 +292,9 @@ void FxE5::loop() {
     }
 
     EVERY_N_SECONDS(27) {
-        clr1 = random8();
-        clr2 = clr1+64;
-        clr3 = clr2+64;
+        clr1 = clr2;
+        clr2 = clr3;
+        clr3 = random8();
     }
 
 }
