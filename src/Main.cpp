@@ -33,6 +33,7 @@ void setup() {
     fsInit();
 
     imu_setup();
+    secElement_setup();
 
     Scheduler.startLoop(&fxTasks, 3072);
     Scheduler.startLoop(&micTasks, 1024);

@@ -87,7 +87,7 @@ bool imu_setup() {
         //rtos::ThisThread::terminate();
         while (true) yield();
     }
-    Log.infoln(F("IMU sensor ok"));
+    Log.infoln(F("IMU sensor OK"));
     // print the board temperature
     boardTemperature();
     return true;

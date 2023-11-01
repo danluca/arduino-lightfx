@@ -2,6 +2,7 @@
 //
 
 #include "util.h"
+#include "utility/ECCX08DefaultTLSConfig.h"
 // increase the amount of space for file system to 128kB (default 64kB)
 #define RP2040_FS_SIZE_KB   (128)
 #include <LittleFSWrapper.h>
@@ -59,6 +60,32 @@ float chipTemperature(bool bFahrenheit) {
     if (bFahrenheit)
         return temp*9.0f/5+32;
     return temp;
+}
+
+/**
+ * Setup the on-board status LED
+ */
+void setupStateLED() {
+    pinMode(LEDR, OUTPUT);
+    pinMode(LEDG, OUTPUT);
+    pinMode(LEDB, OUTPUT);
+    updateStateLED(0, 0, 0);    //black, turned off
+}
+/**
+ * Controls the on-board status LED
+ * @param color
+ */
+void updateStateLED(uint32_t colorCode) {
+    uint8_t r = (colorCode >> 16) & 0xFF;
+    uint8_t g = (colorCode >>  8) & 0xFF;
+    uint8_t b = (colorCode >>  0) & 0xFF;
+    updateStateLED(r, g, b);
+}
+
+void updateStateLED(uint8_t red, uint8_t green, uint8_t blue) {
+    analogWrite(LEDR, 255 - red);
+    analogWrite(LEDG, 255 - green);
+    analogWrite(LEDB, 255 - blue);
 }
 
 void fsInit() {
@@ -142,34 +169,6 @@ bool removeFile(const char *fname) {
 }
 
 /**
- * Ease Out Bounce implementation - leverages the double precision original implementation converted to int in a range
- * @param x input value
- * @param lim high limit range
- * @return the result in [0,lim] inclusive range
- * @see https://easings.net/#easeOutBounce
- */
-uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
-    static const float d1 = 2.75f;
-    static const float n1 = 7.5625f;
-
-    float xf = ((float)x)/(float)lim;
-    float res = 0;
-    if (xf < 1/d1) {
-        res = n1*xf*xf;
-    } else if (xf < 2/d1) {
-        float xf1 = xf - 1.5f/d1;
-        res = n1*xf1*xf1 + 0.75f;
-    } else if (xf < 2.5f/d1) {
-        float xf1 = xf - 2.25f/d1;
-        res = n1*xf1*xf1 + 0.9375f;
-    } else {
-        float xf1 = xf - 2.625f/d1;
-        res = n1*xf1*xf1 + 0.984375f;
-    }
-    return (uint16_t )(res * (float)lim);
-}
-
-/**
  * Multiply function for color blending purposes - assumes the operands are fractional (n/256) and the result
  * of multiplying 2 fractional numbers is less than both numbers (e.g. 0.2 x 0.3 = 0.06). Special handling for operand values of 255 (i.e. 1.0)
  * <p>f(a,b) = a*b</p>
@@ -246,4 +245,41 @@ bool isDST(const time_t time) {
     // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
     // to the transition, such that we don't need to implement complex Sunday counting rules
     return md > 0x030C && md < 0x0B05;
+}
+
+uint8_t secRandom8(uint8_t minLim, uint8_t maxLim) {
+    return secRandom(minLim, maxLim > 0 ? maxLim : UINT8_MAX);
+}
+
+uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
+    return secRandom(minLim, maxLim > 0 ? maxLim : UINT16_MAX);
+}
+
+uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
+    long low = (long)minLim;
+    long high = maxLim > 0 ? (long)maxLim : INT32_MAX;
+    return isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
+}
+
+bool secElement_setup() {
+    if (!ECCX08.begin()) {
+        Log.errorln(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
+        return false;
+    }
+    const char* eccSerial = ECCX08.serialNumber().c_str();
+    if (!ECCX08.locked()) {
+        Log.warningln(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
+        if (!ECCX08.writeConfiguration(ECCX08_DEFAULT_TLS_CONFIG)) {
+            Log.errorln(F("Writing ECCX08 default TLS configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
+            return false;
+        }
+        if (!ECCX08.lock()) {
+            Log.errorln(F("Locking ECCX08 configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
+            return false;
+        }
+        Log.infoln(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
+    }
+    Log.infoln(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
+    setSysStatus(SYS_STATUS_ECC);
+    return true;
 }

@@ -54,30 +54,16 @@ float maxTemp = 0.0f;
 
 //~ Support functions -----------------
 /**
- * Setup the on-board status LED
- */
-void setupStateLED() {
-    pinMode(LEDR, OUTPUT);
-    pinMode(LEDG, OUTPUT);
-    pinMode(LEDB, OUTPUT);
-    stateLED(CRGB::Black);
-}
-/**
- * Controls the on-board status LED
- * @param color
- */
-void stateLED(CRGB color) {
-    analogWrite(LEDR, 255 - color.r);
-    analogWrite(LEDG, 255 - color.g);
-    analogWrite(LEDB, 255 - color.b);
-}
-/**
  * Setup the strip LED lights to be controlled by FastLED library
  */
 void ledStripInit() {
     FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
     FastLED.setBrightness(BRIGHTNESS);
     FastLED.clear(true);
+}
+
+void stateLED(CRGB color) {
+    updateStateLED(color.r, color.g, color.b);
 }
 
 void readState() {
@@ -159,6 +145,34 @@ void resetGlobals() {
 
     //shuffle led indexes
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+}
+
+/**
+ * Ease Out Bounce implementation - leverages the double precision original implementation converted to int in a range
+ * @param x input value
+ * @param lim high limit range
+ * @return the result in [0,lim] inclusive range
+ * @see https://easings.net/#easeOutBounce
+ */
+uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
+    static const float d1 = 2.75f;
+    static const float n1 = 7.5625f;
+
+    float xf = ((float)x)/(float)lim;
+    float res = 0;
+    if (xf < 1/d1) {
+        res = n1*xf*xf;
+    } else if (xf < 2/d1) {
+        float xf1 = xf - 1.5f/d1;
+        res = n1*xf1*xf1 + 0.75f;
+    } else if (xf < 2.5f/d1) {
+        float xf1 = xf - 2.25f/d1;
+        res = n1*xf1*xf1 + 0.9375f;
+    } else {
+        float xf1 = xf - 2.625f/d1;
+        res = n1*xf1*xf1 + 0.984375f;
+    }
+    return (uint16_t )(res * (float)lim);
 }
 
 /**
@@ -278,7 +292,7 @@ void shuffleIndexes(uint16_t array[], uint16_t szArray) {
     //shuffle indexes
     uint16_t swIter = (szArray >> 1) + (szArray >> 3);
     for (uint16_t x = 0; x < swIter; x++) {
-        uint16_t r = random16(0, szArray);
+        uint16_t r = secRandom16(0, szArray);
         uint16_t tmp = array[x];
         array[x] = array[r];
         array[r] = tmp;
@@ -588,7 +602,7 @@ uint16_t EffectRegistry::curEffectPos() const {
 }
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
-    currentEffect = autoSwitch ? random16(0, effectsCount) : currentEffect;
+    currentEffect = autoSwitch ? secRandom16(0, effectsCount) : currentEffect;
     return currentEffect;
 }
 

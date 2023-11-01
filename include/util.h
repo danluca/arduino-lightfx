@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include <Arduino_LSM6DSOX.h>
+#include <ArduinoECCX08.h>
 #include <TimeLib.h>
 #include "config.h"
 #include "secrets.h"
@@ -19,6 +20,7 @@
 #define SYS_STATUS_DST     0x04
 #define SYS_STATUS_MIC     0x08
 #define SYS_STATUS_FILESYSTEM     0x10
+#define SYS_STATUS_ECC     0x20
 
 extern const char stateFileName[];
 
@@ -29,8 +31,10 @@ bool isDST(time_t time);
 float boardTemperature(bool bFahrenheit = false);
 float chipTemperature(bool bFahrenheit = false);
 float controllerVoltage();
+void setupStateLED();
+void updateStateLED(uint32_t colorCode);
+void updateStateLED(uint8_t red, uint8_t green, uint8_t blue);
 
-uint16_t easeOutBounce(uint16_t x, uint16_t lim);
 uint8_t bmul8(uint8_t a, uint8_t b);
 uint8_t bscr8(uint8_t a, uint8_t b);
 uint8_t bovl8(uint8_t a, uint8_t b);
@@ -45,5 +49,10 @@ const uint8_t setSysStatus(uint8_t bitMask);
 const uint8_t resetSysStatus(uint8_t bitMask);
 bool isSysStatus(uint8_t bitMask);
 const uint8_t getSysStatus();
+
+uint8_t secRandom8(uint8_t minLim = 0, uint8_t maxLim = 0);
+uint16_t secRandom16(uint16_t minLim = 0, uint16_t maxLim = 0);
+uint32_t secRandom(uint32_t minLim = 0, uint32_t maxLim = 0);
+bool secElement_setup();
 
 #endif //ARDUINO_LIGHTFX_UTIL_H

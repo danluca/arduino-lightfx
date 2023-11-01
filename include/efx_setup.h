@@ -93,9 +93,6 @@ struct Viewport {
 };
 
 
-
-void setupStateLED();
-
 void stateLED(CRGB color);
 
 void ledStripInit();
@@ -107,6 +104,8 @@ void loopRight(CRGBSet &set, Viewport vwp = (Viewport)0, uint16_t pos = 1);
 void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp = (Viewport) 0, uint16_t pos = 1);
 
 void shuffleIndexes(uint16_t array[], uint16_t szArray);
+
+uint16_t easeOutBounce(uint16_t x, uint16_t lim);
 
 void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
 
