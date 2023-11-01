@@ -274,6 +274,8 @@ void FxE5::setup() {
 void FxE5::loop() {
     EVERY_N_MILLIS(50) {
         tpl.fadeToBlackBy(30);
+        wave2.fadeToBlackBy(60);
+        wave3.fadeToBlackBy(60);
 
         CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
         CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
