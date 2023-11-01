@@ -273,18 +273,20 @@ void FxE5::setup() {
 
 void FxE5::loop() {
     EVERY_N_MILLIS(30) {
-        tpl.fadeToBlackBy(40);
-        wave2.fadeToBlackBy(60);
-        wave3.fadeToBlackBy(70);
+        tpl.fadeToBlackBy(30);
+        wave2.fadeToBlackBy(40);
+        wave3.fadeToBlackBy(50);
 
         CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
         CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
         CRGB col3 = ColorFromPalette(palette, clr3, brightness, LINEARBLEND);
-        tpl[beatsin16(9, 0, tpl.size()-1, 0, 0)] = col1;
-        wave2[beatsin16(12, 0, tpl.size()-1, 0, 4096)] = col2;
-        wave3[beatsin16(17, 0, tpl.size()-1, 0, 8192)] = col3;
+        tpl[beatsin16(5, 0, tpl.size()-1, 0, 0)] = col1;
+        wave2[beatsin16(7, 0, tpl.size()-1, 0, 4096)] = col2;
+        wave3[beatsin16(11, 0, tpl.size()-1, 0, 8192)] = col3;
 
-        tpl += wave2;
+        blendOverlay(tpl, wave2);
+//        blendOverlay(tpl, wave3);
+//        tpl += wave2;
         tpl += wave3;
         replicateSet(tpl, others);
 
