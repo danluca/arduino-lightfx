@@ -284,10 +284,10 @@ void FxE5::loop() {
         wave2[beatsin16(7, 0, tpl.size()-1, 0, 4096)] = col2;
         wave3[beatsin16(11, 0, tpl.size()-1, 0, 8192)] = col3;
 
-        blendOverlay(tpl, wave2);
+        blendScreen(wave2, wave3);
 //        blendOverlay(tpl, wave3);
 //        tpl += wave2;
-        tpl += wave3;
+        tpl += wave2;
         replicateSet(tpl, others);
 
         FastLED.show(stripBrightness);
