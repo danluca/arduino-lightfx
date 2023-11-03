@@ -205,7 +205,7 @@ void FxE3::loop() {
             switch (move) {
                 case forward: move = sasquatch; segStart = segEnd = 0; shdOverlay = tpl; break;
                 case sasquatch: move = pauseF; timerSlot = 1; cycles = 50; break;
-                case pauseF: move = backward; break;
+                case pauseF: move = backward; shuffle(tpl); break;
                 case backward: move = pauseB; timerSlot = 1; cycles = 30; break;
                 case pauseB: move = forward; break;
             }
