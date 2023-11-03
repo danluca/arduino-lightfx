@@ -97,7 +97,10 @@ void PaletteFactory::setHoliday(const Holiday hday) {
 }
 
 Holiday PaletteFactory::adjustHoliday(const time_t time) {
-    holiday = autoChangeHoliday ? (time == 0 ? currentHoliday() : buildHoliday(time)) : holiday;
+    //if no auto-adjust or no WiFi then return the current holiday. At bootstrap, until WiFi connects, the state restore will seed the previously saved holiday
+    if (!autoChangeHoliday || !isSysStatus(SYS_STATUS_WIFI))
+        return holiday;
+    holiday = time == 0 ? currentHoliday() : buildHoliday(time);
     return holiday;
 }
 

@@ -91,8 +91,7 @@ void readState() {
         paletteFactory.setAuto(autoColAdj);
 
         Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T)"),
-                   stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(
-                        paletteFactory.getHoliday()), paletteFactory.isAuto());
+                   stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), paletteFactory.isAuto());
     }
 }
 
