@@ -722,8 +722,6 @@ uint16_t Viewport::size() const {
 void fx_setup() {
     ledStripInit();
     random16_set_seed(millis() >> 2);
-    resetGlobals();
-    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     //strip brightness adjustment needs time, that's why it is done in fxRun periodically. At the beginning we'll use the value from saved state
 
     //instantiate effect categories
@@ -731,10 +729,12 @@ void fx_setup() {
         x();
     //initialize ALL the effects configured in the functions above
     //fxRegistry.setup();
+    readState();
+    resetGlobals();
+    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+
     //ensure the current effect is set up
     fxRegistry.getCurrentEffect()->setup();
-
-    readState();
 }
 
 //Run currently selected effect -------
