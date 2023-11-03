@@ -267,7 +267,8 @@ bool isDST(const time_t time) {
  * <p>It is slow - takes about 30ms</p>
  * @param minLim minimum value, defaults to 0
  * @param maxLim maximum value, defaults to max unsigned 8 bits (UINT8_MAX)
- * @return
+ * @return a high quality random number in the range specified
+ * @see secRandom(uint32_t, uint32_t)
  */
  uint8_t secRandom8(uint8_t minLim, uint8_t maxLim) {
     return secRandom(minLim, maxLim > 0 ? maxLim : UINT8_MAX);
@@ -278,7 +279,8 @@ bool isDST(const time_t time) {
  * <p>It is slow - takes about 30ms</p>
  * @param minLim minimum value, defaults to 0
  * @param maxLim maximum value, defaults to max unsigned 16 bits (UINT16_MAX)
- * @return
+ * @return a high quality random number in the range specified
+ * @see secRandom(uint32_t, uint32_t)
  */
 uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
     return secRandom(minLim, maxLim > 0 ? maxLim : UINT16_MAX);
