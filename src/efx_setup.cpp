@@ -1,12 +1,18 @@
 #include "efx_setup.h"
 #include "log.h"
-// increase the amount of space for file system to 128kB (default 64kB)
-#define RP2040_FS_SIZE_KB   (128)
-#include <LittleFSWrapper.h>
-#include "TimeLib.h"
 
 //~ Global variables definition
+#define JSON_DOC_SIZE   512
+const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 const uint8_t dimmed = 20;
+const char csAutoFxRoll[] = "autoFxRoll";
+const char csStripBrightness[] = "stripBrightness";
+const char csAudioThreshold[] = "audioThreshold";
+const char csColorTheme[] = "colorTheme";
+const char csAutoColorAdjust[] = "autoColorAdjust";
+const char csRandomSeed[] = "randomSeed";
+const char csCurFx[] = "curFx";
+
 //const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
 const CRGB BKG = CRGB::Black;
 const uint8_t maxChanges = 24;
@@ -36,121 +42,28 @@ uint8_t twinkrate = 100;
 uint16_t szStack = 0;
 uint16_t stripShuffleIndex[NUM_PIXELS];
 uint16_t hueDiff = 256;
+uint16_t totalAudioBumps = 0;
 int8_t rot = 1;
 int32_t dist = 1;
 bool dirFwd = true;
 bool randhue = true;
+float minVcc = 12.0f;
+float maxVcc = 0.0f;
+float minTemp = 100.0f;
+float maxTemp = 0.0f;
 
 //~ Support functions -----------------
-/**
- * Setup the on-board status LED
- */
-void setupStateLED() {
-    pinMode(LEDR, OUTPUT);
-    pinMode(LEDG, OUTPUT);
-    pinMode(LEDB, OUTPUT);
-    stateLED(CRGB::Black);
-}
-/**
- * Controls the on-board status LED
- * @param color
- */
-void stateLED(CRGB color) {
-    analogWrite(LEDR, 255 - color.r);
-    analogWrite(LEDG, 255 - color.g);
-    analogWrite(LEDB, 255 - color.b);
-}
 /**
  * Setup the strip LED lights to be controlled by FastLED library
  */
 void ledStripInit() {
-    FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
+    CFastLED::addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
     FastLED.setBrightness(BRIGHTNESS);
     FastLED.clear(true);
 }
 
-LittleFSWrapper *fsPtr;
-const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
-
-void fsInit() {
-#ifndef DISABLE_LOGGING
-    mbed::BlockDevice *bd = mbed::BlockDevice::get_default_instance();
-    bd->init();
-    Log.infoln(F("Default BlockDevice type %s, size %u B, read size %u B, program size %u B, erase size %u B"),
-               bd->get_type(), bd->size(), bd->get_read_size(), bd->get_program_size(), bd->get_erase_size());
-    bd->deinit();
-#endif
-
-    fsPtr = new LittleFSWrapper();
-    if (fsPtr->init())
-        Log.infoln("Filesystem OK");
-
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Root FS %s contents:"), LittleFSWrapper::getRoot());
-    DIR *d = opendir(LittleFSWrapper::getRoot());
-    struct dirent *e = nullptr;
-    while (e = readdir(d))
-        Log.infoln(F("  %s [%d]"), e->d_name, e->d_type);
-    Log.infoln(F("Dir complete."));
-#endif
-}
-
-#define FILE_BUF_SIZE   256
-#define JSON_DOC_SIZE   512
-
-/**
- * Reads a text file - if it exists - into a string object
- * @param fname name of the file to read
- * @param s string to store contents into
- * @return number of characters in the file; 0 if file is empty or doesn't exist
- */
-size_t readTextFile(const char *fname, String *s) {
-    FILE *f = fopen(fname, "r");
-    size_t fsize = 0;
-    if (f) {
-        char buf[FILE_BUF_SIZE];
-        memset(buf, 0, FILE_BUF_SIZE);
-        size_t cread = 1;
-        while (cread = fread(buf, 1, FILE_BUF_SIZE, f)) {
-            s->concat(buf, cread);
-            fsize += cread;
-        }
-        fclose(f);
-#ifndef DISABLE_LOGGING
-        Log.infoln(F("Read %d bytes from %s file"), fsize, fname);
-        Log.traceln(F("File %s content [%d]: %s"), fname, fsize, s->c_str());
-#endif
-    } else
-        Log.errorln(F("Text file %s was not found/could not read"), fname);
-    return fsize;
-}
-
-/**
- * Writes (overrides if already exists) a file using the string content
- * @param fname file name to write
- * @param s contents to write
- * @return number of bytes written
- */
-size_t writeTextFile(const char *fname, String *s) {
-    size_t fsize = 0;
-    FILE *f = fopen(fname, "w");
-    if (f) {
-        fsize = fwrite(s->c_str(), sizeof(s->charAt(0)), s->length(), f);
-        fclose(f);
-        Log.infoln(F("File %s has been saved, size %d bytes"), fname, s->length());
-    } else
-        Log.errorln(F("Failed to create file %s for writing"), fname);
-    return fsize;
-}
-
-bool removeFile(const char *fname) {
-    FILE *f = fopen(fname, "r");
-    if (f) {
-        fclose(f);
-        return lfs.remove(fname) == 0;
-    }
-    //file does not exist - return true to the caller, the intent is already fulfilled
-    return true;
+void stateLED(CRGB color) {
+    updateStateLED(color.r, color.g, color.b);
 }
 
 void readState() {
@@ -160,28 +73,37 @@ void readState() {
         StaticJsonDocument<JSON_DOC_SIZE> doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
         deserializeJson(doc, json);
 
-        bool autoAdvance = doc["autoFxRoll"].as<bool>();
+        bool autoAdvance = doc[csAutoFxRoll].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
 
-        uint16_t seed = doc["randomSeed"].as<uint16_t>();
-        random16_set_seed(seed);
+        uint16_t seed = doc[csRandomSeed].as<uint16_t>();
+        random16_add_entropy(seed);
 
-        uint16_t fx = doc["curFx"].as<uint16_t>();
+        uint16_t fx = doc[csCurFx].as<uint16_t>();
         fxRegistry.nextEffectPos(fx);
 
-        stripBrightness = doc["stripBrightness"].as<uint8_t>();
+        stripBrightness = doc[csStripBrightness].as<uint8_t>();
 
-        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust)"), stateFileName, stateSize,
-                   autoAdvance ? "true" : "false", seed, fx, stripBrightness);
+        audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
+        String savedHoliday = doc[csColorTheme].as<String>();
+        paletteFactory.setHoliday(parseHoliday(&savedHoliday));
+        bool autoColAdj = doc[csAutoColorAdjust].as<bool>();
+        paletteFactory.setAuto(autoColAdj);
+
+        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T)"),
+                   stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), paletteFactory.isAuto());
     }
 }
 
 void saveState() {
     StaticJsonDocument<JSON_DOC_SIZE> doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
-    doc["randomSeed"] = random16_get_seed();
-    doc["autoFxRoll"] = fxRegistry.isAutoRoll();
-    doc["curFx"] = fxRegistry.curEffectPos();
-    doc["stripBrightness"] = stripBrightness;
+    doc[csRandomSeed] = random16_get_seed();
+    doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
+    doc[csCurFx] = fxRegistry.curEffectPos();
+    doc[csStripBrightness] = stripBrightness;
+    doc[csAudioThreshold] = audioBumpThreshold;
+    doc[csColorTheme] = holidayToString(paletteFactory.getHoliday());
+    doc[csAutoColorAdjust] = paletteFactory.isAuto();
     String str;
     serializeJson(doc, str);
     if (!writeTextFile(stateFileName, &str))
@@ -221,8 +143,37 @@ void resetGlobals() {
     randhue = true;
     fxBump = false;
 
-    //shuffle led indexes
-    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+    //shuffle led indexes - when engaging secureRandom functions, each call is about 30ms. Shuffling a 320 items array (~200 swaps and secure random calls) takes about 6 seconds!
+    //commented in favor of regular shuffle (every 5 minutes) - see fxRun
+    //shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+}
+
+/**
+ * Ease Out Bounce implementation - leverages the double precision original implementation converted to int in a range
+ * @param x input value
+ * @param lim high limit range
+ * @return the result in [0,lim] inclusive range
+ * @see https://easings.net/#easeOutBounce
+ */
+uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
+    static const float d1 = 2.75f;
+    static const float n1 = 7.5625f;
+
+    float xf = ((float)x)/(float)lim;
+    float res = 0;
+    if (xf < 1/d1) {
+        res = n1*xf*xf;
+    } else if (xf < 2/d1) {
+        float xf1 = xf - 1.5f/d1;
+        res = n1*xf1*xf1 + 0.75f;
+    } else if (xf < 2.5f/d1) {
+        float xf1 = xf - 2.25f/d1;
+        res = n1*xf1*xf1 + 0.9375f;
+    } else {
+        float xf1 = xf - 2.625f/d1;
+        res = n1*xf1*xf1 + 0.984375f;
+    }
+    return (uint16_t )(res * (float)lim);
 }
 
 /**
@@ -313,8 +264,8 @@ void replicateSet(const CRGBSet& src, CRGBSet& dest) {
     uint16_t x = 0;
     if (max(normSrcStart, normDestStart) < min(normSrcEnd, normDestEnd)) {
         //we have overlap - account for it
-        for (uint16_t y = 0; y < dest.size(); y++) {
-            CRGB* yPtr = &dest[y];
+        for (auto & y : dest) {
+            CRGB* yPtr = &y;
             if ((yPtr < normSrcStart) || (yPtr >= normSrcEnd)) {
                 (*yPtr) = src[x];
                 incr(x, 1, srcSize);
@@ -322,8 +273,8 @@ void replicateSet(const CRGBSet& src, CRGBSet& dest) {
         }
     } else {
         //no overlap - simpler assignment code
-        for (uint16_t y = 0; y < dest.size(); y++) {
-            dest[y] = src[x];
+        for (auto & y : dest) {
+            y = src[x];
             incr(x, 1, srcSize);
         }
     }
@@ -336,9 +287,8 @@ void replicateSet(const CRGBSet& src, CRGBSet& dest) {
  */
 void shuffleIndexes(uint16_t array[], uint16_t szArray) {
     //populates the indexes in ascending order
-    for (uint16_t x = 0; x < szArray; x++) {
+    for (uint16_t x = 0; x < szArray; x++)
         array[x] = x;
-    }
     //shuffle indexes
     uint16_t swIter = (szArray >> 1) + (szArray >> 3);
     for (uint16_t x = 0; x < swIter; x++) {
@@ -346,6 +296,17 @@ void shuffleIndexes(uint16_t array[], uint16_t szArray) {
         uint16_t tmp = array[x];
         array[x] = array[r];
         array[r] = tmp;
+    }
+}
+
+void shuffle(CRGBSet &set) {
+    //perform a number of swaps with random elements of the array - randomness provided by ECC608 secure random number generator
+    uint16_t swIter = (set.size() >> 1) + (set.size() >> 4);
+    for (uint16_t x = 0; x < swIter; x++) {
+        uint16_t r = random16(0, set.size());
+        CRGB tmp = set[x];
+        set[x] = set[r];
+        set[r] = tmp;
     }
 }
 
@@ -437,77 +398,6 @@ CRGB adjustBrightness(CRGB color, uint8_t bright) {
             r = g = b = 0;
     }
     return {r, g, b};
-}
-
-/**
- * Ease Out Bounce implementation - leverages the double precision original implementation converted to int in a range
- * @param x input value
- * @param lim high limit range
- * @return the result in [0,lim] inclusive range
- * @see https://easings.net/#easeOutBounce
- */
-uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
-    static const float d1 = 2.75f;
-    static const float n1 = 7.5625f;
-
-    float xf = ((float)x)/(float)lim;
-    float res = 0;
-    if (xf < 1/d1) {
-        res = n1*xf*xf;
-    } else if (xf < 2/d1) {
-        float xf1 = xf - 1.5f/d1;
-        res = n1*xf1*xf1 + 0.75f;
-    } else if (xf < 2.5f/d1) {
-        float xf1 = xf - 2.25f/d1;
-        res = n1*xf1*xf1 + 0.9375f;
-    } else {
-        float xf1 = xf - 2.625f/d1;
-        res = n1*xf1*xf1 + 0.984375f;
-    }
-    return (uint16_t )(res * (float)lim);
-}
-
-/**
- * Multiply function for color blending purposes - assumes the operands are fractional (n/256) and the result
- * of multiplying 2 fractional numbers is less than both numbers (e.g. 0.2 x 0.3 = 0.06). Special handling for operand values of 255 (i.e. 1.0)
- * <p>f(a,b) = a*b</p>
- * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @return (a*b)/256
- * @see https://en.wikipedia.org/wiki/Blend_modes
- */
-uint8_t bmul8(uint8_t a, uint8_t b) {
-    if (a==255)
-        return b;
-    if (b==255)
-        return a;
-    return ((uint16_t)a*(uint16_t)b)/256;
-}
-
-/**
- * Screen two 8 bit operands for color blending purposes - assumes the operands are fractional (n/256)
- * <p>f(a,b)=1-(1-a)*(1-b)</p>
- * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @return 255-bmul8(255-a, 255-b)
- * @see https://en.wikipedia.org/wiki/Blend_modes
- */
-uint8_t bscr8(uint8_t a, uint8_t b) {
-    return 255-bmul8(255-a, 255-b);
-}
-
-/**
- * Overlay two 8 bit operands for color blending purposes - assumes the operands are fractional (n/256)
- * <p>f(a,b)=2*a*b, if a<0.5; 1-2*(1-a)*(1-b), otherwise</p>
- * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @return the 8 bit value per formula above
- * @see https://en.wikipedia.org/wiki/Blend_modes
- */
-uint8_t bovl8(uint8_t a, uint8_t b) {
-    if (a < 128)
-        return bmul8(a, b)*2;
-    return 255-bmul8(255-a, 255-b)*2;
 }
 
 /**
@@ -658,7 +548,7 @@ bool turnOffWipe(bool rightDir) {
  * <p>After 10pm - reduce to 40% of full brightness, i.e. scale with 102</p>
  */
 uint8_t adjustStripBrightness() {
-    if (!(stripBrightnessLocked || timeStatus() == timeNotSet)) {
+    if (!stripBrightnessLocked && isSysStatus(SYS_STATUS_WIFI)) {
         int hr = hour();
         fract8 scale;
         if (hr < 8)
@@ -699,41 +589,7 @@ uint8_t getBrightness(const CRGB &rgb) {
     return toHSV(rgb).val;
 }
 
-//Setup all effects -------------------
-void fx_setup() {
-    ledStripInit();
-    random16_set_seed(millis() >> 2);
-
-    //instantiate effect categories
-    for (auto x : categorySetup)
-        x();
-    //initialize the effects configured in the functions above
-    fxRegistry.setup();
-    //ensure the current effect is set up, in case they share global variables
-    fxRegistry.getCurrentEffect()->setup();
-
-    readState();
-}
-
-//Run currently selected effect -------
-void fx_run() {
-    EVERY_N_SECONDS(30) {
-        if (fxBump) {
-            fxRegistry.nextEffectPos();
-            fxBump = false;
-        }
-    }
-    EVERY_N_MINUTES(5) {
-        fxRegistry.nextRandomEffectPos();
-        shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-        stripBrightness = adjustStripBrightness();
-        saveState();
-    }
-
-    fxRegistry.loop();
-    yield();
-}
-
+// EffectRegistry
 LedEffect *EffectRegistry::getCurrentEffect() const {
     return effects[currentEffect];
 }
@@ -821,12 +677,101 @@ void LedEffect::baseConfig(JsonObject &json) const {
     json["description"] = description();
     json["name"] = name();
     json["registryIndex"] = getRegistryIndex();
+    json["palette"] = holidayToString(paletteFactory.getHoliday());
 }
 
+LedEffect::LedEffect(const char *description) : desc(description) {
+    //copy into id field the prefix of description (e.g. for a description 'FxA1: awesome lights', copies 'FxA1' into id)
+    for (uint8_t i=0; i<LED_EFFECT_ID_SIZE; i++) {
+        if (description[i] == ':' || description[i] == '\0') {
+            id[i] = '\0';
+            break;
+        }
+        id[i] = description[i];
+    }
+    //in case the prefix in description is larger, ensure id is null terminated (i.e. truncate)
+    id[LED_EFFECT_ID_SIZE-1] = '\0';
+    //register the effect
+    registryIndex = fxRegistry.registerEffect(this);
+}
+
+JsonObject &LedEffect::describeConfig(JsonArray &json) const {
+    JsonObject obj = json.createNestedObject();
+    baseConfig(obj);
+    return obj;
+}
+
+const char *LedEffect::name() const {
+    return id;
+}
+
+const char *LedEffect::description() const {
+    return desc;
+}
+
+void LedEffect::setup() {
+    resetGlobals();
+}
+
+// Viewport
 Viewport::Viewport(uint16_t high) : Viewport(0, high) {}
 
 Viewport::Viewport(uint16_t low, uint16_t high) : low(low), high(high) {}
 
 uint16_t Viewport::size() const {
     return qsuba(high, low);
+}
+
+//Setup all effects -------------------
+void fx_setup() {
+    ledStripInit();
+    //if engaging stdlib's random() - we'd need to initialize that as well (randomSeed()), separate implementation. The random8/16 are FastLED specific
+    random16_set_seed(secRandom16());
+    //strip brightness adjustment needs the time, that's why it is done in fxRun periodically. At the beginning we'll use the value from saved state
+
+    //instantiate effect categories
+    for (auto x : categorySetup)
+        x();
+    //initialize ALL the effects configured in the functions above
+    //fxRegistry.setup();
+    readState();
+
+    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+    //ensure the current effect is set up
+    fxRegistry.getCurrentEffect()->setup();
+}
+
+//Run currently selected effect -------
+void fx_run() {
+    EVERY_N_SECONDS(30) {
+        if (fxBump) {
+            fxRegistry.nextEffectPos();
+            fxBump = false;
+            totalAudioBumps++;
+        }
+        float msmt = controllerVoltage();
+        if (msmt < minVcc)
+            minVcc = msmt;
+        if (msmt > maxVcc)
+            maxVcc = msmt;
+#ifndef DISABLE_LOGGING
+        Log.infoln(F("Board Vcc voltage %D V"), msmt);
+        Log.infoln(F("Chip internal temperature %D 'C"), chipTemperature());
+#endif
+        msmt = boardTemperature();
+        if (msmt < minTemp)
+            minTemp = msmt;
+        if (msmt > maxTemp)
+            maxTemp = msmt;
+    }
+    EVERY_N_MINUTES(5) {
+        fxRegistry.nextRandomEffectPos();
+        shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+        random16_add_entropy(secRandom16());        //this may or may not help
+        stripBrightness = adjustStripBrightness();
+        saveState();
+    }
+
+    fxRegistry.loop();
+    yield();
 }

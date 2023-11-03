@@ -8,6 +8,14 @@
 using namespace FxC;
 using namespace colTheme;
 
+//~ Effect description strings stored in flash
+const char fxc1Desc[] PROGMEM = "FXC1: blend between two concurrent animations";
+const char fxc2Desc[] PROGMEM = "FXC2: blur function";
+const char fxc3Desc[] PROGMEM = "FXC3: Perlin Noise for moving up and down the strand";
+const char fxc4Desc[] PROGMEM = "FxC4: lightnings";
+const char fxc5Desc[] PROGMEM = "FxC5: matrix";
+const char fxc6Desc[] PROGMEM = "FxC6: one sine";
+
 void FxC::fxRegister() {
     static FxC1 fxC1;
     static FxC2 fxC2;
@@ -25,12 +33,11 @@ void FxC::fxRegister() {
  * Date: January, 2017
  * This sketch demonstrates how to blend between two animations running at the same time.
  */
-FxC1::FxC1() : setA(frame(0, FRAME_SIZE-1)), setB(leds, FRAME_SIZE) {
-    registryIndex = fxRegistry.registerEffect(this);
+FxC1::FxC1() : LedEffect(fxc1Desc), setA(frame(0, FRAME_SIZE-1)), setB(leds, FRAME_SIZE) {
 }
 
 void FxC1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = 176;
 }
 
@@ -49,10 +56,6 @@ void FxC1::loop() {
     FastLED.show(stripBrightness);
 }
 
-const char *FxC1::description() const {
-    return "FXC1: blend between two concurrent animations";
-}
-
 void FxC1::animationA() {
     for (uint16_t x = 0; x<setA.size(); x++) {
         uint8_t clrIndex = (millis() / 10) + (x * 12);    // speed, length
@@ -69,15 +72,6 @@ void FxC1::animationB() {
     }
 }
 
-const char *FxC1::name() const {
-    return "FXC1";
-}
-
-void FxC1::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
 //Fx C2
 /**
  * blur
@@ -90,13 +84,11 @@ void FxC1::describeConfig(JsonArray &json) const {
  *
  */
 
-FxC2::FxC2() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxC2::FxC2() : LedEffect(fxc2Desc) {}
 
-void FxC2::setup() {
-    resetGlobals();
-}
+//void FxC2::setup() {
+//    LedEffect::setup();
+//}
 
 void FxC2::loop() {
     uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
@@ -117,19 +109,6 @@ void FxC2::loop() {
     FastLED.show(stripBrightness);
 }
 
-const char *FxC2::description() const {
-    return "FXC2: blur function";
-}
-
-const char *FxC2::name() const {
-    return "FXC2";
-}
-
-void FxC2::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
 //Fx C3
 /**
  * inoise8_mover
@@ -142,12 +121,10 @@ void FxC2::describeConfig(JsonArray &json) const {
 const uint32_t xscale = 8192;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 const uint32_t yscale = 7680;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 
-FxC3::FxC3() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxC3::FxC3() : LedEffect(fxc3Desc) {}
 
 void FxC3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = 255;
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
@@ -177,53 +154,38 @@ void FxC3::loop() {
 
 }
 
-void FxC3::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxC3::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["xscale"] = xscale;
     obj["yscale"] = yscale;
-}
-
-const char *FxC3::name() const {
-    return "FXC3";
-}
-
-const char *FxC3::description() const {
-    return "FXC3: Perlin Noise for moving up and down the strand";
+    return obj;
 }
 
 // Fx C4
-FxC4::FxC4() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxC4::FxC4() : LedEffect(fxc4Desc) {}
 
 void FxC4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = BRIGHTNESS;
+    frequency = 10; // controls the interval between strikes (seconds)
+    flashes = 7;   //the upper limit of flashes per strike
 }
 
 void FxC4::loop() {
-    static uint8_t frequency = 10;                                       // controls the interval between strikes
-    static uint8_t flashes = 12;                                          //the upper limit of flashes per strike
-    static uint dimmer = 1;
-    static uint8_t ledstart;                                             // Starting location of a flash
-    static uint8_t ledlen;                                               // Length of a flash
-
     EVERY_N_SECONDS_I(fxc4Timer, 1+random8(frequency)) {
-        ledstart = random8(NUM_PIXELS);                               // Determine starting location of flash
-        ledlen = random8(NUM_PIXELS - ledstart);                        // Determine length of flash (not to go beyond NUM_LEDS-1)
+        uint16_t start = random16(NUM_PIXELS - 8);                               // Determine starting location of flash
+        uint16_t len = random16(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
+        uint8_t flashRound = random8(3, flashes);
+        CRGBSet flash(leds, start, start+len);
 
-        for (int flashCounter = 0; flashCounter < random8(5, flashes); flashCounter++) {
-            if (flashCounter == 0)
-                dimmer = 5;                         // the brightness of the leader is scaled down by a factor of 5
-            else
-                dimmer = random8(1, 3);                               // return strokes are brighter than the leader
-
+        for (uint8_t flashCounter = 0; flashCounter < flashRound; flashCounter++) {
+            // the brightness of the leader is scaled down by a factor of 5; return strokes are brighter than the leader
+            uint8_t dimmer = flashCounter == 0 ? 5 : random8(1, 3);
             CRGB color = ColorFromPalette(palette, random8(), brightness / dimmer, LINEARBLEND);
-            fill_solid(leds + ledstart, ledlen, color);
+            flash = color;
             FastLED.show(stripBrightness);                       // Show a section of LED's
             delay(random8(4, 10));                                     // each flash only lasts 4-10 milliseconds
-            fill_solid(leds + ledstart, ledlen, BKG);           // Clear the section of LED's
+            flash = BKG;
             FastLED.show(stripBrightness);
 
             if (flashCounter == 0) delay(250);                       // longer speed until next flash after the leader
@@ -234,22 +196,11 @@ void FxC4::loop() {
     }
 }
 
-const char *FxC4::description() const {
-    return "FxC4: lightnings";
-}
-
-const char *FxC4::name() const {
-    return "FxC4";
-}
-
-void FxC4::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
 // Fx C5
+FxC5::FxC5() : LedEffect(fxc5Desc) {}
+
 void FxC5::setup() {
-    resetGlobals();
+    LedEffect::setup();
     palette = paletteFactory.secondaryPalette();
     targetPalette = paletteFactory.mainPalette();
     saturation = 255;
@@ -270,23 +221,6 @@ void FxC5::loop() {
         FastLED.show(stripBrightness);
     }
 
-}
-
-const char *FxC5::description() const {
-    return "FxC5: matrix";
-}
-
-const char *FxC5::name() const {
-    return "FxC5";
-}
-
-void FxC5::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxC5::FxC5() {
-    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxC5::changeParams() {
@@ -323,8 +257,10 @@ void FxC5::matrix() {
 }
 
 // Fx C6
+FxC6::FxC6() : LedEffect(fxc6Desc) {}
+
 void FxC6::setup() {
-    resetGlobals();
+    LedEffect::setup();
     palette = paletteFactory.secondaryPalette();
     targetPalette = paletteFactory.mainPalette();
     speed = 8;
@@ -351,23 +287,6 @@ void FxC6::loop() {
             targetPalette = PaletteFactory::randomPalette(random8());
         }
     }
-}
-
-const char *FxC6::description() const {
-    return "FxC6: one sine";
-}
-
-const char *FxC6::name() const {
-    return "FxC6";
-}
-
-void FxC6::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxC6::FxC6() {
-    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxC6::one_sine_pal(uint8_t colorIndex) {

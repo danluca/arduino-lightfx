@@ -8,6 +8,13 @@
 using namespace FxD;
 using namespace colTheme;
 
+//~ Effect description strings stored in flash
+const char fxd1Desc[] PROGMEM = "FXD1: Confetti D";
+const char fxd2Desc[] PROGMEM = "FXD2: dot beat";
+const char fxd3Desc[] PROGMEM = "FxD3: plasma";
+const char fxd4Desc[] PROGMEM = "FxD4: rainbow marching";
+const char fxd5Desc[] PROGMEM = "FxD5: ripples";
+
 void FxD::fxRegister() {
     static FxD1 fxD1;
     static FxD2 fxD2;
@@ -24,12 +31,10 @@ void FxD::fxRegister() {
  *
  * Confetti flashes colours within a limited hue. It's been modified from Mark's original to support a few variables. It's a simple, but great looking routine.
  */
-FxD1::FxD1() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxD1::FxD1() : LedEffect(fxd1Desc) {}
 
 void FxD1::setup() {
-    resetGlobals();
+    LedEffect::setup();
 
     fade = 8;
     hue = 50;
@@ -49,18 +54,10 @@ void FxD1::loop() {
     }
 }
 
-const char *FxD1::description() const {
-    return "FXD1: Confetti D";
-}
-
-const char *FxD1::name() const {
-    return "FXD1";
-}
-
-void FxD1::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxD1::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["localBright"] = brightness;
+    return obj;
 }
 
 
@@ -96,12 +93,10 @@ void FxD1::ChangeMe() {
  *
  * Similar to dots by John Burroughs, but uses the FastLED beatsin8() function instead.
  */
-FxD2::FxD2() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxD2::FxD2() : LedEffect(fxd2Desc) {}
 
 void FxD2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     dotBpm = 21;
     fade = 31;
 }
@@ -113,19 +108,11 @@ void FxD2::loop() {
     }
 }
 
-const char *FxD2::description() const {
-    return "FXD2: dot beat";
-}
-
-const char *FxD2::name() const {
-    return "FXD2";
-}
-
-void FxD2::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxD2::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["bpm"] = dotBpm;
     obj["fade"] = 255-fade;
+    return obj;
 }
 
 void FxD2::dot_beat() {
@@ -144,9 +131,10 @@ void FxD2::dot_beat() {
 
 // Fx D3
 void FxD3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
+    monoColor = random8(224);   //colors above this index in the Halloween palette are black
 }
 
 void FxD3::loop() {
@@ -155,12 +143,16 @@ void FxD3::loop() {
         FastLED.show(stripBrightness);
     }
 
-    EVERY_N_SECONDS(2) {
+    EVERY_N_SECONDS(5) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    if (!paletteFactory.isHolidayLimitedHue()) {
-        EVERY_N_SECONDS(20) {
+    if (paletteFactory.isHolidayLimitedHue()) {
+        EVERY_N_SECONDS(45) {
+            monoColor = random8(224);
+        }
+    } else {
+        EVERY_N_SECONDS(30) {
             targetPalette = PaletteFactory::randomPalette(random8());
         }
     }
@@ -172,34 +164,21 @@ void FxD3::plasma() {
     uint8_t thatPhase = beatsin8(7,-64,64);
 
     for (int k=0; k<NUM_PIXELS; k++) {                              // For each of the LED's in the strand, set a localBright based on a wave as follows:
-
         uint8_t colorIndex = cubicwave8((k*23)+thisPhase)/2 + cos8((k*15)+thatPhase)/2;           // Create a wave and add a phase change and add another wave with its own phase change.. Hey, you can even change the frequencies if you wish.
-        uint8_t thisBright = qsuba(colorIndex, beatsin8(7,0,96));                                 // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
-
-        leds[k] = ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);  // Let's now add the foreground colour.
+        uint8_t thisBright = qsuba(colorIndex, beatsin8(7,0,96));              // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
+        //plasma becomes slime during Halloween (single color morphing mass)
+        uint8_t clr = paletteFactory.isHolidayLimitedHue() ? monoColor : colorIndex;
+        leds[k] = ColorFromPalette(palette, clr, thisBright, LINEARBLEND);  // Let's now add the foreground colour.
     }
 }
 
-const char *FxD3::description() const {
-    return "FxD3: plasma";
-}
-
-const char *FxD3::name() const {
-    return "FxD3";
-}
-
-void FxD3::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxD3::FxD3() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxD3::FxD3() : LedEffect(fxd3Desc) {}
 
 // Fx D4
+FxD4::FxD4() : LedEffect(fxd4Desc) {}
+
 void FxD4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     hueDiff = 1;
 }
@@ -216,23 +195,6 @@ void FxD4::loop() {
         rainbow_march();
         FastLED.show(stripBrightness);
     }
-}
-
-const char *FxD4::description() const {
-    return "FxD4: rainbow marching";
-}
-
-const char *FxD4::name() const {
-    return "FxD4";
-}
-
-void FxD4::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxD4::FxD4() {
-    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxD4::update_params(uint8_t slot) {
@@ -259,8 +221,10 @@ void FxD4::rainbow_march() {
 }
 
 // Fx D5
+FxD5::FxD5() : LedEffect(fxd5Desc) {}
+
 void FxD5::setup() {
-    resetGlobals();
+    LedEffect::setup();
 }
 
 void FxD5::loop() {
@@ -271,19 +235,6 @@ void FxD5::loop() {
         ripples();
         FastLED.show(stripBrightness);
     }
-}
-
-const char *FxD5::description() const {
-    return "FxD5: ripples";
-}
-
-const char *FxD5::name() const {
-    return "FxD5";
-}
-
-void FxD5::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
 }
 
 void FxD5::ripples() {
@@ -301,10 +252,6 @@ void FxD5::ripples() {
         }
     }
     replicateSet(tpl, others);
-}
-
-FxD5::FxD5() {
-    registryIndex = fxRegistry.registerEffect(this);
 }
 
 // ripple structure API

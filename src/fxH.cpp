@@ -7,6 +7,11 @@
 using namespace FxH;
 using namespace colTheme;
 
+//~ Effect description strings stored in flash
+const char fxh1Desc[] PROGMEM = "FXH1: Fire segments";
+const char fxh2Desc[] PROGMEM = "FXH2: confetti H";
+const char fxh3Desc[] PROGMEM = "FXH3: filling the strand with colours";
+
 void FxH::fxRegister() {
     static FxH1 fxH1;
     static FxH2 fxH2;
@@ -36,16 +41,15 @@ void FxH::fxRegister() {
 // The dynamic palette shows how you can change the basic 'hue' of the
 // color palette every time through the loop, producing "rainbow fire".
 
-FxH1::FxH1() : fires{tpl(0, FRAME_SIZE/2-1), tpl(FRAME_SIZE-1, FRAME_SIZE/2)} {
-    registryIndex = fxRegistry.registerEffect(this);
+FxH1::FxH1() : LedEffect(fxh1Desc), fires{tpl(0, FRAME_SIZE/2-1), tpl(FRAME_SIZE-1, FRAME_SIZE/2)} {
 }
 
 void FxH1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = 216;
 
     //Fire palette definition - for New Year get a blue fire
-    switch (paletteFactory.currentHoliday()) {
+    switch (paletteFactory.getHoliday()) {
         case NewYear: palette = CRGBPalette16( CRGB::Black, CRGB::Blue, CRGB::Aqua,  CRGB::White); break;
         case Christmas: palette = CRGBPalette16(CRGB::Red, CRGB::White, CRGB::Green); break;
         default: palette = CRGBPalette16(CRGB::Black, CRGB::Red, CRGB::OrangeRed, CRGB::Yellow); break;
@@ -103,10 +107,6 @@ void FxH1::loop() {
     }
 }
 
-const char *FxH1::description() const {
-    return "FXH1: Fire segments";
-}
-
 void FxH1::Fire2012WithPalette(uint8_t xFire) {
     //we only have 3 fires (numFires = 3) - abort if called for more than that
     if (xFire >= numFires)
@@ -140,27 +140,19 @@ void FxH1::Fire2012WithPalette(uint8_t xFire) {
     }
 }
 
-const char *FxH1::name() const {
-    return "FXH1";
-}
-
-void FxH1::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxH1::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["flameBrightness"] = brightness;
     obj["numberOfFires"] = numFires;
+    return obj;
 }
 
 
-///////////////////////////////////////////////////////////////////////////////////////////
-// Confetti Palette
-//////////////////////////////////////////////////////////////////////////////////////////
-FxH2::FxH2() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+// FxH2
+FxH2::FxH2() : LedEffect(fxh2Desc) {}
 
 void FxH2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     speed = 40;
 }
 
@@ -176,10 +168,6 @@ void FxH2::loop() {
         FastLED.show(stripBrightness);
     }
 
-}
-
-const char *FxH2::description() const {
-    return "FXH2: confetti H";
 }
 
 void FxH2::confetti_pal() {
@@ -205,15 +193,11 @@ void FxH2::updateParams() {
     }
 }
 
-const char *FxH2::name() const {
-    return "FXH2";
-}
-
-void FxH2::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxH2::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     obj["speed"] = speed;
+    return obj;
 }
 
 /**
@@ -234,13 +218,11 @@ void FxH2::describeConfig(JsonArray &json) const {
  * https://github.com/FastLED/FastLED/wiki/Pixel-reference#predefined-colors-list
  *
  */
-
-FxH3::FxH3() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+// FxH3
+FxH3::FxH3() : LedEffect(fxh3Desc) {}
 
 void FxH3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hueDiff = 15;
     hue = random8();
 }
@@ -262,17 +244,9 @@ void FxH3::loop() {
 
 }
 
-const char *FxH3::description() const {
-    return "FXH3: filling the strand with colours";
-}
-
-const char *FxH3::name() const {
-    return "FXH3";
-}
-
-void FxH3::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxH3::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["hueDiff"] = hueDiff;
     obj["speed"] = speed;
+    return obj;
 }

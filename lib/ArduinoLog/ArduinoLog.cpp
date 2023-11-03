@@ -170,100 +170,112 @@ void Logging::print(const char *format, va_list args) {
 void Logging::printFormat(const char format, va_list *args) {
 #ifndef DISABLE_LOGGING
 	if (format == '\0') return;
-	if (format == '%')
-	{
-		_logOutput->print(format);
-	}
-	else if (format == 's')
-	{
-		register char *s = (char *)va_arg(*args, int);
-		_logOutput->print(s);
-	}
-	else if (format == 'S')
-	{
-		register __FlashStringHelper *s = (__FlashStringHelper *)va_arg(*args, int);
-		_logOutput->print(s);
-	}
-	else if (format == 'd' || format == 'i')
-	{
-		_logOutput->print(va_arg(*args, int), DEC);
-	}
-	else if (format == 'D' || format == 'F')
-	{
-		_logOutput->print(va_arg(*args, double));
-	}
-	else if (format == 'x')
-	{
-		_logOutput->print(va_arg(*args, int), HEX);
-	}
-	else if (format == 'X')
-	{		
-		_logOutput->print("0x");
-		//_logOutput->print(va_arg(*args, int), HEX);
-	    register uint16_t h = (uint16_t) va_arg( *args, int );
-        if (h<0xFFF) _logOutput->print('0');
-        if (h<0xFF ) _logOutput->print('0');
-        if (h<0xF  ) _logOutput->print('0');
-        _logOutput->print(h,HEX);
-	}
-	else if (format == 'p')
-	{		
-		register Printable *obj = (Printable *) va_arg(*args, int);
-		_logOutput->print(*obj);
-	}
-	else if (format == 'b')
-	{
-		_logOutput->print(va_arg(*args, int), BIN);
-	}
-	else if (format == 'B')
-	{
-		_logOutput->print("0b");
-		_logOutput->print(va_arg(*args, int), BIN);
-	}
-	else if (format == 'l')
-	{
-		_logOutput->print(va_arg(*args, long), DEC);
-	}
-	else if (format == 'u')
-	{
-		_logOutput->print(va_arg(*args, unsigned long), DEC);
-	}
-	else if (format == 'c')
-	{
-		_logOutput->print((char) va_arg(*args, int));
-	}
-	else if( format == 'C' ) {
-		register char c = (char) va_arg( *args, int );
-		if (c>=0x20 && c<0x7F) {
-			_logOutput->print(c);
-		} else {
-			_logOutput->print("0x");
-			if (c<0xF) _logOutput->print('0');
-			_logOutput->print(c, HEX);
-		}
+    switch (format) {
+        case '%':
+		    _logOutput->print(format);
+            break;
+        case 's': {
+            register char *s = (char *) va_arg(*args, int);
+            _logOutput->print(s);
+            break;
+        }
+        case 'S': {
+            register __FlashStringHelper *s = (__FlashStringHelper *) va_arg(*args, int);
+            _logOutput->print(s);
+            break;
+        }
+        case 'd':
+        case 'i':
+            _logOutput->print(va_arg(*args, int), DEC);
+            break;
+        case 'D':
+        case 'F':
+		    _logOutput->print(va_arg(*args, double));
+            break;
+        case 'x':
+		    _logOutput->print(va_arg(*args, int), HEX);
+            break;
+        case 'X': {
+            _logOutput->print("0x");
+            //_logOutput->print(va_arg(*args, int), HEX);
+            const uint szLong = sizeof(ulong);
+            unsigned long ul = va_arg(*args, unsigned long);
+            ulong mask = 0x0F << (szLong*8-4);
+            uint sigNibbles = 0;
+            for (uint x=0; x<szLong; x++) {
+                if (ul & mask) {
+                    sigNibbles = (szLong-x)*2;
+                    break;
+                }
+                mask = mask >> 4;
+                if (ul & mask) {
+                    sigNibbles = (szLong-x)*2-1;
+                    break;
+                }
+                mask = mask >> 4;
+            }
+            if (sigNibbles%2)
+                _logOutput->print('0');
+            _logOutput->print(ul, HEX);
+            break;
+        }
+        case 'p': {
+            register Printable *obj = (Printable *) va_arg(*args, int);
+            _logOutput->print(*obj);
+            break;
+        }
+        case 'b':
+		    _logOutput->print(va_arg(*args, int), BIN);
+            break;
+        case 'B': {
+    		_logOutput->print("0b");
+	    	_logOutput->print(va_arg(*args, int), BIN);
+            break;
+        }
+        case 'l':
+		    _logOutput->print(va_arg(*args, long), DEC);
+            break;
+        case 'L':
+		    _logOutput->print(va_arg(*args, long), HEX);
+            break;
+        case 'u':
+		    _logOutput->print(va_arg(*args, unsigned long), DEC);
+            break;
+        case 'U':
+		    _logOutput->print(va_arg(*args, unsigned long), HEX);
+            break;
+        case 'c':
+		    _logOutput->print((char) va_arg(*args, int));
+            break;
+        case 'C': {
+            register char c = (char) va_arg( *args, int );
+            if (c>=0x20 && c<0x7F) {
+                _logOutput->print(c);
+            } else {
+                _logOutput->print("0x");
+                if (c<0xF) _logOutput->print('0');
+                _logOutput->print(c, HEX);
+            }
+            break;
+        }
+        case 't': {
+            if (va_arg(*args, int) == 1)
+                _logOutput->print("T");
+            else
+                _logOutput->print("F");
+            break;
+        }
+        case 'T': {
+            if (va_arg(*args, int) == 1)
+                _logOutput->print(F("true"));
+            else
+                _logOutput->print(F("false"));
+            break;
+        }
+        default:
+		    _logOutput->print("n/s");
+            break;
     }
-	else if(format == 't')
-	{
-		if (va_arg(*args, int) == 1)
-		{
-			_logOutput->print("T");
-		}
-		else
-		{
-			_logOutput->print("F");
-		}
-	}
-	else if (format == 'T')
-	{
-		if (va_arg(*args, int) == 1)
-		{
-			_logOutput->print(F("true"));
-		}
-		else
-		{
-			_logOutput->print(F("false"));
-		}
-	}
 #endif
 }
  

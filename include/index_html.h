@@ -12,7 +12,10 @@ const char index_html[] PROGMEM = R"~~~(
 </head>
 
 <body>
-    <header>LucaFx - Lucas Style Light Effects</header>
+    <header>
+        <div>LucaFx - Lucas Style Light Effects</div>
+        <div>Board: <span id="boardName"></span></div>
+    </header>
     <main>
         <div id="updateStatus"></div>
         <section id="effects">
@@ -74,8 +77,12 @@ const char index_html[] PROGMEM = R"~~~(
             <dl id="statusArea">
                 <div>
                 <dt>Board</dt>
-                <dd>Temperature: <span id="boardTemp"></span></dd>
                 <dd>Mbed OS: <span id="mbedVersion"></span></dd>
+                <dd>Temperature: <span id="boardTemp"></span> <br/><span id="rangeTemp" class="indent2"></span></dd>
+                <dd>Vcc: <span id="boardVcc"></span> <br/><span id="rangeVcc" class="indent2"></span></dd>
+                <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
+                <dd>Up Time: <span id="upTime"></span> </dd>
+                <dd>Status code: <span id="overallStatus"></span></dd>
                 </div>
                 <div>
                 <dt>WiFi</dt>
@@ -89,6 +96,8 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Current: <span id="fxCurEffect"></span></dd>
                 <dd>Color Theme: <span id="fxCurHoliday"></span></dd>
                 <dd>Strip Brightness: <span id="fxBrightness"></span></dd>
+                <dd>Audio Effect Changes: <span id="totalAudioBumps"></span></dd>
+                <dd>Audio Level Histogram: <span id="audioLevelHistogram"></span></dd>
                 </div>
                 <div>
                 <dt>Time</dt>

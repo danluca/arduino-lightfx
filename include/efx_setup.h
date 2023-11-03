@@ -9,6 +9,7 @@
 #include "PaletteFactory.h"
 #include <ArduinoJson.h>
 #include "config.h"
+#include "util.h"
 
 #define capd(x, d) ((x<d)?d:x)
 #define capu(x, u) ((x>u)?u:x)
@@ -21,9 +22,18 @@
 #define qsuba(x, b) ((x>b)?x-b:0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
 #define asub(a, b)  ((a>b)?a-b:b-a)
 
+#define LED_EFFECT_ID_SIZE  6
 #define MAX_EFFECTS_COUNT   256
+#define AUDIO_HIST_BINS_COUNT   10
 
-const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
+extern const uint16_t turnOffSeq[] PROGMEM;
+extern const char csAutoFxRoll[];
+extern const char csStripBrightness[];
+extern const char csAudioThreshold[];
+extern const char csColorTheme[];
+extern const char csAutoColorAdjust[];
+extern const char csRandomSeed[];
+extern const char csCurFx[];
 
 extern const uint8_t dimmed;
 //extern const uint16_t FRAME_SIZE;
@@ -55,6 +65,14 @@ extern bool dirFwd;
 extern int8_t rot;
 extern int32_t dist;
 extern bool randhue;
+extern volatile uint16_t audioBumpThreshold;
+extern volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT];
+extern uint16_t totalAudioBumps;
+extern float minVcc;
+extern float maxVcc;
+extern float minTemp;
+extern float maxTemp;
+
 extern volatile bool fxBump;
 extern volatile uint16_t speed;
 extern volatile uint16_t curPos;
@@ -75,21 +93,20 @@ struct Viewport {
 };
 
 
-
-void setupStateLED();
-
 void stateLED(CRGB color);
 
 void ledStripInit();
 
-void fsInit();
-
 void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp = (Viewport)0, uint16_t pos = 1);
+
 void loopRight(CRGBSet &set, Viewport vwp = (Viewport)0, uint16_t pos = 1);
 
 void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp = (Viewport) 0, uint16_t pos = 1);
 
 void shuffleIndexes(uint16_t array[], uint16_t szArray);
+void shuffle(CRGBSet &set);
+
+uint16_t easeOutBounce(uint16_t x, uint16_t lim);
 
 void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
 
@@ -117,17 +134,12 @@ bool turnOffSpots();
 
 void resetGlobals();
 
-uint16_t easeOutBounce(uint16_t x, uint16_t lim);
-
 CRGB& setBrightness(CRGB& rgb, uint8_t br);
 uint8_t getBrightness(const CRGB& rgb);
 
 inline CHSV toHSV(const CRGB &rgb) { return rgb2hsv_approximate(rgb); }
 inline CRGB toRGB(const CHSV &hsv) { CRGB rgb{}; hsv2rgb_rainbow(hsv, rgb); return rgb; }
 
-uint8_t bmul8(uint8_t a, uint8_t b);
-uint8_t bscr8(uint8_t a, uint8_t b);
-uint8_t bovl8(uint8_t a, uint8_t b);
 void blendMultiply(CRGBSet &blendLayer, const CRGBSet &topLayer);
 void blendMultiply(CRGB &blendRGB, const CRGB &topRGB);
 void blendScreen(CRGBSet &blendLayer, const CRGBSet &topLayer);
@@ -135,6 +147,8 @@ void blendScreen(CRGB &blendRGB, const CRGB &topRGB);
 void blendOverlay(CRGBSet &blendLayer, const CRGBSet &topLayer);
 void blendOverlay(CRGB &blendRGB, const CRGB &topRGB);
 CRGB adjustBrightness(CRGB color, uint8_t bright);
+void saveState();
+void readState();
 
 namespace FxA {
     void fxRegister();
@@ -170,28 +184,24 @@ void fx_setup();
 
 void fx_run();
 
-void saveState();
-
-void readState();
-
-size_t readTextFile(const char *fname, String *s);
-size_t writeTextFile(const char *fname, String *s);
-bool removeFile(const char *fname);
-
 //base class/interface for all effects
 class LedEffect {
 protected:
     uint registryIndex = 0;
+    const char* const desc;
+    char id[LED_EFFECT_ID_SIZE] {};   //this is name of the class, max 5 characters (plus null terminal)
 public:
-    virtual void setup() = 0;
+    explicit LedEffect(const char* description);
+
+    virtual void setup();
 
     virtual void loop() = 0;
 
-    virtual const char *description() const = 0;
+    const char *description() const;
 
-    virtual const char *name() const = 0;
+    const char *name() const;
 
-    virtual void describeConfig(JsonArray &json) const = 0;
+    virtual JsonObject& describeConfig(JsonArray &json) const;
 
     void baseConfig(JsonObject &json) const;
 

@@ -8,6 +8,17 @@
 using namespace FxB;
 using namespace colTheme;
 
+//~ Effect description strings stored in flash
+const char fxb1Desc[] PROGMEM = "FXB1: rainbow";
+const char fxb2Desc[] PROGMEM = "FXB2: rainbow with glitter";
+const char fxb3Desc[] PROGMEM = "FXB3: confetti B";
+const char fxb4Desc[] PROGMEM = "FXB4: sinelon";
+const char fxb5Desc[] PROGMEM = "FXB5: juggle short segments";
+const char fxb6Desc[] PROGMEM = "FXB6: bpm";
+const char fxb7Desc[] PROGMEM = "FXB7: ease";
+const char fxb8Desc[] PROGMEM = "FXB8: fadein";
+const char fxb9Desc[] PROGMEM = "FxB9: juggle long segments";
+
 void FxB::fxRegister() {
     static FxB1 fxb1;
     static FxB2 fxB2;
@@ -21,8 +32,10 @@ void FxB::fxRegister() {
 }
 
 //FXB1
+FxB1::FxB1() : LedEffect(fxb1Desc) {}
+
 void FxB1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -45,32 +58,18 @@ void FxB::rainbow() {
     replicateSet(tpl, others);
 }
 
-const char *FxB1::description() const {
-    return "FXB1: rainbow";
-}
 
-FxB1::FxB1() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
-
-const char *FxB1::name() const {
-    return "FXB1";
-}
-
-void FxB1::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxB1::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
 //FXB2
-FxB2::FxB2() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxB2::FxB2() : LedEffect(fxb2Desc) {}
 
 void FxB2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -98,26 +97,11 @@ void FxB::addGlitter(fract8 chanceOfGlitter) {
     }
 }
 
-const char *FxB2::description() const {
-    return "FXB2: rainbow with glitter";
-}
-
-const char *FxB2::name() const {
-    return "FXB2";
-}
-
-void FxB2::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
 //FXB3
-FxB3::FxB3() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxB3::FxB3() : LedEffect(fxb3Desc) {}
 
 void FxB3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -130,8 +114,6 @@ void FxB3::loop() {
 
     EVERY_N_MILLISECONDS(50) {
         fxb_confetti();
-        FastLED.show(stripBrightness);
-        hue+=2;
     }
     EVERY_N_SECONDS(133) {
         if (countLedsOn(&tpl) > 10)
@@ -148,30 +130,21 @@ void FxB::fxb_confetti() {
     else
         tpl[pos] += CHSV(hue + random8(64), 200, 255);
     replicateSet(tpl, others);
+    FastLED.show(stripBrightness);
+    hue+=2;
 }
 
-const char *FxB3::description() const {
-    return "FXB3: confetti B";
-}
-
-const char *FxB3::name() const {
-    return "FXB3";
-}
-
-void FxB3::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxB3::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
 //FXB4
-FxB4::FxB4() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxB4::FxB4() : LedEffect(fxb4Desc) {}
 
 void FxB4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 192;
 }
@@ -195,28 +168,17 @@ void FxB::sinelon() {
     replicateSet(tpl, others);
 }
 
-const char *FxB4::description() const {
-    return "FXB4: sinelon";
-}
-
-const char *FxB4::name() const {
-    return "FXB4";
-}
-
-void FxB4::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxB4::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
 //FXB5
-FxB5::FxB5() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxB5::FxB5() : LedEffect(fxb5Desc) {}
 
 void FxB5::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = BRIGHTNESS;
 }
 
@@ -249,28 +211,17 @@ void FxB::juggle_short() {
     replicateSet(tpl, others);
 }
 
-const char *FxB5::description() const {
-    return "FXB5: juggle short segments";
-}
-
-const char *FxB5::name() const {
-    return "FXB5";
-}
-
-void FxB5::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxB5::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
 //FXB6
-FxB6::FxB6() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxB6::FxB6() : LedEffect(fxb6Desc) {}
 
 void FxB6::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -293,26 +244,11 @@ void FxB::bpm() {
     }
 }
 
-const char *FxB6::description() const {
-    return "FXB6: bpm";
-}
-
-const char *FxB6::name() const {
-    return "FXB6";
-}
-
-void FxB6::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
 //FXB7
-FxB7::FxB7() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxB7::FxB7() : LedEffect(fxb7Desc) {}
 
 void FxB7::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -342,28 +278,17 @@ void FxB::ease() {
     szStack = lerpVal;
 }
 
-const char *FxB7::description() const {
-    return "FXB7: ease";
-}
-
-const char *FxB7::name() const {
-    return "FXB7";
-}
-
-void FxB7::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxB7::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
 //FXB8
-FxB8::FxB8() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxB8::FxB8() : LedEffect(fxb8Desc) {}
 
 void FxB8::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -397,23 +322,15 @@ void FxB::fadein() {
     random16_set_seed(millis() >> 5);                                                      // Re-randomizing the random number seed for other routines.
 }
 
-const char *FxB8::description() const {
-    return "FXB8: fadein";
-}
-
-const char *FxB8::name() const {
-    return "FXB8";
-}
-
-void FxB8::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxB8::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
+// FxB9
 void FxB9::setup() {
-    resetGlobals();
+    LedEffect::setup();
     //brightness = BRIGHTNESS;
     fade = 2;   // How long should the trails be. Very low value = longer trails.
     hueDiff = 16;   // Incremental change in hue between each dot.
@@ -465,19 +382,4 @@ void FxB::juggle_long() {
     replicateSet(tpl, others);
 }
 
-const char *FxB9::description() const {
-    return "FxB9: juggle long segments";
-}
-
-const char *FxB9::name() const {
-    return "FxB9";
-}
-
-void FxB9::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxB9::FxB9() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxB9::FxB9() : LedEffect(fxb9Desc) {}

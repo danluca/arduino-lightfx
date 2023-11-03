@@ -9,6 +9,12 @@
 using namespace FxF;
 using namespace colTheme;
 
+//~ Effect description strings stored in flash
+const char fxf1Desc[] PROGMEM = "FxF1: beat wave";
+const char fxf2Desc[] PROGMEM = "FxF2: Halloween breathe with various color blends";
+const char fxf3Desc[] PROGMEM = "FxF3: Eye Blink";
+const char fxf4Desc[] PROGMEM = "FxF4: Bouncy segments";
+
 void FxF::fxRegister() {
     static FxF1 fxF1;
     static FxF2 fxF2;
@@ -16,12 +22,11 @@ void FxF::fxRegister() {
     static FxF4 fxF4;
 }
 
-FxF1::FxF1() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+// FxF1
+FxF1::FxF1() : LedEffect(fxf1Desc) {}
 
 void FxF1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     speed = 60;
     fade = 96;
     hue = random8();
@@ -51,26 +56,12 @@ void FxF1::loop() {
     }
 }
 
-const char *FxF1::description() const {
-    return "FxF1: beat wave";
-}
-
-const char *FxF1::name() const {
-    return "FxF1";
-}
-
-void FxF1::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
 // FxF2
-FxF2::FxF2() : pattern(frame(0, FRAME_SIZE-1)) {
-    registryIndex = fxRegistry.registerEffect(this);
+FxF2::FxF2() : LedEffect(fxf2Desc), pattern(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxF2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 2;
     hueDiff = 7;
     makePattern(hue);
@@ -111,26 +102,11 @@ void FxF2::makePattern(uint8_t hue) {
     loopRight(pattern, (Viewport)0, s0);
 }
 
-const char *FxF2::description() const {
-    return "FxF2: Halloween breathe with various color blends";
-}
-
-const char *FxF2::name() const {
-    return "FxF2";
-}
-
-void FxF2::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
 // FxF3
-FxF3::FxF3() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxF3::FxF3() : LedEffect(fxf3Desc) {}
 
 void FxF3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = random8();
     hueDiff = 11;
     //reset all eyes
@@ -162,19 +138,6 @@ void FxF3::loop() {
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
     }
-}
-
-const char *FxF3::description() const {
-    return "FxF3: Eye Blink";
-}
-
-const char *FxF3::name() const {
-    return "FxF3";
-}
-
-void FxF3::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
 }
 
 /**
@@ -332,7 +295,7 @@ bool EyeBlink::isActive() const {
 
 // FxF4
 void FxF4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     hueDiff = 9;
     curPos = 0;
@@ -404,21 +367,7 @@ void FxF4::loop() {
     }
 }
 
-const char *FxF4::description() const {
-    return "FxF4: Bouncy segments";
-}
-
-const char *FxF4::name() const {
-    return "FxF4";
-}
-
-void FxF4::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxF4::FxF4() : state(Bounce), set1(tpl(0, tpl.size()/2-1)), set2mir(tpl(tpl.size() - 1, tpl.size()/2)) {
-    registryIndex = fxRegistry.registerEffect(this);
+FxF4::FxF4() : LedEffect(fxf4Desc), state(Bounce), set1(tpl(0, tpl.size()/2-1)), set2mir(tpl(tpl.size() - 1, tpl.size()/2)) {
     short upLim = (tpl.size() + dotSize)/2;
     for (short x = 0; x < upLim; x++)
         bouncyCurve[x] = easeOutBounce(x, upLim - 1);

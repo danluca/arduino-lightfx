@@ -21,6 +21,11 @@ header {
     text-shadow: 3px 3px darkblue;
 }
 
+header div:nth-child(2) {
+    text-align: right;
+    padding-right: 2em;
+}
+
 footer {
     color: #AAAAAA;
     text-align: center;
@@ -102,6 +107,11 @@ footer {
     display: none;
 }
 
+#audioLevelHistogram {
+    padding-left: 2em;
+    display: inline-block;
+}
+
 .red {
     color: red;
 }
@@ -130,6 +140,8 @@ dl div {
 dd span {
     color: black;
 }
-
+.indent2 {
+    padding-left: 2em;
+}
 
 )~~~";

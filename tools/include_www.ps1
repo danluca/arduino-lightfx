@@ -8,9 +8,9 @@ function makeHeaderFile([System.IO.FileInfo]$file) {
     $constStrStart = "const char $fname[] PROGMEM = R`"~~~("
     $constStrEnd = ")~~~`";"
     $f=New-Item -Path "$($fname).h" -ItemType File -Force
-    $constStrStart | Out-File $f -Append
-    Get-Content $file.FullName -Raw | Out-File $f -Append
-    $constStrEnd | Out-File $f -Append 
+    $constStrStart | Out-File $f -Append -Encoding utf8
+    Get-Content $file.FullName -Raw -Encoding utf8 | Out-File $f -Append -Encoding utf8
+    $constStrEnd | Out-File $f -Append -Encoding utf8
 
     popd
 }

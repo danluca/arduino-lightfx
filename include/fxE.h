@@ -15,13 +15,9 @@ namespace FxE {
 
         void loop() override;
 
-        const char *description() const override;
-
         static void twinkle();
 
-        void describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         static void updateParams();
     };
@@ -34,12 +30,6 @@ namespace FxE {
 
         void loop() override;
 
-        const char *description() const override;
-
-        void describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
         void beatwave();
     };
 
@@ -51,11 +41,6 @@ namespace FxE {
 
         void loop() override;
 
-        const char *description() const override;
-
-        const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
     protected:
         const uint8_t sasquatchSize = 3;
         enum Movement {forward, backward, sasquatch, pauseF, pauseB};
@@ -73,19 +58,27 @@ namespace FxE {
 
         void loop() override;
 
-        const char *description() const override;
-
-        const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
-
         void serendipitous();
 
     protected:
         uint16_t Xorig = 0x012;
         uint16_t Yorig = 0x015;
-        uint16_t X, Y;
-        uint8_t index;
+        uint16_t X{}, Y{};
+        uint8_t index{};
+    };
+
+    class FxE5 : public LedEffect {
+    public:
+        FxE5();
+
+        void setup() override;
+
+        void loop() override;
+
+    protected:
+        CRGBSet wave2, wave3;
+        uint8_t clr1, clr2, clr3;
+        const uint8_t segSize = 8;
     };
 }
 
