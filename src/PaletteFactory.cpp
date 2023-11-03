@@ -2,7 +2,6 @@
 //
 
 #include "PaletteFactory.h"
-#include <TimeLib.h>
 
 using namespace colTheme;
 /// Other custom palette definitions
@@ -46,69 +45,6 @@ extern const TProgmemRGBPalette16 ChristmasColors_p FL_PROGMEM = {
          0x83E22B, 0x1493FF, 0xC6C4FF, 0xDC143C
  };
 
-/**
- * Figures out the holiday type from a given time - based on month and day elements
- * @param time
- * @return one of the pre-defined holidays, defaults to Party
- */
-Holiday colTheme::getHoliday(const time_t time) {
-    const uint16_t md = encodeMonthDay(time);
-    //Halloween: Oct 1 through Nov 3
-    if (md > 0xA00 && md < 0xB04)
-        return Halloween;
-    //Thanksgiving: Nov 04 through Nov 30
-    if (md > 0xB03 && md < 0xB1F)
-        return Thanksgiving;
-    //Christmas: Dec 23 through Dec 27
-    if (md > 0xC16 && md < 0xC1C)
-        return Christmas;
-    //NewYear: Dec 30 through Jan 2
-    if (md > 0xC1E || md < 0x103)
-        return NewYear;
-    //Party: all others (winter holidays)
-    return Party;
-}
-
-Holiday colTheme::currentHoliday() {
-    return isSysStatus(SYS_STATUS_WIFI) ? getHoliday(now()) : Party;
-}
-
-/**
- * Parse a string into a Holiday value - coded the hard way, supposedly a lookup map would be more convenient, but likely take more memory...
- * @param str
- * @return
- */
-Holiday colTheme::parseHoliday(const String *str) {
-    if (str->equalsIgnoreCase("Halloween"))
-        return Halloween;
-    else if (str->equalsIgnoreCase("Thanksgiving"))
-        return Thanksgiving;
-    else if (str->equalsIgnoreCase("Christmas"))
-        return Christmas;
-    else if (str->equalsIgnoreCase("NewYear"))
-        return NewYear;
-    return Party;
-}
-
-const char *colTheme::holidayToString(const Holiday hday) {
-    switch (hday) {
-        case None:
-            return "None";
-        case Party:
-            return "Party";
-        case Halloween:
-            return "Halloween";
-        case Thanksgiving:
-            return "Thanksgiving";
-        case Christmas:
-            return "Christmas";
-        case NewYear:
-            return "NewYear";
-        default:
-            return "N/R";
-    }
-}
-
 CRGBPalette16 PaletteFactory::mainPalette(const time_t time) {
     adjustHoliday(time);
     switch (holiday) {
@@ -151,7 +87,7 @@ void PaletteFactory::setAuto(bool autoMode) {
     autoChangeHoliday = autoMode;
 }
 
-void PaletteFactory::forceHoliday(const Holiday hday) {
+void PaletteFactory::setHoliday(const Holiday hday) {
     bool noPref = hday == None;
     setAuto(noPref);
     if (noPref)
@@ -161,16 +97,16 @@ void PaletteFactory::forceHoliday(const Holiday hday) {
 }
 
 Holiday PaletteFactory::adjustHoliday(const time_t time) {
-    holiday = autoChangeHoliday ? (time == 0 ? colTheme::currentHoliday() : getHoliday(time)) : holiday;
+    holiday = autoChangeHoliday ? (time == 0 ? currentHoliday() : buildHoliday(time)) : holiday;
     return holiday;
 }
 
-Holiday PaletteFactory::currentHoliday() const {
+Holiday PaletteFactory::getHoliday() const {
     return holiday;
 }
 
 bool PaletteFactory::isHolidayLimitedHue() const {
-    return currentHoliday() == Halloween;
+    return getHoliday() == Halloween;
 }
 
 CRGBPalette16 PaletteFactory::randomPalette(uint8_t ofsHue, time_t time) {

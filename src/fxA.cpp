@@ -91,7 +91,7 @@ void FxA1::loop() {
             tpl[curPos - szSegment + 1] = dot[0];
         replicateSet(tpl, others);
 
-        if (paletteFactory.currentHoliday() == Halloween)
+        if (paletteFactory.getHoliday() == Halloween)
             FastLED.show(random8(32, stripBrightness)); //add a flicker
         else
             FastLED.show(stripBrightness);
@@ -114,7 +114,7 @@ void FxA1::loop() {
 JsonObject & FxA1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -159,7 +159,7 @@ void FxA2::loop() {
                 break;
         }
         replicateSet(tpl, others);
-        if (paletteFactory.currentHoliday() == Halloween)
+        if (paletteFactory.getHoliday() == Halloween)
             FastLED.show(random8(32, stripBrightness)); //add a flicker
         else
             FastLED.show(stripBrightness);
@@ -194,7 +194,7 @@ void FxA2::loop() {
 JsonObject & FxA2::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -224,7 +224,7 @@ void FxA3::loop() {
         else
             shiftLeft(tpl, curPos < szSegment ? dot[curPos] : BKG);
         replicateSet(tpl, others);
-        if (paletteFactory.currentHoliday() == Halloween)
+        if (paletteFactory.getHoliday() == Halloween)
             FastLED.show(random8(32, stripBrightness)); //add a flicker
         else
             FastLED.show(stripBrightness);
@@ -245,7 +245,7 @@ void FxA3::loop() {
 
 JsonObject & FxA3::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -287,7 +287,7 @@ void FxA4::loop() {
             tpl[x] += (frR[x] > curBkg) && frL[x] ? CRGB::White : frL[x];
         }
         replicateSet(tpl, others);
-        if (paletteFactory.currentHoliday() == Halloween)
+        if (paletteFactory.getHoliday() == Halloween)
             FastLED.show(random8(32, stripBrightness)); //add a flicker
         else
             FastLED.show(stripBrightness);
@@ -311,7 +311,7 @@ void FxA4::loop() {
 
 JsonObject & FxA4::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -375,6 +375,6 @@ void FxA5::loop() {
 
 JsonObject & FxA5::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }

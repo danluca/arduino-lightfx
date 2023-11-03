@@ -49,7 +49,7 @@ void FxH1::setup() {
     brightness = 216;
 
     //Fire palette definition - for New Year get a blue fire
-    switch (paletteFactory.currentHoliday()) {
+    switch (paletteFactory.getHoliday()) {
         case NewYear: palette = CRGBPalette16( CRGB::Black, CRGB::Blue, CRGB::Aqua,  CRGB::White); break;
         case Christmas: palette = CRGBPalette16(CRGB::Red, CRGB::White, CRGB::Green); break;
         default: palette = CRGBPalette16(CRGB::Black, CRGB::Red, CRGB::OrangeRed, CRGB::Yellow); break;

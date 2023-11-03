@@ -86,12 +86,13 @@ void readState() {
 
         audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
         String savedHoliday = doc[csColorTheme].as<String>();
-        paletteFactory.forceHoliday(colTheme::parseHoliday(&savedHoliday));
+        paletteFactory.setHoliday(parseHoliday(&savedHoliday));
         bool autoColAdj = doc[csAutoColorAdjust].as<bool>();
         paletteFactory.setAuto(autoColAdj);
 
         Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T)"),
-                   stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, colTheme::holidayToString(paletteFactory.currentHoliday()), paletteFactory.isAuto());
+                   stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(
+                        paletteFactory.getHoliday()), paletteFactory.isAuto());
     }
 }
 
@@ -102,7 +103,7 @@ void saveState() {
     doc[csCurFx] = fxRegistry.curEffectPos();
     doc[csStripBrightness] = stripBrightness;
     doc[csAudioThreshold] = audioBumpThreshold;
-    doc[csColorTheme] = colTheme::holidayToString(paletteFactory.currentHoliday());
+    doc[csColorTheme] = holidayToString(paletteFactory.getHoliday());
     doc[csAutoColorAdjust] = paletteFactory.isAuto();
     String str;
     serializeJson(doc, str);
@@ -548,7 +549,7 @@ bool turnOffWipe(bool rightDir) {
  * <p>After 10pm - reduce to 40% of full brightness, i.e. scale with 102</p>
  */
 uint8_t adjustStripBrightness() {
-    if (!(stripBrightnessLocked || timeStatus() == timeNotSet)) {
+    if (!stripBrightnessLocked && isSysStatus(SYS_STATUS_WIFI)) {
         int hr = hour();
         fract8 scale;
         if (hr < 8)
@@ -723,7 +724,7 @@ void fx_setup() {
     random16_set_seed(millis() >> 2);
     resetGlobals();
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-    adjustStripBrightness();
+    //strip brightness adjustment needs time, that's why it is done in fxRun periodically. At the beginning we'll use the value from saved state
 
     //instantiate effect categories
     for (auto x : categorySetup)

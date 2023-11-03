@@ -7,7 +7,7 @@
 #include <Arduino.h>
 #include <Arduino_LSM6DSOX.h>
 #include <ArduinoECCX08.h>
-#include <TimeLib.h>
+#include "timeutil.h"
 #include "config.h"
 #include "secrets.h"
 #include "log.h"
@@ -24,10 +24,6 @@
 
 extern const char stateFileName[];
 
-uint8_t formatTime(char *buf, time_t time = 0);
-uint8_t formatDate(char *buf, time_t time = 0);
-uint8_t formatDateTime(char *buf, time_t time = 0);
-bool isDST(time_t time);
 float boardTemperature(bool bFahrenheit = false);
 float chipTemperature(bool bFahrenheit = false);
 float controllerVoltage();

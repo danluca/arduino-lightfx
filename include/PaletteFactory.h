@@ -6,19 +6,7 @@
 #include "util.h"
 #include <FastLED.h>
 
-uint16_t encodeMonthDay(time_t time = 0);
-
 namespace colTheme {
-    enum Holiday { None, Party, Halloween, Thanksgiving, Christmas, NewYear };
-
-    static Holiday getHoliday(time_t time);
-
-    Holiday currentHoliday();
-
-    Holiday parseHoliday(const String *str);
-
-    const char *holidayToString(Holiday hday);
-
     class PaletteFactory {
         bool autoChangeHoliday = true;
         Holiday holiday = None;
@@ -27,11 +15,11 @@ namespace colTheme {
 
         CRGBPalette16 secondaryPalette(time_t time = 0);
 
-        void forceHoliday(Holiday hday);
+        void setHoliday(Holiday hday);
 
         Holiday adjustHoliday(time_t time = 0);
 
-        Holiday currentHoliday() const;
+        Holiday getHoliday() const;
 
         bool isHolidayLimitedHue() const;
 

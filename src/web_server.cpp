@@ -203,7 +203,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     doc["curEffect"] = String(fxRegistry.curEffectPos());
     doc["auto"] = fxRegistry.isAutoRoll();
     doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
-    doc["holiday"] = holidayToString(paletteFactory.currentHoliday());
+    doc["holiday"] = holidayToString(paletteFactory.getHoliday());
     JsonArray hldList = doc.createNestedArray("holidayList");
     for (uint8_t hi = None; hi <= NewYear; hi++)
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
@@ -367,7 +367,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     JsonObject fx = doc.createNestedObject("fx");
     fx["count"] = fxRegistry.size();
     fx["auto"] = fxRegistry.isAutoRoll();
-    fx["holiday"] = holidayToString(paletteFactory.currentHoliday());   //could be forced to a fixed value
+    fx["holiday"] = holidayToString(paletteFactory.getHoliday());   //could be forced to a fixed value
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
@@ -452,7 +452,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     }
     if (doc.containsKey(strHoliday)) {
         String userHoliday = doc[strHoliday].as<String>();
-        paletteFactory.forceHoliday(parseHoliday(&userHoliday));
+        paletteFactory.setHoliday(parseHoliday(&userHoliday));
         upd[strHoliday] = paletteFactory.adjustHoliday();
     }
     if (doc.containsKey(strBrightness)) {

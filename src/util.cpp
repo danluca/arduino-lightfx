@@ -229,17 +229,6 @@ const uint8_t getSysStatus() {
     return sysStatus;
 }
 
-/**
- * Encodes month and day (in this order) into a short unsigned int (2 bytes) such that it can be easily used
- * for comparisons
- * @param time (optional) specific time to encode for. If not specified, current time is used.
- * @return 2 byte encoded month and day
- */
-uint16_t encodeMonthDay(const time_t time) {
-    time_t theTime = time == 0 ? now() : time;
-    return ((month(theTime) & 0xFF) << 8) + (day(theTime) & 0xFF);
-}
-
 bool isDST(const time_t time) {
     const uint16_t md = encodeMonthDay(time);
     // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
