@@ -104,6 +104,7 @@ void loopRight(CRGBSet &set, Viewport vwp = (Viewport)0, uint16_t pos = 1);
 void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp = (Viewport) 0, uint16_t pos = 1);
 
 void shuffleIndexes(uint16_t array[], uint16_t szArray);
+void shuffle(CRGBSet &set);
 
 uint16_t easeOutBounce(uint16_t x, uint16_t lim);
 

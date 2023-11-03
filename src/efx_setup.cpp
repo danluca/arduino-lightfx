@@ -57,7 +57,7 @@ float maxTemp = 0.0f;
  * Setup the strip LED lights to be controlled by FastLED library
  */
 void ledStripInit() {
-    FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
+    CFastLED::addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
     FastLED.setBrightness(BRIGHTNESS);
     FastLED.clear(true);
 }
@@ -143,8 +143,9 @@ void resetGlobals() {
     randhue = true;
     fxBump = false;
 
-    //shuffle led indexes
-    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+    //shuffle led indexes - when engaging secureRandom functions, each call is about 30ms. Shuffling a 320 items array (~200 swaps and secure random calls) takes about 6 seconds!
+    //commented in favor of regular shuffle (every 5 minutes) - see fxRun
+    //shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
 }
 
 /**
@@ -263,8 +264,8 @@ void replicateSet(const CRGBSet& src, CRGBSet& dest) {
     uint16_t x = 0;
     if (max(normSrcStart, normDestStart) < min(normSrcEnd, normDestEnd)) {
         //we have overlap - account for it
-        for (uint16_t y = 0; y < dest.size(); y++) {
-            CRGB* yPtr = &dest[y];
+        for (auto & y : dest) {
+            CRGB* yPtr = &y;
             if ((yPtr < normSrcStart) || (yPtr >= normSrcEnd)) {
                 (*yPtr) = src[x];
                 incr(x, 1, srcSize);
@@ -272,8 +273,8 @@ void replicateSet(const CRGBSet& src, CRGBSet& dest) {
         }
     } else {
         //no overlap - simpler assignment code
-        for (uint16_t y = 0; y < dest.size(); y++) {
-            dest[y] = src[x];
+        for (auto & y : dest) {
+            y = src[x];
             incr(x, 1, srcSize);
         }
     }
@@ -286,9 +287,8 @@ void replicateSet(const CRGBSet& src, CRGBSet& dest) {
  */
 void shuffleIndexes(uint16_t array[], uint16_t szArray) {
     //populates the indexes in ascending order
-    for (uint16_t x = 0; x < szArray; x++) {
+    for (uint16_t x = 0; x < szArray; x++)
         array[x] = x;
-    }
     //shuffle indexes
     uint16_t swIter = (szArray >> 1) + (szArray >> 3);
     for (uint16_t x = 0; x < swIter; x++) {
@@ -296,6 +296,17 @@ void shuffleIndexes(uint16_t array[], uint16_t szArray) {
         uint16_t tmp = array[x];
         array[x] = array[r];
         array[r] = tmp;
+    }
+}
+
+void shuffle(CRGBSet &set) {
+    //perform a number of swaps with random elements of the array - randomness provided by ECC608 secure random number generator
+    uint16_t swIter = (set.size() >> 1) + (set.size() >> 4);
+    for (uint16_t x = 0; x < swIter; x++) {
+        uint16_t r = secRandom16(0, set.size());
+        CRGB tmp = set[x];
+        set[x] = set[r];
+        set[r] = tmp;
     }
 }
 
@@ -710,6 +721,9 @@ uint16_t Viewport::size() const {
 void fx_setup() {
     ledStripInit();
     random16_set_seed(millis() >> 2);
+    resetGlobals();
+    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+    adjustStripBrightness();
 
     //instantiate effect categories
     for (auto x : categorySetup)
