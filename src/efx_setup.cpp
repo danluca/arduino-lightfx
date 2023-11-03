@@ -77,7 +77,7 @@ void readState() {
         fxRegistry.autoRoll(autoAdvance);
 
         uint16_t seed = doc[csRandomSeed].as<uint16_t>();
-        random16_set_seed(seed);
+        random16_add_entropy(seed);
 
         uint16_t fx = doc[csCurFx].as<uint16_t>();
         fxRegistry.nextEffectPos(fx);
@@ -292,7 +292,7 @@ void shuffleIndexes(uint16_t array[], uint16_t szArray) {
     //shuffle indexes
     uint16_t swIter = (szArray >> 1) + (szArray >> 3);
     for (uint16_t x = 0; x < swIter; x++) {
-        uint16_t r = secRandom16(0, szArray);
+        uint16_t r = random16(0, szArray);
         uint16_t tmp = array[x];
         array[x] = array[r];
         array[r] = tmp;
@@ -303,7 +303,7 @@ void shuffle(CRGBSet &set) {
     //perform a number of swaps with random elements of the array - randomness provided by ECC608 secure random number generator
     uint16_t swIter = (set.size() >> 1) + (set.size() >> 4);
     for (uint16_t x = 0; x < swIter; x++) {
-        uint16_t r = secRandom16(0, set.size());
+        uint16_t r = random16(0, set.size());
         CRGB tmp = set[x];
         set[x] = set[r];
         set[r] = tmp;
@@ -613,7 +613,7 @@ uint16_t EffectRegistry::curEffectPos() const {
 }
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
-    currentEffect = autoSwitch ? secRandom16(0, effectsCount) : currentEffect;
+    currentEffect = autoSwitch ? random16(0, effectsCount) : currentEffect;
     return currentEffect;
 }
 
@@ -677,6 +677,7 @@ void LedEffect::baseConfig(JsonObject &json) const {
     json["description"] = description();
     json["name"] = name();
     json["registryIndex"] = getRegistryIndex();
+    json["palette"] = holidayToString(paletteFactory.getHoliday());
 }
 
 LedEffect::LedEffect(const char *description) : desc(description) {
@@ -724,8 +725,9 @@ uint16_t Viewport::size() const {
 //Setup all effects -------------------
 void fx_setup() {
     ledStripInit();
-    random16_set_seed(millis() >> 2);
-    //strip brightness adjustment needs time, that's why it is done in fxRun periodically. At the beginning we'll use the value from saved state
+    //if engaging stdlib's random() - we'd need to initialize that as well (randomSeed()), separate implementation. The random8/16 are FastLED specific
+    random16_set_seed(secRandom16());
+    //strip brightness adjustment needs the time, that's why it is done in fxRun periodically. At the beginning we'll use the value from saved state
 
     //instantiate effect categories
     for (auto x : categorySetup)
@@ -765,6 +767,7 @@ void fx_run() {
     EVERY_N_MINUTES(5) {
         fxRegistry.nextRandomEffectPos();
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
+        random16_add_entropy(secRandom16());        //this may or may not help
         stripBrightness = adjustStripBrightness();
         saveState();
     }

@@ -15,6 +15,10 @@ static uint8_t sysStatus = 0x00;    //system status bit array
 
 LittleFSWrapper *fsPtr;
 
+inline static float toFahrenheit(float celsius) {
+    return celsius * 9.0f / 5 + 32;
+}
+
 float boardTemperature(bool bFahrenheit) {
     if (IMU.temperatureAvailable()) {
         float tempC = 0.0f;
@@ -22,11 +26,9 @@ float boardTemperature(bool bFahrenheit) {
 #ifndef DISABLE_LOGGING
         // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
         // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
-        Log.infoln(F("Board temperature %D 'C (%D 'F)"), tempC, tempC*9.0/5+32);
+        Log.infoln(F("Board temperature %D 'C (%D 'F)"), tempC, toFahrenheit(tempC));
 #endif
-        if (bFahrenheit)
-            return tempC*9.0f/5+32;
-        return tempC;
+        return bFahrenheit ? toFahrenheit(tempC) : tempC;
     }
     return IMU_TEMPERATURE_NOT_AVAILABLE;
 }
@@ -46,7 +48,7 @@ float chipTemperature(bool bFahrenheit) {
     uint curAdc = adc_get_selected_input();
     const uint avgSize = 8;   //we'll average 8 readings back to back
 
-    adc_select_input(4);
+    adc_select_input(4);    //internal temperature sensor is on ADC channel 4
     uint valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += adc_read();
@@ -57,9 +59,33 @@ float chipTemperature(bool bFahrenheit) {
     //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
     //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
     float temp = 27.0f - (tV - CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27)/CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE;
-    if (bFahrenheit)
-        return temp*9.0f/5+32;
-    return temp;
+    return bFahrenheit ? toFahrenheit(temp) : temp;
+}
+
+/**
+ * Adapted from article https://rheingoldheavy.com/better-arduino-random-values/
+ * <p>Not fast, timed at 64ms on Arduino Uno allegedly</p>
+ * <p>The residual floating voltage of the unconnected AD pin A1 is read multiple times and assembled into a 32 bit value</p>
+ * @return a good 32bit random value from the residual electric signal on an Analog-Digital unconnected (floating) pin
+ */
+ulong adcRandom() {
+    uint8_t  seedBitValue  = 0;
+    uint8_t  seedByteValue = 0;
+    uint32_t seedWordValue = 0;
+
+    for (uint8_t wordShift = 0; wordShift < 4; wordShift++) {       // 4 bytes in a 32 bit word
+        for (uint8_t byteShift = 0; byteShift < 8; byteShift+=2) {  // 8 bits in a byte, advance by 2 - we collect 2 bits (last 2 LSB) with each analog read
+            for (uint8_t bitSum = 0; bitSum < 8; bitSum++) {        // 8 samples of analog pin
+                seedBitValue += (analogRead(A1) & 0x03);  // Flip the coin 8 times, adding the results together
+            }
+            delay(1);                                               // Delay a single millisecond to allow the pin to fluctuate
+            seedByteValue |= ((seedBitValue & 0x03) << byteShift);  // Build a stack of eight flipped coins
+            seedBitValue = 0;                                       // Clear out the previous coin value
+        }
+        seedWordValue |= ((uint32_t)seedByteValue << (8 * wordShift));    // Build a stack of four sets of 8 coins (shifting right creates a larger number so cast to 32bit)
+        seedByteValue = 0;                                                // Clear out the previous stack value
+    }
+    return (seedWordValue);
 }
 
 /**
@@ -236,14 +262,35 @@ bool isDST(const time_t time) {
     return md > 0x030C && md < 0x0B05;
 }
 
-uint8_t secRandom8(uint8_t minLim, uint8_t maxLim) {
+/**
+ * Leverages ECC608B's High-Quality NIST SP 800-90A/B/C Random Number Generator
+ * <p>It is slow - takes about 30ms</p>
+ * @param minLim minimum value, defaults to 0
+ * @param maxLim maximum value, defaults to max unsigned 8 bits (UINT8_MAX)
+ * @return
+ */
+ uint8_t secRandom8(uint8_t minLim, uint8_t maxLim) {
     return secRandom(minLim, maxLim > 0 ? maxLim : UINT8_MAX);
 }
 
+/**
+ * Leverages ECC608B's High-Quality NIST SP 800-90A/B/C Random Number Generator
+ * <p>It is slow - takes about 30ms</p>
+ * @param minLim minimum value, defaults to 0
+ * @param maxLim maximum value, defaults to max unsigned 16 bits (UINT16_MAX)
+ * @return
+ */
 uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
     return secRandom(minLim, maxLim > 0 ? maxLim : UINT16_MAX);
 }
 
+/**
+ * Leverages ECC608B's High-Quality NIST SP 800-90A/B/C Random Number Generator
+ * <p>It is slow - takes about 30ms</p>
+ * @param minLim minimum value, defaults to 0
+ * @param maxLim maximum value, defaults to max signed 32 bits (INT32_MAX)
+ * @return a high quality random number in the range specified
+ */
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
     long low = (long)minLim;
     long high = maxLim > 0 ? (long)maxLim : INT32_MAX;

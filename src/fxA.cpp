@@ -114,7 +114,6 @@ void FxA1::loop() {
 JsonObject & FxA1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -194,7 +193,6 @@ void FxA2::loop() {
 JsonObject & FxA2::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -244,9 +242,7 @@ void FxA3::loop() {
 }
 
 JsonObject & FxA3::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
-    return obj;
+    return LedEffect::describeConfig(json);
 }
 
 // FX A4
@@ -310,9 +306,7 @@ void FxA4::loop() {
 }
 
 JsonObject & FxA4::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
-    return obj;
+    return LedEffect::describeConfig(json);
 }
 
 // Fx A5
@@ -374,7 +368,5 @@ void FxA5::loop() {
 }
 
 JsonObject & FxA5::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
-    return obj;
+    return LedEffect::describeConfig(json);
 }

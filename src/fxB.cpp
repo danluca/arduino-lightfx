@@ -62,7 +62,6 @@ void FxB::rainbow() {
 JsonObject & FxB1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -138,7 +137,6 @@ void FxB::fxb_confetti() {
 JsonObject & FxB3::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -173,7 +171,6 @@ void FxB::sinelon() {
 JsonObject & FxB4::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -217,7 +214,6 @@ void FxB::juggle_short() {
 JsonObject & FxB5::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -285,7 +281,6 @@ void FxB::ease() {
 JsonObject & FxB7::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 
@@ -330,7 +325,6 @@ void FxB::fadein() {
 JsonObject & FxB8::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
-    obj["palette"] = holidayToString(paletteFactory.getHoliday());
     return obj;
 }
 

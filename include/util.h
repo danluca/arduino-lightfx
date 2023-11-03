@@ -27,6 +27,7 @@ extern const char stateFileName[];
 float boardTemperature(bool bFahrenheit = false);
 float chipTemperature(bool bFahrenheit = false);
 float controllerVoltage();
+ulong adcRandom();
 void setupStateLED();
 void updateStateLED(uint32_t colorCode);
 void updateStateLED(uint8_t red, uint8_t green, uint8_t blue);
