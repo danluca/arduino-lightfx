@@ -193,7 +193,7 @@ protected:
 public:
     explicit LedEffect(const char* description);
 
-    virtual void setup() = 0;
+    virtual void setup();
 
     virtual void loop() = 0;
 

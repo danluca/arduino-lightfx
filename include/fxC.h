@@ -27,7 +27,7 @@ namespace FxC {
     public:
         FxC2();
 
-        void setup() override;
+        //void setup() override;
 
         void loop() override;
     };

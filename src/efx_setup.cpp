@@ -708,6 +708,10 @@ const char *LedEffect::description() const {
     return desc;
 }
 
+void LedEffect::setup() {
+    resetGlobals();
+}
+
 // Viewport
 Viewport::Viewport(uint16_t high) : Viewport(0, high) {}
 
@@ -729,9 +733,8 @@ void fx_setup() {
     //initialize ALL the effects configured in the functions above
     //fxRegistry.setup();
     readState();
-    resetGlobals();
-    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
 
+    shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     //ensure the current effect is set up
     fxRegistry.getCurrentEffect()->setup();
 }

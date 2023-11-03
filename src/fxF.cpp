@@ -26,7 +26,7 @@ void FxF::fxRegister() {
 FxF1::FxF1() : LedEffect(fxf1Desc) {}
 
 void FxF1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     speed = 60;
     fade = 96;
     hue = random8();
@@ -61,7 +61,7 @@ FxF2::FxF2() : LedEffect(fxf2Desc), pattern(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxF2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 2;
     hueDiff = 7;
     makePattern(hue);
@@ -106,7 +106,7 @@ void FxF2::makePattern(uint8_t hue) {
 FxF3::FxF3() : LedEffect(fxf3Desc) {}
 
 void FxF3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = random8();
     hueDiff = 11;
     //reset all eyes
@@ -295,7 +295,7 @@ bool EyeBlink::isActive() const {
 
 // FxF4
 void FxF4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     hueDiff = 9;
     curPos = 0;

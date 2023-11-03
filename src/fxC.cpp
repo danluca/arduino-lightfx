@@ -37,7 +37,7 @@ FxC1::FxC1() : LedEffect(fxc1Desc), setA(frame(0, FRAME_SIZE-1)), setB(leds, FRA
 }
 
 void FxC1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = 176;
 }
 
@@ -86,9 +86,9 @@ void FxC1::animationB() {
 
 FxC2::FxC2() : LedEffect(fxc2Desc) {}
 
-void FxC2::setup() {
-    resetGlobals();
-}
+//void FxC2::setup() {
+//    LedEffect::setup();
+//}
 
 void FxC2::loop() {
     uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
@@ -124,7 +124,7 @@ const uint32_t yscale = 7680;                                         // Wouldn'
 FxC3::FxC3() : LedEffect(fxc3Desc) {}
 
 void FxC3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = 255;
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
@@ -165,7 +165,7 @@ JsonObject & FxC3::describeConfig(JsonArray &json) const {
 FxC4::FxC4() : LedEffect(fxc4Desc) {}
 
 void FxC4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = BRIGHTNESS;
     frequency = 10; // controls the interval between strikes (seconds)
     flashes = 7;   //the upper limit of flashes per strike
@@ -200,7 +200,7 @@ void FxC4::loop() {
 FxC5::FxC5() : LedEffect(fxc5Desc) {}
 
 void FxC5::setup() {
-    resetGlobals();
+    LedEffect::setup();
     palette = paletteFactory.secondaryPalette();
     targetPalette = paletteFactory.mainPalette();
     saturation = 255;
@@ -260,7 +260,7 @@ void FxC5::matrix() {
 FxC6::FxC6() : LedEffect(fxc6Desc) {}
 
 void FxC6::setup() {
-    resetGlobals();
+    LedEffect::setup();
     palette = paletteFactory.secondaryPalette();
     targetPalette = paletteFactory.mainPalette();
     speed = 8;

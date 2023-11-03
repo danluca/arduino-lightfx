@@ -45,7 +45,7 @@ FxH1::FxH1() : LedEffect(fxh1Desc), fires{tpl(0, FRAME_SIZE/2-1), tpl(FRAME_SIZE
 }
 
 void FxH1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = 216;
 
     //Fire palette definition - for New Year get a blue fire
@@ -152,7 +152,7 @@ JsonObject & FxH1::describeConfig(JsonArray &json) const {
 FxH2::FxH2() : LedEffect(fxh2Desc) {}
 
 void FxH2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     speed = 40;
 }
 
@@ -222,7 +222,7 @@ JsonObject & FxH2::describeConfig(JsonArray &json) const {
 FxH3::FxH3() : LedEffect(fxh3Desc) {}
 
 void FxH3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hueDiff = 15;
     hue = random8();
 }

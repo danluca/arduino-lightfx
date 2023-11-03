@@ -34,7 +34,7 @@ void FxE::fxRegister() {
 FxE1::FxE1() : LedEffect(fxe1Desc) {}
 
 void FxE1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     speed = 20;
     saturation = 255;
     brightness = 224;
@@ -90,7 +90,7 @@ JsonObject & FxE1::describeConfig(JsonArray &json) const {
 FxE2::FxE2() : LedEffect(fxe2Desc) {}
 
 void FxE2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
     saturation = 255;
@@ -130,7 +130,7 @@ FxE3::FxE3() : LedEffect(fxe3Desc), shdOverlay(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxE3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     fade = dimmed;
     delta = 18;
     segStart = segEnd = 0;
@@ -220,7 +220,7 @@ void FxE3::loop() {
 FxE4::FxE4() : LedEffect(fxe4Desc) {}
 
 void FxE4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     X = Xorig;
     Y = Yorig;
 }
@@ -265,7 +265,7 @@ void FxE4::serendipitous() {
 
 
 void FxE5::setup() {
-    resetGlobals();
+    LedEffect::setup();
     clr1 = random8();
     clr2 = clr1+64;
     clr3 = clr2+64;

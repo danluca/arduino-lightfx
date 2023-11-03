@@ -35,7 +35,7 @@ void FxB::fxRegister() {
 FxB1::FxB1() : LedEffect(fxb1Desc) {}
 
 void FxB1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -70,7 +70,7 @@ JsonObject & FxB1::describeConfig(JsonArray &json) const {
 FxB2::FxB2() : LedEffect(fxb2Desc) {}
 
 void FxB2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -102,7 +102,7 @@ void FxB::addGlitter(fract8 chanceOfGlitter) {
 FxB3::FxB3() : LedEffect(fxb3Desc) {}
 
 void FxB3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -146,7 +146,7 @@ JsonObject & FxB3::describeConfig(JsonArray &json) const {
 FxB4::FxB4() : LedEffect(fxb4Desc) {}
 
 void FxB4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 192;
 }
@@ -181,7 +181,7 @@ JsonObject & FxB4::describeConfig(JsonArray &json) const {
 FxB5::FxB5() : LedEffect(fxb5Desc) {}
 
 void FxB5::setup() {
-    resetGlobals();
+    LedEffect::setup();
     brightness = BRIGHTNESS;
 }
 
@@ -225,7 +225,7 @@ JsonObject & FxB5::describeConfig(JsonArray &json) const {
 FxB6::FxB6() : LedEffect(fxb6Desc) {}
 
 void FxB6::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -252,7 +252,7 @@ void FxB::bpm() {
 FxB7::FxB7() : LedEffect(fxb7Desc) {}
 
 void FxB7::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -293,7 +293,7 @@ JsonObject & FxB7::describeConfig(JsonArray &json) const {
 FxB8::FxB8() : LedEffect(fxb8Desc) {}
 
 void FxB8::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     brightness = 148;
 }
@@ -336,7 +336,7 @@ JsonObject & FxB8::describeConfig(JsonArray &json) const {
 
 // FxB9
 void FxB9::setup() {
-    resetGlobals();
+    LedEffect::setup();
     //brightness = BRIGHTNESS;
     fade = 2;   // How long should the trails be. Very low value = longer trails.
     hueDiff = 16;   // Incremental change in hue between each dot.

@@ -34,7 +34,7 @@ void FxD::fxRegister() {
 FxD1::FxD1() : LedEffect(fxd1Desc) {}
 
 void FxD1::setup() {
-    resetGlobals();
+    LedEffect::setup();
 
     fade = 8;
     hue = 50;
@@ -96,7 +96,7 @@ void FxD1::ChangeMe() {
 FxD2::FxD2() : LedEffect(fxd2Desc) {}
 
 void FxD2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     dotBpm = 21;
     fade = 31;
 }
@@ -131,7 +131,7 @@ void FxD2::dot_beat() {
 
 // Fx D3
 void FxD3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
     monoColor = random8(224);   //colors above this index in the Halloween palette are black
@@ -178,7 +178,7 @@ FxD3::FxD3() : LedEffect(fxd3Desc) {}
 FxD4::FxD4() : LedEffect(fxd4Desc) {}
 
 void FxD4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     hue = 0;
     hueDiff = 1;
 }
@@ -224,7 +224,7 @@ void FxD4::rainbow_march() {
 FxD5::FxD5() : LedEffect(fxd5Desc) {}
 
 void FxD5::setup() {
-    resetGlobals();
+    LedEffect::setup();
 }
 
 void FxD5::loop() {

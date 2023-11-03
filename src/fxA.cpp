@@ -64,7 +64,7 @@ FxA1::FxA1() : LedEffect(fxa1Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA1::setup() {
-    resetGlobals();
+    LedEffect::setup();
     makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
@@ -123,7 +123,7 @@ FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA2::setup() {
-    resetGlobals();
+    LedEffect::setup();
     makeDot();
 }
 
@@ -203,7 +203,7 @@ FxA3::FxA3() : LedEffect(fxa3Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA3::setup() {
-    resetGlobals();
+    LedEffect::setup();
     makeDot(ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND), szSegment);
     bFwd = true;
 }
@@ -255,7 +255,7 @@ FxA4::FxA4() : LedEffect(fxa4Desc), dot(frame(0, FRAME_SIZE-1)), frL(frame(FRAME
 }
 
 void FxA4::setup() {
-    resetGlobals();
+    LedEffect::setup();
     szSegment = 3;
     szStackSeg = 2;
     curBkg = BKG;
@@ -320,7 +320,7 @@ FxA5::FxA5() : LedEffect(fxa5Desc), ovr(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA5::setup() {
-    resetGlobals();
+    LedEffect::setup();
     lastColorIndex = 3;
     colorIndex = 7;
     makeFrame();
