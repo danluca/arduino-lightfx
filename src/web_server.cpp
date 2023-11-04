@@ -1,4 +1,5 @@
 #include "web_server.h"
+#include "version.h"
 #include "log.h"
 
 static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
@@ -200,6 +201,9 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     StaticJsonDocument<4098> doc;
 
     doc["boardName"] = BOARD_NAME;
+    doc["fwVersion"] = BUILD_VERSION;
+    doc["fwBranch"] = GIT_BRANCH;
+    doc["buildTime"] = BUILD_TIME;
     doc["curEffect"] = String(fxRegistry.curEffectPos());
     doc["auto"] = fxRegistry.isAutoRoll();
     doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
@@ -207,9 +211,8 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     JsonArray hldList = doc.createNestedArray("holidayList");
     for (uint8_t hi = None; hi <= NewYear; hi++)
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
-    time_t curTime = now();
     char datetime[20];
-    formatDateTime(datetime, curTime);
+    formatDateTime(datetime, now());
     doc["currentTime"] = datetime;
     bool bDST = isSysStatus(SYS_STATUS_DST);
     doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
