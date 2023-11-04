@@ -15,6 +15,6 @@ buildTime=datetime.now()
 
 print("'-w'")
 print("'-DGIT_COMMIT=\"%s\"'" % revision)
-print("'-DGIT_COMMIT_SHORT=\"%s\"'" % revision[0:7])
+print("'-DGIT_COMMIT_SHORT=\"%s\"'" % revision[0:8])
 print("'-DGIT_BRANCH=\"%s\"'" % branch)
 print(f"'-DBUILD_TIME=\"{buildTime:%Y-%m-%d %H:%M:%S}\"'")
