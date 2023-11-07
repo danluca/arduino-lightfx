@@ -54,6 +54,12 @@ uint16_t FxA::fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg) {
     return szStack;
 }
 
+bool turnOff(uint8_t selector) {
+    if (selector)
+        return turnOffWipe(random8(2));
+    else
+        return turnOffSpots();
+}
 
 ///////////////////////////////////////
 // Effect Definitions - setup and loop
@@ -65,6 +71,7 @@ FxA1::FxA1() : LedEffect(fxa1Desc), dot(frame(0, FRAME_SIZE-1)) {
 
 void FxA1::setup() {
     LedEffect::setup();
+    rot = 0;
     makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
@@ -79,7 +86,7 @@ void FxA1::makeDot(CRGB color, uint16_t szDot) {
 
 void FxA1::loop() {
     if (mode == TurnOff) {
-        if (turnOffSpots())
+        if (turnOff(rot))
             resetStack();
         return;
     }
@@ -100,6 +107,11 @@ void FxA1::loop() {
         if (curPos == 0) {
             fxa_stackAdjust(tpl, szStackSeg);
             mode = szStack == tpl.size() ? TurnOff : Chase;
+            if (szStack == tpl.size()) {
+                mode = TurnOff;
+                incr(rot, 1, 2);
+            } else
+                mode = Chase;
             //save the color
             lastColorIndex = colorIndex;
             colorIndex = random8();
@@ -124,6 +136,7 @@ FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 void FxA2::setup() {
     LedEffect::setup();
     makeDot();
+    rot = 0;
 }
 
 void FxA2::makeDot() {
@@ -138,7 +151,7 @@ void FxA2::makeDot() {
 
 void FxA2::loop() {
     if (mode == TurnOff) {
-        if (turnOffWipe()) resetStack();
+        if (turnOff(rot)) resetStack();
         return;
     }
     EVERY_N_MILLISECONDS_I(a2Timer, speed) {
@@ -185,8 +198,10 @@ void FxA2::loop() {
     }
 
     EVERY_N_SECONDS(127) {
-        if (countLedsOn(&tpl) > 10)
+        if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
+            incr(rot, 1, 2);
+        }
     }
 }
 
@@ -256,6 +271,7 @@ void FxA4::setup() {
     szStackSeg = 2;
     curBkg = BKG;
     brightness = 192;
+    rot = 0;
     makeDot(ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND), szSegment);
 }
 
@@ -267,7 +283,7 @@ void FxA4::makeDot(CRGB color, uint16_t szDot) {
 
 void FxA4::loop() {
     if (mode == TurnOff) {
-        if (turnOffSpots())
+        if (turnOff(rot))
             resetStack();
         return;
     }
@@ -300,8 +316,10 @@ void FxA4::loop() {
     }
 
     EVERY_N_SECONDS(127) {
-        if (countLedsOn(&tpl) > 10)
+        if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
+            incr(rot, 1, 2);
+        }
     }
 }
 
@@ -317,6 +335,7 @@ void FxA5::setup() {
     LedEffect::setup();
     lastColorIndex = 3;
     colorIndex = 7;
+    rot = 0;
     makeFrame();
 }
 
@@ -336,9 +355,8 @@ void FxA5::makeFrame() {
 
 void FxA5::loop() {
     if (mode == TurnOff) {
-        if (turnOffWipe()) {
+        if (turnOff(rot))
             mode = Chase;
-        }
         return;
     }
 
@@ -362,8 +380,10 @@ void FxA5::loop() {
     }
 
     EVERY_N_SECONDS(127) {
-        if (countLedsOn(&tpl) > 10)
+        if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
+            incr(rot, 1, 2);
+        }
     }
 }
 

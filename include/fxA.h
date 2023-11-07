@@ -22,10 +22,9 @@ namespace FxA {
         JsonObject & describeConfig(JsonArray &json) const override;
 
     protected:
-        CRGBSet dot;
-
         void makeDot(CRGB color, uint16_t szDot);
 
+        CRGBSet dot;
         uint8_t szSegment = 3;
         uint8_t szStackSeg = 2;
     };
