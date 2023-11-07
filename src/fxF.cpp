@@ -392,6 +392,12 @@ void FxF5::loop() {
 
 void FxF5::setup() {
     LedEffect::setup();
+    for (auto & sp : sparkPos)
+        sp = 0;
+    for (auto & sp : sparkVel)
+        sp = 0;
+    for (auto & sp : sparkCol)
+        sp = 0;
 }
 
 /**
@@ -412,11 +418,12 @@ void FxF5::flare() {
     }
     // launch
     tpl = BKG;
+    uint16_t highLim = tpl.size()-1;
     while (flareVel >= -.2) {
         // sparks
         for (int i = 0; i < 5; i++) {
             sparkPos[i] += sparkVel[i];
-            sparkPos[i] = constrain(sparkPos[i], 0, tpl.size());
+            sparkPos[i] = constrain(sparkPos[i], 0, highLim);
             sparkVel[i] += gravity;
             sparkCol[i] += -.8;
             sparkCol[i] = constrain(sparkCol[i], 0, 255);
@@ -428,6 +435,7 @@ void FxF5::flare() {
         tpl[int(flarePos)] = CHSV(0, 0, int(brightness * 255));
         replicateSet(tpl, others);
         flarePos += flareVel;
+        flarePos = constrain(flarePos, 0, highLim);
         flareVel += gravity;
         brightness *= .985;
 
@@ -460,7 +468,7 @@ void FxF5::explode() {
         tpl = BKG;
         for (int i = 0; i < nSparks; i++) {
             sparkPos[i] += sparkVel[i];
-            sparkPos[i] = constrain(sparkPos[i], 0, tpl.size());
+            sparkPos[i] = constrain(sparkPos[i], 0, tpl.size()-1);
             sparkVel[i] += dying_gravity;
             sparkCol[i] *= .99;
             sparkCol[i] = constrain(sparkCol[i], 0, 255); // red cross dissolve

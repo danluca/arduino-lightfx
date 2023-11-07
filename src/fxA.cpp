@@ -56,7 +56,7 @@ uint16_t FxA::fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg) {
 
 bool turnOff(uint8_t selector) {
     if (selector)
-        return turnOffWipe(random8(2));
+        return turnOffWipe(selector % 2);
     else
         return turnOffSpots();
 }
@@ -109,7 +109,7 @@ void FxA1::loop() {
             mode = szStack == tpl.size() ? TurnOff : Chase;
             if (szStack == tpl.size()) {
                 mode = TurnOff;
-                incr(rot, 1, 2);
+                incr(rot, 1, 3);
             } else
                 mode = Chase;
             //save the color
@@ -200,7 +200,7 @@ void FxA2::loop() {
     EVERY_N_SECONDS(127) {
         if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
-            incr(rot, 1, 2);
+            incr(rot, 1, 3);
         }
     }
 }
@@ -318,7 +318,7 @@ void FxA4::loop() {
     EVERY_N_SECONDS(127) {
         if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
-            incr(rot, 1, 2);
+            incr(rot, 1, 3);
         }
     }
 }
@@ -382,7 +382,7 @@ void FxA5::loop() {
     EVERY_N_SECONDS(127) {
         if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
-            incr(rot, 1, 2);
+            incr(rot, 1, 3);
         }
     }
 }
