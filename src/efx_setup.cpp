@@ -193,14 +193,13 @@ void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp, uint16_t pos) {
         return;
     if (vwp.size() == 0)
         vwp = (Viewport)set.size();
-    uint16_t hiMark = capu(vwp.high, set.size());
+    uint16_t hiMark = capu(vwp.high, set.size()-1);
     if (pos >= vwp.size()) {
         set(vwp.low, hiMark).fill_solid(feedLeft);
         return;
     }
-    for (uint16_t x = hiMark; x > vwp.low; x--) {
-        uint16_t y = x - 1;
-        set[y] = y < pos ? feedLeft : set[y-pos];
+    for (uint16_t x = hiMark; x >= vwp.low; x--) {
+        set[x] = x < pos ? feedLeft : set[x-pos];
     }
 }
 
@@ -241,12 +240,12 @@ void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp, uint16_t pos) {
         return;
     if (vwp.size() == 0)
         vwp = (Viewport)set.size();
-    uint16_t hiMark = capu(vwp.high, set.size());
+    uint16_t hiMark = capu(vwp.high, set.size()-1);
     if (pos >= vwp.size()) {
         set(vwp.low, hiMark).fill_solid(feedRight);
         return;
     }
-    for (uint16_t x = vwp.low; x < hiMark; x++) {
+    for (uint16_t x = vwp.low; x <= hiMark; x++) {
         uint16_t y = x + pos;
         set[x] = y < set.size() ? set[y] : feedRight;
     }

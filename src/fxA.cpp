@@ -154,7 +154,7 @@ void FxA2::makeDot() {
 
 void FxA2::loop() {
     if (mode == TurnOff) {
-        if (turnOff(rot)) resetStack();
+        turnOff(rot);
         return;
     }
     EVERY_N_MILLISECONDS_I(a2Timer, speed) {
@@ -187,9 +187,8 @@ void FxA2::loop() {
             colorIndex = beatsin8(10);
             makeDot();
         } else if (ss < szSegment)
-            feed = movement == backward ? dot[ss] : ColorFromPalette(palette, colorIndex,
-                                                                     beatsin8(6, dimmed << 2, brightness, curPos),
-                                                                     LINEARBLEND);
+            feed = movement == backward ? dot[ss] :
+                    ColorFromPalette(palette, colorIndex, beatsin8(6, dimmed << 2, brightness, curPos), LINEARBLEND);
         else
             feed = BKG;
 
