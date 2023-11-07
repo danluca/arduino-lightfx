@@ -14,12 +14,14 @@ const char fxf1Desc[] PROGMEM = "FxF1: beat wave";
 const char fxf2Desc[] PROGMEM = "FxF2: Halloween breathe with various color blends";
 const char fxf3Desc[] PROGMEM = "FxF3: Eye Blink";
 const char fxf4Desc[] PROGMEM = "FxF4: Bouncy segments";
+const char fxf5Desc[] PROGMEM = "FxF5: Fireworks";
 
 void FxF::fxRegister() {
     static FxF1 fxF1;
     static FxF2 fxF2;
     static FxF3 fxF3;
     static FxF4 fxF4;
+    static FxF5 fxF5;
 }
 
 // FxF1
@@ -372,4 +374,111 @@ FxF4::FxF4() : LedEffect(fxf4Desc), state(Bounce), set1(tpl(0, tpl.size()/2-1)),
     for (short x = 0; x < upLim; x++)
         bouncyCurve[x] = easeOutBounce(x, upLim - 1);
 
+}
+
+// FxF5 - algorithm by Carl Rosendahl, adapted from code published at https://www.anirama.com/1000leds/1d-fireworks/
+FxF5::FxF5() : LedEffect(fxf5Desc) {}
+
+void FxF5::loop() {
+    EVERY_N_MILLIS_I(fxf5Timer, 1000) {
+        flare();
+
+        explode();
+
+        fxf5Timer.setPeriod(random16(1000, 4000));
+    }
+
+}
+
+void FxF5::setup() {
+    LedEffect::setup();
+}
+
+/**
+ * Send up a flare
+ */
+void FxF5::flare() {
+    flarePos = 0;
+    float flareVel = float(random16(50, 90)) / 100; // trial and error to get reasonable range
+    float brightness = 1;
+
+    // initialize launch sparks
+    for (int i = 0; i < 5; i++) {
+        sparkPos[i] = 0;
+        sparkVel[i] = (float(random8()) / 255) * (flareVel / 5);
+        // random around 20% of flare velocity
+        sparkCol[i] = sparkVel[i] * 1000;
+        sparkCol[i] = constrain(sparkCol[i], 0, 255);
+    }
+    // launch
+    tpl = BKG;
+    while (flareVel >= -.2) {
+        // sparks
+        for (int i = 0; i < 5; i++) {
+            sparkPos[i] += sparkVel[i];
+            sparkPos[i] = constrain(sparkPos[i], 0, tpl.size());
+            sparkVel[i] += gravity;
+            sparkCol[i] += -.8;
+            sparkCol[i] = constrain(sparkCol[i], 0, 255);
+            tpl[int(sparkPos[i])] = HeatColor(sparkCol[i]);
+            tpl[int(sparkPos[i])] %= 50; // reduce brightness to 50/255
+        }
+
+        // flare
+        tpl[int(flarePos)] = CHSV(0, 0, int(brightness * 255));
+        replicateSet(tpl, others);
+        flarePos += flareVel;
+        flareVel += gravity;
+        brightness *= .985;
+
+        FastLED.show(stripBrightness);
+        tpl = BKG;
+    }
+}
+
+/**
+ * Explode!
+ *
+ * Explosion happens where the flare ended.
+ * Size is proportional to the height.
+ */
+void FxF5::explode() {
+    int nSparks = flarePos / 2; // works out to look about right
+
+    // initialize sparks
+    for (int i = 0; i < nSparks; i++) {
+        sparkPos[i] = flarePos; sparkVel[i] = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
+        sparkCol[i] = abs(sparkVel[i]) * 500; // set colors before scaling velocity to keep them bright
+        sparkCol[i] = constrain(sparkCol[i], 0, 255);
+        sparkVel[i] *= flarePos / float(tpl.size()); // proportional to height
+    }
+    sparkCol[0] = 255; // this will be our known spark
+    float dying_gravity = gravity;
+    float c1 = 120;
+    float c2 = 50;
+    while(sparkCol[0] > c2/128) { // as long as our known spark is lit, work with all the sparks
+        tpl = BKG;
+        for (int i = 0; i < nSparks; i++) {
+            sparkPos[i] += sparkVel[i];
+            sparkPos[i] = constrain(sparkPos[i], 0, tpl.size());
+            sparkVel[i] += dying_gravity;
+            sparkCol[i] *= .99;
+            sparkCol[i] = constrain(sparkCol[i], 0, 255); // red cross dissolve
+            if(sparkCol[i] > c1) { // fade white to yellow
+                tpl[int(sparkPos[i])] = CRGB(255, 255, (255 * (sparkCol[i] - c1)) / (255 - c1));
+            }
+            else if (sparkCol[i] < c2) { // fade from red to black
+                tpl[int(sparkPos[i])] = CRGB((255 * sparkCol[i]) / c2, 0, 0);
+            }
+            else { // fade from yellow to red
+                tpl[int(sparkPos[i])] = CRGB(255, (255 * (sparkCol[i] - c2)) / (c1 - c2), 0);
+            }
+        }
+        dying_gravity *= .995; // as sparks burn out they fall slower
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+    tpl = BKG;
+    replicateSet(tpl, others);
+    FastLED.show(stripBrightness);
 }

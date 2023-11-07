@@ -94,5 +94,25 @@ namespace FxF {
         CRGBSet set1, set2mir;
         uint16_t bouncyCurve[(FRAME_SIZE+dotSize)/2]{};     //must be equal with (FRAME_SIZE+dotSize)/2
     };
+
+#define NUM_SPARKS  33      //max number could be FRAME_SIZE/2
+    class FxF5 : public LedEffect {
+    public:
+        explicit FxF5();
+
+        void setup() override;
+
+        void loop() override;
+
+    protected:
+        float sparkPos[NUM_SPARKS];
+        float sparkVel[NUM_SPARKS];
+        float sparkCol[NUM_SPARKS];
+        float flarePos;
+        const float gravity = -.004;    // m/s/s
+
+        void flare();
+        void explode();
+    };
 }
 #endif //ARDUINO_LIGHTFX_FXF_H
