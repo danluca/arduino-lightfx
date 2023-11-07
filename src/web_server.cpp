@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2023 by Dan Luca. All rights reserved
+//
 #include "web_server.h"
 #include "version.h"
 #include "log.h"

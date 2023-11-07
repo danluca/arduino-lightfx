@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2023 by Dan Luca. All rights reserved
+//
 #include "efx_setup.h"
 #include "log.h"
 

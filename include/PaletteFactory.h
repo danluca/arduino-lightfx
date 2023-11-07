@@ -1,3 +1,4 @@
+//
 // Copyright (c) 2023. by Dan Luca. All rights reserved.
 //
 #ifndef ARDUINO_LIGHTFX_PALETTEFACTORY_H
