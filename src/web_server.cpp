@@ -165,11 +165,7 @@ size_t web::handleGetWifi(WiFiClient *client, String *uri, String *hd, String *b
     doc["bars"] = barSignalLevel(rssi);
     doc["millis"] = millis();           //current time in ms
     //current temperature
-    if (IMU.temperatureAvailable()) {
-        int temperature_deg = 0;
-        IMU.readTemperature(temperature_deg);
-        doc["boardTemp"] = temperature_deg;
-    }
+    doc["boardTemp"] = boardTemperature();
     doc["ntpSync"] = timeStatus();
 
     //send it out
@@ -212,10 +208,11 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
     time_t curTime = now();
     char datetime[20];
-    sprintf(datetime, "%4d-%02d-%02d %02d:%02d:%02d", year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
+    formatDateTime(datetime, curTime);
     doc["currentTime"] = datetime;
-    doc["currentOffset"] = isDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
-    doc["dst"] = isDST;
+    bool bDST = isSysStatus(SYS_STATUS_DST);
+    doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
+    doc["dst"] = bDST;
     JsonArray fxArray = doc.createNestedArray("fx");
     fxRegistry.describeConfig(fxArray);
     //send it out
@@ -356,7 +353,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     sz += client->println();    //done with headers
 
     // response body
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<768> doc;
     // WiFi
     JsonObject wifi = doc.createNestedObject("wifi");
     wifi["IP"] = WiFi.localIP();         //IP Address
@@ -375,28 +372,34 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     fx["name"] = curFx->name();
     fx["brightness"] = stripBrightness;
     fx["brightnessLocked"] = stripBrightnessLocked;
-    //fx["desc"] = curFx->description();    //variable size string - not really relevant, can be obtained from config
+    fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold
+    fx["totalAudioBumps"] = totalAudioBumps;                //how many times (in total) have we bumped the effect due to audio level
+    JsonArray audioHist = fx.createNestedArray("audioHist");
+    for (uint8_t x = 0; x < AUDIO_HIST_BINS_COUNT; x++)
+        audioHist.add(maxAudio[x]);
     // Time
     JsonObject time = doc.createNestedObject("time");
     time["ntpSync"] = timeStatus();
     time["millis"] = millis();           //current time in ms
-    time_t curTime = now();
     char timeBuf[21];
-    snprintf(timeBuf, 11, "%4d-%02d-%02d", year(curTime), month(curTime), day(curTime));    //counting the null terminator as well
+    time_t curTime = now();
+    formatDate(timeBuf, curTime);
     time["date"] = timeBuf;
-    snprintf(timeBuf, 9, "%02d:%02d:%02d", hour(curTime), minute(curTime), second(curTime));
+    formatTime(timeBuf, curTime);
     time["time"] = timeBuf;
-    time["dst"] = isDST;
+    time["dst"] = isSysStatus(SYS_STATUS_DST);
     time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
 
-    //current temperature
-    if (IMU.temperatureAvailable()) {
-        int temperature_deg = 0;
-        IMU.readTemperature(temperature_deg);
-        doc["boardTemp"] = temperature_deg;
-    }
-    snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
-    doc["mbedVersion"] = timeBuf;
+    //snprintf(timeBuf, 9, "%2d.%02d.%02d", ARDUINO_PICO_MAJOR, ARDUINO_PICO_MINOR, ARDUINO_PICO_REVISION);
+    doc["mbedVersion"] = ARDUINO_PICO_VERSION_STR;
+    doc["boardTemp"] = boardTemperature();
+    doc["chipTemp"] = chipTemperature();
+    doc["vcc"] = controllerVoltage();
+    doc["minVcc"] = minVcc;
+    doc["maxVcc"] = maxVcc;
+    doc["boardMinTemp"] = minTemp;
+    doc["boardMaxTemp"] = maxTemp;
+    doc["overallStatus"] = getSysStatus();
 
     //send it out
     sz += serializeJson(doc, *client);
@@ -429,6 +432,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     const char strEffect[] = "effect";
     const char strHoliday[] = "holiday";
     const char strBrightness[] = "brightness";
+    const char strBrightnessLocked[] = "brightnessLocked";
     JsonObject upd = resp.createNestedObject("updates");
     if (doc.containsKey(strAuto)) {
         bool autoAdvance = doc[strAuto].as<bool>();
@@ -443,7 +447,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     if (doc.containsKey(strHoliday)) {
         String userHoliday = doc[strHoliday].as<String>();
         paletteFactory.forceHoliday(parseHoliday(&userHoliday));
-        upd[strHoliday] = userHoliday;
+        upd[strHoliday] = paletteFactory.adjustHoliday();
     }
     if (doc.containsKey(strBrightness)) {
         uint8_t br = doc[strBrightness].as<uint8_t>();
@@ -451,7 +455,11 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         if (stripBrightnessLocked)
             stripBrightness = br;
         upd[strBrightness] = stripBrightness;
-        upd["brightnessLocked"] = stripBrightnessLocked;
+        upd[strBrightnessLocked] = stripBrightnessLocked;
+    }
+    if (doc.containsKey(csAudioThreshold)) {
+        audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
+        upd[csAudioThreshold] = audioBumpThreshold;
     }
 #ifndef DISABLE_LOGGING
     Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),

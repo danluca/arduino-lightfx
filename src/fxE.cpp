@@ -7,6 +7,12 @@
 using namespace FxE;
 using namespace colTheme;
 
+//~ Effect description strings stored in flash
+const char fxe1Desc[] PROGMEM = "FXE1: twinkle";
+const char fxe2Desc[] PROGMEM = "FXE2: beat wave";
+const char fxe3Desc[] PROGMEM = "FxE3: sawtooth back/forth";
+const char fxe4Desc[] PROGMEM = "FxE4: serendipitous";
+
 void FxE::fxRegister() {
     static FxE1 fxe1;
     static FxE2 fxE2;
@@ -23,9 +29,7 @@ void FxE::fxRegister() {
  * This is a simple non-blocking FastLED display sequence template.
  *
  */
-FxE1::FxE1() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxE1::FxE1() : LedEffect(fxe1Desc) {}
 
 void FxE1::setup() {
     resetGlobals();
@@ -55,11 +59,6 @@ void FxE1::loop() {
     }
 }
 
-const char *FxE1::description() const {
-    return "FXE1: twinkle";
-}
-
-
 void FxE1::twinkle() {
 
   if (random8() < twinkrate) leds[random16(NUM_PIXELS)] += ColorFromPalette(palette, (randhue ? random8() : hue), brightness, LINEARBLEND);
@@ -79,20 +78,14 @@ void FxE1::updateParams() {
     }
 }
 
-const char *FxE1::name() const {
-    return "FXE1";
-}
-
-void FxE1::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxE1::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
+    return obj;
 }
 
 // Fx E2
-FxE2::FxE2() {
-    registryIndex = fxRegistry.registerEffect(this);
-}
+FxE2::FxE2() : LedEffect(fxe2Desc) {}
 
 void FxE2::setup() {
     resetGlobals();
@@ -119,10 +112,6 @@ void FxE2::loop() {
     }
 }
 
-const char *FxE2::description() const {
-    return "FXE2: beatwave";
-}
-
 void FxE2::beatwave() {
     uint8_t wave1 = beatsin8(9, 0, 255);                        // That's the same as beatsin8(9);
     uint8_t wave2 = beatsin8(8, 0, 255);
@@ -134,16 +123,10 @@ void FxE2::beatwave() {
     replicateSet(tpl, others);
 }
 
-const char *FxE2::name() const {
-    return "FXE2";
-}
-
-void FxE2::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
 //Fx E3
+FxE3::FxE3() : LedEffect(fxe3Desc), shdOverlay(frame(0, FRAME_SIZE-1)) {
+}
+
 void FxE3::setup() {
     resetGlobals();
     fade = dimmed;
@@ -231,24 +214,9 @@ void FxE3::loop() {
     }
 }
 
-const char *FxE3::description() const {
-    return "FxE3: sawtooth back/forth";
-}
-
-const char *FxE3::name() const {
-    return "FxE3";
-}
-
-void FxE3::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxE3::FxE3() : shdOverlay(frame(0, FRAME_SIZE-1)) {
-    registryIndex = fxRegistry.registerEffect(this);
-}
-
 //Fx E4
+FxE4::FxE4() : LedEffect(fxe4Desc) {}
+
 void FxE4::setup() {
     resetGlobals();
     X = Xorig;
@@ -271,23 +239,6 @@ void FxE4::loop() {
         FastLED.show(stripBrightness);
     }
 
-}
-
-const char *FxE4::description() const {
-    return "FxE4: serendipitous";
-}
-
-const char *FxE4::name() const {
-    return "FxE4";
-}
-
-void FxE4::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-}
-
-FxE4::FxE4() {
-    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxE4::serendipitous() {

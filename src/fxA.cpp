@@ -8,6 +8,13 @@
 using namespace FxA;
 using namespace colTheme;
 
+//~ Effect description strings stored in flash
+const char fxa1Desc[] PROGMEM = "FXA1: Multiple Tetris segments";
+const char fxa2Desc[] PROGMEM = "FXA2: Randomly sized and spaced segments moving on entire strip";
+const char fxa3Desc[] PROGMEM = "FXA3: Moving variable dot size back and forth";
+const char fxa4Desc[] PROGMEM = "FXA4: pixel segments moving opposite directions";
+const char fxa5Desc[] PROGMEM = "FXA5: Moving a color swath on top of another";
+
 void FxA::fxRegister() {
     static FxA1 fxA1;
     static FxA2 fxA2;
@@ -52,8 +59,7 @@ uint16_t FxA::fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg) {
 // Effect Definitions - setup and loop
 ///////////////////////////////////////
 //FX A1
-FxA1::FxA1() : dot(frame(0, FRAME_SIZE-1)) {
-    registryIndex = fxRegistry.registerEffect(this);
+FxA1::FxA1() : LedEffect(fxa1Desc), dot(frame(0, FRAME_SIZE-1)) {
     dot.fill_solid(BKG);
 }
 
@@ -105,25 +111,15 @@ void FxA1::loop() {
     }
 }
 
-const char *FxA1::description() const {
-    return "FXA1: Multiple Tetris segments";
-}
-
-void FxA1::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxA1::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
-
-const char *FxA1::name() const {
-    return "FXA1";
-}
-
 
 // FX A2
-FxA2::FxA2() : dot(frame(0, FRAME_SIZE-1)) {
-    registryIndex = fxRegistry.registerEffect(this);
+FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA2::setup() {
@@ -195,24 +191,15 @@ void FxA2::loop() {
     }
 }
 
-const char *FxA2::description() const {
-    return "FXA2: Randomly sized and spaced segments moving on entire strip";
-}
-
-void FxA2::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
+JsonObject & FxA2::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
-}
-
-const char *FxA2::name() const {
-    return "FXA2";
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
 // Fx A3
-FxA3::FxA3() : dot(frame(0, FRAME_SIZE-1)) {
-    registryIndex = fxRegistry.registerEffect(this);
+FxA3::FxA3() : LedEffect(fxa3Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA3::setup() {
@@ -256,24 +243,15 @@ void FxA3::loop() {
     }
 }
 
-const char *FxA3::description() const {
-    return "FXA3: Moving variable dot size back and forth";
-}
-
-void FxA3::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
-}
-
-const char *FxA3::name() const {
-    return "FXA3";
+JsonObject & FxA3::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
 // FX A4
-FxA4::FxA4() : dot(frame(0, FRAME_SIZE-1)), frL(frame(FRAME_SIZE, FRAME_SIZE*2-1)),
+FxA4::FxA4() : LedEffect(fxa4Desc), dot(frame(0, FRAME_SIZE-1)), frL(frame(FRAME_SIZE, FRAME_SIZE*2-1)),
                frR(frame(FRAME_SIZE*2, FRAME_SIZE*3-1)), curBkg(BKG) {
-    registryIndex = fxRegistry.registerEffect(this);
 }
 
 void FxA4::setup() {
@@ -331,23 +309,14 @@ void FxA4::loop() {
     }
 }
 
-const char *FxA4::description() const {
-    return "FXA4: pixel segments moving opposite directions";
-}
-
-void FxA4::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
-}
-
-const char *FxA4::name() const {
-    return "FXA4";
+JsonObject & FxA4::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }
 
 // Fx A5
-FxA5::FxA5() : ovr(frame(0, FRAME_SIZE-1)) {
-    registryIndex = fxRegistry.registerEffect(this);
+FxA5::FxA5() : LedEffect(fxa5Desc), ovr(frame(0, FRAME_SIZE-1)) {
 }
 
 void FxA5::setup() {
@@ -404,16 +373,8 @@ void FxA5::loop() {
     }
 }
 
-const char *FxA5::description() const {
-    return "FXA5: Moving a color swath on top of another";
-}
-
-void FxA5::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
-    baseConfig(obj);
-    obj["palette"] = holidayToString(paletteFactory.currentHoliday());;
-}
-
-const char *FxA5::name() const {
-    return "FXA5";
+JsonObject & FxA5::describeConfig(JsonArray &json) const {
+    JsonObject obj = LedEffect::describeConfig(json);
+    obj["palette"] = holidayToString(paletteFactory.currentHoliday());
+    return obj;
 }

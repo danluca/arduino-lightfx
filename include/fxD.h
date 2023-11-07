@@ -15,11 +15,7 @@ namespace FxD {
 
         void loop() override;
 
-        const char *description() const override;
-
-        void describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         void ChangeMe();
 
@@ -34,11 +30,7 @@ namespace FxD {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
-        const char *description() const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         void dot_beat();
     };
@@ -51,13 +43,9 @@ namespace FxD {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
-
-        const char *description() const override;
-
-        const char *name() const override;
-
         void plasma();
+    protected:
+        uint8_t monoColor;
     };
 
     class FxD4 : public LedEffect {
@@ -67,12 +55,6 @@ namespace FxD {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
 
         void rainbow_march();
 
@@ -104,12 +86,6 @@ namespace FxD {
         void setup() override;
 
         void loop() override;
-
-        const char *description() const override;
-
-        const char *name() const override;
-
-        void describeConfig(JsonArray &json) const override;
 
         void ripples();
 

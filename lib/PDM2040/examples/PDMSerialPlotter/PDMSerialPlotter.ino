@@ -6,8 +6,7 @@
   Circuit:
   - Arduino Nano 33 BLE board, or
   - Arduino Nano RP2040 Connect, or
-  - Arduino Portenta H7 board plus Portenta Vision Shield, or
-  - Arduino Nicla Vision
+  - Arduino Portenta H7 board plus Portenta Vision Shield
 
   This example code is in the public domain.
 */
@@ -27,58 +26,58 @@ short sampleBuffer[512];
 volatile int samplesRead;
 
 void setup() {
-  Serial.begin(9600);
-  while (!Serial);
+    Serial.begin(9600);
+    while (!Serial);
 
-  // Configure the data receive callback
-  PDM.onReceive(onPDMdata);
+    // Configure the data receive callback
+    PDM.onReceive(onPDMdata);
 
-  // Optionally set the gain
-  // Defaults to 20 on the BLE Sense and 24 on the Portenta Vision Shield
-  // PDM.setGain(30);
+    // Optionally set the gain
+    // Defaults to 20 on the BLE Sense and -10 on the Portenta Vision Shield
+    // PDM.setGain(30);
 
-  // Initialize PDM with:
-  // - one channel (mono mode)
-  // - a 16 kHz sample rate for the Arduino Nano 33 BLE Sense
-  // - a 32 kHz or 64 kHz sample rate for the Arduino Portenta Vision Shield
-  if (!PDM.begin(channels, frequency)) {
-    Serial.println("Failed to start PDM!");
-    while (1);
-  }
+    // Initialize PDM with:
+    // - one channel (mono mode)
+    // - a 16 kHz sample rate for the Arduino Nano 33 BLE Sense
+    // - a 32 kHz or 64 kHz sample rate for the Arduino Portenta Vision Shield
+    if (!PDM.begin(channels, frequency)) {
+        Serial.println("Failed to start PDM!");
+        while (1);
+    }
 }
 
 void loop() {
-  // Wait for samples to be read
-  if (samplesRead) {
+    // Wait for samples to be read
+    if (samplesRead) {
 
-    // Print samples to the serial monitor or plotter
-    for (int i = 0; i < samplesRead; i++) {
-      if(channels == 2) {
-        Serial.print("L:");
-        Serial.print(sampleBuffer[i]);
-        Serial.print(" R:");
-        i++;
-      }
-      Serial.println(sampleBuffer[i]);
+        // Print samples to the serial monitor or plotter
+        for (int i = 0; i < samplesRead; i++) {
+            if (channels == 2) {
+                Serial.print("L:");
+                Serial.print(sampleBuffer[i]);
+                Serial.print(" R:");
+                i++;
+            }
+            Serial.println(sampleBuffer[i]);
+        }
+
+        // Clear the read count
+        samplesRead = 0;
     }
-
-    // Clear the read count
-    samplesRead = 0;
-  }
 }
 
 /**
- * Callback function to process the data from the PDM microphone.
- * NOTE: This callback is executed as part of an ISR.
- * Therefore using `Serial` to print messages inside this function isn't supported.
+   Callback function to process the data from the PDM microphone.
+   NOTE: This callback is executed as part of an ISR.
+   Therefore using `Serial` to print messages inside this function isn't supported.
  * */
 void onPDMdata() {
-  // Query the number of available bytes
-  int bytesAvailable = PDM.available();
+    // Query the number of available bytes
+    int bytesAvailable = PDM.available();
 
-  // Read into the sample buffer
-  PDM.read(sampleBuffer, bytesAvailable);
+    // Read into the sample buffer
+    PDM.read(sampleBuffer, bytesAvailable);
 
-  // 16-bit, 2 bytes per sample
-  samplesRead = bytesAvailable / 2;
+    // 16-bit, 2 bytes per sample
+    samplesRead = bytesAvailable / 2;
 }

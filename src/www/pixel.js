@@ -42,8 +42,13 @@ function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
             $('#status h1').removeClass('red');
-            $('#boardTemp').html(`${data.boardTemp} 'C (${data.boardTemp*9/5+32} 'F)`);
+            $('#boardTemp').html(`${data.boardTemp.toFixed(2)} °C (${(data.boardTemp*9/5+32).toFixed(2)} °F)`);
+            $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(2)} - ${data.boardMaxTemp.toFixed(2)}] °C (chip ${data.chipTemp.toFixed(2)} °C)`);
+            $('#boardVcc').html(data.vcc.toFixed(2));
+            $('#rangeVcc').html(`[${data.minVcc.toFixed(2)} - ${data.maxVcc.toFixed(2)}] V`);
             $('#mbedVersion').html(`${data.mbedVersion}`);
+            $('#audioThreshold').html(`${data.fx.audioThreshold}`);
+            $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
             $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
             if (data.wifi.curVersion !== data.wifi.latestVersion) {
@@ -54,6 +59,11 @@ function getStatus() {
             $('#fxCount').html(`${data.fx.count} effects`);
             $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
             $('#fxCurHoliday').html(`${data.fx.holiday}`);
+            $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
+            let strHistogram = data.fx.audioHist.map((elem, ix)=>
+                `${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500}${ix===(data.fx.audioHist.length-1)?'+':''} : ${elem}`)
+                .join('<br/>');
+            $('#audioLevelHistogram').html(`${strHistogram}`);
             $('#timeNtp').html(`${data.time.ntpSync == 2}`);
             $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
             $('#timeHoliday').html(`${data.time.holiday}`);

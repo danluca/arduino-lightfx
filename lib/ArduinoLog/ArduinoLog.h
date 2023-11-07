@@ -12,29 +12,15 @@ Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 
 */
 #pragma once
-#include <inttypes.h>
-#include <stdarg.h>
-#include <mbed.h>
-#include <Mutex.h>
+#include <cinttypes>
+#include <cstdarg>
+#include <pico/mutex.h>
+#include "Arduino.h"
 
-// Non standard: Arduino.h also chosen if ARDUINO is not defined. To facilitate use in non-Arduino test environments
-#if ARDUINO < 100
-	#include "WProgram.h"
-#else
-	#include "Arduino.h"
-#endif
-
-// PGM stubs to facilitate use in non-Arduino test environments
-#ifndef PGM_P
-#define PGM_P  const char *
-#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
-#define PSTR(str) (str)
-#define F(string_literal) (reinterpret_cast<const __FlashStringHelper *>(PSTR(string_literal)))
-#endif
 typedef void (*printfunction)(Print*, int);
 
 #ifndef DISABLE_LOGGING
-extern rtos::Mutex serial_mtx;
+extern mutex_t serial_mtx;
 #endif
 
 // *************************************************************************
@@ -346,7 +332,7 @@ private:
 			return;
 		}
 
-        serial_mtx.lock();
+        mutex_enter_blocking(&serial_mtx);
 
 		if (level < LOG_LEVEL_SILENT) 
 		{
@@ -377,7 +363,7 @@ private:
 		{
 		    _logOutput->print(CR);
 		}
-        serial_mtx.unlock();
+        mutex_exit(&serial_mtx);
 #endif
 	}
 

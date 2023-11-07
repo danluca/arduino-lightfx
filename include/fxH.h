@@ -56,11 +56,7 @@ namespace FxH {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
-        const char *description() const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         void Fire2012WithPalette(uint8_t xFire);
     };
@@ -73,11 +69,7 @@ namespace FxH {
 
         void loop() override;
 
-        void describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
-
-        const char *description() const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
 
         static void confetti_pal();
 
@@ -92,11 +84,7 @@ namespace FxH {
 
         void loop() override;
 
-        const char *description() const override;
-
-        void describeConfig(JsonArray &json) const override;
-
-        const char *name() const override;
+        JsonObject & describeConfig(JsonArray &json) const override;
     };
 }
 

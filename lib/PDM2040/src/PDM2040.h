@@ -15,57 +15,68 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+#pragma once
 
 #ifndef _PDM_H_INCLUDED
 #define _PDM_H_INCLUDED
 
 #include <Arduino.h>
-#include <pinDefinitions.h>
-
 #include "utility/PDMDoubleBuffer.h"
 
-class PDMClass
-{
+class PDMClass {
 public:
-  PDMClass(int dinPin, int clkPin, int pwrPin);
-  virtual ~PDMClass();
+    PDMClass(int dinPin, int clkPin, int pwrPin);
 
-  int begin(int channels, int sampleRate);
-  void end() const;
+    virtual ~PDMClass();
 
-  virtual size_t available();
-  virtual size_t read(void* buffer, size_t size);
+    int begin(int channels, int sampleRate);
 
-  void onReceive(void(*)(void));
+    void end();
 
-  //PORTENTA_H7 min -12 max 51
-  //NANO 33 BLE SENSe min 0 max 80
-  //NICLA_VISION min 0 max 8
-  void setGain(int gain);
-  void setBufferSize(size_t bufferSize);
-  size_t getBufferSize();
+    virtual size_t available();
 
-// private:
-  void IrqHandler(bool halftranfer);
+    virtual size_t read(void *buffer, size_t size);
+
+    void onReceive(void(*)(void));
+
+    //PORTENTA_H7 min -12 max 51
+    //NANO 33 BLE SENSe min 0 max 80
+    //NICLA_VISION min 0 max 8
+    void setGain(int gain);
+
+    void setBufferSize(size_t bufferSize);
+
+    size_t getBufferSize();
+
+    // private:
+    void IrqHandler(bool halftranfer);
 
 private:
-  int _dinPin;
-  int _clkPin;
-  int _pwrPin;
+    int _dinPin;
+    int _clkPin;
+    int _pwrPin;
 
-  int _channels;
-  int _samplerate;
+    int _channels;
+    int _samplerate;
 
-  int _gain;
-  int _init;
+    int _gain;
+    int _init;
 
-  int _cutSamples;
+    int _cutSamples;
 
-  PDMDoubleBuffer _doubleBuffer;
+    // Hardware peripherals used
+    uint _dmaChannel;
+    PIO _pio;
+    int _smIdx;
+    int _pgmOffset;
 
-  void (*_onReceive)(void);
+    PDMDoubleBuffer _doubleBuffer;
+
+    void (*_onReceive)(void);
 };
 
+#ifdef PIN_PDM_DIN
 extern PDMClass PDM;
+#endif
 
 #endif

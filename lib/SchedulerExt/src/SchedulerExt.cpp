@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2012 The Android Open Source Project
  * Copyright (C) 2023 Dan Luca
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,79 +16,70 @@
 
 #include "SchedulerExt.h"
 
+static const char untitledTask[] = "UN";
+
+void taskJobExecutor(void *params) {
+    auto *tj = static_cast<Runnable*>(params);
+    tj->run();
+    //should never get here - but if we do, must delete the task per FreeRTOS documentation - https://www.freertos.org/implementing-a-FreeRTOS-task.html
+    vTaskDelete(nullptr);
+    tj->finish();
+}
+
 SchedulerClassExt::SchedulerClassExt() = default;
 
-/**
- * Method that implements optional setup + continuous run of the task
- * Do not use this method if not intending to run a loop
- * @param args tasks to run in the new thread - the setup function pointer is optional, the loop function pointer is required
- */
-[[noreturn]] static void setupLoopHelper(TasksPtr args) {
-    if (args->setup != nullptr)
-        args->setup();
-    while (true) {
-        args->loop();
+bool SchedulerClassExt::startTask(NoArgTask loop, NoArgTask setup, uint32_t stackSize) {
+    int16_t tPos = findNextThreadSlot();
+    if (tPos < 0)
+        return false;
+    auto *job = new TaskJob(untitledTask, loop, setup, stackSize);
+    tasks[tPos] = job;
+    return scheduleTask(job, tPos);
+}
+
+bool SchedulerClassExt::startTask(FxTasksPtr taskDef, uint32_t stackSize) {
+    int16_t tPos = findNextThreadSlot();
+    if (tPos < 0)
+        return false;
+    auto *job = new TaskJob(untitledTask, taskDef->loop, taskDef->setup, stackSize);
+    tasks[tPos] = job;
+    return scheduleTask(job, tPos);
+}
+
+bool SchedulerClassExt::startTask(TaskJob *pTask) {
+    int16_t tPos = findNextThreadSlot();
+    if (tPos < 0)
+        return false;
+    tasks[tPos] = pTask;
+    return scheduleTask(pTask, tPos);
+}
+
+uint16_t SchedulerClassExt::availableThreads() const {
+    uint16_t res = 0;
+    for (auto task : tasks) {
+        if (task == nullptr)
+            res++;
     }
+    return res;
+}
+
+bool SchedulerClassExt::scheduleTask(TaskJob *taskJob, uint16_t tPos) {
+    char* tName = new char[configMAX_TASK_NAME_LEN] {};
+    snprintf(tName, configMAX_TASK_NAME_LEN-1,  "Tk %d %s", tPos, taskJob->id);
+    BaseType_t result = xTaskCreateAffinitySet(taskJobExecutor, tName, taskJob->stackSize, taskJob, (UBaseType_t)4, taskJob->coreAffinity, &(taskJob->handle));
+    return result == pdPASS;
 }
 
 /**
- * Overload that just runs a task in continuous loop
- * @param loopTask the task to run
+ * Finds the index for the next thread.
+ * If the local thread array is full, it returns -1
+ * @return either the index where next thread can be stored in the local thread array, or -1 (0xFFFF)
  */
-[[noreturn]] static void loopHelper(SchedulerTask loopTask) {
-    while (true) {
-        loopTask();
-    }
-}
-
-/**
- * Starts a task with setup (optional) and main loop
- * @param tasks optional setup and (required) main loop
- * @param stackSize thread's stack size - defaults to 1024 if not specified
- * @return
- */
-rtos::Thread* SchedulerClassExt::startLoop(TasksPtr tasks, uint32_t stackSize) {
-    uint i = findNextThreadSlot();
-    if (i >= MAX_THREADS_NUMBER)
-        return nullptr;
-
-    const char *tName = createThreadName(i);
-    threads[i] = new rtos::Thread(osPriorityNormal, stackSize, nullptr, tName);
-    threads[i]->start(mbed::callback(setupLoopHelper, tasks));
-    return threads[i];
-}
-
-rtos::Thread* SchedulerClassExt::startLoop(SchedulerTask task, uint32_t stackSize) {
-    uint i = findNextThreadSlot();
-    if (i >= MAX_THREADS_NUMBER)
-        return nullptr;
-
-    const char *tName = createThreadName(i);
-    threads[i] = new rtos::Thread(osPriorityNormal, stackSize, nullptr, tName);
-    threads[i]->start(mbed::callback(loopHelper, task));
-    return threads[i];
-}
-
-rtos::Thread* SchedulerClassExt::start(SchedulerTask task, uint32_t stackSize) {
-    uint i = findNextThreadSlot();
-    if (i >= MAX_THREADS_NUMBER)
-        return nullptr;
-
-    const char *tName = createThreadName(i);
-    threads[i] = new rtos::Thread(osPriorityNormal, stackSize, nullptr, tName);
-    threads[i]->start(task);
-    return threads[i];
-}
-
-rtos::Thread* SchedulerClassExt::start(SchedulerParametricTask task, void *taskData, uint32_t stackSize) {
-    uint i = findNextThreadSlot();
-    if (i >= MAX_THREADS_NUMBER)
-        return nullptr;
-
-    const char *tName = createThreadName(i);
-    threads[i] = new rtos::Thread(osPriorityNormal, stackSize, nullptr, tName);
-    threads[i]->start(mbed::callback(task, taskData));
-    return threads[i];
+int16_t SchedulerClassExt::findNextThreadSlot() const {
+    for (int16_t i = 0; i < MAX_THREADS_NUMBER; i++)
+        if (tasks[i] == nullptr)
+            return i;
+    return -1;
 }
 
 /**
@@ -98,61 +88,43 @@ rtos::Thread* SchedulerClassExt::start(SchedulerParametricTask task, void *taskD
  * @param pt pointer to the thread to terminate
  * @return result of executing Thread::join for the given thread
  */
-osStatus SchedulerClassExt::waitToEnd(rtos::Thread *pt) {
-    osStatus tStat = osErrorParameter;
-    for (auto & thread : threads) {
-        if (thread == pt) {
+bool SchedulerClassExt::stopTask(TaskJob *pt) {
+    bool result = false;
+    for (auto & task : tasks) {
+        if (task == pt) {
+            //signal task to terminate - see TaskJob::run and taskJobExecutor
+            task->bRun = false;
             //waits for thread to terminate
-            tStat = thread->join();
+            while (!task->bIsFinished)
+                yield();
             //deallocate the thread (created with new) and its name
-            delete [] thread->get_name();
-            delete thread;
+            delete [] task->id;
+            delete task;
             //free-up the thread array spot for it
-            thread = nullptr;
+            task = nullptr;
+            result = true;
             break;
         }
     }
-    return tStat;
-}
-
-/**
- * Finds the index for the next thread.
- * If the local thread array is full, it returns osThreadSpaceExhausted
- * @return either the index where next thread can be stored in the local thread array, or osThreadSpaceExhausted (0xF0F0)
- */
-uint SchedulerClassExt::findNextThreadSlot() const {
-    uint i = 0;
-    while (threads[i] != nullptr && i < MAX_THREADS_NUMBER)
-        i++;
-
-    return i < MAX_THREADS_NUMBER ? i : osThreadSpaceExhausted;
-}
-
-/**
- * Utility to create a simple thread name - using pattern Thread <n>, where n is the index in the local thread array
- * Note this method creates the string on the heap, the thread name must be available for the life of the thread. When thread is disposed of,
- * the memory allocated for name needs also released.
- * @param index the index to create name for (0 based)
- * @return pointer to the thread name string on the heap
- * @see SchedulerClassExt::waitToEnd
- */
-const char *SchedulerClassExt::createThreadName(uint index) {
-    char* tName = new char[MAX_THREAD_NAME_SIZE] {};
-    sprintf(tName, "Thread %d", index);
-    return tName;
-}
-
-/**
- * How many slots do we have available in the local threads array
- * @return number of available threads, if any
- */
-uint SchedulerClassExt::availableThreads() const {
-    uint i = 0;
-    while (threads[i] == nullptr && i < MAX_THREADS_NUMBER)
-        i++;
-    //the index is 0 based, we need to return how many slots are available
-    return i;
+    return result;
 }
 
 SchedulerClassExt Scheduler;
 
+TaskJob::TaskJob(const char *pAbr, NoArgTask run, NoArgTask pre, uint32_t szStack) : fnSetup(pre), fnLoop(run), stackSize(szStack), coreAffinity(CORE_ALL) {
+    size_t szAbr = strlen(pAbr);
+    id = new char[4] {
+            szAbr > 0 ? *pAbr : '\0',
+            szAbr > 1 ? *(pAbr+1) : '\0',
+            szAbr > 2 ? *(pAbr+2) : '\0',
+            '\0'
+    };
+}
+
+void TaskJob::run() {
+    if (fnSetup)
+        fnSetup();
+    while (bRun) {
+        fnLoop();
+    }
+}
