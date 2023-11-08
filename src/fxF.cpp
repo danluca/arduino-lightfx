@@ -467,6 +467,9 @@ void FxF5::explode() {
     float dying_gravity = gravity;
     float c1 = 120;
     float c2 = 50;
+    uint8_t r1 = random8(10, 255);
+    uint8_t r2 = random8(10, 255);
+    uint8_t r3 = random8(10, 255);
     while(sparkCol[0] > c2/128) { // as long as our known spark is lit, work with all the sparks
         tpl = BKG;
         for (int i = 0; i < nSparks; i++) {
@@ -476,13 +479,13 @@ void FxF5::explode() {
             sparkCol[i] *= .99;
             sparkCol[i] = constrain(sparkCol[i], 0, 255); // red cross dissolve
             if(sparkCol[i] > c1) { // fade white to yellow
-                tpl[int(sparkPos[i])] = CRGB(255, 255, (255 * (sparkCol[i] - c1)) / (255 - c1));
+                tpl[int(sparkPos[i])] = CRGB(r1, r3, (255 * (sparkCol[i] - c1)) / (255 - c1));
             }
             else if (sparkCol[i] < c2) { // fade from red to black
-                tpl[int(sparkPos[i])] = CRGB((255 * sparkCol[i]) / c2, 0, 0);
+                tpl[int(sparkPos[i])] = CRGB((255 * sparkCol[i]) / c2, r2, r1);
             }
             else { // fade from yellow to red
-                tpl[int(sparkPos[i])] = CRGB(255, (255 * (sparkCol[i] - c2)) / (c1 - c2), 0);
+                tpl[int(sparkPos[i])] = CRGB(r1, (255 * (sparkCol[i] - c2)) / (c1 - c2), r2);
             }
         }
         dying_gravity *= .995; // as sparks burn out they fall slower
