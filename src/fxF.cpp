@@ -489,7 +489,7 @@ void FxF5::explode() {
                 tpl[int(sparkPos[i])] = CRGB(r1, (255 * (sparkCol[i] - c2)) / (c1 - c2), r2);
             }
         }
-        dying_gravity *= 0.895; // as sparks burn out they fall slower
+        dying_gravity *= 0.975; // as sparks burn out they fall slower
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
     }
