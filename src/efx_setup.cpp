@@ -193,13 +193,16 @@ void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp, uint16_t pos) {
         return;
     if (vwp.size() == 0)
         vwp = (Viewport)set.size();
-    uint16_t hiMark = capu(vwp.high, set.size()-1);
     if (pos >= vwp.size()) {
-        set(vwp.low, hiMark).fill_solid(feedLeft);
+        uint16_t hiMark = capu(vwp.high, (set.size()-1));
+        set(vwp.low, hiMark) = feedLeft;
         return;
     }
-    for (uint16_t x = hiMark; x >= vwp.low; x--) {
-        set[x] = x < pos ? feedLeft : set[x-pos];
+    uint16_t hiMark = capu(vwp.high, set.size());
+    //don't use >= as the indexer is unsigned and always >=0 --> infinite loop
+    for (uint16_t x = hiMark; x > vwp.low; x--) {
+        uint16_t y = x - 1;
+        set[y] = y < pos ? feedLeft : set[y-pos];
     }
 }
 
@@ -240,9 +243,9 @@ void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp, uint16_t pos) {
         return;
     if (vwp.size() == 0)
         vwp = (Viewport)set.size();
-    uint16_t hiMark = capu(vwp.high, set.size()-1);
+    uint16_t hiMark = capu(vwp.high, (set.size()-1));
     if (pos >= vwp.size()) {
-        set(vwp.low, hiMark).fill_solid(feedRight);
+        set(vwp.low, hiMark) = feedRight;
         return;
     }
     for (uint16_t x = vwp.low; x <= hiMark; x++) {

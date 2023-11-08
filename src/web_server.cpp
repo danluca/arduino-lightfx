@@ -474,7 +474,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     }
 #ifndef DISABLE_LOGGING
     Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),
-               fxRegistry.curEffectPos(), fxRegistry.isAutoRoll(), holidayToString(paletteFactory.currentHoliday()),
+               fxRegistry.curEffectPos(), fxRegistry.isAutoRoll(), holidayToString(paletteFactory.getHoliday()),
                stripBrightness, stripBrightnessLocked?"fixed":"automatic");
 #endif
 
