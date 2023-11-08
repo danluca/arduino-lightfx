@@ -192,7 +192,6 @@ void FxB5::loop() {
 
     EVERY_N_MILLIS(50) {
         juggle_short();
-        FastLED.show(stripBrightness);
     }
 }
 
@@ -203,15 +202,17 @@ void FxB5::loop() {
 void FxB::juggle_short() {
     const uint16_t segSize = 8;
     tpl.fadeToBlackBy(20);
-    byte dothue = 0;
 
     for (uint16_t i = 0; i < segSize; i++) {
         // leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= CHSV(dothue, 200, 255);
         // note the |= operator may lead to colors outside the palette - for limited hues palettes (like Halloween) this may not be ideal
-        tpl[beatsin16(i + 7, 0, tpl.size() - 1)] |= ColorFromPalette(palette, dothue, brightness, LINEARBLEND);
-        dothue += 32;
+        uint16_t pos = beatsin16(i + 7, 0, tpl.size() - 1);
+        tpl(curPos, pos) |= ColorFromPalette(palette, hue, brightness, LINEARBLEND);
+        curPos = pos;
+        hue += 32;
     }
     replicateSet(tpl, others);
+    FastLED.show(stripBrightness);
 }
 
 JsonObject & FxB5::describeConfig(JsonArray &json) const {
@@ -274,7 +275,8 @@ void FxB::ease() {
     uint16_t lerpVal = lerp16by16(0, tpl.size(), easeOutVal);                // Map it to the number of LED's you have.
 
     if (lerpVal != szStack) {
-        tpl[lerpVal] = ColorFromPalette(palette, hue + easeInVal / 4, max(40, (uint8_t) easeOutVal));
+        tpl(curPos, lerpVal) = ColorFromPalette(palette, hue + easeInVal / 4, max(40, (uint8_t) easeOutVal));
+        curPos = lerpVal;
     }
     tpl.fadeToBlackBy(24);                          // 8 bit, 1 = slow fade, 255 = fast fade
     replicateSet(tpl, others);
@@ -303,7 +305,6 @@ void FxB8::loop() {
 
     EVERY_N_MILLISECONDS(60) {
         fadein();
-        FastLED.show(stripBrightness);
     }
 
     if (!paletteFactory.isHolidayLimitedHue()) {
@@ -314,15 +315,17 @@ void FxB8::loop() {
 }
 
 void FxB::fadein() {
+    hueDiff = random16_get_seed();
     random16_set_seed(535);                                                           // The randomizer needs to be re-set each time through the loop in order for the 'random' numbers to be the same each time through.
 
-    for (uint16_t i = 0; i<tpl.size(); i++) {
+    for (uint16_t i = 0; i < tpl.size(); i++) {
         uint8_t fader = sin8(millis()/random8(10,20));                                  // The random number for each 'i' will be the same every time.
         tpl[i] = ColorFromPalette(palette, i*20, fader, LINEARBLEND);       // Now, let's run it through the palette lookup.
     }
     replicateSet(tpl, others);
+    FastLED.show(stripBrightness);
 
-    random16_set_seed(millis() >> 5);                                                      // Re-randomizing the random number seed for other routines.
+    random16_set_seed(hueDiff);                                                      // Re-randomizing the random number seed for other routines.
 }
 
 JsonObject & FxB8::describeConfig(JsonArray &json) const {
@@ -346,10 +349,7 @@ void FxB9::loop() {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
 
-    EVERY_N_MILLIS(60) {
-        juggle_long();
-        FastLED.show(stripBrightness);
-    }
+    juggle_long();
 }
 
 /**
@@ -372,17 +372,23 @@ void FxB::juggle_long() {
         }
         secSlot = inc(secSlot, 1, 3);   //change the modulo value for changing the duration of the loop
     }
+    EVERY_N_MILLIS(60) {
+        uint8_t curHue = hue;                                           // Reset the hue values.
+        tpl.fadeToBlackBy(fade);
 
-    uint8_t curHue = hue;                                           // Reset the hue values.
-    tpl.fadeToBlackBy(fade);
-
-    for(uint16_t i = 0; i < numDots; i++) {
-        //  note the += operator may lead to colors outside the palette (less evident than |= operator) - for limited hues palettes (like Halloween) this may not be ideal
-        tpl[beatsin16(dotBpm + i + numDots, 0, tpl.size() - 1)] += ColorFromPalette(palette, curHue , brightness, LINEARBLEND);
-        curHue += hueDiff;
+        for(uint16_t i = 0; i < numDots; i++) {
+            //  note the += operator may lead to colors outside the palette (less evident than |= operator) - for limited hues palettes (like Halloween) this may not be ideal
+            uint16_t pos = beatsin16(dotBpm + i + numDots, 0, tpl.size() - 1);
+            for (auto &c : tpl(curPos, pos)) {
+                c += ColorFromPalette(palette, curHue, brightness, LINEARBLEND);
+            }
+            curPos = pos;
+            curHue += hueDiff;
+        }
+        hue += numDots*2;
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
     }
-    hue += numDots*2;
-    replicateSet(tpl, others);
 }
 
 FxB9::FxB9() : LedEffect(fxb9Desc) {}

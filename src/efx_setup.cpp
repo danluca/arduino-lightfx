@@ -771,8 +771,8 @@ void fx_run() {
     }
     EVERY_N_MINUTES(5) {
         fxRegistry.nextRandomEffectPos();
-        shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
         random16_add_entropy(secRandom16());        //this may or may not help
+        shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
         stripBrightness = adjustStripBrightness();
         saveState();
     }

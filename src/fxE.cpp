@@ -265,7 +265,10 @@ void FxE4::serendipitous() {
 }
 
 // FxE5
-
+FxE5::FxE5() : LedEffect(fxe5Desc), wave2(frame(0, FRAME_SIZE-1)), wave3(frame(FRAME_SIZE, 2*FRAME_SIZE-1)) {
+    clr1 = clr2 = clr3 = 0;
+    pos2 = pos3 = 0;
+}
 
 void FxE5::setup() {
     LedEffect::setup();
@@ -283,13 +286,17 @@ void FxE5::loop() {
         CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
         CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
         CRGB col3 = ColorFromPalette(palette, clr3, brightness, LINEARBLEND);
-        tpl[beatsin16(5, 0, tpl.size()-1, 0, 0)] = col1;
-        wave2[beatsin16(7, 0, tpl.size()-1, 0, 4096)] = col2;
-        wave3[beatsin16(11, 0, tpl.size()-1, 0, 8192)] = col3;
+        uint16_t pos = beatsin16(5, 0, tpl.size()-1, 0, 0);
+        tpl(curPos, pos) = col1;
+        curPos = pos;
+        pos = beatsin16(7, 0, tpl.size()-1, 0, 4096);
+        wave2(pos2, pos) = col2;
+        pos2 = pos;
+        pos = beatsin16(11, 0, tpl.size()-1, 0, 8192);
+        wave3(pos3, pos) = col3;
+        pos3 = pos;
 
         blendScreen(wave2, wave3);
-//        blendOverlay(tpl, wave3);
-//        tpl += wave2;
         tpl += wave2;
         replicateSet(tpl, others);
 
@@ -304,6 +311,3 @@ void FxE5::loop() {
 
 }
 
-FxE5::FxE5() : LedEffect(fxe5Desc), wave2(frame(0, FRAME_SIZE-1)), wave3(frame(FRAME_SIZE, 2*FRAME_SIZE-1)) {
-    clr1 = clr2 = clr3 = 0;
-}

@@ -78,6 +78,7 @@ namespace FxE {
     protected:
         CRGBSet wave2, wave3;
         uint8_t clr1, clr2, clr3;
+        uint16_t pos2, pos3;
         const uint8_t segSize = 8;
     };
 }
