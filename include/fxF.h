@@ -95,7 +95,7 @@ namespace FxF {
         uint16_t bouncyCurve[(FRAME_SIZE+dotSize)/2]{};     //must be equal with (FRAME_SIZE+dotSize)/2
     };
 
-#define NUM_SPARKS  33      //max number could be FRAME_SIZE/2
+#define NUM_SPARKS  40      //max number could be FRAME_SIZE/2
     class FxF5 : public LedEffect {
     public:
         explicit FxF5();

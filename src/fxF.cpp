@@ -408,7 +408,7 @@ void FxF5::setup() {
  */
 void FxF5::flare() {
     flarePos = 0;
-    float flareVel = float(random16(50, 90)) / 100; // trial and error to get reasonable range
+    float flareVel = float(random16(30, 70)) / 100; // trial and error to get reasonable range
     float brightness = 1;
 
     // initialize launch sparks
@@ -458,10 +458,11 @@ void FxF5::explode() {
 
     // initialize sparks
     for (int i = 0; i < nSparks; i++) {
-        sparkPos[i] = flarePos; sparkVel[i] = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
+        sparkPos[i] = flarePos;
+        sparkVel[i] = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
         sparkCol[i] = abs(sparkVel[i]) * 500; // set colors before scaling velocity to keep them bright
         sparkCol[i] = constrain(sparkCol[i], 0, 255);
-        sparkVel[i] *= flarePos / float(tpl.size()); // proportional to height
+        sparkVel[i] *= flarePos/1.7f/ float(tpl.size()); // proportional to height
     }
     sparkCol[0] = 255; // this will be our known spark
     float dying_gravity = gravity;
@@ -488,7 +489,7 @@ void FxF5::explode() {
                 tpl[int(sparkPos[i])] = CRGB(r1, (255 * (sparkCol[i] - c2)) / (c1 - c2), r2);
             }
         }
-        dying_gravity *= .995; // as sparks burn out they fall slower
+        dying_gravity *= 1.195; // as sparks burn out they fall slower
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
     }
