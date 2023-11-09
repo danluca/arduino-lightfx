@@ -44,25 +44,28 @@ void FxB1::setup() {
 }
 
 void FxB1::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLISECONDS(60) {
         rainbow();
         FastLED.show(stripBrightness);
-        hue+=2;
+        hue += 2;
     }
 }
 
 void FxB::rainbow() {
     if (paletteFactory.isHolidayLimitedHue())
         tpl.fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
-            ColorFromPalette(palette, hue+128, brightness),
-            ColorFromPalette(palette, 255-hue, brightness));
+                              ColorFromPalette(palette, hue + 128, brightness),
+                              ColorFromPalette(palette, 255 - hue, brightness));
     else
         tpl.fill_rainbow(hue, 7);
     replicateSet(tpl, others);
 }
 
 
-JsonObject & FxB1::describeConfig(JsonArray &json) const {
+JsonObject &FxB1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
@@ -82,10 +85,13 @@ void FxB2::setup() {
 }
 
 void FxB2::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLISECONDS(60) {
         rainbowWithGlitter();
         FastLED.show(stripBrightness);
-        hue+=2;
+        hue += 2;
     }
 }
 
@@ -118,6 +124,9 @@ void FxB3::setup() {
 }
 
 void FxB3::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     if (mode == TurnOff) {
         if (turnOffWipe(true))
             mode = Chase;
@@ -142,10 +151,10 @@ void FxB::fxb_confetti() {
         tpl[pos] += CHSV(hue + random8(64), 200, 255);
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
-    hue+=2;
+    hue += 2;
 }
 
-JsonObject & FxB3::describeConfig(JsonArray &json) const {
+JsonObject &FxB3::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
@@ -165,11 +174,14 @@ void FxB4::setup() {
 }
 
 void FxB4::loop() {
-  EVERY_N_MILLISECONDS(60) {
-    sinelon();
-    FastLED.show(stripBrightness);
-    hue+=3;
-  }
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
+    EVERY_N_MILLISECONDS(60) {
+        sinelon();
+        FastLED.show(stripBrightness);
+        hue += 3;
+    }
 }
 
 void FxB::sinelon() {
@@ -183,7 +195,7 @@ void FxB::sinelon() {
     replicateSet(tpl, others);
 }
 
-JsonObject & FxB4::describeConfig(JsonArray &json) const {
+JsonObject &FxB4::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
@@ -202,6 +214,9 @@ void FxB5::setup() {
 }
 
 void FxB5::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
@@ -231,7 +246,7 @@ void FxB::juggle_short() {
     FastLED.show(stripBrightness);
 }
 
-JsonObject & FxB5::describeConfig(JsonArray &json) const {
+JsonObject &FxB5::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
@@ -251,6 +266,9 @@ void FxB6::setup() {
 }
 
 void FxB6::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLISECONDS(50) {
         bpm();
     }
@@ -283,33 +301,37 @@ void FxB7::setup() {
 }
 
 void FxB7::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLISECONDS(75) {
         ease();
     }
-
 }
 
 void FxB::ease() {
-    static uint16_t easeInVal  = 0;
+    static uint16_t easeInVal = 0;
 
-    uint16_t easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
-    easeInVal+=811;         //completes a full 65536 cycle in about 6 seconds, given 75ms execution cadence
+    uint16_t easeOutVal = ease16InOutQuad(
+            easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
+    easeInVal += 811;         //completes a full 65536 cycle in about 6 seconds, given 75ms execution cadence
 
-    uint16_t lerpVal = lerp16by16(0, tpl.size()-1, easeOutVal);                // Map it to the number of LED's you have.
+    uint16_t lerpVal = lerp16by16(0, tpl.size() - 1,
+                                  easeOutVal);                // Map it to the number of LED's you have.
 
     if (lerpVal != szStack) {
         tpl(curPos, lerpVal) = ColorFromPalette(palette, hue + easeInVal / 4, max(40, (uint8_t) easeOutVal));
         curPos = lerpVal;
     }
     szStack = lerpVal;
-    hue+=2;
+    hue += 2;
     tpl.fadeToBlackBy(24);                          // 8 bit, 1 = slow fade, 255 = fast fade
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
 
 }
 
-JsonObject & FxB7::describeConfig(JsonArray &json) const {
+JsonObject &FxB7::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
@@ -329,6 +351,9 @@ void FxB8::setup() {
 }
 
 void FxB8::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
@@ -346,19 +371,23 @@ void FxB8::loop() {
 
 void FxB::fadein() {
     hueDiff = random16_get_seed();
-    random16_set_seed(535);                                                           // The randomizer needs to be re-set each time through the loop in order for the 'random' numbers to be the same each time through.
+    random16_set_seed(
+            535);                                                           // The randomizer needs to be re-set each time through the loop in order for the 'random' numbers to be the same each time through.
 
     for (uint16_t i = 0; i < tpl.size(); i++) {
-        uint8_t fader = sin8(millis()/random8(10,20));                                  // The random number for each 'i' will be the same every time.
-        tpl[i] = ColorFromPalette(palette, i*20, fader, LINEARBLEND);       // Now, let's run it through the palette lookup.
+        uint8_t fader = sin8(millis() / random8(10,
+                                                20));                                  // The random number for each 'i' will be the same every time.
+        tpl[i] = ColorFromPalette(palette, i * 20, fader,
+                                  LINEARBLEND);       // Now, let's run it through the palette lookup.
     }
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
 
-    random16_set_seed(hueDiff);                                                      // Re-randomizing the random number seed for other routines.
+    random16_set_seed(
+            hueDiff);                                                      // Re-randomizing the random number seed for other routines.
 }
 
-JsonObject & FxB8::describeConfig(JsonArray &json) const {
+JsonObject &FxB8::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
@@ -379,6 +408,9 @@ void FxB9::setup() {
 }
 
 void FxB9::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
@@ -398,11 +430,30 @@ void FxB::juggle_long() {
     static uint8_t secSlot = 0;
 
     EVERY_N_SECONDS(10) {
-        switch(secSlot) {
-            case 0: numDots = 1; dotBpm = 20; hueDiff = 16; fade = 2; hue = 0; break;
-            case 1: numDots = 4; dotBpm = 10; hueDiff = 16; fade = 8; hue = 128; break;
-            case 2: numDots = 8; dotBpm =  3; hueDiff =  0; fade = 8; hue=random8(); break;
-            default: break;
+        switch (secSlot) {
+            case 0:
+                numDots = 1;
+                dotBpm = 20;
+                hueDiff = 16;
+                fade = 2;
+                hue = 0;
+                break;
+            case 1:
+                numDots = 4;
+                dotBpm = 10;
+                hueDiff = 16;
+                fade = 8;
+                hue = 128;
+                break;
+            case 2:
+                numDots = 8;
+                dotBpm = 3;
+                hueDiff = 0;
+                fade = 8;
+                hue = random8();
+                break;
+            default:
+                break;
         }
         secSlot = inc(secSlot, 1, 3);   //change the modulo value for changing the duration of the loop
     }
@@ -410,16 +461,16 @@ void FxB::juggle_long() {
         uint8_t curHue = hue;                                           // Reset the hue values.
         tpl.fadeToBlackBy(fade);
 
-        for(uint16_t i = 0; i < numDots; i++) {
+        for (uint16_t i = 0; i < numDots; i++) {
             //  note the += operator may lead to colors outside the palette (less evident than |= operator) - for limited hues palettes (like Halloween) this may not be ideal
             uint16_t pos = beatsin16(dotBpm + i + numDots, 0, tpl.size() - 1);
-            for (auto &c : tpl(curPos, pos)) {
+            for (auto &c: tpl(curPos, pos)) {
                 c += ColorFromPalette(palette, curHue, brightness, LINEARBLEND);
             }
             curPos = pos;
             curHue += hueDiff;
         }
-        hue += numDots*2;
+        hue += numDots * 2;
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
     }

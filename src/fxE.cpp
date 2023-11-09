@@ -44,6 +44,9 @@ void FxE1::setup() {
 }
 
 void FxE1::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     updateParams();                                                 // Check the demo loop for changes to the variables.
 
     EVERY_N_SECONDS(2) {
@@ -105,6 +108,9 @@ void FxE2::setup() {
 }
 
 void FxE2::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLIS(100) {
         beatwave();
         FastLED.show(stripBrightness);
@@ -156,6 +162,9 @@ void FxE3::setup() {
  * Good thing that Nano RP2040 is powerful enough to make this fast.
  */
 void FxE3::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLISECONDS(60) {
         uint16_t maxIndex = tpl.size() - 1;
         if (timerSlot == 0) {
@@ -241,6 +250,9 @@ void FxE4::setup() {
 }
 
 void FxE4::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
@@ -255,7 +267,6 @@ void FxE4::loop() {
         serendipitous();
         FastLED.show(stripBrightness);
     }
-
 }
 
 void FxE4::serendipitous() {
@@ -271,7 +282,7 @@ void FxE4::serendipitous() {
     index=(sin8(X)+cos8(Y))/2;
     CRGB newcolor = ColorFromPalette(palette, index, map(Zn, 0, 65535, dimmed*3, brightness), LINEARBLEND);
 
-    nblend(tpl[map(X, 0, 65535, 0, tpl.size())], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
+    nblend(tpl[map(X, 0, 65535, 0, tpl.size()-1)], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
     tpl.fadeToBlackBy(16);                    // 8 bit, 1 = slow, 255 = fast
     replicateSet(tpl, others);
 }
@@ -294,6 +305,9 @@ void FxE5::setup() {
 }
 
 void FxE5::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLIS(30) {
         tpl.fadeToBlackBy(30);
         wave2.fadeToBlackBy(40);

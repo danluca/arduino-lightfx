@@ -87,6 +87,9 @@ void FxH1::setup() {
 }
 
 void FxH1::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLIS(1000 / FRAMES_PER_SECOND) {
         // Add entropy to random number generator; we use a lot of it.
         random16_add_entropy(random());
@@ -164,6 +167,9 @@ void FxH2::setup() {
 }
 
 void FxH2::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     updateParams();
 
     EVERY_N_SECONDS(2) {
@@ -239,6 +245,9 @@ void FxH3::setup() {
 }
 
 void FxH3::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     // fill_rainbow section
     EVERY_N_MILLISECONDS(speed) {
         //below leds+1 is the same as &leds[1] - One pixel border at each end.

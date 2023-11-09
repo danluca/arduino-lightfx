@@ -39,6 +39,9 @@ void FxF1::setup() {
 }
 
 void FxF1::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLISECONDS(speed) {
         const uint8_t dotSize = 2;
         tpl.fadeToBlackBy(fade);
@@ -77,6 +80,9 @@ void FxF2::setup() {
 }
 
 void FxF2::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     // frame rate - 20fps
     EVERY_N_MILLISECONDS(50) {
         double dBreath = (exp(sin(millis()/2400.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;       //(exp(sin(millis()/4000.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;
@@ -128,6 +134,9 @@ void FxF3::setup() {
 }
 
 void FxF3::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_SECONDS(5) {
         //activate eyes if possible
         uint8_t numEyes = 1 + random8(maxEyes);
@@ -323,6 +332,9 @@ void FxF4::setup() {
 }
 
 void FxF4::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLISECONDS_I(fxf4Timer, 50) {
         uint16_t upLim = (tpl.size() + dotSize)/2;
         switch (state) {
@@ -399,6 +411,9 @@ bool FxF4::windDown() {
 FxF5::FxF5() : LedEffect(fxf5Desc) {}
 
 void FxF5::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLIS_I(fxf5Timer, 1000) {
         flare();
 
@@ -406,7 +421,6 @@ void FxF5::loop() {
 
         fxf5Timer.setPeriod(random16(1000, 4000));
     }
-
 }
 
 void FxF5::setup() {

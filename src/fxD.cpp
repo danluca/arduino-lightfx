@@ -49,6 +49,9 @@ void FxD1::setup() {
 }
 
 void FxD1::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     ChangeMe();                                                 // Check the demo loop for changes to the variables.
 
     EVERY_N_MILLISECONDS(speed) {                           // FastLED based non-blocking speed to update/display the sequence.
@@ -109,6 +112,9 @@ void FxD2::setup() {
 }
 
 void FxD2::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLISECONDS(75) {
         dot_beat();
         FastLED.show(stripBrightness);
@@ -149,6 +155,9 @@ void FxD3::setup() {
 }
 
 void FxD3::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_MILLISECONDS(50) {                                  // FastLED based non-blocking delay to update/display the sequence.
         plasma();
         FastLED.show(stripBrightness);
@@ -200,6 +209,9 @@ void FxD4::setup() {
 
 void FxD4::loop() {
     static uint8_t secSlot = 0;
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
 
     EVERY_N_SECONDS(5) {
         update_params(secSlot);
@@ -247,6 +259,9 @@ void FxD5::setup() {
 }
 
 void FxD5::loop() {
+    LedEffect::loop();
+    if (getState() == Completed)
+        return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
