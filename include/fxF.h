@@ -15,6 +15,8 @@ namespace FxF {
         void setup() override;
 
         void loop() override;
+
+        bool windDown() override;
     };
 
     class FxF2 : public LedEffect {
@@ -24,6 +26,8 @@ namespace FxF {
         void setup() override;
 
         void loop() override;
+
+        bool windDown() override;
 
     protected:
         void makePattern(uint8_t hue);
@@ -70,6 +74,8 @@ namespace FxF {
 
         void loop() override;
 
+        bool windDown() override;
+
         Viewport nextEyePos();
 
         EyeBlink *findAvailableEye();
@@ -87,6 +93,8 @@ namespace FxF {
 
         void loop() override;
 
+        bool windDown() override;
+
     protected:
         enum State {Bounce, Reduce, Flash};
         static const uint8_t dotSize = 4;
@@ -103,6 +111,8 @@ namespace FxF {
         void setup() override;
 
         void loop() override;
+
+        bool windDown() override;
 
     protected:
         float sparkPos[NUM_SPARKS];

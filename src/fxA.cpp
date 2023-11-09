@@ -88,6 +88,7 @@ void FxA1::makeDot(CRGB color, uint16_t szDot) {
 }
 
 void FxA1::loop() {
+    LedEffect::loop();
     if (mode == TurnOff) {
         if (turnOff(rot))
             resetStack();
@@ -130,6 +131,10 @@ JsonObject & FxA1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
     return obj;
+}
+
+bool FxA1::windDown() {
+    return turnOff(rot);
 }
 
 // FX A2
@@ -213,6 +218,10 @@ JsonObject & FxA2::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxA2::windDown() {
+    return turnOff(rot);
+}
+
 // Fx A3
 FxA3::FxA3() : LedEffect(fxa3Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
@@ -260,6 +269,10 @@ void FxA3::loop() {
 
 JsonObject & FxA3::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
+}
+
+bool FxA3::windDown() {
+    return turnOff(rot);
 }
 
 // FX A4
@@ -329,6 +342,10 @@ JsonObject & FxA4::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
 }
 
+bool FxA4::windDown() {
+    return turnOff(rot);
+}
+
 // Fx A5
 FxA5::FxA5() : LedEffect(fxa5Desc), ovr(frame(0, FRAME_SIZE-1)) {
 }
@@ -391,4 +408,8 @@ void FxA5::loop() {
 
 JsonObject & FxA5::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
+}
+
+bool FxA5::windDown() {
+    return turnOff(rot);
 }

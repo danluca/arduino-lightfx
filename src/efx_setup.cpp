@@ -637,15 +637,17 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
 void EffectRegistry::setup() {
     for (uint16_t x = 0; x < effectsCount; x++) {
         effects[x]->setup();
+        effects[currentEffect]->setState(Begin);
     }
 }
 
 void EffectRegistry::loop() {
     //if effect has changed, re-run the effect's setup
-    if (lastEffectRun != currentEffect) {
+    if ((lastEffectRun != currentEffect) && (effects[currentEffect]->getState() == Completed)) {
         Log.infoln(F("Effect change: from index %d [%s] to %d [%s]"),
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         effects[currentEffect]->setup();
+        effects[currentEffect]->setState(Running);
         lastEffectRun = currentEffect;
     }
     effects[currentEffect]->loop();
@@ -685,7 +687,7 @@ void LedEffect::baseConfig(JsonObject &json) const {
     json["palette"] = holidayToString(paletteFactory.getHoliday());
 }
 
-LedEffect::LedEffect(const char *description) : desc(description) {
+LedEffect::LedEffect(const char *description) : state(Setup), desc(description) {
     //copy into id field the prefix of description (e.g. for a description 'FxA1: awesome lights', copies 'FxA1' into id)
     for (uint8_t i=0; i<LED_EFFECT_ID_SIZE; i++) {
         if (description[i] == ':' || description[i] == '\0') {
@@ -715,7 +717,24 @@ const char *LedEffect::description() const {
 }
 
 void LedEffect::setup() {
+    state = Setup;
     resetGlobals();
+}
+
+void LedEffect::loop() {
+    if (getState() == WindDown) {
+        if (windDown())
+            setState(Completed);
+        return;
+    }
+}
+
+inline EffectState LedEffect::getState() const {
+    return state;
+}
+
+inline void LedEffect::setState(EffectState newState) {
+    state = newState;
 }
 
 // Viewport

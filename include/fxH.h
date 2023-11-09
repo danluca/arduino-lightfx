@@ -56,6 +56,8 @@ namespace FxH {
 
         void loop() override;
 
+        bool windDown() override;
+
         JsonObject & describeConfig(JsonArray &json) const override;
 
         void Fire2012WithPalette(uint8_t xFire);
@@ -68,6 +70,8 @@ namespace FxH {
         void setup() override;
 
         void loop() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -83,6 +87,8 @@ namespace FxH {
         void setup() override;
 
         void loop() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
     };

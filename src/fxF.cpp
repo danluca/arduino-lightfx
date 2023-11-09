@@ -61,6 +61,10 @@ void FxF1::loop() {
     }
 }
 
+bool FxF1::windDown() {
+    return turnOffSpots();
+}
+
 // FxF2
 FxF2::FxF2() : LedEffect(fxf2Desc), pattern(frame(0, FRAME_SIZE-1)) {
 }
@@ -105,6 +109,10 @@ void FxF2::makePattern(uint8_t hue) {
         pattern(i+14, i+16) = CRGB::White;
     }
     loopRight(pattern, (Viewport)0, s0);
+}
+
+bool FxF2::windDown() {
+    return turnOffWipe(false);
 }
 
 // FxF3
@@ -192,6 +200,10 @@ Viewport FxF3::nextEyePos() {
         szGap = curGap;
     }
     return szGap > EyeBlink::size ? Viewport(posGap, posGap+szGap-EyeBlink::size) : (Viewport)0;
+}
+
+bool FxF3::windDown() {
+    return turnOffWipe(true);
 }
 
 /**
@@ -379,6 +391,10 @@ FxF4::FxF4() : LedEffect(fxf4Desc), state(Bounce), set1(tpl(0, tpl.size()/2-1)),
 
 }
 
+bool FxF4::windDown() {
+    return turnOffWipe(true);
+}
+
 // FxF5 - algorithm by Carl Rosendahl, adapted from code published at https://www.anirama.com/1000leds/1d-fireworks/
 FxF5::FxF5() : LedEffect(fxf5Desc) {}
 
@@ -420,9 +436,9 @@ void FxF5::flare() {
         sparkCol[i] = constrain(sparkCol[i], 0, 255);
     }
     // launch
-    tpl = BKG;
-    uint16_t highLim = tpl.size()-1;
+    uint16_t highLim = tpl.size()*3/4;
     while (flareVel >= -.2) {
+        tpl = BKG;
         // sparks
         for (int i = 0; i < 5; i++) {
             sparkPos[i] += sparkVel[i];
@@ -443,7 +459,6 @@ void FxF5::flare() {
         brightness *= .985;
 
         FastLED.show(stripBrightness);
-        tpl = BKG;
     }
 }
 
@@ -480,14 +495,15 @@ void FxF5::explode() {
             sparkCol[i] *= .99;
             sparkCol[i] = constrain(sparkCol[i], 0, 255); // red cross dissolve
             if(sparkCol[i] > c1) { // fade white to yellow
-                tpl[int(sparkPos[i])] = CRGB(r1, r3, (255 * (sparkCol[i] - c1)) / (255 - c1));
+                tpl[int(sparkPos[i])] = CHSV(r1, r3, (255 * (sparkCol[i] - c1)) / (255 - c1));
             }
             else if (sparkCol[i] < c2) { // fade from red to black
-                tpl[int(sparkPos[i])] = CRGB((255 * sparkCol[i]) / c2, r2, r1);
+                tpl[int(sparkPos[i])] = CHSV((255 * sparkCol[i]) / c2, r2, r1--);
             }
             else { // fade from yellow to red
-                tpl[int(sparkPos[i])] = CRGB(r1, (255 * (sparkCol[i] - c2)) / (c1 - c2), r2);
+                tpl[int(sparkPos[i])] = CHSV(r1, (255 * (sparkCol[i] - c2)) / (c1 - c2), r2--);
             }
+
         }
         dying_gravity *= 0.975; // as sparks burn out they fall slower
         replicateSet(tpl, others);
@@ -496,4 +512,8 @@ void FxF5::explode() {
     tpl = BKG;
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
+}
+
+bool FxF5::windDown() {
+    return turnOffWipe(true);
 }

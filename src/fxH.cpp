@@ -150,6 +150,10 @@ JsonObject & FxH1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxH1::windDown() {
+    return turnOffSpots();
+}
+
 
 // FxH2
 FxH2::FxH2() : LedEffect(fxh2Desc) {}
@@ -203,6 +207,10 @@ JsonObject & FxH2::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxH2::windDown() {
+    return turnOffWipe(false);
+}
+
 /**
  * fill_colours - TBD whether to keep, too close to rainbow march, etc.
  *
@@ -252,4 +260,8 @@ JsonObject & FxH3::describeConfig(JsonArray &json) const {
     obj["hueDiff"] = hueDiff;
     obj["speed"] = speed;
     return obj;
+}
+
+bool FxH3::windDown() {
+    return turnOffSpots();
 }

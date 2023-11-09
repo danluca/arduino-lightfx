@@ -89,6 +89,10 @@ JsonObject & FxE1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxE1::windDown() {
+    return turnOffSpots();
+}
+
 // Fx E2
 FxE2::FxE2() : LedEffect(fxe2Desc) {}
 
@@ -126,6 +130,10 @@ void FxE2::beatwave() {
     for (uint16_t i=0; i<tpl.size(); i++)
         tpl[i] = ColorFromPalette(palette, i + wave1 + wave2 + wave3 + wave4, brightness, LINEARBLEND);
     replicateSet(tpl, others);
+}
+
+bool FxE2::windDown() {
+    return turnOffSpots();
 }
 
 //Fx E3
@@ -219,6 +227,10 @@ void FxE3::loop() {
     }
 }
 
+bool FxE3::windDown() {
+    return turnOffWipe(false);
+}
+
 //Fx E4
 FxE4::FxE4() : LedEffect(fxe4Desc) {}
 
@@ -262,6 +274,10 @@ void FxE4::serendipitous() {
     nblend(tpl[map(X, 0, 65535, 0, tpl.size())], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
     tpl.fadeToBlackBy(16);                    // 8 bit, 1 = slow, 255 = fast
     replicateSet(tpl, others);
+}
+
+bool FxE4::windDown() {
+    return turnOffWipe(true);
 }
 
 // FxE5
@@ -309,5 +325,9 @@ void FxE5::loop() {
         clr3 = random8();
     }
 
+}
+
+bool FxE5::windDown() {
+    return turnOffWipe(true);
 }
 

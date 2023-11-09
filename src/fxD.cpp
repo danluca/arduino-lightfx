@@ -88,6 +88,10 @@ void FxD1::ChangeMe() {
     }
 }
 
+bool FxD1::windDown() {
+    return turnOffSpots();
+}
+
 // Fx D2
 /**
  * dots By: John Burroughs
@@ -130,6 +134,10 @@ void FxD2::dot_beat() {
     tpl.nscale8(255-fade);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeVal);
 
     replicateSet(tpl, others);
+}
+
+bool FxD2::windDown() {
+    return turnOffWipe(true);
 }
 
 // Fx D3
@@ -177,6 +185,10 @@ void FxD3::plasma() {
 
 FxD3::FxD3() : LedEffect(fxd3Desc) {}
 
+bool FxD3::windDown() {
+    return turnOffWipe(false);
+}
+
 // Fx D4
 FxD4::FxD4() : LedEffect(fxd4Desc) {}
 
@@ -223,6 +235,10 @@ void FxD4::rainbow_march() {
     replicateSet(tpl, others);
 }
 
+bool FxD4::windDown() {
+    return turnOffSpots();
+}
+
 // Fx D5
 FxD5::FxD5() : LedEffect(fxd5Desc) {}
 
@@ -255,6 +271,10 @@ void FxD5::ripples() {
         }
     }
     replicateSet(tpl, others);
+}
+
+bool FxD5::windDown() {
+    return turnOffWipe(true);
 }
 
 // ripple structure API

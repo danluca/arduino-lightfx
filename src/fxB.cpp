@@ -68,6 +68,10 @@ JsonObject & FxB1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxB1::windDown() {
+    return turnOffSpots();
+}
+
 //FXB2
 FxB2::FxB2() : LedEffect(fxb2Desc) {}
 
@@ -83,6 +87,10 @@ void FxB2::loop() {
         FastLED.show(stripBrightness);
         hue+=2;
     }
+}
+
+bool FxB2::windDown() {
+    return turnOffWipe(false);
 }
 
 /**
@@ -143,6 +151,10 @@ JsonObject & FxB3::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxB3::windDown() {
+    return turnOffWipe(true);
+}
+
 //FXB4
 FxB4::FxB4() : LedEffect(fxb4Desc) {}
 
@@ -175,6 +187,10 @@ JsonObject & FxB4::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
+}
+
+bool FxB4::windDown() {
+    return turnOffWipe(false);
 }
 
 //FXB5
@@ -221,6 +237,10 @@ JsonObject & FxB5::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxB5::windDown() {
+    return turnOffWipe(false);
+}
+
 //FXB6
 FxB6::FxB6() : LedEffect(fxb6Desc) {}
 
@@ -233,9 +253,11 @@ void FxB6::setup() {
 void FxB6::loop() {
     EVERY_N_MILLISECONDS(50) {
         bpm();
-        hue += 2;  // slowly cycle the "base color" through the rainbow
-        FastLED.show(stripBrightness);
     }
+}
+
+bool FxB6::windDown() {
+    return turnOffWipe(false);
 }
 
 void FxB::bpm() {
@@ -243,9 +265,12 @@ void FxB::bpm() {
     uint8_t BeatsPerMinute = beatsin8(5, 62, 67);
     uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
 
-    for (uint16_t i = 0; i < NUM_PIXELS; i++) {
-        leds[i] = ColorFromPalette(palette, hue + (i * 2), beat - hue + (i * 10));
+    for (uint16_t i = 0; i < tpl.size(); i++) {
+        leds[i] = ColorFromPalette(palette, hue + i, beat - hue + (i * 3));
     }
+    replicateSet(tpl, others);
+    hue += 8;  // slowly cycle the "base color" through the rainbow
+    FastLED.show(stripBrightness);
 }
 
 //FXB7
@@ -287,6 +312,10 @@ JsonObject & FxB7::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
+}
+
+bool FxB7::windDown() {
+    return turnOffWipe(true);
 }
 
 //FXB8
@@ -332,6 +361,10 @@ JsonObject & FxB8::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
+}
+
+bool FxB8::windDown() {
+    return turnOffWipe(true);
 }
 
 // FxB9
@@ -392,3 +425,7 @@ void FxB::juggle_long() {
 }
 
 FxB9::FxB9() : LedEffect(fxb9Desc) {}
+
+bool FxB9::windDown() {
+    return turnOffSpots();
+}

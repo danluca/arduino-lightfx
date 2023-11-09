@@ -15,6 +15,8 @@ namespace FxE {
 
         void loop() override;
 
+        bool windDown() override;
+
         static void twinkle();
 
         JsonObject & describeConfig(JsonArray &json) const override;
@@ -30,6 +32,8 @@ namespace FxE {
 
         void loop() override;
 
+        bool windDown() override;
+
         void beatwave();
     };
 
@@ -40,6 +44,8 @@ namespace FxE {
         void setup() override;
 
         void loop() override;
+
+        bool windDown() override;
 
     protected:
         const uint8_t sasquatchSize = 3;
@@ -58,6 +64,8 @@ namespace FxE {
 
         void loop() override;
 
+        bool windDown() override;
+
         void serendipitous();
 
     protected:
@@ -74,6 +82,8 @@ namespace FxE {
         void setup() override;
 
         void loop() override;
+
+        bool windDown() override;
 
     protected:
         CRGBSet wave2, wave3;

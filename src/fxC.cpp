@@ -75,6 +75,10 @@ void FxC1::animationB() {
     }
 }
 
+bool FxC1::windDown() {
+    return turnOffWipe(true);
+}
+
 //Fx C2
 /**
  * blur
@@ -110,6 +114,10 @@ void FxC2::loop() {
 
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
+}
+
+bool FxC2::windDown() {
+    return turnOffSpots();
 }
 
 //Fx C3
@@ -164,6 +172,10 @@ JsonObject & FxC3::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxC3::windDown() {
+    return turnOffSpots();
+}
+
 // Fx C4
 FxC4::FxC4() : LedEffect(fxc4Desc) {}
 
@@ -197,6 +209,10 @@ void FxC4::loop() {
         }
         fxc4Timer.setPeriod(1+random8(frequency));    // speed between strikes
     }
+}
+
+bool FxC4::windDown() {
+    return true;
 }
 
 // Fx C5
@@ -259,6 +275,10 @@ void FxC5::matrix() {
     replicateSet(tpl, others);
 }
 
+bool FxC5::windDown() {
+    return turnOffWipe(false);
+}
+
 // Fx C6
 FxC6::FxC6() : LedEffect(fxc6Desc) {}
 
@@ -305,4 +325,8 @@ void FxC6::one_sine_pal(uint8_t colorIndex) {
     }
     replicateSet(tpl, others);
     bgclr++;
+}
+
+bool FxC6::windDown() {
+    return turnOffWipe(true);
 }

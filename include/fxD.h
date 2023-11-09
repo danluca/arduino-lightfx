@@ -15,6 +15,8 @@ namespace FxD {
 
         void loop() override;
 
+        bool windDown() override;
+
         JsonObject & describeConfig(JsonArray &json) const override;
 
         void ChangeMe();
@@ -30,6 +32,8 @@ namespace FxD {
 
         void loop() override;
 
+        bool windDown() override;
+
         JsonObject & describeConfig(JsonArray &json) const override;
 
         void dot_beat();
@@ -43,6 +47,8 @@ namespace FxD {
 
         void loop() override;
 
+        bool windDown() override;
+
         void plasma();
     protected:
         uint8_t monoColor;
@@ -55,6 +61,8 @@ namespace FxD {
         void setup() override;
 
         void loop() override;
+
+        bool windDown() override;
 
         void rainbow_march();
 
@@ -86,6 +94,8 @@ namespace FxD {
         void setup() override;
 
         void loop() override;
+
+        bool windDown() override;
 
         void ripples();
 
