@@ -737,14 +737,6 @@ void LedEffect::loop() {
     }
 }
 
-inline EffectState LedEffect::getState() const {
-    return state;
-}
-
-inline void LedEffect::setState(EffectState newState) {
-    state = newState;
-}
-
 // Viewport
 Viewport::Viewport(uint16_t high) : Viewport(0, high) {}
 

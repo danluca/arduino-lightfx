@@ -211,8 +211,12 @@ public:
 
     uint16_t getRegistryIndex() const;
 
-    EffectState getState() const;
-    void setState(EffectState newState);
+    inline EffectState getState() const {
+        return state;
+    }
+    inline void setState(EffectState newState) {
+        state = newState;
+    }
 
     virtual ~LedEffect() = default;     // Destructor
 };
