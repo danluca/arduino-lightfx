@@ -285,8 +285,6 @@ void FxB7::setup() {
 void FxB7::loop() {
     EVERY_N_MILLISECONDS(75) {
         ease();
-        hue+=2;
-        FastLED.show(stripBrightness);
     }
 
 }
@@ -297,15 +295,18 @@ void FxB::ease() {
     uint16_t easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
     easeInVal+=811;         //completes a full 65536 cycle in about 6 seconds, given 75ms execution cadence
 
-    uint16_t lerpVal = lerp16by16(0, tpl.size(), easeOutVal);                // Map it to the number of LED's you have.
+    uint16_t lerpVal = lerp16by16(0, tpl.size()-1, easeOutVal);                // Map it to the number of LED's you have.
 
     if (lerpVal != szStack) {
         tpl(curPos, lerpVal) = ColorFromPalette(palette, hue + easeInVal / 4, max(40, (uint8_t) easeOutVal));
         curPos = lerpVal;
     }
+    szStack = lerpVal;
+    hue+=2;
     tpl.fadeToBlackBy(24);                          // 8 bit, 1 = slow fade, 255 = fast fade
     replicateSet(tpl, others);
-    szStack = lerpVal;
+    FastLED.show(stripBrightness);
+
 }
 
 JsonObject & FxB7::describeConfig(JsonArray &json) const {

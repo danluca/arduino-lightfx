@@ -600,17 +600,20 @@ LedEffect *EffectRegistry::getCurrentEffect() const {
 }
 
 uint16_t EffectRegistry::nextEffectPos(uint16_t efx) {
-    uint16_t prevPos = currentEffect;
+    lastEffectRun = currentEffect;
     currentEffect = capu(efx, effectsCount-1);
-    return prevPos;
+    if (lastEffectRun != currentEffect)
+        effects[lastEffectRun]->setState(Completed);
+    return lastEffectRun;
 }
 
 uint16_t EffectRegistry::nextEffectPos() {
     if (!autoSwitch)
         return currentEffect;
-    uint16_t prevPos = currentEffect;
+    lastEffectRun = currentEffect;
     currentEffect = inc(currentEffect, 1, effectsCount);
-    return prevPos;
+    effects[lastEffectRun]->setState(WindDown);
+    return lastEffectRun;
 }
 
 uint16_t EffectRegistry::curEffectPos() const {
@@ -618,7 +621,12 @@ uint16_t EffectRegistry::curEffectPos() const {
 }
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
-    currentEffect = autoSwitch ? random16(0, effectsCount) : currentEffect;
+    if (autoSwitch) {
+        lastEffectRun = currentEffect;
+        currentEffect = random16(0, effectsCount);
+        if (currentEffect != lastEffectRun)
+            effects[lastEffectRun]->setState(WindDown);
+    }
     return currentEffect;
 }
 
@@ -643,7 +651,7 @@ void EffectRegistry::setup() {
 
 void EffectRegistry::loop() {
     //if effect has changed, re-run the effect's setup
-    if ((lastEffectRun != currentEffect) && (effects[currentEffect]->getState() == Completed)) {
+    if ((lastEffectRun != currentEffect) && (effects[lastEffectRun]->getState() == Completed)) {
         Log.infoln(F("Effect change: from index %d [%s] to %d [%s]"),
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         effects[currentEffect]->setup();
