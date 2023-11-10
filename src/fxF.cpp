@@ -507,14 +507,16 @@ void FxF5::explode() {
                 tpl[int(sparkPos[i])] = CHSV(r1, r3, (255 * (sparkCol[i] - c1)) / (255 - c1));
             }
             else if (sparkCol[i] < c2) { // fade from red to black
-                tpl[int(sparkPos[i])] = CHSV((255 * sparkCol[i]) / c2, r2, r1--);
+                tpl[int(sparkPos[i])] = CHSV((255 * sparkCol[i]) / c2, r2, r1);
+                r1 -= (r1 >= 3 ? 3 : 0);
             }
             else { // fade from yellow to red
-                tpl[int(sparkPos[i])] = CHSV(r1, (255 * (sparkCol[i] - c2)) / (c1 - c2), r2--);
+                tpl[int(sparkPos[i])] = CHSV(r1, (255 * (sparkCol[i] - c2)) / (c1 - c2), r2);
+                r2 -= (r2 >= 3 ? 3 : 0);
             }
 
         }
-        dying_gravity *= 0.975; // as sparks burn out they fall slower
+        dying_gravity *= 0.985; // as sparks burn out they fall slower
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
     }
