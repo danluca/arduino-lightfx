@@ -83,6 +83,7 @@ void readState() {
         random16_add_entropy(seed);
 
         uint16_t fx = doc[csCurFx].as<uint16_t>();
+        fxRegistry.getCurrentEffect()->setState(Completed);
         fxRegistry.nextEffectPos(fx);
 
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
@@ -622,7 +623,7 @@ uint16_t EffectRegistry::curEffectPos() const {
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
     if (autoSwitch) {
-        lastEffectRun = currentEffect;
+        lastEffectRun = currentEffect;  //this should already be the case, enforcing it for obscure edge cases
         currentEffect = random16(0, effectsCount);
         if (currentEffect != lastEffectRun)
             effects[lastEffectRun]->setState(WindDown);
@@ -646,7 +647,6 @@ void EffectRegistry::setup() {
     for (uint16_t x = 0; x < effectsCount; x++) {
         effects[currentEffect]->setState(Setup);
         effects[x]->setup();
-        effects[currentEffect]->setState(Paused);
     }
 }
 
@@ -657,10 +657,9 @@ void EffectRegistry::loop() {
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         effects[currentEffect]->setup();
         effects[currentEffect]->setState(Running);
-        effects[lastEffectRun]->setState(Paused);
         lastEffectRun = currentEffect;
     }
-    effects[currentEffect]->loop();
+    effects[lastEffectRun]->loop();
 }
 
 void EffectRegistry::describeConfig(JsonArray &json) {
@@ -727,16 +726,20 @@ const char *LedEffect::description() const {
 }
 
 void LedEffect::setup() {
+    setState(Setup);
     resetGlobals();
 }
 
+/**
+ * State machine check within loop methods
+ * @return true if the effect execution is completed; false if in progress
+ */
 bool LedEffect::endStateCheck() {
     EffectState curState = getState();
     switch (curState) {
         case WindDown:
             if (windDown())
                 setState(Completed);
-            return true;
         case Completed:
             return true;
         default:

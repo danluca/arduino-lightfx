@@ -40,7 +40,7 @@ extern const uint8_t dimmed;
 extern const CRGB BKG;
 extern const uint8_t maxChanges;
 enum OpMode { TurnOff, Chase };
-enum EffectState {Setup, Paused, Running, WindDown, Completed};
+enum EffectState {Setup, Running, WindDown, Completed};
 extern CRGB leds[NUM_PIXELS];
 extern CRGBArray<NUM_PIXELS> frame;
 extern CRGBSet tpl;
