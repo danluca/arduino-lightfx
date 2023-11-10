@@ -45,8 +45,7 @@ void FxC1::setup() {
 }
 
 void FxC1::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     animationA();
     animationB();
@@ -101,8 +100,7 @@ FxC2::FxC2() : LedEffect(fxc2Desc) {}
 //}
 
 void FxC2::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
     tpl.blur1d(blurAmount);                        // Apply some blurring to whatever's already on the strip, which will eventually go black.
@@ -149,8 +147,7 @@ void FxC3::setup() {
 }
 
 void FxC3::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLISECONDS(35) {
         uint16_t locn = inoise16(xscale, dist+yscale) % 0xFFFF;           // Get a new pixel location from moving noise.
@@ -196,8 +193,7 @@ void FxC4::setup() {
 }
 
 void FxC4::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_SECONDS_I(fxc4Timer, 1+random8(frequency)) {
         uint16_t start = random16(NUM_PIXELS - 8);                               // Determine starting location of flash
@@ -240,8 +236,7 @@ void FxC5::setup() {
 }
 
 void FxC5::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     changeParams();
 
@@ -306,8 +301,7 @@ void FxC6::setup() {
 
 void FxC6::loop() {
     static uint8_t secSlot = 0;
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
 
     EVERY_N_MILLISECONDS_I(c6Timer, delay) {

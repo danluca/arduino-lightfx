@@ -88,8 +88,7 @@ void FxA1::makeDot(CRGB color, uint16_t szDot) {
 }
 
 void FxA1::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     if (mode == TurnOff) {
         if (turnOff(rot))
@@ -160,8 +159,7 @@ void FxA2::makeDot() {
 }
 
 void FxA2::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     if (mode == TurnOff) {
         turnOff(rot);
@@ -247,8 +245,7 @@ void FxA3::makeDot(CRGB color, uint16_t szDot) {
 }
 
 void FxA3::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLISECONDS_I(a3Timer, speed) {
         if (bFwd)
@@ -305,8 +302,7 @@ void FxA4::makeDot(CRGB color, uint16_t szDot) {
 }
 
 void FxA4::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     if (mode == TurnOff) {
         if (turnOff(rot))
@@ -384,8 +380,7 @@ void FxA5::makeFrame() {
 }
 
 void FxA5::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     if (mode == TurnOff) {
         if (turnOff(rot))

@@ -87,8 +87,7 @@ void FxH1::setup() {
 }
 
 void FxH1::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLIS(1000 / FRAMES_PER_SECOND) {
         // Add entropy to random number generator; we use a lot of it.
@@ -167,8 +166,7 @@ void FxH2::setup() {
 }
 
 void FxH2::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     updateParams();
 
@@ -245,8 +243,7 @@ void FxH3::setup() {
 }
 
 void FxH3::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     // fill_rainbow section
     EVERY_N_MILLISECONDS(speed) {

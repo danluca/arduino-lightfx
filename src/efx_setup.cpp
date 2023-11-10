@@ -539,7 +539,7 @@ bool turnOffWipe(bool rightDir) {
         else
             shiftLeft(strip, BKG);
         FastLED.show(stripBrightness);
-        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
+        allOff = !isAnyLedOn(&strip, BKG);
     }
 
     return allOff;
@@ -603,7 +603,7 @@ uint16_t EffectRegistry::nextEffectPos(uint16_t efx) {
     lastEffectRun = currentEffect;
     currentEffect = capu(efx, effectsCount-1);
     if (lastEffectRun != currentEffect)
-        effects[lastEffectRun]->setState(Completed);
+        effects[lastEffectRun]->setState(WindDown);
     return lastEffectRun;
 }
 
@@ -644,8 +644,9 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
 
 void EffectRegistry::setup() {
     for (uint16_t x = 0; x < effectsCount; x++) {
+        effects[currentEffect]->setState(Setup);
         effects[x]->setup();
-        effects[currentEffect]->setState(Begin);
+        effects[currentEffect]->setState(Paused);
     }
 }
 
@@ -656,6 +657,7 @@ void EffectRegistry::loop() {
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         effects[currentEffect]->setup();
         effects[currentEffect]->setState(Running);
+        effects[lastEffectRun]->setState(Paused);
         lastEffectRun = currentEffect;
     }
     effects[currentEffect]->loop();
@@ -725,15 +727,20 @@ const char *LedEffect::description() const {
 }
 
 void LedEffect::setup() {
-    state = Setup;
     resetGlobals();
 }
 
-void LedEffect::loop() {
-    if (getState() == WindDown) {
-        if (windDown())
-            setState(Completed);
-        return;
+bool LedEffect::endStateCheck() {
+    EffectState curState = getState();
+    switch (curState) {
+        case WindDown:
+            if (windDown())
+                setState(Completed);
+            return true;
+        case Completed:
+            return true;
+        default:
+            return false;
     }
 }
 

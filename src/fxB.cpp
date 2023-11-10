@@ -44,8 +44,7 @@ void FxB1::setup() {
 }
 
 void FxB1::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLISECONDS(60) {
         rainbow();
@@ -85,8 +84,7 @@ void FxB2::setup() {
 }
 
 void FxB2::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLISECONDS(60) {
         rainbowWithGlitter();
@@ -124,8 +122,7 @@ void FxB3::setup() {
 }
 
 void FxB3::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     if (mode == TurnOff) {
         if (turnOffWipe(true))
@@ -174,8 +171,7 @@ void FxB4::setup() {
 }
 
 void FxB4::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLISECONDS(60) {
         sinelon();
@@ -214,8 +210,7 @@ void FxB5::setup() {
 }
 
 void FxB5::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
@@ -266,8 +261,7 @@ void FxB6::setup() {
 }
 
 void FxB6::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLISECONDS(50) {
         bpm();
@@ -301,8 +295,7 @@ void FxB7::setup() {
 }
 
 void FxB7::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLISECONDS(75) {
         ease();
@@ -351,8 +344,7 @@ void FxB8::setup() {
 }
 
 void FxB8::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
@@ -408,8 +400,7 @@ void FxB9::setup() {
 }
 
 void FxB9::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);

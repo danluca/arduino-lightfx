@@ -44,8 +44,7 @@ void FxE1::setup() {
 }
 
 void FxE1::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     updateParams();                                                 // Check the demo loop for changes to the variables.
 
@@ -108,8 +107,7 @@ void FxE2::setup() {
 }
 
 void FxE2::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLIS(100) {
         beatwave();
@@ -162,8 +160,7 @@ void FxE3::setup() {
  * Good thing that Nano RP2040 is powerful enough to make this fast.
  */
 void FxE3::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLISECONDS(60) {
         uint16_t maxIndex = tpl.size() - 1;
@@ -250,8 +247,7 @@ void FxE4::setup() {
 }
 
 void FxE4::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
@@ -305,8 +301,7 @@ void FxE5::setup() {
 }
 
 void FxE5::loop() {
-    LedEffect::loop();
-    if (getState() == Completed)
+    if (endStateCheck())
         return;
     EVERY_N_MILLIS(30) {
         tpl.fadeToBlackBy(30);
