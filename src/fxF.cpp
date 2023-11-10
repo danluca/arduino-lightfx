@@ -486,36 +486,44 @@ void FxF5::explode() {
         sparkVel[i] = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
         sparkCol[i] = abs(sparkVel[i]) * 500; // set colors before scaling velocity to keep them bright
         sparkCol[i] = constrain(sparkCol[i], 0, 255);
+        sparkHue[i] = ColorFromPalette(palette, random8(), uint8_t(sparkCol[i]), LINEARBLEND);
         sparkVel[i] *= flarePos/1.7f/ float(tpl.size()); // proportional to height
     }
     sparkCol[0] = 255; // this will be our known spark
     float dying_gravity = gravity;
-    const float c1 = 120;
+//    const float c1 = 120;
     const float c2 = 50;
     float r1 = random8(160, 255);
     float r2 = random8(160, 255);
     float r3 = random8(40, 255);
     while(sparkCol[0] > c2/128) { // as long as our known spark is lit, work with all the sparks
-        tpl = BKG;
+        tpl.fadeToBlackBy(12);
         for (short i = 0; i < nSparks; i++) {
             sparkPos[i] += sparkVel[i];
             sparkPos[i] = constrain(sparkPos[i], 0, tpl.size()-1);
             sparkVel[i] += dying_gravity;
-            sparkCol[i] *= .99;
-            sparkCol[i] = constrain(sparkCol[i], 0, 255); // red cross dissolve
-            if(sparkCol[i] > c1) { // fade white to yellow
-                tpl[int(sparkPos[i])] = CHSV(uint8_t(r1), uint8_t(r3), (255 * (sparkCol[i] - c1)) / (255 - c1));
-            }
-            else if (sparkCol[i] < c2) { // fade from red to black
-                tpl[int(sparkPos[i])] = CHSV((255 * sparkCol[i]) / c2, uint8_t(r2), uint8_t(r1));
-                if (r1 > 0)
-                    r1 -= 0.27f;
-            }
-            else { // fade from yellow to red
-                tpl[int(sparkPos[i])] = CHSV(uint8_t(r1), (255 * (sparkCol[i] - c2)) / (c1 - c2), uint8_t(r2));
-                if (r2 > 0)
-                    r2 -= 0.21f;
-            }
+            sparkCol[i] *= .895f;
+            sparkCol[i] = constrain(sparkCol[i], 0, 255);
+            //fade the sparks
+            auto tplPos = uint16_t(sparkPos[i]);
+            tpl[tplPos] = sparkHue[i];
+            setBrightness(tpl[tplPos], uint8_t(sparkCol[i]));
+//
+//            // red cross dissolve
+//
+//            if(sparkCol[i] > c1) { // fade white to yellow
+//                tpl[int(sparkPos[i])] = CHSV(uint8_t(r1), uint8_t(r3), (255 * (sparkCol[i] - c1)) / (255 - c1));
+//            }
+//            else if (sparkCol[i] < c2) { // fade from red to black
+//                tpl[int(sparkPos[i])] = CHSV((255 * sparkCol[i]) / c2, uint8_t(r2), uint8_t(r1));
+//                if (r1 > 0)
+//                    r1 -= 0.27f;
+//            }
+//            else { // fade from yellow to red
+//                tpl[int(sparkPos[i])] = CHSV(uint8_t(r1), (255 * (sparkCol[i] - c2)) / (c1 - c2), uint8_t(r2));
+//                if (r2 > 0)
+//                    r2 -= 0.21f;
+//            }
 
         }
         dying_gravity *= 0.985; // as sparks burn out they fall slower
