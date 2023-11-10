@@ -305,15 +305,17 @@ void FxB7::loop() {
 void FxB::ease() {
     static uint16_t easeInVal = 0;
 
-    uint16_t easeOutVal = ease16InOutQuad(
-            easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
+    uint16_t easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
     easeInVal += 811;         //completes a full 65536 cycle in about 6 seconds, given 75ms execution cadence
 
     uint16_t lerpVal = lerp16by16(0, tpl.size() - 1,
                                   easeOutVal);                // Map it to the number of LED's you have.
 
     if (lerpVal != szStack) {
-        tpl(curPos, lerpVal) = ColorFromPalette(palette, hue + easeInVal / 4, max(40, (uint8_t) easeOutVal));
+        if (lerpVal > curPos)
+            tpl(curPos, lerpVal) = ColorFromPalette(palette, hue + easeInVal / 4, max(40, (uint8_t) easeOutVal));
+        else
+            tpl.fadeToBlackBy(49);
         curPos = lerpVal;
     }
     szStack = lerpVal;

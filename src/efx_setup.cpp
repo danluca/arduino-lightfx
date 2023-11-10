@@ -738,10 +738,17 @@ bool LedEffect::endStateCheck() {
     EffectState curState = getState();
     switch (curState) {
         case WindDown:
-            if (windDown())
+            if (windDown()) {
+                setState(TransitionPause);
+                pauseStart = millis();
+            }
+            return true;
+        case TransitionPause:
+            //1 second pause between this effect end and next effect start (ideally this is when next effect setup would run)
+            if ((millis()-pauseStart) > 1000)
                 setState(Completed);
         case Completed:
-            return true;
+            return true;    //this state allows next effect to start immediately - see EffectRegistry::loop
         default:
             return false;
     }

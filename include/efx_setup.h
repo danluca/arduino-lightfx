@@ -40,7 +40,7 @@ extern const uint8_t dimmed;
 extern const CRGB BKG;
 extern const uint8_t maxChanges;
 enum OpMode { TurnOff, Chase };
-enum EffectState {Setup, Running, WindDown, Completed};
+enum EffectState {Setup, Running, WindDown, TransitionPause, Completed};
 extern CRGB leds[NUM_PIXELS];
 extern CRGBArray<NUM_PIXELS> frame;
 extern CRGBSet tpl;
@@ -190,6 +190,7 @@ class LedEffect {
 protected:
     uint registryIndex = 0;
     EffectState state;
+    ulong pauseStart = 0;
     const char* const desc;
     char id[LED_EFFECT_ID_SIZE] {};   //this is name of the class, max 5 characters (plus null terminal)
 public:
