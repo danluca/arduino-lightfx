@@ -11,16 +11,16 @@
 #include "config.h"
 #include "util.h"
 
-#define capd(x, d) ((x<d)?d:x)
-#define capu(x, u) ((x>u)?u:x)
+#define capd(x, d) (((x)<(d))?(d):(x))
+#define capu(x, u) (((x)>(u))?(u):(x))
 #define capr(x, d, u) (capu(capd(x,d),u))
-#define inr(x, d, u) ((x>=d)&&(x<u))
-#define inc(x, i, u) ((x+i)%u)
+#define inr(x, d, u) (((x)>=(d))&&((x)<(u)))
+#define inc(x, i, u) ((x+i)%(u))
 #define incr(x, i, u) x=(x+i)%(u)
 #define arrSize(A) (sizeof(A) / sizeof((A)[0]))
-#define qsubd(x, b) ((x>b)?b:0)                               // Clip. . . . A digital unsigned subtraction macro. if result <0, then x=0. Otherwise, x=b.
-#define qsuba(x, b) ((x>b)?x-b:0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
-#define asub(a, b)  ((a>b)?a-b:b-a)
+#define qsubd(x, b) (((x)>(b))?(b):0)                               // Clip. . . . A digital unsigned subtraction macro. if result <0, then x=0. Otherwise, x=b.
+#define qsuba(x, b) (((x)>(b))?(x-b):0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
+#define asub(a, b)  (((a)>(b))?(a-b):(b-a))
 
 #define LED_EFFECT_ID_SIZE  6
 #define MAX_EFFECTS_COUNT   256
@@ -200,7 +200,7 @@ public:
 
     virtual void loop() = 0;
 
-    virtual bool endStateCheck();
+    virtual bool transitionStateCheck();
 
     virtual bool windDown() = 0;
 

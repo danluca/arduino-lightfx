@@ -44,7 +44,7 @@ void FxB1::setup() {
 }
 
 void FxB1::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLISECONDS(60) {
         rainbow();
@@ -84,7 +84,7 @@ void FxB2::setup() {
 }
 
 void FxB2::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLISECONDS(60) {
         rainbowWithGlitter();
@@ -122,7 +122,7 @@ void FxB3::setup() {
 }
 
 void FxB3::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     if (mode == TurnOff) {
         if (turnOffWipe(true))
@@ -171,7 +171,7 @@ void FxB4::setup() {
 }
 
 void FxB4::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLISECONDS(60) {
         sinelon();
@@ -210,7 +210,7 @@ void FxB5::setup() {
 }
 
 void FxB5::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
@@ -261,7 +261,7 @@ void FxB6::setup() {
 }
 
 void FxB6::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLISECONDS(50) {
         bpm();
@@ -295,7 +295,7 @@ void FxB7::setup() {
 }
 
 void FxB7::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLISECONDS(75) {
         ease();
@@ -346,7 +346,7 @@ void FxB8::setup() {
 }
 
 void FxB8::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
@@ -402,7 +402,7 @@ void FxB9::setup() {
 }
 
 void FxB9::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);

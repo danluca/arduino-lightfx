@@ -44,7 +44,7 @@ void FxE1::setup() {
 }
 
 void FxE1::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     updateParams();                                                 // Check the demo loop for changes to the variables.
 
@@ -107,7 +107,7 @@ void FxE2::setup() {
 }
 
 void FxE2::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLIS(100) {
         beatwave();
@@ -160,7 +160,7 @@ void FxE3::setup() {
  * Good thing that Nano RP2040 is powerful enough to make this fast.
  */
 void FxE3::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLISECONDS(60) {
         uint16_t maxIndex = tpl.size() - 1;
@@ -247,7 +247,7 @@ void FxE4::setup() {
 }
 
 void FxE4::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
@@ -301,7 +301,7 @@ void FxE5::setup() {
 }
 
 void FxE5::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLIS(30) {
         tpl.fadeToBlackBy(30);

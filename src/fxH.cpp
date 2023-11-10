@@ -87,7 +87,7 @@ void FxH1::setup() {
 }
 
 void FxH1::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLIS(1000 / FRAMES_PER_SECOND) {
         // Add entropy to random number generator; we use a lot of it.
@@ -166,7 +166,7 @@ void FxH2::setup() {
 }
 
 void FxH2::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     updateParams();
 
@@ -243,7 +243,7 @@ void FxH3::setup() {
 }
 
 void FxH3::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     // fill_rainbow section
     EVERY_N_MILLISECONDS(speed) {

@@ -489,14 +489,15 @@ bool turnOffSpots() {
     static uint16_t led = 0;
     static uint16_t xOffNow = 0;
     static uint16_t szOffNow = turnOffSeq[xOffNow];
+    static uint8_t offFade = random8(42, 110);
     static bool setOff = false;
     bool allOff = false;
 
     EVERY_N_MILLISECONDS(25) {
         uint8_t ledsOn = 0;
         for (uint16_t x = 0; x < szOffNow; x++) {
-            uint16_t xled = stripShuffleIndex[(led + x) % NUM_PIXELS];
-            FastLED.leds()[xled].fadeToBlackBy(36);
+            uint16_t xled = stripShuffleIndex[(led + x)%NUM_PIXELS];
+            FastLED.leds()[xled].fadeToBlackBy(offFade);
             if (FastLED.leds()[xled].getLuma() < 4)
                 FastLED.leds()[xled] = BKG;
             else
@@ -512,6 +513,7 @@ bool turnOffSpots() {
             xOffNow = capu(xOffNow + 1, arrSize(turnOffSeq) - 1);
             szOffNow = turnOffSeq[xOffNow];
             setOff = false;
+            offFade = random8(42, 110);
         }
         allOff = !isAnyLedOn(FastLED.leds(), FastLED.size(), BKG);
     }
@@ -592,6 +594,7 @@ CRGB& setBrightness(CRGB &rgb, uint8_t br) {
  * @return approximate brightness on HSV scale
  */
 uint8_t getBrightness(const CRGB &rgb) {
+    //compare with rgb.getLuma() ?
     return toHSV(rgb).val;
 }
 
@@ -734,7 +737,7 @@ void LedEffect::setup() {
  * State machine check within loop methods
  * @return true if the effect execution is completed; false if in progress
  */
-bool LedEffect::endStateCheck() {
+bool LedEffect::transitionStateCheck() {
     EffectState curState = getState();
     switch (curState) {
         case WindDown:

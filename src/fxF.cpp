@@ -39,7 +39,7 @@ void FxF1::setup() {
 }
 
 void FxF1::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLISECONDS(speed) {
         const uint8_t dotSize = 2;
@@ -79,7 +79,7 @@ void FxF2::setup() {
 }
 
 void FxF2::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     // frame rate - 20fps
     EVERY_N_MILLISECONDS(50) {
@@ -132,7 +132,7 @@ void FxF3::setup() {
 }
 
 void FxF3::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_SECONDS(5) {
         //activate eyes if possible
@@ -329,7 +329,7 @@ void FxF4::setup() {
 }
 
 void FxF4::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLISECONDS_I(fxf4Timer, 50) {
         uint16_t upLim = (tpl.size() + dotSize)/2;
@@ -407,7 +407,7 @@ bool FxF4::windDown() {
 FxF5::FxF5() : LedEffect(fxf5Desc) {}
 
 void FxF5::loop() {
-    if (endStateCheck())
+    if (transitionStateCheck())
         return;
     EVERY_N_MILLIS_I(fxf5Timer, 1000) {
         flare();
@@ -433,7 +433,7 @@ void FxF5::setup() {
  */
 void FxF5::flare() {
     flarePos = 0;
-    float flareVel = float(random16(30, 70)) / 100; // trial and error to get reasonable range
+    float flareVel = float(random16(40, 80)) / 100; // trial and error to get reasonable range
     float brightness = 1;
 
     // initialize launch sparks
@@ -445,7 +445,7 @@ void FxF5::flare() {
         sparkCol[i] = constrain(sparkCol[i], 0, 255);
     }
     // launch
-    uint16_t highLim = tpl.size()*3/4;
+    uint16_t highLim = tpl.size()*8/10;
     while (flareVel >= -.2) {
         tpl = BKG;
         // sparks
@@ -478,10 +478,10 @@ void FxF5::flare() {
  * Size is proportional to the height.
  */
 void FxF5::explode() {
-    int nSparks = flarePos / 2; // works out to look about right
+    auto nSparks = short (flarePos / 2); // works out to look about right
 
     // initialize sparks
-    for (int i = 0; i < nSparks; i++) {
+    for (short i = 0; i < nSparks; i++) {
         sparkPos[i] = flarePos;
         sparkVel[i] = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
         sparkCol[i] = abs(sparkVel[i]) * 500; // set colors before scaling velocity to keep them bright
@@ -490,29 +490,31 @@ void FxF5::explode() {
     }
     sparkCol[0] = 255; // this will be our known spark
     float dying_gravity = gravity;
-    float c1 = 120;
-    float c2 = 50;
-    uint8_t r1 = random8(10, 255);
-    uint8_t r2 = random8(10, 255);
-    uint8_t r3 = random8(10, 255);
+    const float c1 = 120;
+    const float c2 = 50;
+    float r1 = random8(160, 255);
+    float r2 = random8(160, 255);
+    float r3 = random8(40, 255);
     while(sparkCol[0] > c2/128) { // as long as our known spark is lit, work with all the sparks
         tpl = BKG;
-        for (int i = 0; i < nSparks; i++) {
+        for (short i = 0; i < nSparks; i++) {
             sparkPos[i] += sparkVel[i];
             sparkPos[i] = constrain(sparkPos[i], 0, tpl.size()-1);
             sparkVel[i] += dying_gravity;
             sparkCol[i] *= .99;
             sparkCol[i] = constrain(sparkCol[i], 0, 255); // red cross dissolve
             if(sparkCol[i] > c1) { // fade white to yellow
-                tpl[int(sparkPos[i])] = CHSV(r1, r3, (255 * (sparkCol[i] - c1)) / (255 - c1));
+                tpl[int(sparkPos[i])] = CHSV(uint8_t(r1), uint8_t(r3), (255 * (sparkCol[i] - c1)) / (255 - c1));
             }
             else if (sparkCol[i] < c2) { // fade from red to black
-                tpl[int(sparkPos[i])] = CHSV((255 * sparkCol[i]) / c2, r2, r1);
-                r1 -= (r1 >= 3 ? 3 : 0);
+                tpl[int(sparkPos[i])] = CHSV((255 * sparkCol[i]) / c2, uint8_t(r2), uint8_t(r1));
+                if (r1 > 0)
+                    r1 -= 0.27f;
             }
             else { // fade from yellow to red
-                tpl[int(sparkPos[i])] = CHSV(r1, (255 * (sparkCol[i] - c2)) / (c1 - c2), r2);
-                r2 -= (r2 >= 3 ? 3 : 0);
+                tpl[int(sparkPos[i])] = CHSV(uint8_t(r1), (255 * (sparkCol[i] - c2)) / (c1 - c2), uint8_t(r2));
+                if (r2 > 0)
+                    r2 -= 0.21f;
             }
 
         }
