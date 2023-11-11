@@ -808,7 +808,7 @@ void fx_run() {
         if (msmt > maxTemp)
             maxTemp = msmt;
     }
-    EVERY_N_MINUTES(5) {
+    EVERY_N_MINUTES(7) {
         fxRegistry.nextRandomEffectPos();
         random16_add_entropy(secRandom16());        //this may or may not help
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);

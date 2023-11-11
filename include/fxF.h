@@ -118,9 +118,10 @@ namespace FxF {
         float sparkPos[NUM_SPARKS];
         float sparkVel[NUM_SPARKS];
         float sparkCol[NUM_SPARKS];
-        CRGB sparkHue[NUM_SPARKS];
+        uint8_t sparkHue[NUM_SPARKS];
         float flarePos;
         const float gravity = -.004;    // m/s/s
+        bool bFade = false;
 
         void flare();
         void explode();

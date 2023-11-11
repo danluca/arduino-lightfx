@@ -433,20 +433,21 @@ void FxF5::setup() {
  */
 void FxF5::flare() {
     flarePos = 0;
+    bFade = random8() % 2;
     float flareVel = float(random16(40, 80)) / 100; // trial and error to get reasonable range
     float brightness = 1;
 
     // initialize launch sparks
     for (int i = 0; i < 5; i++) {
         sparkPos[i] = 0;
-        sparkVel[i] = (float(random8()) / 255) * (flareVel / 5);
+        sparkVel[i] = (float(random8(180,255)) / 255) * (flareVel / 4);
         // random around 20% of flare velocity
         sparkCol[i] = sparkVel[i] * 1000;
         sparkCol[i] = constrain(sparkCol[i], 0, 255);
     }
     // launch
     uint16_t highLim = tpl.size()*8/10;
-    while (flareVel >= -.2) {
+    while ((flareVel >= -.2) && (ushort(flarePos) < highLim)) {
         tpl = BKG;
         // sparks
         for (int i = 0; i < 5; i++) {
@@ -478,36 +479,44 @@ void FxF5::flare() {
  * Size is proportional to the height.
  */
 void FxF5::explode() {
-    auto nSparks = short (flarePos / 2); // works out to look about right
+    auto nSparks = ushort(flarePos / 2); // works out to look about right
 
     // initialize sparks
-    for (short i = 0; i < nSparks; i++) {
+    for (ushort i = 0; i < nSparks; i++) {
         sparkPos[i] = flarePos;
         sparkVel[i] = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
-        sparkCol[i] = abs(sparkVel[i]) * 500; // set colors before scaling velocity to keep them bright
+        sparkCol[i] = abs(sparkVel[i]) * 800; // set colors before scaling velocity to keep them bright
         sparkCol[i] = constrain(sparkCol[i], 0, 255);
-        sparkHue[i] = ColorFromPalette(palette, random8(), uint8_t(sparkCol[i]), LINEARBLEND);
+        sparkHue[i] = random8();
         sparkVel[i] *= flarePos/1.7f/ float(tpl.size()); // proportional to height
     }
     sparkCol[0] = 255; // this will be our known spark
     float dying_gravity = gravity;
 //    const float c1 = 120;
     const float c2 = 50;
-    float r1 = random8(160, 255);
-    float r2 = random8(160, 255);
-    float r3 = random8(40, 255);
+//    float r1 = random8(160, 255);
+//    float r2 = random8(160, 255);
+//    float r3 = random8(40, 255);
     while(sparkCol[0] > c2/128) { // as long as our known spark is lit, work with all the sparks
-        tpl.fadeToBlackBy(12);
-        for (short i = 0; i < nSparks; i++) {
+        if (bFade)
+            tpl.fadeToBlackBy(2);
+        else
+            tpl = BKG;
+        for (ushort i = 0; i < nSparks; i++) {
             sparkPos[i] += sparkVel[i];
             sparkPos[i] = constrain(sparkPos[i], 0, tpl.size()-1);
             sparkVel[i] += dying_gravity;
-            sparkCol[i] *= .895f;
-            sparkCol[i] = constrain(sparkCol[i], 0, 255);
             //fade the sparks
+            auto spDist = uint8_t(abs(sparkPos[i] - flarePos) * 255 / flarePos);
             auto tplPos = uint16_t(sparkPos[i]);
-            tpl[tplPos] = sparkHue[i];
-            setBrightness(tpl[tplPos], uint8_t(sparkCol[i]));
+            if (bFade) {
+                tpl[tplPos] = ColorFromPalette(palette, sparkHue[i]);
+                setBrightness(tpl[tplPos], spDist);
+            } else {
+                sparkCol[i] *= .987f;
+                sparkCol[i] = constrain(sparkCol[i], 0, 255);
+                tpl[tplPos] = blend(ColorFromPalette(palette, sparkHue[i]), ColorFromPalette(palette, uint8_t(sparkCol[i])), spDist);
+            }
 //
 //            // red cross dissolve
 //
