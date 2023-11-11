@@ -434,7 +434,7 @@ void FxF5::setup() {
 void FxF5::flare() {
     flarePos = 0;
     bFade = random8() % 2;
-    float flareVel = float(random16(40, 80)) / 100; // trial and error to get reasonable range
+    float flareVel = float(random16(20, 60)) / 100; // trial and error to get reasonable range
     float brightness = 1;
 
     // initialize launch sparks
@@ -448,7 +448,7 @@ void FxF5::flare() {
     // launch
     curPos = random16(tpl.size()/2, tpl.size()*8/10);
 //    while ((flareVel >= -.2) && (ushort(flarePos) < highLim)) {
-    while ((ushort(flarePos) < curPos)) {
+    while ((ushort(flarePos) < curPos) && (flareVel > 0)) {
         tpl = BKG;
         // sparks
         for (ushort i = 0; i < 5; i++) {
@@ -493,14 +493,19 @@ void FxF5::explode() {
     }
     sparkCol[0] = 255; // this will be our known spark
     float dying_gravity = gravity;
+//    const uint8_t sparkDist = 250;
+//    uint8_t maxDist = 0;
 //    const float c1 = 120;
-    const float c2 = 50;
+    const float c2 = 30;
 //    float r1 = random8(160, 255);
 //    float r2 = random8(160, 255);
 //    float r3 = random8(40, 255);
+    // number of iterations is fixed and depends on degradation factor for sparkCol - for instance for a degradation factor
+    // of 0.987, c2=50, starting with 255, the number of iterations is given by k=log(c2/128/255)/log(0.987) which is 496 (rounded up)
+    //
     while(sparkCol[0] > c2/128) { // as long as our known spark is lit, work with all the sparks
         if (bFade)
-            tpl.fadeToBlackBy(2);
+            tpl.fadeToBlackBy(4);
         else
             tpl = BKG;
         for (ushort i = 0; i < nSparks; i++) {
@@ -512,12 +517,13 @@ void FxF5::explode() {
             auto spDist = uint8_t(abs(sparkPos[i] - flarePos) * 255 / flarePos);
             auto tplPos = uint16_t(sparkPos[i]);
             if (bFade) {
-                tpl[tplPos] = ColorFromPalette(palette, sparkHue[i]);
+                tpl[tplPos] = ColorFromPalette(palette, sparkHue[i]+spDist);
                 setBrightness(tpl[tplPos], 255-spDist);
             } else {
                 sparkCol[i] = constrain(sparkCol[i], 0, 255);
                 tpl[tplPos] = blend(ColorFromPalette(palette, sparkHue[i]), ColorFromPalette(palette, uint8_t(sparkCol[i])), spDist);
             }
+//            maxDist = max(maxDist, spDist);
 //
 //            // red cross dissolve
 //
