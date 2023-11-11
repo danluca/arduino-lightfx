@@ -506,6 +506,7 @@ void FxF5::explode() {
             sparkPos[i] += sparkVel[i];
             sparkPos[i] = constrain(sparkPos[i], 0, tpl.size()-1);
             sparkVel[i] += dying_gravity;
+            sparkCol[i] *= .987f;
             //fade the sparks
             auto spDist = uint8_t(abs(sparkPos[i] - flarePos) * 255 / flarePos);
             auto tplPos = uint16_t(sparkPos[i]);
@@ -513,7 +514,6 @@ void FxF5::explode() {
                 tpl[tplPos] = ColorFromPalette(palette, sparkHue[i]);
                 setBrightness(tpl[tplPos], spDist);
             } else {
-                sparkCol[i] *= .987f;
                 sparkCol[i] = constrain(sparkCol[i], 0, 255);
                 tpl[tplPos] = blend(ColorFromPalette(palette, sparkHue[i]), ColorFromPalette(palette, uint8_t(sparkCol[i])), spDist);
             }
