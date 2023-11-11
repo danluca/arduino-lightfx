@@ -440,31 +440,32 @@ void FxF5::flare() {
     // initialize launch sparks
     for (int i = 0; i < 5; i++) {
         sparkPos[i] = 0;
-        sparkVel[i] = (float(random8(180,255)) / 255) * (flareVel / 4);
+        sparkVel[i] = (float(random8(180,255)) / 255) * (flareVel / 2);
         // random around 20% of flare velocity
         sparkCol[i] = sparkVel[i] * 1000;
         sparkCol[i] = constrain(sparkCol[i], 0, 255);
     }
     // launch
-    uint16_t highLim = tpl.size()*8/10;
-    while ((flareVel >= -.2) && (ushort(flarePos) < highLim)) {
+    curPos = random16(tpl.size()/2, tpl.size()*8/10);
+//    while ((flareVel >= -.2) && (ushort(flarePos) < highLim)) {
+    while ((ushort(flarePos) < curPos)) {
         tpl = BKG;
         // sparks
-        for (int i = 0; i < 5; i++) {
+        for (ushort i = 0; i < 5; i++) {
             sparkPos[i] += sparkVel[i];
-            sparkPos[i] = constrain(sparkPos[i], 0, highLim);
+            sparkPos[i] = constrain(sparkPos[i], 0, curPos);
             sparkVel[i] += gravity;
             sparkCol[i] += -.8;
             sparkCol[i] = constrain(sparkCol[i], 0, 255);
-            tpl[int(sparkPos[i])] = HeatColor(sparkCol[i]);
-            tpl[int(sparkPos[i])] %= 50; // reduce brightness to 50/255
+            tpl[ushort(sparkPos[i])] = HeatColor(sparkCol[i]);
+            tpl[ushort(sparkPos[i])] %= 50; // reduce brightness to 50/255
         }
 
         // flare
-        tpl[int(flarePos)] = CHSV(0, 0, int(brightness * 255));
+        tpl[easeOutQuad(ushort(flarePos), curPos)] = CHSV(0, 0, ushort(brightness * 255));
         replicateSet(tpl, others);
         flarePos += flareVel;
-        flarePos = constrain(flarePos, 0, highLim);
+        //flarePos = constrain(flarePos, 0, curPos);
         flareVel += gravity;
         brightness *= .985;
 
@@ -485,7 +486,7 @@ void FxF5::explode() {
     for (ushort i = 0; i < nSparks; i++) {
         sparkPos[i] = flarePos;
         sparkVel[i] = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
-        sparkCol[i] = abs(sparkVel[i]) * 800; // set colors before scaling velocity to keep them bright
+        sparkCol[i] = abs(sparkVel[i]) * 600; // set colors before scaling velocity to keep them bright
         sparkCol[i] = constrain(sparkCol[i], 0, 255);
         sparkHue[i] = random8();
         sparkVel[i] *= flarePos/1.7f/ float(tpl.size()); // proportional to height
@@ -512,7 +513,7 @@ void FxF5::explode() {
             auto tplPos = uint16_t(sparkPos[i]);
             if (bFade) {
                 tpl[tplPos] = ColorFromPalette(palette, sparkHue[i]);
-                setBrightness(tpl[tplPos], spDist);
+                setBrightness(tpl[tplPos], 255-spDist);
             } else {
                 sparkCol[i] = constrain(sparkCol[i], 0, 255);
                 tpl[tplPos] = blend(ColorFromPalette(palette, sparkHue[i]), ColorFromPalette(palette, uint8_t(sparkCol[i])), spDist);

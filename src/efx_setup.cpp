@@ -181,6 +181,19 @@ uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
 }
 
 /**
+ * Ease Out Quad implementation - leverages the double precision original implementation converted to int in a range
+ * @param x input value
+ * @param lim high limit range
+ * @return the result in [0,lim] inclusive range
+ * @see https://easings.net/#easeOutQuad
+ */
+uint16_t easeOutQuad(const uint16_t x, const uint16_t lim) {
+    auto limf = float(lim);
+    float xf = float(x)/limf;
+    return uint16_t((1 - (1-xf)*(1-xf))*limf);
+}
+
+/**
  * Shifts the content of an array to the right by the number of positions specified
  * First item of the array (arr[0]) is used as seed to fill the new elements entering left
  * @param arr array
@@ -493,7 +506,7 @@ bool turnOffSpots() {
     static bool setOff = false;
     bool allOff = false;
 
-    EVERY_N_MILLISECONDS(25) {
+    EVERY_N_MILLISECONDS(30) {
         uint8_t ledsOn = 0;
         for (uint16_t x = 0; x < szOffNow; x++) {
             uint16_t xled = stripShuffleIndex[(led + x)%NUM_PIXELS];

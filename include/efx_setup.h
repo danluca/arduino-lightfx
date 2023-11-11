@@ -108,6 +108,7 @@ void shuffleIndexes(uint16_t array[], uint16_t szArray);
 void shuffle(CRGBSet &set);
 
 uint16_t easeOutBounce(uint16_t x, uint16_t lim);
+uint16_t easeOutQuad(uint16_t x, uint16_t lim);
 
 void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
 
