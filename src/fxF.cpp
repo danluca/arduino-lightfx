@@ -432,10 +432,10 @@ void FxF5::setup() {
  * Send up a flare
  */
 void FxF5::flare() {
-    flarePos = 0;
+    float flareStep = 0;
     bFade = random8() % 2;
     float flareVel = float(random16(20, 60)) / 100; // trial and error to get reasonable range
-    float brightness = 1;
+    float flBrightness = 255;
 
     // initialize launch sparks
     for (int i = 0; i < 5; i++) {
@@ -448,7 +448,7 @@ void FxF5::flare() {
     // launch
     curPos = random16(tpl.size()/2, tpl.size()*8/10);
 //    while ((flareVel >= -.2) && (ushort(flarePos) < highLim)) {
-    while ((ushort(flarePos) < curPos) && (flareVel > 0)) {
+    while ((ushort(flareStep) < curPos) && (flareVel > 0)) {
         tpl = BKG;
         // sparks
         for (ushort i = 0; i < 5; i++) {
@@ -462,12 +462,13 @@ void FxF5::flare() {
         }
 
         // flare
-        tpl[easeOutQuad(ushort(flarePos), curPos)] = CHSV(0, 0, ushort(brightness * 255));
+        flarePos = easeOutQuad(ushort(flareStep), curPos);
+        tpl[ushort(flarePos)] = CHSV(0, 0, ushort(flBrightness));
         replicateSet(tpl, others);
-        flarePos += flareVel;
+        flareStep += flareVel;
         //flarePos = constrain(flarePos, 0, curPos);
         flareVel += gravity;
-        brightness *= .985;
+        flBrightness *= .985;
 
         FastLED.show(stripBrightness);
     }
