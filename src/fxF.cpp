@@ -506,7 +506,7 @@ void FxF5::explode() {
     //
     while(sparkCol[0] > c2/128) { // as long as our known spark is lit, work with all the sparks
         if (bFade)
-            tpl.fadeToBlackBy(4);
+            tpl.fadeToBlackBy(7);
         else
             tpl = BKG;
         for (ushort i = 0; i < nSparks; i++) {
@@ -518,11 +518,13 @@ void FxF5::explode() {
             auto spDist = uint8_t(abs(sparkPos[i] - flarePos) * 255 / flarePos);
             auto tplPos = uint16_t(sparkPos[i]);
             if (bFade) {
-                tpl[tplPos] = ColorFromPalette(palette, sparkHue[i]+spDist);
-                setBrightness(tpl[tplPos], 255-spDist);
+                tpl[tplPos] += ColorFromPalette(palette, sparkHue[i]+spDist, 255-2*spDist);
+                tpl.blur1d(64);
             } else {
                 sparkCol[i] = constrain(sparkCol[i], 0, 255);
-                tpl[tplPos] = blend(ColorFromPalette(palette, sparkHue[i]), ColorFromPalette(palette, uint8_t(sparkCol[i])), spDist);
+                tpl[tplPos] = blend(ColorFromPalette(palette, sparkHue[i]),
+                                    ColorFromPalette(palette, uint8_t(sparkCol[i]), 255-2*spDist),
+                                    3*spDist);
             }
 //            maxDist = max(maxDist, spDist);
 //
