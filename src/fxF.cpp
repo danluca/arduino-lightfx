@@ -418,7 +418,7 @@ void FxF5::setup() {
  */
 void FxF5::flare() {
     const ushort flareSparksCount = 3;
-    float flareStep = 0;
+    float flareStep = flarePos = 0;
     bFade = random8() % 2;
     curPos = random16(tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10);
     float flareVel = float(random16(400, 650)) / 1000; // trial and error to get reasonable range to match the 30-80 % range of the strip height we want
