@@ -83,7 +83,7 @@ void readState() {
         random16_add_entropy(seed);
 
         uint16_t fx = doc[csCurFx].as<uint16_t>();
-        fxRegistry.getCurrentEffect()->setState(Completed);
+        fxRegistry.getCurrentEffect()->desiredState(Idle);
         fxRegistry.nextEffectPos(fx);
 
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
@@ -619,8 +619,7 @@ LedEffect *EffectRegistry::getCurrentEffect() const {
 uint16_t EffectRegistry::nextEffectPos(uint16_t efx) {
     lastEffectRun = currentEffect;
     currentEffect = capu(efx, effectsCount-1);
-    if (lastEffectRun != currentEffect)
-        effects[lastEffectRun]->setState(WindDown);
+    transitionEffect();
     return lastEffectRun;
 }
 
@@ -629,7 +628,7 @@ uint16_t EffectRegistry::nextEffectPos() {
         return currentEffect;
     lastEffectRun = currentEffect;
     currentEffect = inc(currentEffect, 1, effectsCount);
-    effects[lastEffectRun]->setState(WindDown);
+    transitionEffect();
     return lastEffectRun;
 }
 
@@ -641,10 +640,16 @@ uint16_t EffectRegistry::nextRandomEffectPos() {
     if (autoSwitch) {
         lastEffectRun = currentEffect;  //this should already be the case, enforcing it for obscure edge cases
         currentEffect = random16(0, effectsCount);
-        if (currentEffect != lastEffectRun)
-            effects[lastEffectRun]->setState(WindDown);
+        transitionEffect();
     }
     return currentEffect;
+}
+
+void EffectRegistry::transitionEffect() const {
+    if (currentEffect != lastEffectRun) {
+        effects[lastEffectRun]->desiredState(Idle);
+    }
+    effects[currentEffect]->desiredState(Running);
 }
 
 uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
@@ -659,20 +664,20 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     return MAX_EFFECTS_COUNT;
 }
 
+/**
+ * Sets the desired state for all effects to setup. It will essentially make each effect ready to run if invoked - the state machine will ensure the setup() is called first
+ */
 void EffectRegistry::setup() {
-    for (uint16_t x = 0; x < effectsCount; x++) {
-        effects[currentEffect]->setState(Setup);
-        effects[x]->setup();
-    }
+    for (uint16_t x = 0; x < effectsCount; x++)
+        effects[currentEffect]->desiredState(Setup);
+
 }
 
 void EffectRegistry::loop() {
     //if effect has changed, re-run the effect's setup
-    if ((lastEffectRun != currentEffect) && (effects[lastEffectRun]->getState() == Completed)) {
+    if ((lastEffectRun != currentEffect) && (effects[lastEffectRun]->getState() == Idle)) {
         Log.infoln(F("Effect change: from index %d [%s] to %d [%s]"),
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
-        effects[currentEffect]->setup();
-        effects[currentEffect]->setState(Running);
         lastEffectRun = currentEffect;
     }
     effects[lastEffectRun]->loop();
@@ -712,7 +717,7 @@ void LedEffect::baseConfig(JsonObject &json) const {
     json["palette"] = holidayToString(paletteFactory.getHoliday());
 }
 
-LedEffect::LedEffect(const char *description) : state(Setup), desc(description) {
+LedEffect::LedEffect(const char *description) : state(Idle), desc(description) {
     //copy into id field the prefix of description (e.g. for a description 'FxA1: awesome lights', copies 'FxA1' into id)
     for (uint8_t i=0; i<LED_EFFECT_ID_SIZE; i++) {
         if (description[i] == ':' || description[i] == '\0') {
@@ -741,32 +746,100 @@ const char *LedEffect::description() const {
     return desc;
 }
 
+/**
+ * Non-repeat by design. All the setup occurs in one blocking step.
+ */
 void LedEffect::setup() {
-    setState(Setup);
     resetGlobals();
 }
 
 /**
- * State machine check within loop methods
- * @return true if the effect execution is completed; false if in progress
+ * Performs the transition to off - by default a pause of 1 second. Subclasses can override the behavior - function is virtual
+ * This is a repeat function - it is called multiple times while in TransitionOff state, until it returns true.
+ * @return true if transition has completed; false otherwise
  */
-bool LedEffect::transitionStateCheck() {
-    EffectState curState = getState();
-    switch (curState) {
+bool LedEffect::transitionOff() {
+    return millis() > (transOffStart + 1000);
+}
+
+/**
+ * Re-entrant looping function
+ */
+void LedEffect::loop() {
+    switch (state) {
+        case Setup: setup(); nextState(); break;    //one blocking step, non repeat
+        case Running: run(); break;                 //repeat, called multiple times to achieve the light effects designed
         case WindDown:
-            if (windDown()) {
-                setState(TransitionPause);
-                pauseStart = millis();
+            if (windDown())
+                nextState();
+            break;           //repeat, called multiple times to achieve the fade out for the current light effect
+        case TransitionOff:
+            if (transitionOff())
+                nextState();
+            break; //repeat, called multiple times to achieve the transition off for the current light effect
+        case Idle: break;                           //no-op
+    }
+}
+
+/**
+ * Implementation of desired state - informs the state machine of the intended next state and causes it to react.
+ * This means either transitioning to an interim state that precedes the desired state, or directly switch to desired state
+ * @param dst intended next state
+ */
+void LedEffect::desiredState(EffectState dst) {
+    if (state == dst)
+        return;     //already there
+    switch (state) {
+        case Setup:
+            switch (dst) {
+                case Idle:
+                case Running: state = dst; break;
+                case WindDown:
+                case TransitionOff: return;   //not a valid transition
             }
-            return true;
-        case TransitionPause:
-            //1 second pause between this effect end and next effect start (ideally this is when next effect setup would run)
-            if ((millis()-pauseStart) > 1000)
-                setState(Completed);
-        case Completed:
-            return true;    //this state allows next effect to start immediately - see EffectRegistry::loop
-        default:
-            return false;
+            break;
+        case Running:
+            switch (dst) {
+                case WindDown:
+                case TransitionOff:
+                case Idle:
+                case Setup: state = WindDown; break;
+            }
+            break;
+        case WindDown:
+            switch (dst) {
+                case TransitionOff:
+                case Idle:
+                case Setup: state = TransitionOff; transOffStart = millis(); break;
+                case Running: state = dst; break;
+            }
+            break;
+        case TransitionOff:
+            switch (dst) {
+                case Idle:
+                case Setup: state = Idle; break;
+                case Running: state = Setup; break;
+                case WindDown: return;  //not a valid transition
+            }
+            break;
+        case Idle:
+            switch (dst) {
+                case Running:
+                case Setup: state = Setup; break;
+                case WindDown:
+                case TransitionOff: return;   //not a valid transition
+            }
+            break;
+    }
+}
+
+void LedEffect::nextState() {
+    switch (state) {
+        case Setup: state = Running; break;
+        case Running: state = WindDown; break;
+        case WindDown: state = TransitionOff; transOffStart = millis(); break;
+        case TransitionOff: state = Idle; break;
+        case Idle: state = Setup; break;
     }
 }
 
@@ -794,8 +867,8 @@ void fx_setup() {
     readState();
 
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-    //ensure the current effect is set up
-    fxRegistry.getCurrentEffect()->setup();
+    //ensure the current effect is moved to setup state
+    fxRegistry.getCurrentEffect()->desiredState(Setup);
 }
 
 //Run currently selected effect -------

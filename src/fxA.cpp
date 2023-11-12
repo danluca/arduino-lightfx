@@ -87,9 +87,7 @@ void FxA1::makeDot(CRGB color, uint16_t szDot) {
     dot[szDot - 1] %= dimmed;
 }
 
-void FxA1::loop() {
-    if (transitionStateCheck())
-        return;
+void FxA1::run() {
     if (mode == TurnOff) {
         if (turnOff(rot))
             resetStack();
@@ -158,9 +156,7 @@ void FxA2::makeDot() {
     dot[0] = ColorFromPalette(palette, brdIndex, brdBright, LINEARBLEND);
 }
 
-void FxA2::loop() {
-    if (transitionStateCheck())
-        return;
+void FxA2::run() {
     if (mode == TurnOff) {
         turnOff(rot);
         return;
@@ -244,9 +240,7 @@ void FxA3::makeDot(CRGB color, uint16_t szDot) {
     dot[szDot - 1] %= dimmed;
 }
 
-void FxA3::loop() {
-    if (transitionStateCheck())
-        return;
+void FxA3::run() {
     EVERY_N_MILLISECONDS_I(a3Timer, speed) {
         if (bFwd)
             shiftRight(tpl, curPos < szSegment ? dot[curPos] : BKG);
@@ -301,9 +295,7 @@ void FxA4::makeDot(CRGB color, uint16_t szDot) {
     dot(0, szDot).fill_gradient_RGB(c1, c2);
 }
 
-void FxA4::loop() {
-    if (transitionStateCheck())
-        return;
+void FxA4::run() {
     if (mode == TurnOff) {
         if (turnOff(rot))
             resetStack();
@@ -379,9 +371,7 @@ void FxA5::makeFrame() {
     ovr[0].setParity(!mainPal);
 }
 
-void FxA5::loop() {
-    if (transitionStateCheck())
-        return;
+void FxA5::run() {
     if (mode == TurnOff) {
         if (turnOff(rot))
             mode = Chase;

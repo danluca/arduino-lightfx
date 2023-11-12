@@ -16,7 +16,7 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -31,7 +31,7 @@ namespace FxC {
 
         //void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
     };
@@ -42,7 +42,7 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -55,7 +55,7 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -70,7 +70,7 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -91,7 +91,7 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 

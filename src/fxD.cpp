@@ -48,9 +48,7 @@ void FxD1::setup() {
     speed = 30;
 }
 
-void FxD1::loop() {
-    if (transitionStateCheck())
-        return;
+void FxD1::run() {
     ChangeMe();                                                 // Check the demo loop for changes to the variables.
 
     EVERY_N_MILLISECONDS(speed) {                           // FastLED based non-blocking speed to update/display the sequence.
@@ -110,9 +108,7 @@ void FxD2::setup() {
     fade = 31;
 }
 
-void FxD2::loop() {
-    if (transitionStateCheck())
-        return;
+void FxD2::run() {
     EVERY_N_MILLISECONDS(75) {
         dot_beat();
         FastLED.show(stripBrightness);
@@ -152,9 +148,7 @@ void FxD3::setup() {
     monoColor = random8(224);   //colors above this index in the Halloween palette are black
 }
 
-void FxD3::loop() {
-    if (transitionStateCheck())
-        return;
+void FxD3::run() {
     EVERY_N_MILLISECONDS(50) {                                  // FastLED based non-blocking delay to update/display the sequence.
         plasma();
         FastLED.show(stripBrightness);
@@ -204,10 +198,8 @@ void FxD4::setup() {
     hueDiff = 1;
 }
 
-void FxD4::loop() {
+void FxD4::run() {
     static uint8_t secSlot = 0;
-    if (transitionStateCheck())
-        return;
 
     EVERY_N_SECONDS(5) {
         update_params(secSlot);
@@ -254,9 +246,7 @@ void FxD5::setup() {
     LedEffect::setup();
 }
 
-void FxD5::loop() {
-    if (transitionStateCheck())
-        return;
+void FxD5::run() {
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }

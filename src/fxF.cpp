@@ -38,9 +38,7 @@ void FxF1::setup() {
     hueDiff = 8;
 }
 
-void FxF1::loop() {
-    if (transitionStateCheck())
-        return;
+void FxF1::run() {
     EVERY_N_MILLISECONDS(speed) {
         const uint8_t dotSize = 2;
         tpl.fadeToBlackBy(fade);
@@ -78,9 +76,7 @@ void FxF2::setup() {
     makePattern(hue);
 }
 
-void FxF2::loop() {
-    if (transitionStateCheck())
-        return;
+void FxF2::run() {
     // frame rate - 20fps
     EVERY_N_MILLISECONDS(50) {
         double dBreath = (exp(sin(millis()/2400.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;       //(exp(sin(millis()/4000.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;
@@ -131,9 +127,7 @@ void FxF3::setup() {
         e.reset(0, BKG);
 }
 
-void FxF3::loop() {
-    if (transitionStateCheck())
-        return;
+void FxF3::run() {
     EVERY_N_SECONDS(5) {
         //activate eyes if possible
         uint8_t numEyes = 1 + random8(maxEyes);
@@ -328,9 +322,7 @@ void FxF4::setup() {
     dist = 0;
 }
 
-void FxF4::loop() {
-    if (transitionStateCheck())
-        return;
+void FxF4::run() {
     EVERY_N_MILLISECONDS_I(fxf4Timer, 50) {
         uint16_t upLim = (tpl.size() + dotSize)/2;
         switch (state) {
@@ -406,9 +398,7 @@ bool FxF4::windDown() {
 // FxF5 - algorithm by Carl Rosendahl, adapted from code published at https://www.anirama.com/1000leds/1d-fireworks/
 FxF5::FxF5() : LedEffect(fxf5Desc) {}
 
-void FxF5::loop() {
-    if (transitionStateCheck())
-        return;
+void FxF5::run() {
     EVERY_N_MILLIS_I(fxf5Timer, 1000) {
         flare();
 
@@ -432,13 +422,14 @@ void FxF5::setup() {
  * Send up a flare
  */
 void FxF5::flare() {
+    const ushort flareSparksCount = 3;
     float flareStep = 0;
     bFade = random8() % 2;
     float flareVel = float(random16(20, 60)) / 100; // trial and error to get reasonable range
     float flBrightness = 255;
 
     // initialize launch sparks
-    for (int i = 0; i < 5; i++) {
+    for (ushort i = 0; i < flareSparksCount; i++) {
         sparkPos[i] = 0;
         sparkVel[i] = (float(random8(180,255)) / 255) * (flareVel / 2);
         // random around 20% of flare velocity
@@ -451,7 +442,7 @@ void FxF5::flare() {
     while ((ushort(flareStep) < curPos) && (flareVel > 0)) {
         tpl = BKG;
         // sparks
-        for (ushort i = 0; i < 5; i++) {
+        for (ushort i = 0; i < flareSparksCount; i++) {
             sparkPos[i] += sparkVel[i];
             sparkPos[i] = constrain(sparkPos[i], 0, curPos);
             sparkVel[i] += gravity;

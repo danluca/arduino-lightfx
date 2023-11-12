@@ -13,7 +13,7 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -30,7 +30,7 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -43,7 +43,7 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -62,7 +62,7 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -81,7 +81,7 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 

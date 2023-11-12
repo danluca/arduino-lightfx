@@ -86,9 +86,7 @@ void FxH1::setup() {
     //   gPal = CRGBPalette16( CRGB::Black, CRGB::Red, CRGB::White);
 }
 
-void FxH1::loop() {
-    if (transitionStateCheck())
-        return;
+void FxH1::run() {
     EVERY_N_MILLIS(1000 / FRAMES_PER_SECOND) {
         // Add entropy to random number generator; we use a lot of it.
         random16_add_entropy(random());
@@ -165,9 +163,7 @@ void FxH2::setup() {
     speed = 40;
 }
 
-void FxH2::loop() {
-    if (transitionStateCheck())
-        return;
+void FxH2::run() {
     updateParams();
 
     EVERY_N_SECONDS(2) {
@@ -242,9 +238,7 @@ void FxH3::setup() {
     hue = random8();
 }
 
-void FxH3::loop() {
-    if (transitionStateCheck())
-        return;
+void FxH3::run() {
     // fill_rainbow section
     EVERY_N_MILLISECONDS(speed) {
         //below leds+1 is the same as &leds[1] - One pixel border at each end.

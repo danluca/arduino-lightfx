@@ -14,7 +14,7 @@ namespace FxF {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
     };
@@ -25,7 +25,7 @@ namespace FxF {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -72,7 +72,7 @@ namespace FxF {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -91,7 +91,7 @@ namespace FxF {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -110,7 +110,7 @@ namespace FxF {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 

@@ -43,9 +43,7 @@ void FxE1::setup() {
     brightness = 224;
 }
 
-void FxE1::loop() {
-    if (transitionStateCheck())
-        return;
+void FxE1::run() {
     updateParams();                                                 // Check the demo loop for changes to the variables.
 
     EVERY_N_SECONDS(2) {
@@ -106,9 +104,7 @@ void FxE2::setup() {
     brightness = 224;
 }
 
-void FxE2::loop() {
-    if (transitionStateCheck())
-        return;
+void FxE2::run() {
     EVERY_N_MILLIS(100) {
         beatwave();
         FastLED.show(stripBrightness);
@@ -159,9 +155,7 @@ void FxE3::setup() {
  * not worth it and too brittle.
  * Good thing that Nano RP2040 is powerful enough to make this fast.
  */
-void FxE3::loop() {
-    if (transitionStateCheck())
-        return;
+void FxE3::run() {
     EVERY_N_MILLISECONDS(60) {
         uint16_t maxIndex = tpl.size() - 1;
         if (timerSlot == 0) {
@@ -246,9 +240,7 @@ void FxE4::setup() {
     Y = Yorig;
 }
 
-void FxE4::loop() {
-    if (transitionStateCheck())
-        return;
+void FxE4::run() {
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
@@ -300,9 +292,7 @@ void FxE5::setup() {
     clr3 = clr2+64;
 }
 
-void FxE5::loop() {
-    if (transitionStateCheck())
-        return;
+void FxE5::run() {
     EVERY_N_MILLIS(30) {
         tpl.fadeToBlackBy(30);
         wave2.fadeToBlackBy(40);

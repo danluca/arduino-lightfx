@@ -54,7 +54,7 @@ namespace FxH {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -69,7 +69,7 @@ namespace FxH {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -86,7 +86,7 @@ namespace FxH {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 

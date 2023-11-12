@@ -43,9 +43,7 @@ void FxB1::setup() {
     brightness = 148;
 }
 
-void FxB1::loop() {
-    if (transitionStateCheck())
-        return;
+void FxB1::run() {
     EVERY_N_MILLISECONDS(60) {
         rainbow();
         FastLED.show(stripBrightness);
@@ -83,9 +81,7 @@ void FxB2::setup() {
     brightness = 148;
 }
 
-void FxB2::loop() {
-    if (transitionStateCheck())
-        return;
+void FxB2::run() {
     EVERY_N_MILLISECONDS(60) {
         rainbowWithGlitter();
         FastLED.show(stripBrightness);
@@ -121,9 +117,7 @@ void FxB3::setup() {
     brightness = 148;
 }
 
-void FxB3::loop() {
-    if (transitionStateCheck())
-        return;
+void FxB3::run() {
     if (mode == TurnOff) {
         if (turnOffWipe(true))
             mode = Chase;
@@ -170,9 +164,7 @@ void FxB4::setup() {
     brightness = 192;
 }
 
-void FxB4::loop() {
-    if (transitionStateCheck())
-        return;
+void FxB4::run() {
     EVERY_N_MILLISECONDS(60) {
         sinelon();
         FastLED.show(stripBrightness);
@@ -209,9 +201,7 @@ void FxB5::setup() {
     brightness = BRIGHTNESS;
 }
 
-void FxB5::loop() {
-    if (transitionStateCheck())
-        return;
+void FxB5::run() {
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
@@ -260,9 +250,7 @@ void FxB6::setup() {
     brightness = 148;
 }
 
-void FxB6::loop() {
-    if (transitionStateCheck())
-        return;
+void FxB6::run() {
     EVERY_N_MILLISECONDS(50) {
         bpm();
     }
@@ -294,9 +282,7 @@ void FxB7::setup() {
     brightness = 148;
 }
 
-void FxB7::loop() {
-    if (transitionStateCheck())
-        return;
+void FxB7::run() {
     EVERY_N_MILLISECONDS(75) {
         ease();
     }
@@ -345,9 +331,7 @@ void FxB8::setup() {
     brightness = 148;
 }
 
-void FxB8::loop() {
-    if (transitionStateCheck())
-        return;
+void FxB8::run() {
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
@@ -401,9 +385,7 @@ void FxB9::setup() {
     dotBpm = 5; // Higher = faster movement.
 }
 
-void FxB9::loop() {
-    if (transitionStateCheck())
-        return;
+void FxB9::run() {
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }

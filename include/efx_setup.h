@@ -40,7 +40,7 @@ extern const uint8_t dimmed;
 extern const CRGB BKG;
 extern const uint8_t maxChanges;
 enum OpMode { TurnOff, Chase };
-enum EffectState {Setup, Running, WindDown, TransitionPause, Completed};
+enum EffectState {Setup, Running, WindDown, TransitionOff, Idle};
 extern CRGB leds[NUM_PIXELS];
 extern CRGBArray<NUM_PIXELS> frame;
 extern CRGBSet tpl;
@@ -191,7 +191,7 @@ class LedEffect {
 protected:
     uint registryIndex = 0;
     EffectState state;
-    ulong pauseStart = 0;
+    ulong transOffStart = 0;
     const char* const desc;
     char id[LED_EFFECT_ID_SIZE] {};   //this is name of the class, max 5 characters (plus null terminal)
 public:
@@ -199,11 +199,17 @@ public:
 
     virtual void setup();
 
-    virtual void loop() = 0;
-
-    virtual bool transitionStateCheck();
+    virtual void run() = 0;
 
     virtual bool windDown() = 0;
+
+    virtual bool transitionOff();
+
+    virtual void desiredState(EffectState dst);
+
+    virtual void nextState();
+
+    virtual void loop();
 
     const char *description() const;
 
@@ -217,9 +223,6 @@ public:
 
     inline EffectState getState() const {
         return state;
-    }
-    inline void setState(EffectState newState) {
-        state = newState;
     }
 
     virtual ~LedEffect() = default;     // Destructor
@@ -246,6 +249,8 @@ public:
     uint16_t curEffectPos() const;
 
     uint16_t nextRandomEffectPos();
+
+    void transitionEffect() const;
 
     uint16_t registerEffect(LedEffect *effect);
 

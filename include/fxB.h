@@ -35,7 +35,7 @@ namespace FxB {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -48,7 +48,7 @@ namespace FxB {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
     };
@@ -59,7 +59,7 @@ namespace FxB {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -72,7 +72,7 @@ namespace FxB {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -85,7 +85,7 @@ namespace FxB {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -98,7 +98,7 @@ namespace FxB {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
     };
@@ -109,7 +109,7 @@ namespace FxB {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -122,7 +122,7 @@ namespace FxB {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
 
@@ -135,7 +135,7 @@ namespace FxB {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
 
         bool windDown() override;
     };
