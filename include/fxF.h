@@ -106,22 +106,13 @@ namespace FxF {
     struct Spark {
         float pos=0;
         float velocity=0;
-        float colorFade=0;
         uint8_t hue=0;
 
-        inline uint16_t iPos() {
+        inline uint16_t iPos() const {
             return uint16_t(abs(pos));
         }
-        inline uint8_t iColorFade() {
-            return uint8_t(abs(colorFade));
-        }
-        inline float limitColorFade(float limit) {
-            colorFade = constrain(colorFade, 0, limit);
-            return colorFade;
-        }
         inline float limitPos(float limit) {
-            pos = constrain(pos, 0, limit);
-            return pos;
+            return pos = constrain(pos, 0, limit);
         }
     };
 
@@ -138,8 +129,10 @@ namespace FxF {
     protected:
         //Spark sparks[NUM_SPARKS]{};
         float flarePos{};
-        const float gravity = -.004;    // m/s/s
         bool bFade = false;
+        const float gravity = -.004;    // m/s/s
+        const ushort explRangeLow = 3;  //30%
+        const ushort explRangeHigh = 8; //80%
 
         void flare();
         void explode() const;

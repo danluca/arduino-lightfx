@@ -11,8 +11,8 @@
 #include "config.h"
 #include "util.h"
 
-#define capd(x, d) (((x)<(d))?(d):(x))
-#define capu(x, u) (((x)>(u))?(u):(x))
+#define capd(x, d) (((x)<=(d))?(d):(x))
+#define capu(x, u) (((x)>=(u))?(u):(x))
 #define capr(x, d, u) (capu(capd(x,d),u))
 #define inr(x, d, u) (((x)>=(d))&&((x)<(u)))
 #define inc(x, i, u) ((x+i)%(u))

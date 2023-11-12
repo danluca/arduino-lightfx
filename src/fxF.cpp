@@ -420,7 +420,8 @@ void FxF5::flare() {
     const ushort flareSparksCount = 3;
     float flareStep = 0;
     bFade = random8() % 2;
-    float flareVel = float(random16(20, 60)) / 100; // trial and error to get reasonable range
+    curPos = random16(tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10);
+    float flareVel = float(random16(400, 650)) / 1000; // trial and error to get reasonable range to match the 30-80 % range of the strip height we want
     float flBrightness = 255;
     Spark flareSparks[flareSparksCount];
 
@@ -429,21 +430,18 @@ void FxF5::flare() {
         spark.pos = 0;
         spark.velocity = (float(random8(180,255)) / 255) * (flareVel / 2);
         // random around 20% of flare velocity
-        spark.colorFade = spark.velocity * 1000;
-        spark.limitColorFade(255);
+        spark.hue = uint8_t(spark.velocity * 1000);
     }
     // launch
-    curPos = random16(tpl.size()/2, tpl.size()*8/10);
-    while ((ushort(flareStep) < curPos) && (flareVel > 0)) {
+    while ((ushort(flarePos) < curPos) && (flareVel > 0)) {
         tpl = BKG;
         // sparks
         for (auto &spark : flareSparks) {
             spark.pos += spark.velocity;
             spark.limitPos(curPos);
             spark.velocity += gravity;
-            spark.colorFade += -.8;
-            spark.limitColorFade(255);
-            tpl[spark.iPos()] = HeatColor(spark.iColorFade());
+            spark.hue = capd(qsuba(spark.hue, 1), 64);
+            tpl[spark.iPos()] = HeatColor(spark.hue);
             tpl[spark.iPos()] %= 50; // reduce brightness to 50/255
         }
 
@@ -469,14 +467,15 @@ void FxF5::flare() {
 void FxF5::explode() const {
     const auto nSparks = ushort(flarePos / 3); // works out to look about right
     Spark sparks[nSparks];
+    //map the flare position in its range to a hue
+    uint8_t decayHue = constrain(map(ushort(flarePos), tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10, 0, 255), 0, 255);
+    uint8_t flarePosQdrnt = constrain((short(flarePos)-tpl.size()*explRangeLow/10)/(tpl.size()*(explRangeHigh-explRangeLow)/10), 0, 100)/25;
 
     // initialize sparks
     for (auto &spark : sparks) {
         spark.pos = flarePos;
         spark.velocity = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
-        spark.colorFade = abs(spark.velocity) * 600; // set colors before scaling velocity to keep them bright
-        spark.limitColorFade(255);
-        spark.hue = random8();
+        spark.hue = random8(flarePosQdrnt*64, 64+flarePosQdrnt*64);   //limit the spark hues in a closer color range based on flare height
         spark.velocity *= flarePos/1.7f/ float(tpl.size()); // proportional to height
     }
     // the original implementation was to designate a known spark starting from a known value and iterate until it goes below a fixed threshold - c2/128
@@ -495,17 +494,16 @@ void FxF5::explode() const {
             spark.pos += spark.velocity;
             spark.limitPos(float(tpl.size()-1));
             spark.velocity += dying_gravity;
-            spark.colorFade *= .987f;       //degradation factor degFactor in formula above
+            //spark.colorFade *= .987f;       //degradation factor degFactor in formula above
             //fade the sparks
             auto spDist = uint8_t(abs(spark.pos - flarePos) * 255 / flarePos);
-            auto tplPos = spark.iPos();
+            ushort tplPos = spark.iPos();
             if (bFade) {
                 tpl[tplPos] += ColorFromPalette(palette, spark.hue+spDist, 255-2*spDist);
                 //tpl.blur1d();
             } else {
-                spark.limitColorFade(255);
                 tpl[tplPos] = blend(ColorFromPalette(palette, spark.hue),
-                                    ColorFromPalette(palette, spark.iColorFade(), 255-2*spDist),
+                                    CHSV(decayHue, 224, 255-2*spDist),
                                     3*spDist);
             }
         }
