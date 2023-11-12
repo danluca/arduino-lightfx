@@ -83,7 +83,6 @@ void readState() {
         random16_add_entropy(seed);
 
         uint16_t fx = doc[csCurFx].as<uint16_t>();
-        fxRegistry.getCurrentEffect()->desiredState(Idle);
         fxRegistry.nextEffectPos(fx);
 
         stripBrightness = doc[csStripBrightness].as<uint8_t>();

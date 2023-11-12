@@ -325,7 +325,7 @@ void FxF4::setup() {
 void FxF4::run() {
     EVERY_N_MILLISECONDS_I(fxf4Timer, 50) {
         uint16_t upLim = (tpl.size() + dotSize)/2;
-        switch (state) {
+        switch (fxState) {
             case Bounce:
                 if (delta > 0) {
                     CRGB feed = curPos > dotSize ? BKG : ColorFromPalette(palette, hue+=hueDiff, brightness, LINEARBLEND);
@@ -341,7 +341,7 @@ void FxF4::run() {
                 } else {
                     uint16_t easePos = bouncyCurve[dist++];
                     if (dist > upLim) {
-                        state = Reduce;
+                        fxState = Reduce;
                         delta = dotSize-1;
                     } else if (easePos > 0) {
                         //skip the 0 values of the bouncy curve
@@ -357,7 +357,7 @@ void FxF4::run() {
                     set2mir = set1;
                     delta--;
                 } else {
-                    state = Flash;
+                    fxState = Flash;
                     delta = 1;  //1 time cycle for flash
                 }
                 break;
@@ -373,7 +373,7 @@ void FxF4::run() {
                     curPos = 0;
                     delta = 0;
                     dist = 0;
-                    state = Bounce;
+                    fxState = Bounce;
                     fxf4Timer.setPeriod(50);
                 }
                 break;
@@ -384,7 +384,7 @@ void FxF4::run() {
     }
 }
 
-FxF4::FxF4() : LedEffect(fxf4Desc), state(Bounce), set1(tpl(0, tpl.size()/2-1)), set2mir(tpl(tpl.size() - 1, tpl.size()/2)) {
+FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(tpl(0, tpl.size() / 2 - 1)), set2mir(tpl(tpl.size() - 1, tpl.size() / 2)) {
     short upLim = (tpl.size() + dotSize)/2;
     for (short x = 0; x < upLim; x++)
         bouncyCurve[x] = easeOutBounce(x, upLim - 1);

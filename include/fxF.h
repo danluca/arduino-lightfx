@@ -96,9 +96,9 @@ namespace FxF {
         bool windDown() override;
 
     protected:
-        enum State {Bounce, Reduce, Flash};
+        enum FxState {Bounce, Reduce, Flash};
         static const uint8_t dotSize = 4;
-        State state;
+        FxState fxState;
         CRGBSet set1, set2mir;
         uint16_t bouncyCurve[(FRAME_SIZE+dotSize)/2]{};     //must be equal with (FRAME_SIZE+dotSize)/2
     };
