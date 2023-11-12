@@ -467,7 +467,7 @@ void FxF5::flare() {
  * Size is proportional to the height.
  */
 void FxF5::explode() const {
-    auto nSparks = ushort(flarePos / 3); // works out to look about right
+    const auto nSparks = ushort(flarePos / 3); // works out to look about right
     Spark sparks[nSparks];
 
     // initialize sparks
@@ -488,7 +488,7 @@ void FxF5::explode() const {
     ushort iter = 0;
     while(iter++ < loopCount) {
         if (bFade)
-            tpl.fadeToBlackBy(7);
+            tpl.fadeToBlackBy(9);
         else
             tpl = BKG;
         for (auto &spark : sparks) {
@@ -501,7 +501,7 @@ void FxF5::explode() const {
             auto tplPos = spark.iPos();
             if (bFade) {
                 tpl[tplPos] += ColorFromPalette(palette, spark.hue+spDist, 255-2*spDist);
-                tpl.blur1d(64);
+                //tpl.blur1d();
             } else {
                 spark.limitColorFade(255);
                 tpl[tplPos] = blend(ColorFromPalette(palette, spark.hue),
