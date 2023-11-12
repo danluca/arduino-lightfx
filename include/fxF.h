@@ -103,7 +103,28 @@ namespace FxF {
         uint16_t bouncyCurve[(FRAME_SIZE+dotSize)/2]{};     //must be equal with (FRAME_SIZE+dotSize)/2
     };
 
-#define NUM_SPARKS  40      //max number could be FRAME_SIZE/2
+    struct Spark {
+        float pos=0;
+        float velocity=0;
+        float colorFade=0;
+        uint8_t hue=0;
+
+        inline uint16_t iPos() {
+            return uint16_t(abs(pos));
+        }
+        inline uint8_t iColorFade() {
+            return uint8_t(abs(colorFade));
+        }
+        inline float limitColorFade(float limit) {
+            colorFade = constrain(colorFade, 0, limit);
+            return colorFade;
+        }
+        inline float limitPos(float limit) {
+            pos = constrain(pos, 0, limit);
+            return pos;
+        }
+    };
+
     class FxF5 : public LedEffect {
     public:
         explicit FxF5();
@@ -115,16 +136,13 @@ namespace FxF {
         bool windDown() override;
 
     protected:
-        float sparkPos[NUM_SPARKS]{};
-        float sparkVel[NUM_SPARKS]{};
-        float sparkCol[NUM_SPARKS]{};
-        uint8_t sparkHue[NUM_SPARKS]{};
+        //Spark sparks[NUM_SPARKS]{};
         float flarePos{};
         const float gravity = -.004;    // m/s/s
         bool bFade = false;
 
         void flare();
-        void explode();
+        void explode() const;
     };
 }
 #endif //ARDUINO_LIGHTFX_FXF_H

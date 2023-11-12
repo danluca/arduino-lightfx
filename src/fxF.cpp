@@ -396,6 +396,7 @@ bool FxF4::windDown() {
 }
 
 // FxF5 - algorithm by Carl Rosendahl, adapted from code published at https://www.anirama.com/1000leds/1d-fireworks/
+// HEAVY floating point math
 FxF5::FxF5() : LedEffect(fxf5Desc) {}
 
 void FxF5::run() {
@@ -410,12 +411,6 @@ void FxF5::run() {
 
 void FxF5::setup() {
     LedEffect::setup();
-    for (auto & sp : sparkPos)
-        sp = 0;
-    for (auto & sp : sparkVel)
-        sp = 0;
-    for (auto & sp : sparkCol)
-        sp = 0;
 }
 
 /**
@@ -427,29 +422,29 @@ void FxF5::flare() {
     bFade = random8() % 2;
     float flareVel = float(random16(20, 60)) / 100; // trial and error to get reasonable range
     float flBrightness = 255;
+    Spark flareSparks[flareSparksCount];
 
     // initialize launch sparks
-    for (ushort i = 0; i < flareSparksCount; i++) {
-        sparkPos[i] = 0;
-        sparkVel[i] = (float(random8(180,255)) / 255) * (flareVel / 2);
+    for (auto &spark : flareSparks) {
+        spark.pos = 0;
+        spark.velocity = (float(random8(180,255)) / 255) * (flareVel / 2);
         // random around 20% of flare velocity
-        sparkCol[i] = sparkVel[i] * 1000;
-        sparkCol[i] = constrain(sparkCol[i], 0, 255);
+        spark.colorFade = spark.velocity * 1000;
+        spark.limitColorFade(255);
     }
     // launch
     curPos = random16(tpl.size()/2, tpl.size()*8/10);
-//    while ((flareVel >= -.2) && (ushort(flarePos) < highLim)) {
     while ((ushort(flareStep) < curPos) && (flareVel > 0)) {
         tpl = BKG;
         // sparks
-        for (ushort i = 0; i < flareSparksCount; i++) {
-            sparkPos[i] += sparkVel[i];
-            sparkPos[i] = constrain(sparkPos[i], 0, curPos);
-            sparkVel[i] += gravity;
-            sparkCol[i] += -.8;
-            sparkCol[i] = constrain(sparkCol[i], 0, 255);
-            tpl[ushort(sparkPos[i])] = HeatColor(sparkCol[i]);
-            tpl[ushort(sparkPos[i])] %= 50; // reduce brightness to 50/255
+        for (auto &spark : flareSparks) {
+            spark.pos += spark.velocity;
+            spark.limitPos(curPos);
+            spark.velocity += gravity;
+            spark.colorFade += -.8;
+            spark.limitColorFade(255);
+            tpl[spark.iPos()] = HeatColor(spark.iColorFade());
+            tpl[spark.iPos()] %= 50; // reduce brightness to 50/255
         }
 
         // flare
@@ -471,70 +466,48 @@ void FxF5::flare() {
  * Explosion happens where the flare ended.
  * Size is proportional to the height.
  */
-void FxF5::explode() {
-    auto nSparks = ushort(flarePos / 2); // works out to look about right
+void FxF5::explode() const {
+    auto nSparks = ushort(flarePos / 3); // works out to look about right
+    Spark sparks[nSparks];
 
     // initialize sparks
-    for (ushort i = 0; i < nSparks; i++) {
-        sparkPos[i] = flarePos;
-        sparkVel[i] = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
-        sparkCol[i] = abs(sparkVel[i]) * 600; // set colors before scaling velocity to keep them bright
-        sparkCol[i] = constrain(sparkCol[i], 0, 255);
-        sparkHue[i] = random8();
-        sparkVel[i] *= flarePos/1.7f/ float(tpl.size()); // proportional to height
+    for (auto &spark : sparks) {
+        spark.pos = flarePos;
+        spark.velocity = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
+        spark.colorFade = abs(spark.velocity) * 600; // set colors before scaling velocity to keep them bright
+        spark.limitColorFade(255);
+        spark.hue = random8();
+        spark.velocity *= flarePos/1.7f/ float(tpl.size()); // proportional to height
     }
-    sparkCol[0] = 255; // this will be our known spark
+    // the original implementation was to designate a known spark starting from a known value and iterate until it goes below a fixed threshold - c2/128
+    // since they were all fixed values, the math shows the number of iterations can be precisely determined. The formula is iterCount = log(c2/128/255)/log(degFactor),
+    // rounded up to nearest integer. For instance, for original values of c2=50, degFactor=0.99, we're looking at 645 loops. With some experiments, I've landed
+    // at c2=30, degFactor=0.987, looping at 535 loops.
+    const ushort loopCount = 540;
     float dying_gravity = gravity;
-//    const uint8_t sparkDist = 250;
-//    uint8_t maxDist = 0;
-//    const float c1 = 120;
-    const float c2 = 30;
-//    float r1 = random8(160, 255);
-//    float r2 = random8(160, 255);
-//    float r3 = random8(40, 255);
-    // number of iterations is fixed and depends on degradation factor for sparkCol - for instance for a degradation factor
-    // of 0.987, c2=50, starting with 255, the number of iterations is given by k=log(c2/128/255)/log(0.987) which is 496 (rounded up)
-    //
-    while(sparkCol[0] > c2/128) { // as long as our known spark is lit, work with all the sparks
+    ushort iter = 0;
+    while(iter++ < loopCount) {
         if (bFade)
             tpl.fadeToBlackBy(7);
         else
             tpl = BKG;
-        for (ushort i = 0; i < nSparks; i++) {
-            sparkPos[i] += sparkVel[i];
-            sparkPos[i] = constrain(sparkPos[i], 0, tpl.size()-1);
-            sparkVel[i] += dying_gravity;
-            sparkCol[i] *= .987f;
+        for (auto &spark : sparks) {
+            spark.pos += spark.velocity;
+            spark.limitPos(float(tpl.size()-1));
+            spark.velocity += dying_gravity;
+            spark.colorFade *= .987f;       //degradation factor degFactor in formula above
             //fade the sparks
-            auto spDist = uint8_t(abs(sparkPos[i] - flarePos) * 255 / flarePos);
-            auto tplPos = uint16_t(sparkPos[i]);
+            auto spDist = uint8_t(abs(spark.pos - flarePos) * 255 / flarePos);
+            auto tplPos = spark.iPos();
             if (bFade) {
-                tpl[tplPos] += ColorFromPalette(palette, sparkHue[i]+spDist, 255-2*spDist);
+                tpl[tplPos] += ColorFromPalette(palette, spark.hue+spDist, 255-2*spDist);
                 tpl.blur1d(64);
             } else {
-                sparkCol[i] = constrain(sparkCol[i], 0, 255);
-                tpl[tplPos] = blend(ColorFromPalette(palette, sparkHue[i]),
-                                    ColorFromPalette(palette, uint8_t(sparkCol[i]), 255-2*spDist),
+                spark.limitColorFade(255);
+                tpl[tplPos] = blend(ColorFromPalette(palette, spark.hue),
+                                    ColorFromPalette(palette, spark.iColorFade(), 255-2*spDist),
                                     3*spDist);
             }
-//            maxDist = max(maxDist, spDist);
-//
-//            // red cross dissolve
-//
-//            if(sparkCol[i] > c1) { // fade white to yellow
-//                tpl[int(sparkPos[i])] = CHSV(uint8_t(r1), uint8_t(r3), (255 * (sparkCol[i] - c1)) / (255 - c1));
-//            }
-//            else if (sparkCol[i] < c2) { // fade from red to black
-//                tpl[int(sparkPos[i])] = CHSV((255 * sparkCol[i]) / c2, uint8_t(r2), uint8_t(r1));
-//                if (r1 > 0)
-//                    r1 -= 0.27f;
-//            }
-//            else { // fade from yellow to red
-//                tpl[int(sparkPos[i])] = CHSV(uint8_t(r1), (255 * (sparkCol[i] - c2)) / (c1 - c2), uint8_t(r2));
-//                if (r2 > 0)
-//                    r2 -= 0.21f;
-//            }
-
         }
         dying_gravity *= 0.985; // as sparks burn out they fall slower
         replicateSet(tpl, others);
