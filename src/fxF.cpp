@@ -496,7 +496,8 @@ void FxF5::explode() const {
             spark.velocity += dying_gravity;
             //spark.colorFade *= .987f;       //degradation factor degFactor in formula above
             //fade the sparks
-            auto spDist = uint8_t(abs(spark.pos - flarePos) * 255 / flarePos);
+//            auto spDist = uint8_t(abs(spark.pos - flarePos) * 255 / flarePos);
+            auto spDist = uint8_t(abs(spark.pos - flarePos));
             ushort tplPos = spark.iPos();
             if (bFade) {
                 tpl[tplPos] += ColorFromPalette(palette, spark.hue+spDist, 255-2*spDist);
@@ -507,6 +508,7 @@ void FxF5::explode() const {
                                     3*spDist);
             }
         }
+
         dying_gravity *= 0.985; // as sparks burn out they fall slower
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
