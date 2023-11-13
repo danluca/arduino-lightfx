@@ -262,7 +262,7 @@ bool FxB6::windDown() {
 
 void FxB::bpm() {
     // Colored stripes pulsing at a defined Beats-Per-Minute.
-    uint8_t BeatsPerMinute = beatsin8(5, 62, 67);
+    uint8_t BeatsPerMinute = beatsin8(5, 42, 47);
     uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
 
     for (uint16_t i = 0; i < tpl.size(); i++) {
@@ -401,27 +401,9 @@ void FxB::juggle_long() {
 
     EVERY_N_SECONDS(10) {
         switch (secSlot) {
-            case 0:
-                numDots = 1;
-                dotBpm = 20;
-                hueDiff = 16;
-                fade = 2;
-                hue = 0;
-                break;
-            case 1:
-                numDots = 4;
-                dotBpm = 10;
-                hueDiff = 16;
-                fade = 8;
-                hue = 128;
-                break;
-            case 2:
-                numDots = 8;
-                dotBpm = 3;
-                hueDiff = 0;
-                fade = 8;
-                hue = random8();
-                break;
+            case 0: numDots = 1; dotBpm = 20; hueDiff = 16; fade = 2; hue = 0; break;
+            case 1: numDots = 4; dotBpm = 10; hueDiff = 16; fade = 8; hue = 128; break;
+            case 2: numDots = 8; dotBpm = 3; hueDiff = 0; fade = 8; hue = random8(); break;
             default:
                 break;
         }
@@ -434,10 +416,7 @@ void FxB::juggle_long() {
         for (uint16_t i = 0; i < numDots; i++) {
             //  note the += operator may lead to colors outside the palette (less evident than |= operator) - for limited hues palettes (like Halloween) this may not be ideal
             uint16_t pos = beatsin16(dotBpm + i + numDots, 0, tpl.size() - 1);
-            for (auto &c: tpl(curPos, pos)) {
-                c = ColorFromPalette(palette, curHue, brightness, LINEARBLEND);
-            }
-            curPos = pos;
+            tpl[pos] += ColorFromPalette(palette, curHue, brightness, LINEARBLEND);
             curHue += hueDiff;
         }
         hue += numDots * 2;
