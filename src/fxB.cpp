@@ -401,9 +401,9 @@ void FxB::juggle_long() {
 
     EVERY_N_SECONDS(10) {
         switch (secSlot) {
-            case 0: numDots = 1; dotBpm = 20; hueDiff = 16; fade = 2; hue = 0; break;
-            case 1: numDots = 4; dotBpm = 10; hueDiff = 16; fade = 8; hue = 128; break;
-            case 2: numDots = 8; dotBpm = 3; hueDiff = 0; fade = 8; hue = random8(); break;
+            case 0: numDots = 1; dotBpm = 20; hueDiff = 16; fade = 17; hue = 0; break;
+            case 1: numDots = 4; dotBpm = 10; hueDiff = 16; fade = 23; hue = 128; break;
+            case 2: numDots = 8; dotBpm = 3; hueDiff = 2; fade = 29; hue = random8(); break;
             default:
                 break;
         }

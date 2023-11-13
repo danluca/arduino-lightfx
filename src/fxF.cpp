@@ -485,12 +485,17 @@ void FxF5::explode() const {
     const ushort loopCount = 540;
     float dying_gravity = gravity;
     ushort iter = 0;
-    while(iter++ < loopCount) {
+    bool activeSparks = true;
+    while((iter++ < loopCount) && activeSparks) {
         if (bFade)
             tpl.fadeToBlackBy(9);
         else
             tpl = BKG;
+        activeSparks = false;
         for (auto &spark : sparks) {
+            if (spark.iPos() == 0)
+                continue;   //if this spark has reached bottom, save our breath
+            activeSparks = true;
             spark.pos += spark.velocity;
             spark.limitPos(float(tpl.size()-1));
             spark.velocity += dying_gravity;
