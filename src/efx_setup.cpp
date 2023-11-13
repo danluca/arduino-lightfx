@@ -616,7 +616,6 @@ LedEffect *EffectRegistry::getCurrentEffect() const {
 }
 
 uint16_t EffectRegistry::nextEffectPos(uint16_t efx) {
-    lastEffectRun = currentEffect;
     currentEffect = capu(efx, effectsCount-1);
     transitionEffect();
     return lastEffectRun;
@@ -625,7 +624,6 @@ uint16_t EffectRegistry::nextEffectPos(uint16_t efx) {
 uint16_t EffectRegistry::nextEffectPos() {
     if (!autoSwitch)
         return currentEffect;
-    lastEffectRun = currentEffect;
     currentEffect = inc(currentEffect, 1, effectsCount);
     transitionEffect();
     return lastEffectRun;
@@ -637,7 +635,6 @@ uint16_t EffectRegistry::curEffectPos() const {
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
     if (autoSwitch) {
-        lastEffectRun = currentEffect;  //this should already be the case, enforcing it for obscure edge cases
         currentEffect = random16(0, effectsCount);
         transitionEffect();
     }
@@ -791,8 +788,8 @@ void LedEffect::desiredState(EffectState dst) {
     switch (state) {
         case Setup:
             switch (dst) {
-                case Idle:
-                case Running: state = dst; break;
+                case Idle: state = dst; break;
+                case Running:
                 case WindDown:
                 case TransitionOff: return;   //not a valid transition
             }
@@ -806,6 +803,7 @@ void LedEffect::desiredState(EffectState dst) {
             }
             break;
         case WindDown:
+            //any transitions here will cut short the in-progress windDown function
             switch (dst) {
                 case TransitionOff:
                 case Idle:
@@ -814,6 +812,7 @@ void LedEffect::desiredState(EffectState dst) {
             }
             break;
         case TransitionOff:
+            //any transitions here will cut short the in-progress transitionOff function
             switch (dst) {
                 case Idle:
                 case Setup: state = Idle; break;

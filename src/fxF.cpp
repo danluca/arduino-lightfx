@@ -469,7 +469,7 @@ void FxF5::explode() const {
     Spark sparks[nSparks];
     //map the flare position in its range to a hue
     uint8_t decayHue = constrain(map(ushort(flarePos), tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10, 0, 255), 0, 255);
-    uint8_t flarePosQdrnt = constrain((short(flarePos)-tpl.size()*explRangeLow/10)/(tpl.size()*(explRangeHigh-explRangeLow)/10), 0, 100)/25;
+    uint8_t flarePosQdrnt = decayHue/64;
 
     // initialize sparks
     for (auto &spark : sparks) {

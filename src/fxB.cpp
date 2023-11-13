@@ -223,7 +223,7 @@ void FxB::juggle_short() {
         // leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= CHSV(dothue, 200, 255);
         // note the |= operator may lead to colors outside the palette - for limited hues palettes (like Halloween) this may not be ideal
         uint16_t pos = beatsin16(i + 7, 0, tpl.size() - 1);
-        tpl(curPos, pos) |= ColorFromPalette(palette, hue, brightness, LINEARBLEND);
+        tpl[pos] |= ColorFromPalette(palette, hue, brightness, LINEARBLEND);
         curPos = pos;
         hue += 32;
     }
@@ -294,8 +294,7 @@ void FxB::ease() {
     uint16_t easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
     easeInVal += 811;         //completes a full 65536 cycle in about 6 seconds, given 75ms execution cadence
 
-    uint16_t lerpVal = lerp16by16(0, tpl.size() - 1,
-                                  easeOutVal);                // Map it to the number of LED's you have.
+    uint16_t lerpVal = lerp16by16(0, tpl.size() - 1, easeOutVal);                // Map it to the number of LED's you have.
 
     if (lerpVal != szStack) {
         if (lerpVal > curPos)
@@ -349,20 +348,16 @@ void FxB8::run() {
 
 void FxB::fadein() {
     hueDiff = random16_get_seed();
-    random16_set_seed(
-            535);                                                           // The randomizer needs to be re-set each time through the loop in order for the 'random' numbers to be the same each time through.
+    random16_set_seed(535);                                                           // The randomizer needs to be re-set each time through the loop in order for the 'random' numbers to be the same each time through.
 
     for (uint16_t i = 0; i < tpl.size(); i++) {
-        uint8_t fader = sin8(millis() / random8(10,
-                                                20));                                  // The random number for each 'i' will be the same every time.
-        tpl[i] = ColorFromPalette(palette, i * 20, fader,
-                                  LINEARBLEND);       // Now, let's run it through the palette lookup.
+        uint8_t fader = sin8(millis() / random8(10, 20));                                  // The random number for each 'i' will be the same every time.
+        tpl[i] = ColorFromPalette(palette, i * 20, fader, LINEARBLEND);       // Now, let's run it through the palette lookup.
     }
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
 
-    random16_set_seed(
-            hueDiff);                                                      // Re-randomizing the random number seed for other routines.
+    random16_set_seed(hueDiff);                                                      // Re-randomizing the random number seed for other routines.
 }
 
 JsonObject &FxB8::describeConfig(JsonArray &json) const {
@@ -440,7 +435,7 @@ void FxB::juggle_long() {
             //  note the += operator may lead to colors outside the palette (less evident than |= operator) - for limited hues palettes (like Halloween) this may not be ideal
             uint16_t pos = beatsin16(dotBpm + i + numDots, 0, tpl.size() - 1);
             for (auto &c: tpl(curPos, pos)) {
-                c += ColorFromPalette(palette, curHue, brightness, LINEARBLEND);
+                c = ColorFromPalette(palette, curHue, brightness, LINEARBLEND);
             }
             curPos = pos;
             curHue += hueDiff;
