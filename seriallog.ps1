@@ -14,8 +14,11 @@ function logName {
 ## Main
 #######################################
 $fname = logName
+if (!(Test-Path $PSScriptRoot/logs -PathType Container)) {
+    New-Item $PSScriptRoot/logs -ItemType Directory
+}
 if ($port -eq 'auto') {
-    pio device monitor | tee -FilePath $PSScriptRoot/logs/$fname
+    pio device monitor | tee $PSScriptRoot/logs/$fname
 } else {
-    pio device monitor --port $port | tee -FilePath $PSScriptRoot/logs/$fname
+    pio device monitor --port $port | tee $PSScriptRoot/logs/$fname
 }
