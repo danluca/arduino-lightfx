@@ -379,7 +379,7 @@ void FxA5::run() {
     }
 
     EVERY_N_MILLISECONDS_I(a5Timer, speed) {
-        shiftRight(tpl, ovr[capu(curPos, (ovr.size()-1))]);
+        shiftRight(tpl, ovr[capu(curPos, ovr.size()-1)]);
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
 
@@ -394,7 +394,7 @@ void FxA5::run() {
             speed = random16(40, 131);
             a5Timer.setPeriod(speed);
         } else
-            tpl(tpl.size()-1, capu(curPos+1, (tpl.size()-1))).fadeToBlackBy(12);
+            tpl(tpl.size()-1, capu(curPos+1, tpl.size()-1)).fadeToBlackBy(12);
     }
 
     EVERY_N_SECONDS(127) {

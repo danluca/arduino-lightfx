@@ -791,7 +791,7 @@ void LedEffect::desiredState(EffectState dst) {
                 case Idle: state = dst; break;
                 case Running:
                 case WindDown:
-                case TransitionOff: return;   //not a valid transition, Setup hasn't completed
+                case TransitionOff: return;   //not a valid transition, Setup may not have completed
             }
             break;
         case Running:
