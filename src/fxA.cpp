@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2023 by Dan Luca. All rights reserved
+//
 /**
  * Category A of light effects
  * 
@@ -54,6 +57,12 @@ uint16_t FxA::fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg) {
     return szStack;
 }
 
+bool turnOff(uint8_t selector) {
+    if (selector)
+        return turnOffWipe(selector % 2);
+    else
+        return turnOffSpots();
+}
 
 ///////////////////////////////////////
 // Effect Definitions - setup and loop
@@ -65,6 +74,7 @@ FxA1::FxA1() : LedEffect(fxa1Desc), dot(frame(0, FRAME_SIZE-1)) {
 
 void FxA1::setup() {
     LedEffect::setup();
+    rot = 0;
     makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
@@ -77,9 +87,9 @@ void FxA1::makeDot(CRGB color, uint16_t szDot) {
     dot[szDot - 1] %= dimmed;
 }
 
-void FxA1::loop() {
+void FxA1::run() {
     if (mode == TurnOff) {
-        if (turnOffSpots())
+        if (turnOff(rot))
             resetStack();
         return;
     }
@@ -100,6 +110,11 @@ void FxA1::loop() {
         if (curPos == 0) {
             fxa_stackAdjust(tpl, szStackSeg);
             mode = szStack == tpl.size() ? TurnOff : Chase;
+            if (szStack == tpl.size()) {
+                mode = TurnOff;
+                incr(rot, 1, 3);
+            } else
+                mode = Chase;
             //save the color
             lastColorIndex = colorIndex;
             colorIndex = random8();
@@ -117,6 +132,10 @@ JsonObject & FxA1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxA1::windDown() {
+    return turnOff(rot);
+}
+
 // FX A2
 FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
@@ -124,6 +143,7 @@ FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 void FxA2::setup() {
     LedEffect::setup();
     makeDot();
+    rot = 0;
 }
 
 void FxA2::makeDot() {
@@ -136,9 +156,9 @@ void FxA2::makeDot() {
     dot[0] = ColorFromPalette(palette, brdIndex, brdBright, LINEARBLEND);
 }
 
-void FxA2::loop() {
+void FxA2::run() {
     if (mode == TurnOff) {
-        if (turnOffWipe()) resetStack();
+        turnOff(rot);
         return;
     }
     EVERY_N_MILLISECONDS_I(a2Timer, speed) {
@@ -171,9 +191,8 @@ void FxA2::loop() {
             colorIndex = beatsin8(10);
             makeDot();
         } else if (ss < szSegment)
-            feed = movement == backward ? dot[ss] : ColorFromPalette(palette, colorIndex,
-                                                                     beatsin8(6, dimmed << 2, brightness, curPos),
-                                                                     LINEARBLEND);
+            feed = movement == backward ? dot[ss] :
+                    ColorFromPalette(palette, colorIndex, beatsin8(6, dimmed << 2, brightness, curPos), LINEARBLEND);
         else
             feed = BKG;
 
@@ -185,8 +204,10 @@ void FxA2::loop() {
     }
 
     EVERY_N_SECONDS(127) {
-        if (countLedsOn(&tpl) > 10)
+        if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
+            incr(rot, 1, 3);
+        }
     }
 }
 
@@ -194,6 +215,10 @@ JsonObject & FxA2::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
     return obj;
+}
+
+bool FxA2::windDown() {
+    return turnOff(rot);
 }
 
 // Fx A3
@@ -215,7 +240,7 @@ void FxA3::makeDot(CRGB color, uint16_t szDot) {
     dot[szDot - 1] %= dimmed;
 }
 
-void FxA3::loop() {
+void FxA3::run() {
     EVERY_N_MILLISECONDS_I(a3Timer, speed) {
         if (bFwd)
             shiftRight(tpl, curPos < szSegment ? dot[curPos] : BKG);
@@ -245,6 +270,10 @@ JsonObject & FxA3::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
 }
 
+bool FxA3::windDown() {
+    return turnOff(rot);
+}
+
 // FX A4
 FxA4::FxA4() : LedEffect(fxa4Desc), dot(frame(0, FRAME_SIZE-1)), frL(frame(FRAME_SIZE, FRAME_SIZE*2-1)),
                frR(frame(FRAME_SIZE*2, FRAME_SIZE*3-1)), curBkg(BKG) {
@@ -256,6 +285,7 @@ void FxA4::setup() {
     szStackSeg = 2;
     curBkg = BKG;
     brightness = 192;
+    rot = 0;
     makeDot(ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND), szSegment);
 }
 
@@ -265,9 +295,9 @@ void FxA4::makeDot(CRGB color, uint16_t szDot) {
     dot(0, szDot).fill_gradient_RGB(c1, c2);
 }
 
-void FxA4::loop() {
+void FxA4::run() {
     if (mode == TurnOff) {
-        if (turnOffSpots())
+        if (turnOff(rot))
             resetStack();
         return;
     }
@@ -300,13 +330,19 @@ void FxA4::loop() {
     }
 
     EVERY_N_SECONDS(127) {
-        if (countLedsOn(&tpl) > 10)
+        if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
+            incr(rot, 1, 3);
+        }
     }
 }
 
 JsonObject & FxA4::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
+}
+
+bool FxA4::windDown() {
+    return turnOff(rot);
 }
 
 // Fx A5
@@ -317,6 +353,7 @@ void FxA5::setup() {
     LedEffect::setup();
     lastColorIndex = 3;
     colorIndex = 7;
+    rot = 0;
     makeFrame();
 }
 
@@ -334,16 +371,15 @@ void FxA5::makeFrame() {
     ovr[0].setParity(!mainPal);
 }
 
-void FxA5::loop() {
+void FxA5::run() {
     if (mode == TurnOff) {
-        if (turnOffWipe()) {
+        if (turnOff(rot))
             mode = Chase;
-        }
         return;
     }
 
     EVERY_N_MILLISECONDS_I(a5Timer, speed) {
-        shiftRight(tpl, ovr[capu(curPos, (ovr.size()-1))]);
+        shiftRight(tpl, ovr[capu(curPos, ovr.size()-1)]);
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
 
@@ -358,15 +394,21 @@ void FxA5::loop() {
             speed = random16(40, 131);
             a5Timer.setPeriod(speed);
         } else
-            tpl(tpl.size()-1, capu(curPos+1, (tpl.size()-1))).fadeToBlackBy(12);
+            tpl(tpl.size()-1, capu(curPos+1, tpl.size()-1)).fadeToBlackBy(12);
     }
 
     EVERY_N_SECONDS(127) {
-        if (countLedsOn(&tpl) > 10)
+        if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
+            incr(rot, 1, 3);
+        }
     }
 }
 
 JsonObject & FxA5::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
+}
+
+bool FxA5::windDown() {
+    return turnOff(rot);
 }

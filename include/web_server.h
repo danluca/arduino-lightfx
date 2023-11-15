@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_WEB_SERVER_H
 #define LIGHTFX_WEB_SERVER_H

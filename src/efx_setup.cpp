@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2023 by Dan Luca. All rights reserved
+//
 #include "efx_setup.h"
 #include "log.h"
 
@@ -177,6 +180,19 @@ uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
 }
 
 /**
+ * Ease Out Quad implementation - leverages the double precision original implementation converted to int in a range
+ * @param x input value
+ * @param lim high limit range
+ * @return the result in [0,lim] inclusive range
+ * @see https://easings.net/#easeOutQuad
+ */
+uint16_t easeOutQuad(const uint16_t x, const uint16_t lim) {
+    auto limf = float(lim);
+    float xf = float(x)/limf;
+    return uint16_t((1 - (1-xf)*(1-xf))*limf);
+}
+
+/**
  * Shifts the content of an array to the right by the number of positions specified
  * First item of the array (arr[0]) is used as seed to fill the new elements entering left
  * @param arr array
@@ -190,11 +206,13 @@ void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp, uint16_t pos) {
         return;
     if (vwp.size() == 0)
         vwp = (Viewport)set.size();
-    uint16_t hiMark = capu(vwp.high, set.size());
     if (pos >= vwp.size()) {
-        set(vwp.low, hiMark).fill_solid(feedLeft);
+        uint16_t hiMark = capu(vwp.high, (set.size()-1));
+        set(vwp.low, hiMark) = feedLeft;
         return;
     }
+    uint16_t hiMark = capu(vwp.high, set.size());
+    //don't use >= as the indexer is unsigned and always >=0 --> infinite loop
     for (uint16_t x = hiMark; x > vwp.low; x--) {
         uint16_t y = x - 1;
         set[y] = y < pos ? feedLeft : set[y-pos];
@@ -238,12 +256,12 @@ void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp, uint16_t pos) {
         return;
     if (vwp.size() == 0)
         vwp = (Viewport)set.size();
-    uint16_t hiMark = capu(vwp.high, set.size());
+    uint16_t hiMark = capu(vwp.high, (set.size()-1));
     if (pos >= vwp.size()) {
-        set(vwp.low, hiMark).fill_solid(feedRight);
+        set(vwp.low, hiMark) = feedRight;
         return;
     }
-    for (uint16_t x = vwp.low; x < hiMark; x++) {
+    for (uint16_t x = vwp.low; x <= hiMark; x++) {
         uint16_t y = x + pos;
         set[x] = y < set.size() ? set[y] : feedRight;
     }
@@ -483,14 +501,15 @@ bool turnOffSpots() {
     static uint16_t led = 0;
     static uint16_t xOffNow = 0;
     static uint16_t szOffNow = turnOffSeq[xOffNow];
+    static uint8_t offFade = random8(42, 110);
     static bool setOff = false;
     bool allOff = false;
 
-    EVERY_N_MILLISECONDS(25) {
+    EVERY_N_MILLISECONDS(30) {
         uint8_t ledsOn = 0;
         for (uint16_t x = 0; x < szOffNow; x++) {
-            uint16_t xled = stripShuffleIndex[(led + x) % NUM_PIXELS];
-            FastLED.leds()[xled].fadeToBlackBy(36);
+            uint16_t xled = stripShuffleIndex[(led + x)%NUM_PIXELS];
+            FastLED.leds()[xled].fadeToBlackBy(offFade);
             if (FastLED.leds()[xled].getLuma() < 4)
                 FastLED.leds()[xled] = BKG;
             else
@@ -506,6 +525,7 @@ bool turnOffSpots() {
             xOffNow = capu(xOffNow + 1, arrSize(turnOffSeq) - 1);
             szOffNow = turnOffSeq[xOffNow];
             setOff = false;
+            offFade = random8(42, 110);
         }
         allOff = !isAnyLedOn(FastLED.leds(), FastLED.size(), BKG);
     }
@@ -534,7 +554,7 @@ bool turnOffWipe(bool rightDir) {
         else
             shiftLeft(strip, BKG);
         FastLED.show(stripBrightness);
-        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
+        allOff = !isAnyLedOn(&strip, BKG);
     }
 
     return allOff;
@@ -586,6 +606,7 @@ CRGB& setBrightness(CRGB &rgb, uint8_t br) {
  * @return approximate brightness on HSV scale
  */
 uint8_t getBrightness(const CRGB &rgb) {
+    //compare with rgb.getLuma() ?
     return toHSV(rgb).val;
 }
 
@@ -595,17 +616,17 @@ LedEffect *EffectRegistry::getCurrentEffect() const {
 }
 
 uint16_t EffectRegistry::nextEffectPos(uint16_t efx) {
-    uint16_t prevPos = currentEffect;
     currentEffect = capu(efx, effectsCount-1);
-    return prevPos;
+    transitionEffect();
+    return lastEffectRun;
 }
 
 uint16_t EffectRegistry::nextEffectPos() {
     if (!autoSwitch)
         return currentEffect;
-    uint16_t prevPos = currentEffect;
     currentEffect = inc(currentEffect, 1, effectsCount);
-    return prevPos;
+    transitionEffect();
+    return lastEffectRun;
 }
 
 uint16_t EffectRegistry::curEffectPos() const {
@@ -613,8 +634,18 @@ uint16_t EffectRegistry::curEffectPos() const {
 }
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
-    currentEffect = autoSwitch ? random16(0, effectsCount) : currentEffect;
+    if (autoSwitch) {
+        currentEffect = random16(0, effectsCount);
+        transitionEffect();
+    }
     return currentEffect;
+}
+
+void EffectRegistry::transitionEffect() const {
+    if (currentEffect != lastEffectRun) {
+        effects[lastEffectRun]->desiredState(Idle);
+    }
+    effects[currentEffect]->desiredState(Running);
 }
 
 uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
@@ -629,21 +660,23 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     return MAX_EFFECTS_COUNT;
 }
 
+/**
+ * Sets the desired state for all effects to setup. It will essentially make each effect ready to run if invoked - the state machine will ensure the setup() is called first
+ */
 void EffectRegistry::setup() {
-    for (uint16_t x = 0; x < effectsCount; x++) {
-        effects[x]->setup();
-    }
+    for (uint16_t x = 0; x < effectsCount; x++)
+        effects[currentEffect]->desiredState(Setup);
+
 }
 
 void EffectRegistry::loop() {
     //if effect has changed, re-run the effect's setup
-    if (lastEffectRun != currentEffect) {
+    if ((lastEffectRun != currentEffect) && (effects[lastEffectRun]->getState() == Idle)) {
         Log.infoln(F("Effect change: from index %d [%s] to %d [%s]"),
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
-        effects[currentEffect]->setup();
         lastEffectRun = currentEffect;
     }
-    effects[currentEffect]->loop();
+    effects[lastEffectRun]->loop();
 }
 
 void EffectRegistry::describeConfig(JsonArray &json) {
@@ -680,7 +713,7 @@ void LedEffect::baseConfig(JsonObject &json) const {
     json["palette"] = holidayToString(paletteFactory.getHoliday());
 }
 
-LedEffect::LedEffect(const char *description) : desc(description) {
+LedEffect::LedEffect(const char *description) : state(Idle), desc(description) {
     //copy into id field the prefix of description (e.g. for a description 'FxA1: awesome lights', copies 'FxA1' into id)
     for (uint8_t i=0; i<LED_EFFECT_ID_SIZE; i++) {
         if (description[i] == ':' || description[i] == '\0') {
@@ -709,8 +742,103 @@ const char *LedEffect::description() const {
     return desc;
 }
 
+/**
+ * Non-repeat by design. All the setup occurs in one blocking step.
+ */
 void LedEffect::setup() {
     resetGlobals();
+}
+
+/**
+ * Performs the transition to off - by default a pause of 1 second. Subclasses can override the behavior - function is virtual
+ * This is a repeat function - it is called multiple times while in TransitionOff state, until it returns true.
+ * @return true if transition has completed; false otherwise
+ */
+bool LedEffect::transitionOff() {
+    return millis() > (transOffStart + 1000);
+}
+
+/**
+ * Re-entrant looping function
+ */
+void LedEffect::loop() {
+    switch (state) {
+        case Setup: setup(); nextState(); break;    //one blocking step, non repeat
+        case Running: run(); break;                 //repeat, called multiple times to achieve the light effects designed
+        case WindDown:
+            if (windDown())
+                nextState();
+            break;           //repeat, called multiple times to achieve the fade out for the current light effect
+        case TransitionOff:
+            if (transitionOff())
+                nextState();
+            break; //repeat, called multiple times to achieve the transition off for the current light effect
+        case Idle: break;                           //no-op
+    }
+}
+
+/**
+ * Implementation of desired state - informs the state machine of the intended next state and causes it to react.
+ * This means either transitioning to an interim state that precedes the desired state, or directly switch to desired state
+ * @param dst intended next state
+ */
+void LedEffect::desiredState(EffectState dst) {
+    if (state == dst)
+        return;     //already there
+    switch (state) {
+        case Setup:
+            switch (dst) {
+                case Idle: state = dst; break;
+                case Running:
+                case WindDown:
+                case TransitionOff: return;   //not a valid transition, Setup may not have completed
+            }
+            break;
+        case Running:
+            switch (dst) {
+                case WindDown:
+                case TransitionOff:
+                case Idle:
+                case Setup: state = WindDown; break;
+            }
+            break;
+        case WindDown:
+            //any transitions here will cut short the in-progress windDown function
+            switch (dst) {
+                case TransitionOff:
+                case Idle:
+                case Setup: state = TransitionOff; transOffStart = millis(); break;
+                case Running: state = dst; break;
+            }
+            break;
+        case TransitionOff:
+            //any transitions here will cut short the in-progress transitionOff function
+            switch (dst) {
+                case Idle:
+                case Setup: state = Idle; break;
+                case Running: state = Setup; break;
+                case WindDown: return;  //not a valid transition
+            }
+            break;
+        case Idle:
+            switch (dst) {
+                case Running:
+                case Setup: state = Setup; break;
+                case WindDown:
+                case TransitionOff: return;   //not a valid transition
+            }
+            break;
+    }
+}
+
+void LedEffect::nextState() {
+    switch (state) {
+        case Setup: state = Running; break;
+        case Running: state = WindDown; break;
+        case WindDown: state = TransitionOff; transOffStart = millis(); break;
+        case TransitionOff: state = Idle; break;
+        case Idle: state = Setup; break;
+    }
 }
 
 // Viewport
@@ -737,8 +865,8 @@ void fx_setup() {
     readState();
 
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-    //ensure the current effect is set up
-    fxRegistry.getCurrentEffect()->setup();
+    //ensure the current effect is moved to setup state
+    fxRegistry.getCurrentEffect()->desiredState(Setup);
 }
 
 //Run currently selected effect -------
@@ -764,10 +892,10 @@ void fx_run() {
         if (msmt > maxTemp)
             maxTemp = msmt;
     }
-    EVERY_N_MINUTES(5) {
+    EVERY_N_MINUTES(7) {
         fxRegistry.nextRandomEffectPos();
-        shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
         random16_add_entropy(secRandom16());        //this may or may not help
+        shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
         stripBrightness = adjustStripBrightness();
         saveState();
     }

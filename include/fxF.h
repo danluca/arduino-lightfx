@@ -14,7 +14,9 @@ namespace FxF {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
     };
 
     class FxF2 : public LedEffect {
@@ -23,7 +25,9 @@ namespace FxF {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
     protected:
         void makePattern(uint8_t hue);
@@ -68,7 +72,9 @@ namespace FxF {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         Viewport nextEyePos();
 
@@ -85,14 +91,51 @@ namespace FxF {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
     protected:
-        enum State {Bounce, Reduce, Flash};
+        enum FxState {Bounce, Reduce, Flash};
         static const uint8_t dotSize = 4;
-        State state;
+        FxState fxState;
         CRGBSet set1, set2mir;
         uint16_t bouncyCurve[(FRAME_SIZE+dotSize)/2]{};     //must be equal with (FRAME_SIZE+dotSize)/2
+    };
+
+    struct Spark {
+        float pos=0;
+        float velocity=0;
+        uint8_t hue=0;
+
+        inline uint16_t iPos() const {
+            return uint16_t(abs(pos));
+        }
+        inline float limitPos(float limit) {
+            return pos = constrain(pos, 0, limit);
+        }
+    };
+
+    class FxF5 : public LedEffect {
+    public:
+        explicit FxF5();
+
+        void setup() override;
+
+        void run() override;
+
+        bool windDown() override;
+
+    protected:
+        //Spark sparks[NUM_SPARKS]{};
+        float flarePos{};
+        bool bFade = false;
+        const float gravity = -.004;    // m/s/s
+        const ushort explRangeLow = 3;  //30%
+        const ushort explRangeHigh = 8; //80%
+
+        void flare();
+        void explode() const;
     };
 }
 #endif //ARDUINO_LIGHTFX_FXF_H

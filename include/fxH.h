@@ -54,7 +54,9 @@ namespace FxH {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -67,7 +69,9 @@ namespace FxH {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -82,7 +86,9 @@ namespace FxH {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
     };

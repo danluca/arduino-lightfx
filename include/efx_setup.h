@@ -11,16 +11,16 @@
 #include "config.h"
 #include "util.h"
 
-#define capd(x, d) ((x<d)?d:x)
-#define capu(x, u) ((x>u)?u:x)
+#define capd(x, d) (((x)<=(d))?(d):(x))
+#define capu(x, u) (((x)>=(u))?(u):(x))
 #define capr(x, d, u) (capu(capd(x,d),u))
-#define inr(x, d, u) ((x>=d)&&(x<u))
-#define inc(x, i, u) ((x+i)%u)
+#define inr(x, d, u) (((x)>=(d))&&((x)<(u)))
+#define inc(x, i, u) ((x+i)%(u))
 #define incr(x, i, u) x=(x+i)%(u)
 #define arrSize(A) (sizeof(A) / sizeof((A)[0]))
-#define qsubd(x, b) ((x>b)?b:0)                               // Clip. . . . A digital unsigned subtraction macro. if result <0, then x=0. Otherwise, x=b.
-#define qsuba(x, b) ((x>b)?x-b:0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
-#define asub(a, b)  ((a>b)?a-b:b-a)
+#define qsubd(x, b) (((x)>(b))?(b):0)                               // Clip. . . . A digital unsigned subtraction macro. if result <0, then x=0. Otherwise, x=b.
+#define qsuba(x, b) (((x)>(b))?(x-b):0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
+#define asub(a, b)  (((a)>(b))?(a-b):(b-a))
 
 #define LED_EFFECT_ID_SIZE  6
 #define MAX_EFFECTS_COUNT   256
@@ -40,6 +40,7 @@ extern const uint8_t dimmed;
 extern const CRGB BKG;
 extern const uint8_t maxChanges;
 enum OpMode { TurnOff, Chase };
+enum EffectState {Setup, Running, WindDown, TransitionOff, Idle};
 extern CRGB leds[NUM_PIXELS];
 extern CRGBArray<NUM_PIXELS> frame;
 extern CRGBSet tpl;
@@ -107,6 +108,7 @@ void shuffleIndexes(uint16_t array[], uint16_t szArray);
 void shuffle(CRGBSet &set);
 
 uint16_t easeOutBounce(uint16_t x, uint16_t lim);
+uint16_t easeOutQuad(uint16_t x, uint16_t lim);
 
 void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
 
@@ -188,6 +190,8 @@ void fx_run();
 class LedEffect {
 protected:
     uint registryIndex = 0;
+    EffectState state;
+    ulong transOffStart = 0;
     const char* const desc;
     char id[LED_EFFECT_ID_SIZE] {};   //this is name of the class, max 5 characters (plus null terminal)
 public:
@@ -195,7 +199,17 @@ public:
 
     virtual void setup();
 
-    virtual void loop() = 0;
+    virtual void run() = 0;
+
+    virtual bool windDown() = 0;
+
+    virtual bool transitionOff();
+
+    virtual void desiredState(EffectState dst);
+
+    virtual void nextState();
+
+    virtual void loop();
 
     const char *description() const;
 
@@ -206,6 +220,10 @@ public:
     void baseConfig(JsonObject &json) const;
 
     uint16_t getRegistryIndex() const;
+
+    inline EffectState getState() const {
+        return state;
+    }
 
     virtual ~LedEffect() = default;     // Destructor
 };
@@ -231,6 +249,8 @@ public:
     uint16_t curEffectPos() const;
 
     uint16_t nextRandomEffectPos();
+
+    void transitionEffect() const;
 
     uint16_t registerEffect(LedEffect *effect);
 

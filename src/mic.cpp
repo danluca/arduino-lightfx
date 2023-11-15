@@ -1,5 +1,5 @@
 //
-// Created by dluca on 6/28/2023.
+// Copyright (c) 2023 by Dan Luca. All rights reserved
 //
 
 #include "mic.h"

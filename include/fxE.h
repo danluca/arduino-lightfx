@@ -13,7 +13,9 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         static void twinkle();
 
@@ -28,7 +30,9 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         void beatwave();
     };
@@ -39,7 +43,9 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
     protected:
         const uint8_t sasquatchSize = 3;
@@ -56,7 +62,9 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         void serendipitous();
 
@@ -73,11 +81,14 @@ namespace FxE {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
     protected:
         CRGBSet wave2, wave3;
         uint8_t clr1, clr2, clr3;
+        uint16_t pos2, pos3;
         const uint8_t segSize = 8;
     };
 }

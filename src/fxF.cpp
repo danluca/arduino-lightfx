@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2023 by Dan Luca. All rights reserved
+//
 /**
  * Category F of light effects
  *
@@ -14,12 +17,14 @@ const char fxf1Desc[] PROGMEM = "FxF1: beat wave";
 const char fxf2Desc[] PROGMEM = "FxF2: Halloween breathe with various color blends";
 const char fxf3Desc[] PROGMEM = "FxF3: Eye Blink";
 const char fxf4Desc[] PROGMEM = "FxF4: Bouncy segments";
+const char fxf5Desc[] PROGMEM = "FxF5: Fireworks";
 
 void FxF::fxRegister() {
     static FxF1 fxF1;
     static FxF2 fxF2;
     static FxF3 fxF3;
     static FxF4 fxF4;
+    static FxF5 fxF5;
 }
 
 // FxF1
@@ -33,7 +38,7 @@ void FxF1::setup() {
     hueDiff = 8;
 }
 
-void FxF1::loop() {
+void FxF1::run() {
     EVERY_N_MILLISECONDS(speed) {
         const uint8_t dotSize = 2;
         tpl.fadeToBlackBy(fade);
@@ -56,6 +61,10 @@ void FxF1::loop() {
     }
 }
 
+bool FxF1::windDown() {
+    return turnOffSpots();
+}
+
 // FxF2
 FxF2::FxF2() : LedEffect(fxf2Desc), pattern(frame(0, FRAME_SIZE-1)) {
 }
@@ -67,7 +76,7 @@ void FxF2::setup() {
     makePattern(hue);
 }
 
-void FxF2::loop() {
+void FxF2::run() {
     // frame rate - 20fps
     EVERY_N_MILLISECONDS(50) {
         double dBreath = (exp(sin(millis()/2400.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;       //(exp(sin(millis()/4000.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;
@@ -102,6 +111,10 @@ void FxF2::makePattern(uint8_t hue) {
     loopRight(pattern, (Viewport)0, s0);
 }
 
+bool FxF2::windDown() {
+    return turnOffWipe(false);
+}
+
 // FxF3
 FxF3::FxF3() : LedEffect(fxf3Desc) {}
 
@@ -114,7 +127,7 @@ void FxF3::setup() {
         e.reset(0, BKG);
 }
 
-void FxF3::loop() {
+void FxF3::run() {
     EVERY_N_SECONDS(5) {
         //activate eyes if possible
         uint8_t numEyes = 1 + random8(maxEyes);
@@ -187,6 +200,10 @@ Viewport FxF3::nextEyePos() {
         szGap = curGap;
     }
     return szGap > EyeBlink::size ? Viewport(posGap, posGap+szGap-EyeBlink::size) : (Viewport)0;
+}
+
+bool FxF3::windDown() {
+    return turnOffWipe(true);
 }
 
 /**
@@ -305,10 +322,10 @@ void FxF4::setup() {
     dist = 0;
 }
 
-void FxF4::loop() {
+void FxF4::run() {
     EVERY_N_MILLISECONDS_I(fxf4Timer, 50) {
         uint16_t upLim = (tpl.size() + dotSize)/2;
-        switch (state) {
+        switch (fxState) {
             case Bounce:
                 if (delta > 0) {
                     CRGB feed = curPos > dotSize ? BKG : ColorFromPalette(palette, hue+=hueDiff, brightness, LINEARBLEND);
@@ -324,7 +341,7 @@ void FxF4::loop() {
                 } else {
                     uint16_t easePos = bouncyCurve[dist++];
                     if (dist > upLim) {
-                        state = Reduce;
+                        fxState = Reduce;
                         delta = dotSize-1;
                     } else if (easePos > 0) {
                         //skip the 0 values of the bouncy curve
@@ -340,7 +357,7 @@ void FxF4::loop() {
                     set2mir = set1;
                     delta--;
                 } else {
-                    state = Flash;
+                    fxState = Flash;
                     delta = 1;  //1 time cycle for flash
                 }
                 break;
@@ -356,7 +373,7 @@ void FxF4::loop() {
                     curPos = 0;
                     delta = 0;
                     dist = 0;
-                    state = Bounce;
+                    fxState = Bounce;
                     fxf4Timer.setPeriod(50);
                 }
                 break;
@@ -367,9 +384,145 @@ void FxF4::loop() {
     }
 }
 
-FxF4::FxF4() : LedEffect(fxf4Desc), state(Bounce), set1(tpl(0, tpl.size()/2-1)), set2mir(tpl(tpl.size() - 1, tpl.size()/2)) {
+FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(tpl(0, tpl.size() / 2 - 1)), set2mir(tpl(tpl.size() - 1, tpl.size() / 2)) {
     short upLim = (tpl.size() + dotSize)/2;
     for (short x = 0; x < upLim; x++)
         bouncyCurve[x] = easeOutBounce(x, upLim - 1);
 
+}
+
+bool FxF4::windDown() {
+    return turnOffWipe(true);
+}
+
+// FxF5 - algorithm by Carl Rosendahl, adapted from code published at https://www.anirama.com/1000leds/1d-fireworks/
+// HEAVY floating point math
+FxF5::FxF5() : LedEffect(fxf5Desc) {}
+
+void FxF5::run() {
+    EVERY_N_MILLIS_I(fxf5Timer, 1000) {
+        flare();
+
+        explode();
+
+        fxf5Timer.setPeriod(random16(1000, 4000));
+    }
+}
+
+void FxF5::setup() {
+    LedEffect::setup();
+}
+
+/**
+ * Send up a flare
+ */
+void FxF5::flare() {
+    const ushort flareSparksCount = 3;
+    float flareStep = flarePos = 0;
+    bFade = random8() % 2;
+    curPos = random16(tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10);
+    float flareVel = float(random16(400, 650)) / 1000; // trial and error to get reasonable range to match the 30-80 % range of the strip height we want
+    float flBrightness = 255;
+    Spark flareSparks[flareSparksCount];
+
+    // initialize launch sparks
+    for (auto &spark : flareSparks) {
+        spark.pos = 0;
+        spark.velocity = (float(random8(180,255)) / 255) * (flareVel / 2);
+        // random around 20% of flare velocity
+        spark.hue = uint8_t(spark.velocity * 1000);
+    }
+    // launch
+    while ((ushort(flarePos) < curPos) && (flareVel > 0)) {
+        tpl = BKG;
+        // sparks
+        for (auto &spark : flareSparks) {
+            spark.pos += spark.velocity;
+            spark.limitPos(curPos);
+            spark.velocity += gravity;
+            spark.hue = capd(qsuba(spark.hue, 1), 64);
+            tpl[spark.iPos()] = HeatColor(spark.hue);
+            tpl[spark.iPos()] %= 50; // reduce brightness to 50/255
+        }
+
+        // flare
+        flarePos = easeOutQuad(ushort(flareStep), curPos);
+        tpl[ushort(flarePos)] = CHSV(0, 0, ushort(flBrightness));
+        replicateSet(tpl, others);
+        flareStep += flareVel;
+        //flarePos = constrain(flarePos, 0, curPos);
+        flareVel += gravity;
+        flBrightness *= .985;
+
+        FastLED.show(stripBrightness);
+    }
+}
+
+/**
+ * Explode!
+ *
+ * Explosion happens where the flare ended.
+ * Size is proportional to the height.
+ */
+void FxF5::explode() const {
+    const auto nSparks = ushort(flarePos / 3); // works out to look about right
+    Spark sparks[nSparks];
+    //map the flare position in its range to a hue
+    uint8_t decayHue = constrain(map(ushort(flarePos), tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10, 0, 255), 0, 255);
+    uint8_t flarePosQdrnt = decayHue/64;
+
+    // initialize sparks
+    for (auto &spark : sparks) {
+        spark.pos = flarePos;
+        spark.velocity = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
+        spark.hue = random8(flarePosQdrnt*64, 64+flarePosQdrnt*64);   //limit the spark hues in a closer color range based on flare height
+        spark.velocity *= flarePos/1.7f/ float(tpl.size()); // proportional to height
+    }
+    // the original implementation was to designate a known spark starting from a known value and iterate until it goes below a fixed threshold - c2/128
+    // since they were all fixed values, the math shows the number of iterations can be precisely determined. The formula is iterCount = log(c2/128/255)/log(degFactor),
+    // rounded up to nearest integer. For instance, for original values of c2=50, degFactor=0.99, we're looking at 645 loops. With some experiments, I've landed
+    // at c2=30, degFactor=0.987, looping at 535 loops.
+    const ushort loopCount = 540;
+    float dying_gravity = gravity;
+    ushort iter = 0;
+    bool activeSparks = true;
+    while((iter++ < loopCount) && activeSparks) {
+        if (bFade)
+            tpl.fadeToBlackBy(9);
+        else
+            tpl = BKG;
+        activeSparks = false;
+        for (auto &spark : sparks) {
+            if (spark.iPos() == 0)
+                continue;   //if this spark has reached bottom, save our breath
+            activeSparks = true;
+            spark.pos += spark.velocity;
+            spark.limitPos(float(tpl.size()-1));
+            spark.velocity += dying_gravity;
+            //spark.colorFade *= .987f;       //degradation factor degFactor in formula above
+            //fade the sparks
+//            auto spDist = uint8_t(abs(spark.pos - flarePos) * 255 / flarePos);
+            auto spDist = uint8_t(abs(spark.pos - flarePos));
+            ushort tplPos = spark.iPos();
+            if (bFade) {
+                tpl[tplPos] += ColorFromPalette(palette, spark.hue+spDist, 255-2*spDist);
+                //tpl.blur1d();
+            } else {
+                tpl[tplPos] = blend(ColorFromPalette(palette, spark.hue),
+                                    CHSV(decayHue, 224, 255-2*spDist),
+                                    3*spDist);
+            }
+        }
+
+        dying_gravity *= 0.985; // as sparks burn out they fall slower
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+    tpl = BKG;
+    replicateSet(tpl, others);
+    FastLED.show(stripBrightness);
+}
+
+bool FxF5::windDown() {
+    return turnOffWipe(true);
 }

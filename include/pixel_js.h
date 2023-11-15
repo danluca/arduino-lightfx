@@ -33,6 +33,9 @@ $(() => {
         });
         $('#holidayList').val(data.holiday);
         $('#boardName').html(data.boardName);
+        $('#buildVersion').html(data.fwVersion);
+        $('#buildBranch').html(data.fwBranch);
+        $('#buildTime').html(data.buildTime);
     });
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status

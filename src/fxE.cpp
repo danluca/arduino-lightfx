@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2023 by Dan Luca. All rights reserved
+//
 /**
  * Category E of light effects
  *
@@ -40,7 +43,7 @@ void FxE1::setup() {
     brightness = 224;
 }
 
-void FxE1::loop() {
+void FxE1::run() {
     updateParams();                                                 // Check the demo loop for changes to the variables.
 
     EVERY_N_SECONDS(2) {
@@ -86,6 +89,10 @@ JsonObject & FxE1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxE1::windDown() {
+    return turnOffSpots();
+}
+
 // Fx E2
 FxE2::FxE2() : LedEffect(fxe2Desc) {}
 
@@ -97,7 +104,7 @@ void FxE2::setup() {
     brightness = 224;
 }
 
-void FxE2::loop() {
+void FxE2::run() {
     EVERY_N_MILLIS(100) {
         beatwave();
         FastLED.show(stripBrightness);
@@ -125,6 +132,10 @@ void FxE2::beatwave() {
     replicateSet(tpl, others);
 }
 
+bool FxE2::windDown() {
+    return turnOffSpots();
+}
+
 //Fx E3
 FxE3::FxE3() : LedEffect(fxe3Desc), shdOverlay(frame(0, FRAME_SIZE-1)) {
 }
@@ -144,7 +155,7 @@ void FxE3::setup() {
  * not worth it and too brittle.
  * Good thing that Nano RP2040 is powerful enough to make this fast.
  */
-void FxE3::loop() {
+void FxE3::run() {
     EVERY_N_MILLISECONDS(60) {
         uint16_t maxIndex = tpl.size() - 1;
         if (timerSlot == 0) {
@@ -216,6 +227,10 @@ void FxE3::loop() {
     }
 }
 
+bool FxE3::windDown() {
+    return turnOffWipe(false);
+}
+
 //Fx E4
 FxE4::FxE4() : LedEffect(fxe4Desc) {}
 
@@ -225,7 +240,7 @@ void FxE4::setup() {
     Y = Yorig;
 }
 
-void FxE4::loop() {
+void FxE4::run() {
     EVERY_N_SECONDS(2) {
         nblendPaletteTowardPalette(palette, targetPalette, maxChanges);
     }
@@ -240,7 +255,6 @@ void FxE4::loop() {
         serendipitous();
         FastLED.show(stripBrightness);
     }
-
 }
 
 void FxE4::serendipitous() {
@@ -256,13 +270,20 @@ void FxE4::serendipitous() {
     index=(sin8(X)+cos8(Y))/2;
     CRGB newcolor = ColorFromPalette(palette, index, map(Zn, 0, 65535, dimmed*3, brightness), LINEARBLEND);
 
-    nblend(tpl[map(X, 0, 65535, 0, tpl.size())], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
+    nblend(tpl[map(X, 0, 65535, 0, tpl.size()-1)], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
     tpl.fadeToBlackBy(16);                    // 8 bit, 1 = slow, 255 = fast
     replicateSet(tpl, others);
 }
 
-// FxE5
+bool FxE4::windDown() {
+    return turnOffWipe(true);
+}
 
+// FxE5
+FxE5::FxE5() : LedEffect(fxe5Desc), wave2(frame(0, FRAME_SIZE-1)), wave3(frame(FRAME_SIZE, 2*FRAME_SIZE-1)) {
+    clr1 = clr2 = clr3 = 0;
+    pos2 = pos3 = 0;
+}
 
 void FxE5::setup() {
     LedEffect::setup();
@@ -271,7 +292,7 @@ void FxE5::setup() {
     clr3 = clr2+64;
 }
 
-void FxE5::loop() {
+void FxE5::run() {
     EVERY_N_MILLIS(30) {
         tpl.fadeToBlackBy(30);
         wave2.fadeToBlackBy(40);
@@ -280,13 +301,17 @@ void FxE5::loop() {
         CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
         CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
         CRGB col3 = ColorFromPalette(palette, clr3, brightness, LINEARBLEND);
-        tpl[beatsin16(5, 0, tpl.size()-1, 0, 0)] = col1;
-        wave2[beatsin16(7, 0, tpl.size()-1, 0, 4096)] = col2;
-        wave3[beatsin16(11, 0, tpl.size()-1, 0, 8192)] = col3;
+        uint16_t pos = beatsin16(5, 0, tpl.size()-1, 0, 0);
+        tpl(curPos, pos) = col1;
+        curPos = pos;
+        pos = beatsin16(7, 0, tpl.size()-1, 0, 4096);
+        wave2(pos2, pos) = col2;
+        pos2 = pos;
+        pos = beatsin16(11, 0, tpl.size()-1, 0, 8192);
+        wave3(pos3, pos) = col3;
+        pos3 = pos;
 
         blendScreen(wave2, wave3);
-//        blendOverlay(tpl, wave3);
-//        tpl += wave2;
         tpl += wave2;
         replicateSet(tpl, others);
 
@@ -301,6 +326,7 @@ void FxE5::loop() {
 
 }
 
-FxE5::FxE5() : LedEffect(fxe5Desc), wave2(frame(0, FRAME_SIZE-1)), wave3(frame(FRAME_SIZE, 2*FRAME_SIZE-1)) {
-    clr1 = clr2 = clr3 = 0;
+bool FxE5::windDown() {
+    return turnOffWipe(true);
 }
+

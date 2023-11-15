@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2023 by Dan Luca. All rights reserved
+//
 /**
  * Category H of light effects
  *
@@ -83,7 +86,7 @@ void FxH1::setup() {
     //   gPal = CRGBPalette16( CRGB::Black, CRGB::Red, CRGB::White);
 }
 
-void FxH1::loop() {
+void FxH1::run() {
     EVERY_N_MILLIS(1000 / FRAMES_PER_SECOND) {
         // Add entropy to random number generator; we use a lot of it.
         random16_add_entropy(random());
@@ -147,6 +150,10 @@ JsonObject & FxH1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxH1::windDown() {
+    return turnOffSpots();
+}
+
 
 // FxH2
 FxH2::FxH2() : LedEffect(fxh2Desc) {}
@@ -156,7 +163,7 @@ void FxH2::setup() {
     speed = 40;
 }
 
-void FxH2::loop() {
+void FxH2::run() {
     updateParams();
 
     EVERY_N_SECONDS(2) {
@@ -200,6 +207,10 @@ JsonObject & FxH2::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxH2::windDown() {
+    return turnOffWipe(false);
+}
+
 /**
  * fill_colours - TBD whether to keep, too close to rainbow march, etc.
  *
@@ -227,7 +238,7 @@ void FxH3::setup() {
     hue = random8();
 }
 
-void FxH3::loop() {
+void FxH3::run() {
     // fill_rainbow section
     EVERY_N_MILLISECONDS(speed) {
         //below leds+1 is the same as &leds[1] - One pixel border at each end.
@@ -249,4 +260,8 @@ JsonObject & FxH3::describeConfig(JsonArray &json) const {
     obj["hueDiff"] = hueDiff;
     obj["speed"] = speed;
     return obj;
+}
+
+bool FxH3::windDown() {
+    return turnOffSpots();
 }

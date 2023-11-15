@@ -13,7 +13,9 @@ namespace FxD {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -28,7 +30,9 @@ namespace FxD {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -41,7 +45,9 @@ namespace FxD {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         void plasma();
     protected:
@@ -54,7 +60,9 @@ namespace FxD {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         void rainbow_march();
 
@@ -85,7 +93,9 @@ namespace FxD {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         void ripples();
 

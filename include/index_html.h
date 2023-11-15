@@ -109,7 +109,10 @@ const char index_html[] PROGMEM = R"~~~(
         </section>
 
     </main>
-    <footer>Copyright &copy; 2023 Dan Luca. All rights reserved.</footer>
+    <footer>
+        <div>Version <span id="buildVersion"></span> built at <span id="buildTime"></span> on <span id="buildBranch"></span></div>
+        <div>Copyright &copy; 2023 Dan Luca. All rights reserved.</div>
+    </footer>
 </body>
 
 </html>

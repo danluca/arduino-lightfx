@@ -16,7 +16,9 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         void animationA();
 
@@ -29,7 +31,9 @@ namespace FxC {
 
         //void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
     };
 
     class FxC3 : public LedEffect {
@@ -38,7 +42,9 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
     };
@@ -49,7 +55,9 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
     protected:
         uint8_t frequency {10};
@@ -62,7 +70,9 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         void changeParams();
 
@@ -81,7 +91,9 @@ namespace FxC {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         void one_sine_pal(uint8_t colorIndex);
 

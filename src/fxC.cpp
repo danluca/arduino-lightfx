@@ -1,3 +1,6 @@
+//
+// Copyright (c) 2023 by Dan Luca. All rights reserved
+//
 /**
  * Category C of light effects
  *
@@ -41,7 +44,7 @@ void FxC1::setup() {
     brightness = 176;
 }
 
-void FxC1::loop() {
+void FxC1::run() {
     animationA();
     animationB();
     CRGBSet others(leds, setB.size(), NUM_PIXELS);
@@ -72,6 +75,10 @@ void FxC1::animationB() {
     }
 }
 
+bool FxC1::windDown() {
+    return turnOffWipe(true);
+}
+
 //Fx C2
 /**
  * blur
@@ -90,7 +97,7 @@ FxC2::FxC2() : LedEffect(fxc2Desc) {}
 //    LedEffect::setup();
 //}
 
-void FxC2::loop() {
+void FxC2::run() {
     uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
     tpl.blur1d(blurAmount);                        // Apply some blurring to whatever's already on the strip, which will eventually go black.
 
@@ -107,6 +114,10 @@ void FxC2::loop() {
 
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
+}
+
+bool FxC2::windDown() {
+    return turnOffSpots();
 }
 
 //Fx C3
@@ -131,7 +142,7 @@ void FxC3::setup() {
     dist = random();
 }
 
-void FxC3::loop() {
+void FxC3::run() {
     EVERY_N_MILLISECONDS(35) {
         uint16_t locn = inoise16(xscale, dist+yscale) % 0xFFFF;           // Get a new pixel location from moving noise.
         uint16_t pixlen = map(locn, 0, 0xFFFF, 0, tpl.size());                     // Map that to the length of the strand.
@@ -161,6 +172,10 @@ JsonObject & FxC3::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+bool FxC3::windDown() {
+    return turnOffSpots();
+}
+
 // Fx C4
 FxC4::FxC4() : LedEffect(fxc4Desc) {}
 
@@ -171,7 +186,7 @@ void FxC4::setup() {
     flashes = 7;   //the upper limit of flashes per strike
 }
 
-void FxC4::loop() {
+void FxC4::run() {
     EVERY_N_SECONDS_I(fxc4Timer, 1+random8(frequency)) {
         uint16_t start = random16(NUM_PIXELS - 8);                               // Determine starting location of flash
         uint16_t len = random16(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
@@ -196,6 +211,10 @@ void FxC4::loop() {
     }
 }
 
+bool FxC4::windDown() {
+    return true;
+}
+
 // Fx C5
 FxC5::FxC5() : LedEffect(fxc5Desc) {}
 
@@ -208,7 +227,7 @@ void FxC5::setup() {
     brightness = BRIGHTNESS;
 }
 
-void FxC5::loop() {
+void FxC5::run() {
     changeParams();
 
     EVERY_N_SECONDS(2) {
@@ -256,6 +275,10 @@ void FxC5::matrix() {
     replicateSet(tpl, others);
 }
 
+bool FxC5::windDown() {
+    return turnOffWipe(false);
+}
+
 // Fx C6
 FxC6::FxC6() : LedEffect(fxc6Desc) {}
 
@@ -266,7 +289,7 @@ void FxC6::setup() {
     speed = 8;
 }
 
-void FxC6::loop() {
+void FxC6::run() {
     static uint8_t secSlot = 0;
 
     EVERY_N_MILLISECONDS_I(c6Timer, delay) {
@@ -302,4 +325,8 @@ void FxC6::one_sine_pal(uint8_t colorIndex) {
     }
     replicateSet(tpl, others);
     bgclr++;
+}
+
+bool FxC6::windDown() {
+    return turnOffWipe(true);
 }

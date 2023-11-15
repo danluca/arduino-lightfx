@@ -17,15 +17,16 @@ namespace FxA {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
     protected:
-        CRGBSet dot;
-
         void makeDot(CRGB color, uint16_t szDot);
 
+        CRGBSet dot;
         uint8_t szSegment = 3;
         uint8_t szStackSeg = 2;
     };
@@ -36,7 +37,9 @@ namespace FxA {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -55,7 +58,9 @@ namespace FxA {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -75,7 +80,9 @@ namespace FxA {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -98,7 +105,9 @@ namespace FxA {
 
         void setup() override;
 
-        void loop() override;
+        void run() override;
+
+        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
