@@ -65,7 +65,7 @@ uint16_t SchedulerClassExt::availableThreads() const {
 
 bool SchedulerClassExt::scheduleTask(TaskJob *taskJob, uint16_t tPos) {
     char* tName = new char[configMAX_TASK_NAME_LEN] {};
-    snprintf(tName, configMAX_TASK_NAME_LEN-1,  "Tk %d %s", tPos, taskJob->id);
+    snprintf(tName, configMAX_TASK_NAME_LEN-1,  "TK%d %s", tPos, taskJob->id);
     BaseType_t result = xTaskCreateAffinitySet(taskJobExecutor, tName, taskJob->stackSize, taskJob, (UBaseType_t)4, taskJob->coreAffinity, &(taskJob->handle));
     return result == pdPASS;
 }

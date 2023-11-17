@@ -159,7 +159,7 @@ size_t web::handleGetWifi(WiFiClient *client, String *uri, String *hd, String *b
     char chrBuf[20];
     sprintf(chrBuf, "%X:%X:%X:%X:%X:%X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     doc["MAC"] = chrBuf;
-    doc["IP"] = WiFi.localIP();         //IP Address
+//    doc["IP"] = WiFi.localIP();         //IP Address
     const int32_t rssi = WiFi.RSSI();
     doc["RSSI"] = String(rssi);         //Wi-Fi signal level
     doc["bars"] = barSignalLevel(rssi);
@@ -356,7 +356,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     StaticJsonDocument<768> doc;
     // WiFi
     JsonObject wifi = doc.createNestedObject("wifi");
-    wifi["IP"] = WiFi.localIP();         //IP Address
+//    wifi["IP"] = WiFi.localIP();         //IP Address
     int32_t rssi = WiFi.RSSI();
     wifi["bars"] = barSignalLevel(rssi);  //Wi-Fi signal level
     wifi["rssi"] = rssi;
@@ -502,7 +502,7 @@ size_t web::handleInternalError(WiFiClient *client, String *uri, const char *mes
 
     //response body
     StaticJsonDocument<512> doc;
-    doc["serverIP"] = WiFi.localIP();
+//    doc["serverIP"] = WiFi.localIP();
     doc["uri"] = uri->c_str();
     doc["errorCode"] = 500;
     doc["errorMessage"] = message;
@@ -533,7 +533,7 @@ size_t web::handleNotFoundError(WiFiClient *client, String *uri, const char *mes
 
     //response body
     StaticJsonDocument<512> doc;
-    doc["serverIP"] = WiFi.localIP();
+//    doc["serverIP"] = WiFi.localIP();
     doc["uri"] = uri->c_str();
     doc["errorCode"] = 404;
     doc["errorMessage"] = message;

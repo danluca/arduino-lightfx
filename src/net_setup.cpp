@@ -256,8 +256,8 @@ void printSuccessfulWifiStatus() {
     Log.infoln(F("Connected to SSID: %s"), WiFi.SSID());
 
     // print your board's IP address:
-    IPAddress ip = WiFi.localIP();
-    Log.infoln(F("IP Address: %s"), &ip);
+    //IPAddress ip = WiFi.localIP();
+    Log.infoln(F("IP Address: %d.%d.%d.%d"), IP_ADDR);
 
     // print your board's MAC address
     uint8_t mac[WL_MAC_ADDR_LENGTH];
@@ -271,7 +271,7 @@ void printSuccessfulWifiStatus() {
 #endif
 
     // print where to go in a browser:
-    Log.infoln(F("To see this page in action, open a browser to http://%s"), &ip);
+    Log.infoln(F("To see this page in action, open a browser to http://%d"), rssi);
 }
 
 void checkFirmwareVersion() {

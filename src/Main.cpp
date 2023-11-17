@@ -36,13 +36,17 @@ void setup() {
     imu_setup();
 
     Scheduler.startTask(&fxTasks, 1024);
-    Scheduler.startTask(&micTasks, 512);
 
     stateLED(CRGB::OrangeRed);    //Setup in progress
     if (wifi_setup())
         stateLED(CRGB::Indigo);   //ready to show awesome light effects!
     if (!time_setup())
         stateLED(CRGB::Blue);
+
+    //Scheduler.startTask(&micTasks, 1024);
+    auto *micTask = new TaskJob("MIC", mic_run, mic_setup, 1024);
+    micTask->setCoreAffinity(CORE_0);
+    Scheduler.startTask(micTask);
 
     Log.infoln(F("System status: %X"), getSysStatus());
     //start the web server/fx in a separate thread - turns out the JSON library crashes if not given enough stack size
@@ -57,10 +61,10 @@ void loop() {
 }
 
 //Second core tasks
-void setup1() {
-
-}
-
-void loop1() {
-
-}
+//void setup1() {
+//
+//}
+//
+//void loop1() {
+//
+//}

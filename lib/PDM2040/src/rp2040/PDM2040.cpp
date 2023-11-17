@@ -1,4 +1,4 @@
-
+#if defined(ARDUINO_ARCH_RP2040)
 
 #include "Arduino.h"
 #include "PDM2040.h"
@@ -13,8 +13,8 @@ extern "C" {
 #include "pdm.pio.h"
 
 // Hardware peripherals used
-static PIOProgram _pdmPgm(&pdm_pio_program);
-const uint dmaChannel = dma_claim_unused_channel(true);
+static PIOProgram pdmPgm(&pdm_pio_program);
+//const uint dmaChannel = dma_claim_unused_channel(true);
 PIO pio;
 int sm;
 
@@ -25,13 +25,13 @@ static uint offset;
 #define RAW_BUFFER_SIZE 512 // should be a multiple of (decimation / 8)
 uint8_t rawBuffer0[RAW_BUFFER_SIZE];
 uint8_t rawBuffer1[RAW_BUFFER_SIZE];
-uint8_t* rawBuffer[2] = {rawBuffer0, rawBuffer1};
+uint8_t *rawBuffer[2] = {rawBuffer0, rawBuffer1};
 volatile int rawBufferIndex = 0;
 
 int decimation = 128;
 
 // final buffer is the one to be filled with PCM data
-int16_t* volatile finalBuffer;
+int16_t *volatile finalBuffer;
 
 // OpenPDM filter used to convert PDM into PCM
 #define FILTER_GAIN     16
@@ -113,10 +113,10 @@ int PDMClass::begin(int channels, int sampleRate) {
     // Configure PIO state machine
     float clkDiv = (float) clock_get_hz(clk_sys) / sampleRate / decimation / 2;
 
-    if (!_pdmPgm.prepare(&_pio, &_smIdx, &_pgmOffset)) {
+    if (!pdmPgm.prepare(&_pio, &_smIdx, &_pgmOffset)) {
         // ERROR, no free slots
         return 0;
-        }
+    }
     pdm_pio_program_init(_pio, _smIdx, _pgmOffset, _clkPin, _dinPin, clkDiv);
 
     // Wait for microphone
@@ -153,37 +153,40 @@ int PDMClass::begin(int channels, int sampleRate) {
 }
 
 void PDMClass::end() {
-    if (_init != 1) {
+    if (_init != 1)
         return;
-    }
 
+    NVIC_DisableIRQ(DMA_IRQ_0_IRQn);
+    pio_remove_program(pio, &pdm_pio_program, offset);
+    pio_sm_unclaim(pio, sm);
     dma_channel_set_irq0_enabled(_dmaChannel, false);
     dma_channel_abort(_dmaChannel);
     dma_channel_unclaim(_dmaChannel);
     irq_remove_handler(DMA_IRQ_0, dmaHandler);
-    pio_sm_unclaim(_pio, _smIdx);
     pinMode(_clkPin, INPUT);
+    decimation = 128;
     rawBufferIndex = 0;
     _pgmOffset = -1;
 
     _init = 0;
+    NVIC_EnableIRQ(DMA_IRQ_0_IRQn);
 }
 
 size_t PDMClass::available() {
-    //NVIC_DisableIRQ(DMA_IRQ_0n);
+    NVIC_DisableIRQ(DMA_IRQ_0_IRQn);
     //uint32_t interrupts = save_and_disable_interrupts();
     irq_set_enabled(DMA_IRQ_0, false);
     size_t avail = _doubleBuffer.available();
     irq_set_enabled(DMA_IRQ_0, true);
     //restore_interrupts(interrupts);
-    //NVIC_EnableIRQ(DMA_IRQ_0n);
+    NVIC_EnableIRQ(DMA_IRQ_0_IRQn);
     return avail;
 }
 
-size_t PDMClass::read(void* buffer, size_t size) {
-    irq_set_enabled(DMA_IRQ_0, false);
+size_t PDMClass::read(void *buffer, size_t size) {
+    NVIC_DisableIRQ(DMA_IRQ_0_IRQn);
     size_t read = _doubleBuffer.read(buffer, size);
-    irq_set_enabled(DMA_IRQ_0, true);
+    NVIC_EnableIRQ(DMA_IRQ_0_IRQn);
     return read;
 }
 
@@ -228,7 +231,7 @@ void PDMClass::IrqHandler(bool halftranfer) {
         }
 
         // swap final buffer and raw buffers' indexes
-        finalBuffer = (int16_t*)_doubleBuffer.data();
+        finalBuffer = (int16_t *) _doubleBuffer.data();
         _doubleBuffer.swap(filter.nSamples * sizeof(int16_t));
         rawBufferIndex = shadowIndex;
     }
@@ -237,8 +240,7 @@ void PDMClass::IrqHandler(bool halftranfer) {
         _onReceive();
     }
 }
-#ifdef PIN_PDM_DIN
+
 PDMClass PDM(PIN_PDM_DIN, PIN_PDM_CLK, -1);
-#endif // PIN_PDM_DIN
 
-
+#endif

@@ -25,44 +25,39 @@
 
 class PDMClass {
 public:
-    PDMClass(int dinPin, int clkPin, int pwrPin);
+  PDMClass(int dinPin, int clkPin, int pwrPin);
+  virtual ~PDMClass();
 
-    virtual ~PDMClass();
+  int begin(int channels, int sampleRate);
+  void end();
 
-    int begin(int channels, int sampleRate);
+  virtual size_t available();
+  virtual size_t read(void* buffer, size_t size);
 
-    void end();
+  void onReceive(void(*)(void));
 
-    virtual size_t available();
+  //PORTENTA_H7 min -12 max 51
+  //NANO 33 BLE SENSe min 0 max 80
+  //NICLA_VISION min 0 max 8
+  void setGain(int gain);
+  void setBufferSize(size_t bufferSize);
+  size_t getBufferSize();
 
-    virtual size_t read(void *buffer, size_t size);
-
-    void onReceive(void(*)(void));
-
-    //PORTENTA_H7 min -12 max 51
-    //NANO 33 BLE SENSe min 0 max 80
-    //NICLA_VISION min 0 max 8
-    void setGain(int gain);
-
-    void setBufferSize(size_t bufferSize);
-
-    size_t getBufferSize();
-
-    // private:
-    void IrqHandler(bool halftranfer);
+// private:
+  void IrqHandler(bool halftranfer);
 
 private:
-    int _dinPin;
-    int _clkPin;
-    int _pwrPin;
+  int _dinPin;
+  int _clkPin;
+  int _pwrPin;
 
-    int _channels;
-    int _samplerate;
+  int _channels;
+  int _samplerate;
 
-    int _gain;
-    int _init;
+  int _gain;
+  int _init;
 
-    int _cutSamples;
+  int _cutSamples;
 
     // Hardware peripherals used
     uint _dmaChannel;
@@ -70,13 +65,11 @@ private:
     int _smIdx;
     int _pgmOffset;
 
-    PDMDoubleBuffer _doubleBuffer;
+  PDMDoubleBuffer _doubleBuffer;
 
-    void (*_onReceive)(void);
+  void (*_onReceive)(void);
 };
 
-#ifdef PIN_PDM_DIN
 extern PDMClass PDM;
-#endif
 
 #endif

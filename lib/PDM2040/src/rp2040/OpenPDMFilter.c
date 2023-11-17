@@ -108,10 +108,11 @@ int32_t filter_table_stereo_128(uint8_t *data, uint8_t sincn) {
     lut[data[28]][14][sincn] +
     lut[data[30]][15][sincn];
 }
-int32_t (* filter_tables_64[2])(uint8_t *data, uint8_t sincn) = {filter_table_mono_64, filter_table_stereo_64};
-int32_t (* filter_tables_128[2])(uint8_t *data, uint8_t sincn) = {filter_table_mono_128, filter_table_stereo_128};
+int32_t (* filter_tables_64[2]) (uint8_t *data, uint8_t sincn) = {filter_table_mono_64, filter_table_stereo_64};
+int32_t (* filter_tables_128[2]) (uint8_t *data, uint8_t sincn) = {filter_table_mono_128, filter_table_stereo_128};
 #else
-int32_t filter_table(uint8_t *data, uint8_t sincn, TPDMFilter_InitStruct *param) {
+int32_t filter_table(uint8_t *data, uint8_t sincn, TPDMFilter_InitStruct *param)
+{
   uint8_t c, i;
   uint16_t data_index = 0;
   uint32_t *coef_p = &coef[sincn][0];
@@ -121,14 +122,14 @@ int32_t filter_table(uint8_t *data, uint8_t sincn, TPDMFilter_InitStruct *param)
 
   for (i = 0; i < decimation; i += 8) {
     c = data[data_index];
-        F += ((c >> 7)) * coef_p[i    ] +
+    F += ((c >> 7)       ) * coef_p[i    ] +
          ((c >> 6) & 0x01) * coef_p[i + 1] +
          ((c >> 5) & 0x01) * coef_p[i + 2] +
          ((c >> 4) & 0x01) * coef_p[i + 3] +
          ((c >> 3) & 0x01) * coef_p[i + 4] +
          ((c >> 2) & 0x01) * coef_p[i + 5] +
          ((c >> 1) & 0x01) * coef_p[i + 6] +
-             ((c) & 0x01) * coef_p[i + 7];
+         ((c     ) & 0x01) * coef_p[i + 7];
     data_index += channels;
   }
   return F;
@@ -169,15 +170,15 @@ void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param) {
   }
 
   Param->OldOut = Param->OldIn = Param->OldZ = 0;
-    Param->LP_ALFA = (Param->LP_HZ != 0 ? (uint16_t)(Param->LP_HZ * 256 / (Param->LP_HZ + Param->Fs / (2 * 3.14159))) : 0);
-    Param->HP_ALFA = (Param->HP_HZ != 0 ? (uint16_t)(Param->Fs * 256 / (2 * 3.14159 * Param->HP_HZ + Param->Fs)) : 0);
+  Param->LP_ALFA = (Param->LP_HZ != 0 ? (uint16_t) (Param->LP_HZ * 256 / (Param->LP_HZ + Param->Fs / (2 * 3.14159))) : 0);
+  Param->HP_ALFA = (Param->HP_HZ != 0 ? (uint16_t) (Param->Fs * 256 / (2 * 3.14159 * Param->HP_HZ + Param->Fs)) : 0);
 
   Param->FilterLen = decimation * SINCN;       
   sinc[0] = 0;
   sinc[decimation * SINCN - 1] = 0;      
   convolve(sinc1, decimation, sinc1, decimation, sinc2);
   convolve(sinc2, decimation * 2 - 1, sinc1, decimation, &sinc[1]);     
-    for (j = 0; j < SINCN; j++) {
+  for(j = 0; j < SINCN; j++) {
     for (i = 0; i < decimation; i++) {
       coef[j][i] = sinc[j * decimation + i];
       sum += sinc[j * decimation + i];
