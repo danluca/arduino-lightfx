@@ -505,7 +505,7 @@ bool turnOffSpots() {
     static bool setOff = false;
     bool allOff = false;
 
-    EVERY_N_MILLISECONDS(30) {
+    EVERY_N_MILLIS(30) {
         uint8_t ledsOn = 0;
         for (uint16_t x = 0; x < szOffNow; x++) {
             uint16_t xled = stripShuffleIndex[(led + x)%NUM_PIXELS];
@@ -519,7 +519,7 @@ bool turnOffSpots() {
         setOff = ledsOn == 0;
     }
 
-    EVERY_N_MILLISECONDS(500) {
+    EVERY_N_MILLIS(500) {
         if (setOff) {
             led = inc(led, szOffNow, NUM_PIXELS);
             xOffNow = capu(xOffNow + 1, arrSize(turnOffSeq) - 1);
@@ -547,16 +547,31 @@ bool turnOffSpots() {
  */
 bool turnOffWipe(bool rightDir) {
     bool allOff = false;
-    EVERY_N_MILLISECONDS(60) {
+    EVERY_N_MILLIS(60) {
         CRGBSet strip(leds, NUM_PIXELS);
         if (rightDir)
             shiftRight(strip, BKG);
         else
             shiftLeft(strip, BKG);
         FastLED.show(stripBrightness);
-        allOff = !isAnyLedOn(&strip, BKG);
+    }
+    EVERY_N_MILLIS(720) {
+        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
     }
 
+    return allOff;
+}
+
+bool fadeOff() {
+    bool allOff = false;
+    EVERY_N_MILLIS(50) {
+        CRGBSet strip(leds, NUM_PIXELS);
+        strip.fadeToBlackBy(11);
+        FastLED.show(stripBrightness);
+    }
+    EVERY_N_MILLIS(500) {
+        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
+    }
     return allOff;
 }
 

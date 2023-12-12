@@ -126,13 +126,15 @@ void replicateSet(const CRGBSet& src, CRGBSet& dest);
 
 bool turnOffWipe(bool rightDir = false);
 
+bool turnOffSpots();
+
+bool fadeOff();
+
 uint8_t adjustStripBrightness();
 
 void mirrorLow(CRGBSet &set);
 
 void mirrorHigh(CRGBSet &set);
-
-bool turnOffSpots();
 
 void resetGlobals();
 
