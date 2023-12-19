@@ -24,7 +24,6 @@
 #define asub(a, b)  (((a)>(b))?(a-b):(b-a))
 
 #define LED_EFFECT_ID_SIZE  6
-#define MAX_EFFECTS_COUNT   256
 #define MAX_EFFECTS_HISTORY 20
 #define AUDIO_HIST_BINS_COUNT   10
 
@@ -234,7 +233,7 @@ public:
 
 class EffectRegistry {
 private:
-    LedEffect *effects[MAX_EFFECTS_COUNT];
+    std::deque<LedEffect*> effects;
     FixedQueue<uint16_t, MAX_EFFECTS_HISTORY> lastEffects;
     uint16_t currentEffect = 0;
     uint16_t effectsCount = 0;

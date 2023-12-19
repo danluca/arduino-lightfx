@@ -360,7 +360,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     sz += client->println();    //done with headers
 
     // response body
-    StaticJsonDocument<896> doc;
+    StaticJsonDocument<1024> doc;
     // WiFi
     JsonObject wifi = doc.createNestedObject("wifi");
     wifi["IP"] = WiFi.localIP();         //IP Address

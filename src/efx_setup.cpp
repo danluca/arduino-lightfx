@@ -664,24 +664,18 @@ void EffectRegistry::transitionEffect() const {
 }
 
 uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
-    if (effectsCount < MAX_EFFECTS_COUNT) {
-        uint8_t curIndex = effectsCount++;
-        effects[curIndex] = effect;
-        Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), curIndex);
-        return curIndex;
-    }
-
-    Log.errorln(F("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]"), effect->name());
-    return MAX_EFFECTS_COUNT;
+    effects.push_front(effect);
+    effectsCount = effects.size();
+    Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), effectsCount-1);
+    return effectsCount-1;
 }
 
 /**
  * Sets the desired state for all effects to setup. It will essentially make each effect ready to run if invoked - the state machine will ensure the setup() is called first
  */
 void EffectRegistry::setup() {
-    for (uint16_t x = 0; x < effectsCount; x++)
-        effects[currentEffect]->desiredState(Setup);
-
+    for (auto &fx : effects)
+        fx->desiredState(Setup);
 }
 
 void EffectRegistry::loop() {
@@ -696,9 +690,8 @@ void EffectRegistry::loop() {
 }
 
 void EffectRegistry::describeConfig(JsonArray &json) {
-    for (uint16_t x = 0; x < effectsCount; x++) {
-        effects[x]->describeConfig(json);
-    }
+    for (auto & effect : effects)
+        effect->describeConfig(json);
 }
 
 LedEffect *EffectRegistry::getEffect(uint16_t index) const {
