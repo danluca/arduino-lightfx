@@ -690,7 +690,7 @@ void EffectRegistry::loop() {
         Log.infoln(F("Effect change: from index %d [%s] to %d [%s]"),
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         lastEffectRun = currentEffect;
-        lastEffects.push(effects[lastEffectRun]);
+        lastEffects.push(lastEffectRun);
     }
     effects[lastEffectRun]->loop();
 }
@@ -717,9 +717,9 @@ uint16_t EffectRegistry::size() const {
     return effectsCount;
 }
 
-void EffectRegistry::lastEffectsRun(JsonArray &json) {
-    for (const auto &lastEffect: lastEffects)
-        json.add(lastEffect->name());
+void EffectRegistry::pastEffectsRun(JsonArray &json) {
+    for (const auto &fxIndex: lastEffects)
+        json.add(getEffect(fxIndex)->name());
 }
 
 // LedEffect

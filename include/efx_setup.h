@@ -25,7 +25,7 @@
 
 #define LED_EFFECT_ID_SIZE  6
 #define MAX_EFFECTS_COUNT   256
-#define MAX_EFFECTS_HISTORY 10
+#define MAX_EFFECTS_HISTORY 20
 #define AUDIO_HIST_BINS_COUNT   10
 
 extern const uint16_t turnOffSeq[] PROGMEM;
@@ -235,7 +235,7 @@ public:
 class EffectRegistry {
 private:
     LedEffect *effects[MAX_EFFECTS_COUNT];
-    FixedQueue<LedEffect*, MAX_EFFECTS_HISTORY> lastEffects;
+    FixedQueue<uint16_t, MAX_EFFECTS_HISTORY> lastEffects;
     uint16_t currentEffect = 0;
     uint16_t effectsCount = 0;
     uint16_t lastEffectRun = 0;
@@ -267,7 +267,7 @@ public:
 
     void describeConfig(JsonArray &json);
 
-    void lastEffectsRun(JsonArray &json);
+    void pastEffectsRun(JsonArray &json);
 
     void autoRoll(bool switchType = true);
 

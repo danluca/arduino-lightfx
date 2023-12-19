@@ -360,7 +360,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     sz += client->println();    //done with headers
 
     // response body
-    StaticJsonDocument<768> doc;
+    StaticJsonDocument<896> doc;
     // WiFi
     JsonObject wifi = doc.createNestedObject("wifi");
     wifi["IP"] = WiFi.localIP();         //IP Address
@@ -378,7 +378,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
     JsonArray lastFx = fx.createNestedArray("pastEffects");
-    fxRegistry.lastEffectsRun(lastFx);
+    fxRegistry.pastEffectsRun(lastFx);
     fx["brightness"] = stripBrightness;
     fx["brightnessLocked"] = stripBrightnessLocked;
     fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold
