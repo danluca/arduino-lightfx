@@ -377,6 +377,8 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
+    JsonArray lastFx = fx.createNestedArray("pastEffects");
+    fxRegistry.lastEffectsRun(lastFx);
     fx["brightness"] = stripBrightness;
     fx["brightnessLocked"] = stripBrightnessLocked;
     fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold

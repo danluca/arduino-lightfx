@@ -10,6 +10,7 @@
 #include <ArduinoJson.h>
 #include "config.h"
 #include "util.h"
+#include "transition.h"
 
 #define capd(x, d) (((x)<=(d))?(d):(x))
 #define capu(x, u) (((x)>=(u))?(u):(x))
@@ -24,6 +25,7 @@
 
 #define LED_EFFECT_ID_SIZE  6
 #define MAX_EFFECTS_COUNT   256
+#define MAX_EFFECTS_HISTORY 10
 #define AUDIO_HIST_BINS_COUNT   10
 
 extern const uint16_t turnOffSeq[] PROGMEM;
@@ -233,6 +235,7 @@ public:
 class EffectRegistry {
 private:
     LedEffect *effects[MAX_EFFECTS_COUNT];
+    FixedQueue<LedEffect*, MAX_EFFECTS_HISTORY> lastEffects;
     uint16_t currentEffect = 0;
     uint16_t effectsCount = 0;
     uint16_t lastEffectRun = 0;
@@ -263,6 +266,8 @@ public:
     void loop();
 
     void describeConfig(JsonArray &json);
+
+    void lastEffectsRun(JsonArray &json);
 
     void autoRoll(bool switchType = true);
 

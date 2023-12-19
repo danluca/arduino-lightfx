@@ -322,3 +322,5 @@ bool secElement_setup() {
     setSysStatus(SYS_STATUS_ECC);
     return true;
 }
+
+
