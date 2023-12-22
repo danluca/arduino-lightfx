@@ -89,7 +89,7 @@ void FxD1::ChangeMe() {
 }
 
 bool FxD1::windDown() {
-    return turnOffSpots();
+    return transEffect.offSpots();
 }
 
 // Fx D2
@@ -137,7 +137,7 @@ void FxD2::dot_beat() {
 }
 
 bool FxD2::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
 }
 
 // Fx D3
@@ -185,8 +185,8 @@ void FxD3::plasma() {
 
 FxD3::FxD3() : LedEffect(fxd3Desc) {}
 
-bool FxD3::windDown() {
-    return turnOffWipe(false);
+void FxD3::windDownPrep() {
+    transEffect.prepare(SELECTOR_WIPE + random8());
 }
 
 // Fx D4
@@ -236,7 +236,7 @@ void FxD4::rainbow_march() {
 }
 
 bool FxD4::windDown() {
-    return turnOffSpots();
+    return transEffect.offSpots();
 }
 
 // Fx D5
@@ -273,8 +273,8 @@ void FxD5::ripples() {
     replicateSet(tpl, others);
 }
 
-bool FxD5::windDown() {
-    return turnOffWipe(true);
+void FxD5::windDownPrep() {
+    transEffect.prepare(SELECTOR_WIPE + random8());
 }
 
 // ripple structure API

@@ -19,8 +19,6 @@ namespace FxA {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
 
     protected:
@@ -38,8 +36,6 @@ namespace FxA {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -60,8 +56,6 @@ namespace FxA {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
 
     protected:
@@ -81,8 +75,6 @@ namespace FxA {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -106,8 +98,6 @@ namespace FxA {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 

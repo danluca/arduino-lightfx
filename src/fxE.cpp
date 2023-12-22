@@ -90,7 +90,7 @@ JsonObject & FxE1::describeConfig(JsonArray &json) const {
 }
 
 bool FxE1::windDown() {
-    return turnOffSpots();
+    return transEffect.offSpots();
 }
 
 // Fx E2
@@ -132,8 +132,8 @@ void FxE2::beatwave() {
     replicateSet(tpl, others);
 }
 
-bool FxE2::windDown() {
-    return turnOffSpots();
+void FxE2::windDownPrep() {
+    transEffect.prepare(random8());
 }
 
 //Fx E3
@@ -227,8 +227,8 @@ void FxE3::run() {
     }
 }
 
-bool FxE3::windDown() {
-    return turnOffWipe(false);
+void FxE3::windDownPrep() {
+    transEffect.prepare(random8());
 }
 
 //Fx E4
@@ -275,8 +275,8 @@ void FxE4::serendipitous() {
     replicateSet(tpl, others);
 }
 
-bool FxE4::windDown() {
-    return turnOffWipe(true);
+void FxE4::windDownPrep() {
+    transEffect.prepare(random8());
 }
 
 // FxE5
@@ -326,7 +326,7 @@ void FxE5::run() {
 
 }
 
-bool FxE5::windDown() {
-    return turnOffWipe(true);
+void FxE5::windDownPrep() {
+    transEffect.prepare(random8());
 }
 

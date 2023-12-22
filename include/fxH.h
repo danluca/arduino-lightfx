@@ -56,7 +56,7 @@ namespace FxH {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -71,7 +71,7 @@ namespace FxH {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
@@ -88,7 +88,7 @@ namespace FxH {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
     };

@@ -32,7 +32,7 @@ namespace FxE {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         void beatwave();
     };
@@ -45,7 +45,7 @@ namespace FxE {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
     protected:
         const uint8_t sasquatchSize = 3;
@@ -64,7 +64,7 @@ namespace FxE {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         void serendipitous();
 
@@ -83,7 +83,7 @@ namespace FxE {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
     protected:
         CRGBSet wave2, wave3;

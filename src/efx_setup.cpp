@@ -5,8 +5,7 @@
 #include "log.h"
 
 //~ Global variables definition
-#define JSON_DOC_SIZE   512
-const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
+#define STATE_JSON_DOC_SIZE   512
 const uint8_t dimmed = 20;
 const char csAutoFxRoll[] = "autoFxRoll";
 const char csStripBrightness[] = "stripBrightness";
@@ -33,7 +32,6 @@ CRGBPalette16 targetPalette;
 OpMode mode = Chase;
 uint8_t brightness = 224;
 uint8_t stripBrightness = brightness;
-bool stripBrightnessLocked = false;
 uint8_t colorIndex = 0;
 uint8_t lastColorIndex = 0;
 uint8_t fade = 8;
@@ -48,12 +46,14 @@ uint16_t hueDiff = 256;
 uint16_t totalAudioBumps = 0;
 int8_t rot = 1;
 int32_t dist = 1;
+bool stripBrightnessLocked = false;
 bool dirFwd = true;
 bool randhue = true;
 float minVcc = 12.0f;
 float maxVcc = 0.0f;
 float minTemp = 100.0f;
 float maxTemp = 0.0f;
+EffectTransition transEffect;
 
 //~ Support functions -----------------
 /**
@@ -73,7 +73,7 @@ void readState() {
     String json;
     size_t stateSize = readTextFile(stateFileName, &json);
     if (stateSize > 0) {
-        StaticJsonDocument<JSON_DOC_SIZE> doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+        StaticJsonDocument<STATE_JSON_DOC_SIZE> doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
         deserializeJson(doc, json);
 
         bool autoAdvance = doc[csAutoFxRoll].as<bool>();
@@ -99,7 +99,7 @@ void readState() {
 }
 
 void saveState() {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+    StaticJsonDocument<STATE_JSON_DOC_SIZE> doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
     doc[csRandomSeed] = random16_get_seed();
     doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
     doc[csCurFx] = fxRegistry.curEffectPos();
@@ -493,89 +493,6 @@ void blendOverlay(CRGBSet &blendLayer, const CRGBSet &topLayer) {
 }
 
 /**
- * Turns off entire strip by random spots, in increasing size until all leds are off
- * <p>Implemented with timers, no delay - that is why this function needs called repeatedly until it returns true</p>
- * @return true if all leds are off, false otherwise
- */
-bool turnOffSpots() {
-    static uint16_t led = 0;
-    static uint16_t xOffNow = 0;
-    static uint16_t szOffNow = turnOffSeq[xOffNow];
-    static uint8_t offFade = random8(42, 110);
-    static bool setOff = false;
-    bool allOff = false;
-
-    EVERY_N_MILLIS(30) {
-        uint8_t ledsOn = 0;
-        for (uint16_t x = 0; x < szOffNow; x++) {
-            uint16_t xled = stripShuffleIndex[(led + x)%NUM_PIXELS];
-            FastLED.leds()[xled].fadeToBlackBy(offFade);
-            if (FastLED.leds()[xled].getLuma() < 4)
-                FastLED.leds()[xled] = BKG;
-            else
-                ledsOn++;
-        }
-        FastLED.show(stripBrightness);
-        setOff = ledsOn == 0;
-    }
-
-    EVERY_N_MILLIS(500) {
-        if (setOff) {
-            led = inc(led, szOffNow, NUM_PIXELS);
-            xOffNow = capu(xOffNow + 1, arrSize(turnOffSeq) - 1);
-            szOffNow = turnOffSeq[xOffNow];
-            setOff = false;
-            offFade = random8(42, 110);
-        }
-        allOff = !isAnyLedOn(FastLED.leds(), FastLED.size(), BKG);
-    }
-    //if we're turned off all LEDs, reset the static variables for next time
-    if (allOff) {
-        led = 0;
-        xOffNow = 0;
-        szOffNow = turnOffSeq[xOffNow];
-        setOff = false;
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Turns off entire strip by leveraging the shift right with black feed
- * @return true if all leds are off, false otherwise
- */
-bool turnOffWipe(bool rightDir) {
-    bool allOff = false;
-    EVERY_N_MILLIS(60) {
-        CRGBSet strip(leds, NUM_PIXELS);
-        if (rightDir)
-            shiftRight(strip, BKG);
-        else
-            shiftLeft(strip, BKG);
-        FastLED.show(stripBrightness);
-    }
-    EVERY_N_MILLIS(720) {
-        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
-    }
-
-    return allOff;
-}
-
-bool fadeOff() {
-    bool allOff = false;
-    EVERY_N_MILLIS(50) {
-        CRGBSet strip(leds, NUM_PIXELS);
-        strip.fadeToBlackBy(11);
-        FastLED.show(stripBrightness);
-    }
-    EVERY_N_MILLIS(500) {
-        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
-    }
-    return allOff;
-}
-
-/**
  * Adjust strip overall brightness according with the time of day - as follows:
  * <p>Up until 8pm use the max brightness - i.e. <code>BRIGHTNESS</code></p>
  * <p>Between 8pm-9pm - reduce to 80% of full brightness, i.e. scale with 204</p>
@@ -659,12 +576,13 @@ uint16_t EffectRegistry::nextRandomEffectPos() {
 void EffectRegistry::transitionEffect() const {
     if (currentEffect != lastEffectRun) {
         effects[lastEffectRun]->desiredState(Idle);
+        transEffect.setup();
     }
     effects[currentEffect]->desiredState(Running);
 }
 
 uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
-    effects.push_front(effect);
+    effects.push_back(effect);  //pushing from the back to preserve the order or insertion during iteration
     effectsCount = effects.size();
     Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), effectsCount-1);
     return effectsCount-1;
@@ -676,6 +594,7 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
 void EffectRegistry::setup() {
     for (auto &fx : effects)
         fx->desiredState(Setup);
+    transEffect.setup();
 }
 
 void EffectRegistry::loop() {
@@ -765,11 +684,34 @@ void LedEffect::setup() {
 
 /**
  * Performs the transition to off - by default a pause of 1 second. Subclasses can override the behavior - function is virtual
- * This is a repeat function - it is called multiple times while in TransitionOff state, until it returns true.
+ * This is a repeat function - it is called multiple times while in TransitionBreak state, until it returns true.
  * @return true if transition has completed; false otherwise
  */
-bool LedEffect::transitionOff() {
+bool LedEffect::transitionBreak() {
+    //if we need to customize the amount of pause between effects, make a global variable (same for all effects) or a local class member (custom for each effect)
     return millis() > (transOffStart + 1000);
+}
+
+/**
+ * Called only once as the effect transitions into TransitionBreak state, before the loop calls to <code>transitionBreak</code>
+ */
+void LedEffect::transitionBreakPrep() {
+    //nothing for now
+}
+
+/**
+ * This is a repeat function - it is called multiple times while in WindDown state, until it returns true
+ * @return true if transition has completed; false otherwise
+ */
+bool LedEffect::windDown() {
+    return transEffect.transition();
+}
+
+/**
+ * Called only once as the effect transitions into WindDown state, before the loop calls to <code>windDown</code>
+ */
+void LedEffect::windDownPrep() {
+    transEffect.prepare(rot);
 }
 
 /**
@@ -779,12 +721,15 @@ void LedEffect::loop() {
     switch (state) {
         case Setup: setup(); nextState(); break;    //one blocking step, non repeat
         case Running: run(); break;                 //repeat, called multiple times to achieve the light effects designed
+        case WindDownPrep: windDownPrep(); nextState(); break;
         case WindDown:
             if (windDown())
                 nextState();
             break;           //repeat, called multiple times to achieve the fade out for the current light effect
-        case TransitionOff:
-            if (transitionOff())
+        case TransitionBreakPrep:
+            transitionBreakPrep(); nextState(); break;
+        case TransitionBreak:
+            if (transitionBreak())
                 nextState();
             break; //repeat, called multiple times to achieve the transition off for the current light effect
         case Idle: break;                           //no-op
@@ -804,33 +749,61 @@ void LedEffect::desiredState(EffectState dst) {
             switch (dst) {
                 case Idle: state = dst; break;
                 case Running:
+                case WindDownPrep:
                 case WindDown:
-                case TransitionOff: return;   //not a valid transition, Setup may not have completed
+                case TransitionBreakPrep:
+                case TransitionBreak: return;   //not a valid transition, Setup may not have completed
             }
             break;
         case Running:
             switch (dst) {
+                case WindDownPrep:
                 case WindDown:
-                case TransitionOff:
+                case TransitionBreakPrep:
+                case TransitionBreak:
                 case Idle:
-                case Setup: state = WindDown; break;
+                case Setup: state = WindDownPrep; break;
+            }
+            break;
+        case WindDownPrep:
+            switch (dst) {
+                case WindDown:
+                case TransitionBreak:
+                case TransitionBreakPrep:
+                case Setup:
+                case Idle: state = WindDown; break;
+                case Running: state = dst; break;
             }
             break;
         case WindDown:
             //any transitions here will cut short the in-progress windDown function
             switch (dst) {
-                case TransitionOff:
+                case TransitionBreakPrep:
+                case TransitionBreak:
                 case Idle:
-                case Setup: state = TransitionOff; transOffStart = millis(); break;
+                case Setup: state = TransitionBreakPrep; transOffStart = millis(); break;
                 case Running: state = dst; break;
+                case WindDownPrep: return;  //not a valid transition
             }
             break;
-        case TransitionOff:
+        case TransitionBreakPrep:
+            switch (dst) {
+                case Idle:
+                case Setup: state = Idle; break;
+                case Running: state = Setup; break;
+                case TransitionBreak: state = dst; break;
+                case WindDown:
+                case WindDownPrep: return;  //not a valid transition
+            }
+            break;
+        case TransitionBreak:
             //any transitions here will cut short the in-progress transitionOff function
             switch (dst) {
                 case Idle:
                 case Setup: state = Idle; break;
                 case Running: state = Setup; break;
+                case TransitionBreakPrep:
+                case WindDownPrep:
                 case WindDown: return;  //not a valid transition
             }
             break;
@@ -838,8 +811,10 @@ void LedEffect::desiredState(EffectState dst) {
             switch (dst) {
                 case Running:
                 case Setup: state = Setup; break;
+                case WindDownPrep:
                 case WindDown:
-                case TransitionOff: return;   //not a valid transition
+                case TransitionBreakPrep:
+                case TransitionBreak: return;   //not a valid transition
             }
             break;
     }
@@ -848,9 +823,11 @@ void LedEffect::desiredState(EffectState dst) {
 void LedEffect::nextState() {
     switch (state) {
         case Setup: state = Running; break;
-        case Running: state = WindDown; break;
-        case WindDown: state = TransitionOff; transOffStart = millis(); break;
-        case TransitionOff: state = Idle; break;
+        case Running: state = WindDownPrep; break;
+        case WindDownPrep: state = WindDown; break;
+        case WindDown: state = TransitionBreakPrep; transOffStart = millis(); break;
+        case TransitionBreakPrep: state = TransitionBreak; break;
+        case TransitionBreak: state = Idle; break;
         case Idle: state = Setup; break;
     }
 }

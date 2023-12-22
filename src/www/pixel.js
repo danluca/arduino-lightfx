@@ -62,7 +62,7 @@ function getStatus() {
             }
             $('#fxCount').html(`${data.fx.count} effects`);
             $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
-            $('#pastEffects').html(`${data.fx.pastEffects.join(', ')}`);
+            $('#pastEffects').html(`${data.fx.pastEffects.reverse().join(', ')}`);
             $('#fxCurHoliday').html(`${data.fx.holiday}`);
             $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
             let strHistogram = data.fx.audioHist.map((elem, ix)=>

@@ -62,7 +62,7 @@ void FxF1::run() {
 }
 
 bool FxF1::windDown() {
-    return turnOffSpots();
+    return transEffect.offSpots();
 }
 
 // FxF2
@@ -112,7 +112,7 @@ void FxF2::makePattern(uint8_t hue) {
 }
 
 bool FxF2::windDown() {
-    return turnOffWipe(false);
+    return transEffect.offWipe(false);
 }
 
 // FxF3
@@ -203,7 +203,7 @@ Viewport FxF3::nextEyePos() {
 }
 
 bool FxF3::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
 }
 
 /**
@@ -392,7 +392,7 @@ FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(tpl(0, tpl.size() / 2 
 }
 
 bool FxF4::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
 }
 
 // FxF5 - algorithm by Carl Rosendahl, adapted from code published at https://www.anirama.com/1000leds/1d-fireworks/
@@ -524,5 +524,5 @@ void FxF5::explode() const {
 }
 
 bool FxF5::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
 }

@@ -37,8 +37,6 @@ namespace FxB {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
     };
 
@@ -49,8 +47,6 @@ namespace FxB {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
     };
 
     class FxB3 : public LedEffect {
@@ -60,8 +56,6 @@ namespace FxB {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
     };
@@ -74,8 +68,6 @@ namespace FxB {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
     };
 
@@ -87,8 +79,6 @@ namespace FxB {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
     };
 
@@ -99,8 +89,6 @@ namespace FxB {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
     };
 
     class FxB7 : public LedEffect {
@@ -110,8 +98,6 @@ namespace FxB {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
     };
@@ -124,8 +110,6 @@ namespace FxB {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
     };
 
@@ -136,8 +120,6 @@ namespace FxB {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
     };
 }
 

@@ -76,7 +76,7 @@ void FxC1::animationB() {
 }
 
 bool FxC1::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
 }
 
 //Fx C2
@@ -116,8 +116,8 @@ void FxC2::run() {
     FastLED.show(stripBrightness);
 }
 
-bool FxC2::windDown() {
-    return turnOffSpots();
+void FxC2::windDownPrep() {
+    transEffect.prepare(SELECTOR_SPOTS);
 }
 
 //Fx C3
@@ -173,7 +173,7 @@ JsonObject & FxC3::describeConfig(JsonArray &json) const {
 }
 
 bool FxC3::windDown() {
-    return turnOffSpots();
+    return transEffect.offSpots();
 }
 
 // Fx C4
@@ -276,7 +276,7 @@ void FxC5::matrix() {
 }
 
 bool FxC5::windDown() {
-    return turnOffWipe(false);
+    return transEffect.offWipe(false);
 }
 
 // Fx C6
@@ -328,5 +328,5 @@ void FxC6::one_sine_pal(uint8_t colorIndex) {
 }
 
 bool FxC6::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
 }

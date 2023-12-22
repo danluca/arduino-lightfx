@@ -150,8 +150,8 @@ JsonObject & FxH1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxH1::windDown() {
-    return turnOffSpots();
+void FxH1::windDownPrep() {
+    transEffect.prepare(random8());
 }
 
 
@@ -207,8 +207,8 @@ JsonObject & FxH2::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxH2::windDown() {
-    return turnOffWipe(false);
+void FxH2::windDownPrep() {
+    transEffect.prepare(random8());
 }
 
 /**
@@ -262,6 +262,6 @@ JsonObject & FxH3::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxH3::windDown() {
-    return turnOffSpots();
+void FxH3::windDownPrep() {
+    transEffect.prepare(random8());
 }

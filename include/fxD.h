@@ -47,7 +47,7 @@ namespace FxD {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         void plasma();
     protected:
@@ -95,7 +95,7 @@ namespace FxD {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         void ripples();
 

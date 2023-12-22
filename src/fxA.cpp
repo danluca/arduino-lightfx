@@ -57,21 +57,6 @@ uint16_t FxA::fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg) {
     return szStack;
 }
 
-bool turnOff(uint8_t selector) {
-    switch (selector) {
-        case 0:
-        case 1:
-        case 2:
-        case 3:
-            return turnOffWipe(selector % 2);
-        case 4:
-        case 5:
-            return turnOffSpots();
-        default:
-            return fadeOff();
-    }
-}
-
 ///////////////////////////////////////
 // Effect Definitions - setup and loop
 ///////////////////////////////////////
@@ -82,7 +67,6 @@ FxA1::FxA1() : LedEffect(fxa1Desc), dot(frame(0, FRAME_SIZE-1)) {
 
 void FxA1::setup() {
     LedEffect::setup();
-    rot = 0;
     makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
@@ -97,7 +81,7 @@ void FxA1::makeDot(CRGB color, uint16_t szDot) {
 
 void FxA1::run() {
     if (mode == TurnOff) {
-        if (turnOff(rot))
+        if (transEffect.transition())
             resetStack();
         return;
     }
@@ -117,10 +101,9 @@ void FxA1::run() {
         incr(curPos, 1, movLimit);
         if (curPos == 0) {
             fxa_stackAdjust(tpl, szStackSeg);
-            mode = szStack == tpl.size() ? TurnOff : Chase;
             if (szStack == tpl.size()) {
                 mode = TurnOff;
-                incr(rot, 1, 7);
+                transEffect.prepare(transEffect.selector()+1);
             } else
                 mode = Chase;
             //save the color
@@ -140,10 +123,6 @@ JsonObject & FxA1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxA1::windDown() {
-    return turnOff(rot);
-}
-
 // FX A2
 FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
@@ -151,7 +130,6 @@ FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 void FxA2::setup() {
     LedEffect::setup();
     makeDot();
-    rot = 0;
 }
 
 void FxA2::makeDot() {
@@ -166,7 +144,8 @@ void FxA2::makeDot() {
 
 void FxA2::run() {
     if (mode == TurnOff) {
-        turnOff(rot);
+        if (transEffect.transition())
+            resetStack();
         return;
     }
     EVERY_N_MILLISECONDS_I(a2Timer, speed) {
@@ -214,7 +193,7 @@ void FxA2::run() {
     EVERY_N_SECONDS(127) {
         if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
-            incr(rot, 1, 7);
+            transEffect.prepare(transEffect.selector()+1);
         }
     }
 }
@@ -225,10 +204,6 @@ JsonObject & FxA2::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxA2::windDown() {
-    return turnOff(rot);
-}
-
 // Fx A3
 FxA3::FxA3() : LedEffect(fxa3Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
@@ -237,6 +212,7 @@ void FxA3::setup() {
     LedEffect::setup();
     makeDot(ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND), szSegment);
     bFwd = true;
+    transEffect.prepare(random8());
 }
 
 void FxA3::makeDot(CRGB color, uint16_t szDot) {
@@ -255,7 +231,7 @@ void FxA3::run() {
         else
             shiftLeft(tpl, curPos < szSegment ? dot[curPos] : BKG);
         replicateSet(tpl, others);
-        if (paletteFactory.getHoliday() == Halloween)
+        if (paletteFactory.isHolidayLimitedHue())
             FastLED.show(random8(32, stripBrightness)); //add a flicker
         else
             FastLED.show(stripBrightness);
@@ -278,10 +254,6 @@ JsonObject & FxA3::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
 }
 
-bool FxA3::windDown() {
-    return turnOff(rot);
-}
-
 // FX A4
 FxA4::FxA4() : LedEffect(fxa4Desc), dot(frame(0, FRAME_SIZE-1)), frL(frame(FRAME_SIZE, FRAME_SIZE*2-1)),
                frR(frame(FRAME_SIZE*2, FRAME_SIZE*3-1)), curBkg(BKG) {
@@ -293,7 +265,6 @@ void FxA4::setup() {
     szStackSeg = 2;
     curBkg = BKG;
     brightness = 192;
-    rot = 0;
     makeDot(ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND), szSegment);
 }
 
@@ -305,7 +276,7 @@ void FxA4::makeDot(CRGB color, uint16_t szDot) {
 
 void FxA4::run() {
     if (mode == TurnOff) {
-        if (turnOff(rot))
+        if (transEffect.transition())
             resetStack();
         return;
     }
@@ -340,17 +311,13 @@ void FxA4::run() {
     EVERY_N_SECONDS(127) {
         if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
-            incr(rot, 1, 7);
+            transEffect.prepare(transEffect.selector()+1);
         }
     }
 }
 
 JsonObject & FxA4::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
-}
-
-bool FxA4::windDown() {
-    return turnOff(rot);
 }
 
 // Fx A5
@@ -361,7 +328,6 @@ void FxA5::setup() {
     LedEffect::setup();
     lastColorIndex = 3;
     colorIndex = 7;
-    rot = 0;
     makeFrame();
 }
 
@@ -381,8 +347,8 @@ void FxA5::makeFrame() {
 
 void FxA5::run() {
     if (mode == TurnOff) {
-        if (turnOff(rot))
-            mode = Chase;
+        if (transEffect.transition())
+            resetStack();
         return;
     }
 
@@ -408,7 +374,7 @@ void FxA5::run() {
     EVERY_N_SECONDS(127) {
         if (countLedsOn(&tpl) > 10) {
             mode = TurnOff;
-            incr(rot, 1, 7);
+            transEffect.prepare(transEffect.selector()+1);
         }
     }
 }
@@ -417,6 +383,3 @@ JsonObject & FxA5::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
 }
 
-bool FxA5::windDown() {
-    return turnOff(rot);
-}

@@ -33,7 +33,7 @@ namespace FxC {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
     };
 
     class FxC3 : public LedEffect {
