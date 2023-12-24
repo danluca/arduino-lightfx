@@ -160,6 +160,7 @@ bool EffectTransition::offRandomBars() {
                 segOff = false;
             ovrSz+=sz;
         }
+        FastLED.show(stripBrightness);
         allOff = segOff;
     }
     return allOff;
