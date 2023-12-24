@@ -734,6 +734,9 @@ bool LedEffect::windDown() {
  * Called only once as the effect transitions into WindDown state, before the loop calls to <code>windDown</code>
  */
 void LedEffect::windDownPrep() {
+    CRGBSet strip(leds, NUM_PIXELS);
+    strip.nblend(ColorFromPalette(targetPalette, 128, 80, LINEARBLEND), 80);
+    FastLED.show(stripBrightness);
     transEffect.prepare(rot);
 }
 

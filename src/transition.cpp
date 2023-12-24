@@ -7,7 +7,8 @@
 // EffectTransition - we have 5 distinct off effects
 void EffectTransition::setup() {
     prefFx = 0;     //no preference - i.e. automatic from sel
-    sel = secRandom8() % 10;
+    sel = random8() % 10;
+    randomBarSegs.clear();
     uint16_t sum = 0;
     while (sum < NUM_PIXELS) {
         uint8_t szSeg = random8(3, 8);
