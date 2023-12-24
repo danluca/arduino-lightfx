@@ -268,6 +268,29 @@ void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp, uint16_t pos) {
 }
 
 /**
+ * Spread the color provided into the pixels set starting from the left, in gradient steps
+ * Note that while the color is spread, the rest of the pixels in the set remain in place - this is
+ * different than shifting the set while feeding the color from one end
+ * @param set LED strip to update
+ * @param color the color to spread
+ * @param gradient amount of gradient to use per each spread call
+ * @return true when all pixels in the set are at full spread color value
+ */
+bool spreadColor(CRGBSet &set, CRGB color, uint8_t gradient) {
+    uint16_t clrPos = 0;
+    while ((set[clrPos] == color) && clrPos < set.size())
+        clrPos++;
+
+    if (clrPos == set.size())
+        return true;
+
+    //the nblend takes care about the edge cases of gradient 0 and 255. When 0 it returns the source color unchanged;
+    //when 255 it replaces source color entirely with the overlay
+    nblend(set[clrPos], color, gradient);
+    return false;
+}
+
+/**
  * Replicate the source set into destination, repeating it as necessary to fill the entire destination
  * <p>Any overlaps between source and destination are skipped from replication - source set backing array is guaranteed unchanged</p>
  * @param src source set
@@ -854,6 +877,7 @@ void fx_setup() {
     //initialize ALL the effects configured in the functions above
     //fxRegistry.setup();
     readState();
+    transEffect.setup();
 
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     //ensure the current effect is moved to setup state

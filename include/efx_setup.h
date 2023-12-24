@@ -38,6 +38,8 @@ void loopRight(CRGBSet &set, Viewport vwp = (Viewport)0, uint16_t pos = 1);
 
 void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp = (Viewport) 0, uint16_t pos = 1);
 
+bool spreadColor(CRGBSet &set, CRGB color = BKG, uint8_t gradient = 255);
+
 void shuffleIndexes(uint16_t array[], uint16_t szArray);
 void shuffle(CRGBSet &set);
 

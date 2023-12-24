@@ -8,6 +8,14 @@
 void EffectTransition::setup() {
     prefFx = 0;     //no preference - i.e. automatic from sel
     sel = secRandom8() % 10;
+    uint16_t sum = 0;
+    while (sum < NUM_PIXELS) {
+        uint8_t szSeg = random8(3, 8);
+        randomBarSegs.push_front(szSeg);
+        sum += szSeg;
+    }
+    if (sum > NUM_PIXELS)
+        randomBarSegs.front() -= (sum-NUM_PIXELS);
 }
 
 bool EffectTransition::transition() {
@@ -59,6 +67,7 @@ bool EffectTransition::offSpots() {
             else
                 ledsOn++;
         }
+
         FastLED.show(stripBrightness);
         if (ledsOn == 0) {
             led = inc(led, szOffSpot, NUM_PIXELS);
@@ -125,17 +134,14 @@ bool EffectTransition::offSplit(bool outward) {
         const uint16_t halfSize = NUM_PIXELS/2;     //num pixels is an even number, hence both segments below have the same length
         CRGBSet firstSeg(leds, outward?0:(halfSize-1), outward?(halfSize-1):0);
         CRGBSet secondSeg(leds, outward?(NUM_PIXELS-1):halfSize, outward?halfSize:(NUM_PIXELS-1));
-        uint16_t bkgPos = 0;
-        //find background length starting from left
-        while ((firstSeg[bkgPos] == BKG && secondSeg[bkgPos] == BKG) && bkgPos < halfSize)
-            bkgPos++;
-        if (bkgPos < halfSize)
-            firstSeg[bkgPos] = secondSeg[bkgPos] = BKG;
+        bool first = spreadColor(firstSeg, BKG, 64);
+        bool second = spreadColor(secondSeg, BKG, 64);
         FastLED.show(stripBrightness);
+        allOff = first && second;
     }
-    EVERY_N_MILLIS(500) {
-        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
-    }
+//    EVERY_N_MILLIS(500) {
+//        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
+//    }
     return allOff;
 }
 
@@ -144,5 +150,17 @@ bool EffectTransition::offSplit(bool outward) {
  * @return true if all leds are off, false otherwise
  */
 bool EffectTransition::offRandomBars() {
-    return true;
+    bool allOff = false;
+    EVERY_N_MILLIS(50) {
+        uint16_t ovrSz = 0;
+        bool segOff = true;
+        for (auto &sz : randomBarSegs) {
+            CRGBSet seg(leds, ovrSz, ovrSz+sz-1);
+            if (!spreadColor(seg, BKG, 64))
+                segOff = false;
+            ovrSz+=sz;
+        }
+        allOff = segOff;
+    }
+    return allOff;
 }

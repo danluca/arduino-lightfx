@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include <FastLED.h>
+#include <deque>
 #include "global.h"
 
 #define SELECTOR_SPOTS  0x0100
@@ -33,9 +34,12 @@ public:
 protected:
     uint sel=0;
     uint8_t prefFx = 0;
+    //offSpots variables
     uint16_t led;
     uint16_t xOffSpot;
     uint16_t szOffSpot;
+    //offRandomBars variables
+    std::deque<uint8_t> randomBarSegs;
 };
 
 extern EffectTransition transEffect;
