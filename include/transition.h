@@ -24,11 +24,12 @@ public:
     bool transition();
     void prepare(uint selector = 0);
     uint selector() const;
+    void resetRandomBars();
     //fade off effects
     bool offSpots();
     bool offWipe(bool rightDir = true);
     bool offSplit(bool outward = true);
-    bool offRandomBars();
+    bool offRandomBars(bool rightDir = true);
     bool offFade();
 
 protected:

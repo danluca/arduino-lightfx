@@ -8,10 +8,15 @@
 void EffectTransition::setup() {
     prefFx = 0;     //no preference - i.e. automatic from sel
     sel = random8() % 10;
+    if (randomBarSegs.empty())
+        resetRandomBars();
+}
+
+void EffectTransition::resetRandomBars() {
     randomBarSegs.clear();
     uint16_t sum = 0;
     while (sum < NUM_PIXELS) {
-        uint8_t szSeg = random8(3, 8);
+        uint8_t szSeg = random8(3, 10);
         randomBarSegs.push_front(szSeg);
         sum += szSeg;
     }
@@ -26,7 +31,7 @@ bool EffectTransition::transition() {
         case 1: return offWipe(sel % 2);
         case 2: return offFade();
         case 3: return offSplit(sel % 2);
-        case 4: return offRandomBars();
+        case 4: return offRandomBars(sel % 2);
         default:
             return offFade();
     }
@@ -148,15 +153,16 @@ bool EffectTransition::offSplit(bool outward) {
 
 /**
  * Turns off entire strip by sectioning it in segments of random size and concurrently wiping those off in random directions (left/right)
+ * @param rightDir whether turning off happens from left to right (default) or right to left
  * @return true if all leds are off, false otherwise
  */
-bool EffectTransition::offRandomBars() {
+bool EffectTransition::offRandomBars(bool rightDir) {
     bool allOff = false;
     EVERY_N_MILLIS(50) {
         uint16_t ovrSz = 0;
         bool segOff = true;
         for (auto &sz : randomBarSegs) {
-            CRGBSet seg(leds, ovrSz, ovrSz+sz-1);
+            CRGBSet seg(leds, rightDir?ovrSz:(ovrSz+sz-1), rightDir?(ovrSz+sz-1):ovrSz);
             if (!spreadColor(seg, BKG, 64))
                 segOff = false;
             ovrSz+=sz;
