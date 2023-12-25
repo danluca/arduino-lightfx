@@ -35,9 +35,9 @@ protected:
     uint sel=0;
     uint8_t prefFx = 0;
     //offSpots variables
-    uint16_t led;
-    uint16_t xOffSpot;
-    uint16_t szOffSpot;
+    uint16_t offSpotShuffleOffset;
+    uint16_t offSpotSeqIndex;
+    uint16_t offSpotSegSize;
     //offRandomBars variables
     std::deque<uint8_t> randomBarSegs;
 };

@@ -735,7 +735,7 @@ bool LedEffect::windDown() {
  */
 void LedEffect::windDownPrep() {
     CRGBSet strip(leds, NUM_PIXELS);
-    strip.nblend(ColorFromPalette(targetPalette, 128, 80, LINEARBLEND), 80);
+    strip.nblend(ColorFromPalette(targetPalette, random8(), 80, LINEARBLEND), 80);
     FastLED.show(stripBrightness);
     transEffect.prepare(rot);
 }

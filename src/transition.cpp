@@ -40,9 +40,9 @@ void EffectTransition::prepare(uint selector) {
     }
 
     //offSpots prepare
-    led = 0;
-    xOffSpot = 0;
-    szOffSpot = turnOffSeq[xOffSpot];
+    offSpotShuffleOffset = 0;
+    offSpotSeqIndex = 0;
+    offSpotSegSize = turnOffSeq[offSpotSeqIndex];
     fade = random8(42, 110);
 }
 
@@ -60,8 +60,8 @@ bool EffectTransition::offSpots() {
 
     EVERY_N_MILLIS(30) {
         uint8_t ledsOn = 0;
-        for (uint16_t x = 0; x < szOffSpot; x++) {
-            uint16_t xled = stripShuffleIndex[(led + x)%NUM_PIXELS];
+        for (uint16_t x = 0; x < offSpotSegSize; x++) {
+            uint16_t xled = stripShuffleIndex[(offSpotShuffleOffset + x) % NUM_PIXELS];
             FastLED.leds()[xled].fadeToBlackBy(fade);
             if (FastLED.leds()[xled].getLuma() < 4)
                 FastLED.leds()[xled] = BKG;
@@ -71,9 +71,9 @@ bool EffectTransition::offSpots() {
 
         FastLED.show(stripBrightness);
         if (ledsOn == 0) {
-            led = inc(led, szOffSpot, NUM_PIXELS);
-            xOffSpot = inc(xOffSpot, 1, arrSize(turnOffSeq));
-            szOffSpot = turnOffSeq[xOffSpot];
+            offSpotShuffleOffset = inc(offSpotShuffleOffset, offSpotSegSize, NUM_PIXELS);  //need to increment with szOffSpot before advancing it
+            offSpotSeqIndex = inc(offSpotSeqIndex, 1, arrSize(turnOffSeq));
+            offSpotSegSize = turnOffSeq[offSpotSeqIndex];
             fade = random8(42, 110);
         }
     }
