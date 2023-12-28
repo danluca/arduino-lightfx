@@ -30,6 +30,9 @@ SOFTWARE.
 */
 
 #include "ArduinoLog.h"
+#include "pixeltypes.h"
+#include "pixelset.h"
+
 
 #ifndef DISABLE_LOGGING
 rtos::Mutex serial_mtx;
@@ -137,6 +140,30 @@ void Logging::print(const __FlashStringHelper *format, va_list args)
 #endif
 }
 
+/**
+ * Local utility to count the significant nibbles (4-bit sets) of a value (converted to unsigned long) - helpful in printing hex
+ * @param ul value to count significant nibbles of
+ * @return how many nibbles are non-zero in the hex representation of this number
+ */
+static uint8_t countSignificantNibbles(unsigned long ul) {
+    const uint8_t szLong = sizeof(unsigned long);
+    ulong mask = 0x0F << (szLong*8-4);
+    uint8_t sigNibbles = 0;
+    for (uint x=0; x<szLong; x++) {
+        if (ul & mask) {
+            sigNibbles = (szLong-x)*2;
+            break;
+        }
+        mask = mask >> 4;
+        if (ul & mask) {
+            sigNibbles = (szLong-x)*2-1;
+            break;
+        }
+        mask = mask >> 4;
+    }
+    return sigNibbles;
+}
+
 void Logging::print(const char *format, va_list args) {
 #ifndef DISABLE_LOGGING	  	
 // This copy is only necessary on some architectures (x86) to change a passed
@@ -175,12 +202,12 @@ void Logging::printFormat(const char format, va_list *args) {
 		    _logOutput->print(format);
             break;
         case 's': {
-            register char *s = (char *) va_arg(*args, int);
+            char *s = (char *) va_arg(*args, int);
             _logOutput->print(s);
             break;
         }
         case 'S': {
-            register __FlashStringHelper *s = (__FlashStringHelper *) va_arg(*args, int);
+            __FlashStringHelper *s = (__FlashStringHelper *) va_arg(*args, int);
             _logOutput->print(s);
             break;
         }
@@ -197,30 +224,14 @@ void Logging::printFormat(const char format, va_list *args) {
             break;
         case 'X': {
             _logOutput->print("0x");
-            //_logOutput->print(va_arg(*args, int), HEX);
-            const uint szLong = sizeof(ulong);
             unsigned long ul = va_arg(*args, unsigned long);
-            ulong mask = 0x0F << (szLong*8-4);
-            uint sigNibbles = 0;
-            for (uint x=0; x<szLong; x++) {
-                if (ul & mask) {
-                    sigNibbles = (szLong-x)*2;
-                    break;
-                }
-                mask = mask >> 4;
-                if (ul & mask) {
-                    sigNibbles = (szLong-x)*2-1;
-                    break;
-                }
-                mask = mask >> 4;
-            }
-            if (sigNibbles%2)
+            if (countSignificantNibbles(ul)%2)
                 _logOutput->print('0');
             _logOutput->print(ul, HEX);
             break;
         }
         case 'p': {
-            register Printable *obj = (Printable *) va_arg(*args, int);
+            Printable *obj = (Printable *) va_arg(*args, int);
             _logOutput->print(*obj);
             break;
         }
@@ -248,7 +259,7 @@ void Logging::printFormat(const char format, va_list *args) {
 		    _logOutput->print((char) va_arg(*args, int));
             break;
         case 'C': {
-            register char c = (char) va_arg( *args, int );
+            char c = (char) va_arg( *args, int );
             if (c>=0x20 && c<0x7F) {
                 _logOutput->print(c);
             } else {
@@ -270,6 +281,30 @@ void Logging::printFormat(const char format, va_list *args) {
                 _logOutput->print(F("true"));
             else
                 _logOutput->print(F("false"));
+            break;
+        }
+        case 'r': {
+            CRGB clr = va_arg(*args, CRGB);
+            uint32_t numClr = (uint32_t)clr & 0xFFFFFF; //conversion to uint32 uses 0xFF for the alpha channel - we're not interested in the alpha channel
+            _logOutput->print("0x");
+            if (countSignificantNibbles(numClr)%2)
+                _logOutput->print('0');
+            _logOutput->print(numClr, HEX);
+            break;
+        }
+        case 'R': {
+            CRGBSet *set = va_arg(*args, CRGBSet*);
+            _logOutput->print('['); _logOutput->print(set->size()); _logOutput->print(']');
+            _logOutput->print('{');
+            for (const auto &clr:*set) {
+                _logOutput->print("0x");
+                uint32_t numClr = (uint32_t)clr & 0xFFFFFF; //mask out the alpha channel (the fourth byte, MSB) as it is set to 0xFF
+                if (countSignificantNibbles(numClr)%2)
+                    _logOutput->print('0');
+                _logOutput->print(numClr, HEX);
+                _logOutput->print(", ");
+            }
+            _logOutput->print('}');
             break;
         }
         default:

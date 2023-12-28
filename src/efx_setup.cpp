@@ -443,8 +443,8 @@ CRGB adjustBrightness(CRGB color, uint8_t bright) {
 
 /**
  * Blend multiply 2 colors
- * @param blendLayer base color, which is also the target (the one receiving the result)
- * @param topLayer color to multiply with
+ * @param blendRGB base color, which is also the target (the one receiving the result)
+ * @param topRGB color to multiply with
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
 void blendMultiply(CRGB &blendRGB, const CRGB &topRGB) {

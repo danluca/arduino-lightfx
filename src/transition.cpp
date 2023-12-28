@@ -32,22 +32,23 @@ bool EffectTransition::transition() {
         case 2: return offFade();
         case 3: return offSplit(sel % 2);
         case 4: return offRandomBars(sel % 2);
+        case 5: return offHalfWipe(sel % 2);
         default:
             return offFade();
     }
 }
 
 void EffectTransition::prepare(uint selector) {
-    sel = selector % 10;    //twice the amount of fade out effects - allows for 2 variations within each effect
+    sel = selector % (effectsCount*2);    //twice the amount of fade out effects - allows for 2 variations within each effect
     prefFx = (selector >> 8) & 0xFF;
     if (prefFx) {
-        prefFx = (prefFx % 5) + 1;
+        prefFx = (prefFx % effectsCount) + 1;
     }
 
     //offSpots prepare
     offSpotShuffleOffset = 0;
-    offSpotSeqIndex = 0;
-    offSpotSegSize = turnOffSeq[offSpotSeqIndex];
+    offPosIndex = 0;
+    offSpotSegSize = turnOffSeq[offPosIndex];
     fade = random8(42, 110);
 }
 
@@ -77,8 +78,8 @@ bool EffectTransition::offSpots() {
         FastLED.show(stripBrightness);
         if (ledsOn == 0) {
             offSpotShuffleOffset = inc(offSpotShuffleOffset, offSpotSegSize, NUM_PIXELS);  //need to increment with szOffSpot before advancing it
-            offSpotSeqIndex = inc(offSpotSeqIndex, 1, arrSize(turnOffSeq));
-            offSpotSegSize = turnOffSeq[offSpotSeqIndex];
+            offPosIndex = inc(offPosIndex, 1, arrSize(turnOffSeq));
+            offSpotSegSize = turnOffSeq[offPosIndex];
             fade = random8(42, 110);
         }
     }
@@ -113,6 +114,35 @@ bool EffectTransition::offWipe(bool rightDir) {
 }
 
 /**
+ * Similar effect with <code>offSplit(bool)</code> but shifting the two half outward or inward - same idea as <code>offWipe(bool)</code>
+ * @param inward whether to shift right (default) or left
+ * @return true if all leds are off, false otherwise
+ */
+bool EffectTransition::offHalfWipe(bool inward) {
+    bool allOff = false;
+    EVERY_N_MILLIS(60) {
+        const uint16_t halfSize = NUM_PIXELS/2;
+        CRGBSet stripH1(leds, halfSize);
+        CRGBSet stripH2(leds, halfSize, NUM_PIXELS-1);
+        if (inward) {
+            //inward
+            shiftRight(stripH1, BKG);
+            shiftLeft(stripH2, BKG);
+        } else {
+            //outward
+            shiftLeft(stripH1, BKG);
+            shiftRight(stripH2, BKG);
+        }
+        FastLED.show(stripBrightness);
+    }
+    EVERY_N_MILLIS(720) {
+        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
+    }
+
+    return allOff;
+}
+
+/**
  * Turns off entire strip by fading it to black
  * @return true if all leds are off, false otherwise
  */
@@ -120,7 +150,7 @@ bool EffectTransition::offFade() {
     bool allOff = false;
     EVERY_N_MILLIS(50) {
         CRGBSet strip(leds, NUM_PIXELS);
-        strip.fadeToBlackBy(11);
+        strip.fadeToBlackBy(32);
         FastLED.show(stripBrightness);
     }
     EVERY_N_MILLIS(500) {
@@ -137,13 +167,18 @@ bool EffectTransition::offFade() {
 bool EffectTransition::offSplit(bool outward) {
     bool allOff = false;
     EVERY_N_MILLIS(50) {
-        const uint16_t halfSize = NUM_PIXELS/2;     //num pixels is an even number, hence both segments below have the same length
-        CRGBSet firstSeg(leds, outward?0:(halfSize-1), outward?(halfSize-1):0);
-        CRGBSet secondSeg(leds, outward?(NUM_PIXELS-1):halfSize, outward?halfSize:(NUM_PIXELS-1));
-        bool first = spreadColor(firstSeg, BKG, 64);
-        bool second = spreadColor(secondSeg, BKG, 64);
+        const uint16_t halfSize = NUM_PIXELS/2;
+        const uint16_t maxIndex = NUM_PIXELS-1;
+        const uint16_t offSegSize = 1+offPosIndex/8;
+        CRGBSet s1(leds, outward?offPosIndex:qsuba(halfSize-1, offPosIndex), outward?(offPosIndex+offSegSize):qsuba(halfSize-1, offPosIndex+offSegSize));
+        CRGBSet s2(leds, outward?(maxIndex-offPosIndex):capu(halfSize+offPosIndex, maxIndex), outward?(maxIndex-offPosIndex-offSegSize):capu(halfSize+offPosIndex+offSegSize, maxIndex));
+        s1.nblend(BKG, 120);
+        s2.nblend(BKG, 120);
+        if (!s1 && !s2)
+            offPosIndex+=(1+offSegSize);
+
         FastLED.show(stripBrightness);
-        allOff = first && second;
+        allOff = offPosIndex >= halfSize;
     }
 //    EVERY_N_MILLIS(500) {
 //        allOff = !isAnyLedOn(leds, NUM_PIXELS, BKG);
@@ -163,7 +198,7 @@ bool EffectTransition::offRandomBars(bool rightDir) {
         bool segOff = true;
         for (auto &sz : randomBarSegs) {
             CRGBSet seg(leds, rightDir?ovrSz:(ovrSz+sz-1), rightDir?(ovrSz+sz-1):ovrSz);
-            if (!spreadColor(seg, BKG, 64))
+            if (!spreadColor(seg, BKG, 120))
                 segOff = false;
             ovrSz+=sz;
         }

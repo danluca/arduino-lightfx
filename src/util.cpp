@@ -226,7 +226,7 @@ uint8_t bscr8(uint8_t a, uint8_t b) {
 
 /**
  * Overlay two 8 bit operands for color blending purposes - assumes the operands are fractional (n/256)
- * <p>f(a,b)=2*a*b, if a<0.5; 1-2*(1-a)*(1-b), otherwise</p>
+ * <p>f(a,b)=2*a*b, if a&lt;0.5; 1-2*(1-a)*(1-b), otherwise</p>
  * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
  * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
  * @return the 8 bit value per formula above

@@ -28,16 +28,18 @@ public:
     //fade off effects
     bool offSpots();
     bool offWipe(bool rightDir = true);
+    bool offHalfWipe(bool inward = true);
     bool offSplit(bool outward = true);
     bool offRandomBars(bool rightDir = true);
     bool offFade();
 
 protected:
+    static const uint8_t effectsCount = 6;  //number of 'offXYZ' methods
     uint sel=0;
     uint8_t prefFx = 0;
     //offSpots variables
     uint16_t offSpotShuffleOffset;
-    uint16_t offSpotSeqIndex;
+    uint16_t offPosIndex;
     uint16_t offSpotSegSize;
     //offRandomBars variables
     std::deque<uint8_t> randomBarSegs;
