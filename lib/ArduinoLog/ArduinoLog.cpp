@@ -30,9 +30,6 @@ SOFTWARE.
 */
 
 #include "ArduinoLog.h"
-#include "pixeltypes.h"
-#include "pixelset.h"
-
 
 #ifndef DISABLE_LOGGING
 rtos::Mutex serial_mtx;
@@ -107,6 +104,18 @@ void Logging::clearSuffix()
 #endif
 }
 
+void Logging::setAdditionalFormatting(printFmtFunc f) {
+#ifndef DISABLE_LOGGING
+    _addtlPrintFormat = f;
+#endif
+}
+
+void Logging::clearAdditionalFormatting() {
+#ifndef DISABLE_LOGGING
+    _addtlPrintFormat = nullptr;
+#endif
+}
+
 void Logging::print(const __FlashStringHelper *format, va_list args)
 {
 #ifndef DISABLE_LOGGING	  	
@@ -145,7 +154,7 @@ void Logging::print(const __FlashStringHelper *format, va_list args)
  * @param ul value to count significant nibbles of
  * @return how many nibbles are non-zero in the hex representation of this number
  */
-static uint8_t countSignificantNibbles(unsigned long ul) {
+uint8_t Logging::countSignificantNibbles(unsigned long ul) {
     const uint8_t szLong = sizeof(unsigned long);
     ulong mask = 0x0F << (szLong*8-4);
     uint8_t sigNibbles = 0;
@@ -283,32 +292,11 @@ void Logging::printFormat(const char format, va_list *args) {
                 _logOutput->print(F("false"));
             break;
         }
-        case 'r': {
-            CRGB clr = va_arg(*args, CRGB);
-            uint32_t numClr = (uint32_t)clr & 0xFFFFFF; //conversion to uint32 uses 0xFF for the alpha channel - we're not interested in the alpha channel
-            _logOutput->print("0x");
-            if (countSignificantNibbles(numClr)%2)
-                _logOutput->print('0');
-            _logOutput->print(numClr, HEX);
-            break;
-        }
-        case 'R': {
-            CRGBSet *set = va_arg(*args, CRGBSet*);
-            _logOutput->print('['); _logOutput->print(set->size()); _logOutput->print(']');
-            _logOutput->print('{');
-            for (const auto &clr:*set) {
-                _logOutput->print("0x");
-                uint32_t numClr = (uint32_t)clr & 0xFFFFFF; //mask out the alpha channel (the fourth byte, MSB) as it is set to 0xFF
-                if (countSignificantNibbles(numClr)%2)
-                    _logOutput->print('0');
-                _logOutput->print(numClr, HEX);
-                _logOutput->print(", ");
-            }
-            _logOutput->print('}');
-            break;
-        }
         default:
-		    _logOutput->print("n/s");
+            if (_addtlPrintFormat == nullptr)
+		        _logOutput->print("n/s");
+            else
+                _addtlPrintFormat(_logOutput, format, args);
             break;
     }
 #endif

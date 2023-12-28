@@ -13,5 +13,6 @@
 
 void log_setup();
 void logPrefix(Print* _logOutput, int logLevel);
+void logExtraFormats(Print* _logOutput, char fmt, va_list *args);
 
 #endif //LIGHTFX_LOG_H

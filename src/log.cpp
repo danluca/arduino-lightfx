@@ -2,7 +2,10 @@
 // Copyright (c) 2023 by Dan Luca. All rights reserved
 //
 #include "log.h"
+#ifndef DISABLE_LOGGING
 #include <mbed.h>
+#include <FastLED.h>
+#endif
 
 void log_setup() {
 #ifndef DISABLE_LOGGING
@@ -12,6 +15,7 @@ void log_setup() {
     Log.begin(LOG_LEVEL_INFO, &Serial, true);
     Log.infoln("========================================");
     Log.setPrefix(logPrefix);
+    Log.setAdditionalFormatting(logExtraFormats);
   }
 #endif
 }
@@ -74,6 +78,44 @@ void logPrefix(Print *_logOutput, int logLevel) {
 #endif
 }
 
+/**
+ * Additional format character handling in excess of what <code>Logging::printFormat(const char, va_list*)</code> provides
+ * @param _logOutput the logger object
+ * @param fmt format character, not null
+ * @param args the arguments list - next in the list is to be formatted into the logger as specified by the given format character
+ */
+void logExtraFormats(Print *_logOutput, const char fmt, va_list *args) {
+#ifndef DISABLE_LOGGING
+    switch (fmt) {
+        case 'r': {
+            CRGB clr = va_arg(*args, CRGB);
+            uint32_t numClr = (uint32_t)clr & 0xFFFFFF; //conversion to uint32 uses 0xFF for the alpha channel - we're not interested in the alpha channel
+            _logOutput->print("0x");
+            if (Logging::countSignificantNibbles(numClr)%2)
+                _logOutput->print('0');
+            _logOutput->print(numClr, HEX);
+            break;
+        }
+        case 'R': {
+            CRGBSet *set = va_arg(*args, CRGBSet*);
+            _logOutput->print('['); _logOutput->print(set->size()); _logOutput->print(']');
+            _logOutput->print('{');
+            for (const auto &clr:*set) {
+                _logOutput->print("0x");
+                uint32_t numClr = (uint32_t)clr & 0xFFFFFF; //mask out the alpha channel (the fourth byte, MSB) as it is set to 0xFF
+                if (Logging::countSignificantNibbles(numClr)%2)
+                    _logOutput->print('0');
+                _logOutput->print(numClr, HEX);
+                _logOutput->print(", ");
+            }
+            _logOutput->print('}');
+            break;
+        }
+        default:
+            _logOutput->print("n/s");
+    }
+#endif
+}
 
 void writeChar(char c) {
 #ifndef DISABLE_LOGGING

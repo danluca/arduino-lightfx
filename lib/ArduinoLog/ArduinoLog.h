@@ -32,6 +32,7 @@ Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 #define F(string_literal) (reinterpret_cast<const __FlashStringHelper *>(PSTR(string_literal)))
 #endif
 typedef void (*printfunction)(Print*, int);
+typedef void (*printFmtFunc)(Print*, const char, va_list*);
 
 #ifndef DISABLE_LOGGING
 extern rtos::Mutex serial_mtx;
@@ -180,6 +181,19 @@ public:
      * \return void
      */
 	void clearSuffix();
+
+    /**
+     * Sets a function to be called for additional formatting, in excess of the formats handeld by <code>printFormat</code>
+     * @param f function to handle extra formats
+     */
+    void setAdditionalFormatting(printFmtFunc f);
+
+    /**
+     * Clears the additional formatting function
+     */
+    void clearAdditionalFormatting();
+
+    static uint8_t countSignificantNibbles(unsigned long ul);
 
 	/**
 	 * Output a fatal error message. Output message contains
@@ -354,7 +368,7 @@ private:
 		}
 			
 
-		if (_prefix != NULL)
+		if (_prefix != nullptr)
 		{
 			_prefix(_logOutput, level);
 		}
@@ -369,7 +383,7 @@ private:
 		va_start(args, msg);
 		print(msg, args);
 
-		if(_suffix != NULL)
+		if(_suffix != nullptr)
 		{
 			_suffix(_logOutput, level);
 		}
@@ -386,8 +400,9 @@ private:
 	bool _showLevel;
 	Print* _logOutput;
 
-	printfunction _prefix = NULL;
-	printfunction _suffix = NULL;
+	printfunction _prefix = nullptr;
+	printfunction _suffix = nullptr;
+    printFmtFunc  _addtlPrintFormat = nullptr;
 #endif
 };
 
