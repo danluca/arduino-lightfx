@@ -1,11 +1,11 @@
 [CmdletBinding()]
-param ([ValidateSet('auto', 'com3', 'com4')][string]$port='auto', [switch]$debug)
+param ([ValidateSet('auto', 'com3', 'com4')][string]$port='auto', [switch]$dbg)
 
 
 #######################################
 ## Main
 #######################################
-$brdEnv = $debug ? "rp2040-dbg" : "rp2040-rel"
+$brdEnv = $dbg ? "rp2040-dbg" : "rp2040-rel"
 if ($port -eq 'auto') {
     pio run -t upload -e $brdEnv
 } else {
