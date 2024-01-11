@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXD_H
 #define LIGHTFX_FXD_H
@@ -22,6 +22,8 @@ namespace FxD {
         void ChangeMe();
 
         void confetti();
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxD2 : public LedEffect {
@@ -37,6 +39,8 @@ namespace FxD {
         JsonObject & describeConfig(JsonArray &json) const override;
 
         void dot_beat();
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxD3 : public LedEffect {
@@ -50,6 +54,9 @@ namespace FxD {
         void windDownPrep() override;
 
         void plasma();
+
+        uint8_t selectionWeight() const override;
+
     protected:
         uint8_t monoColor;
     };
@@ -67,6 +74,8 @@ namespace FxD {
         void rainbow_march();
 
         void update_params(uint8_t slot);
+
+        uint8_t selectionWeight() const override;
     };
 
 
@@ -98,6 +107,8 @@ namespace FxD {
         void windDownPrep() override;
 
         void ripples();
+
+        uint8_t selectionWeight() const override;
 
     protected:
         static const uint8_t maxRipples = 8;

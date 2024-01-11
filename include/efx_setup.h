@@ -1,10 +1,11 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 
 #ifndef LIGHTFX_EFX_SETUP_H
 #define LIGHTFX_EFX_SETUP_H
 
+#include <Arduino.h>
 #include "mic.h"
 #include "PaletteFactory.h"
 #include <ArduinoJson.h>
@@ -40,6 +41,9 @@ void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp = (Viewport) 0, uint16
 
 bool spreadColor(CRGBSet &set, CRGB color = BKG, uint8_t gradient = 255);
 
+bool moveBlend(CRGBSet &target, const CRGBSet &segment, fract8 overlay, uint16_t fromPos, uint16_t toPos);
+bool areSame(const CRGBSet &lhs, const CRGBSet &rhs);
+
 void shuffleIndexes(uint16_t array[], uint16_t szArray);
 void shuffle(CRGBSet &set);
 
@@ -50,7 +54,7 @@ void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
 
 void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, uint16_t length);
 
-uint16_t countLedsOn(CRGBSet *set, CRGB backg = BKG);
+uint16_t countPixelsBrighter(CRGBSet *set, CRGB backg = BKG);
 
 bool isAnyLedOn(CRGBSet *set, CRGB backg = BKG);
 
@@ -159,6 +163,15 @@ public:
 
     inline EffectState getState() const {
         return state;
+    }
+
+    /**
+     * What weight does this effect have when random selection is engaged
+     * Subclasses have the opportunity to customize this value by e.g. the current holiday, time, etc., hence changing/reshaping the chances of selecting an effect
+     * @return a value between 1 and 255. If returning 0, this effectively removes the effect from random selection.
+     */
+    virtual inline uint8_t selectionWeight() const {
+        return 1;
     }
 
     virtual ~LedEffect() = default;     // Destructor

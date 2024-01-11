@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category A of light effects
@@ -123,6 +123,10 @@ JsonObject & FxA1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+uint8_t FxA1::selectionWeight() const {
+    return 3;
+}
+
 // FX A2
 FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
@@ -191,7 +195,7 @@ void FxA2::run() {
     }
 
     EVERY_N_SECONDS(127) {
-        if (countLedsOn(&tpl) > 10) {
+        if (countPixelsBrighter(&tpl) > 10) {
             mode = TurnOff;
             transEffect.prepare(transEffect.selector()+1);
         }
@@ -202,6 +206,10 @@ JsonObject & FxA2::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["segmentSize"] = szSegment;
     return obj;
+}
+
+uint8_t FxA2::selectionWeight() const {
+    return 10;
 }
 
 // Fx A3
@@ -252,6 +260,10 @@ void FxA3::run() {
 
 JsonObject & FxA3::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
+}
+
+uint8_t FxA3::selectionWeight() const {
+    return 20;
 }
 
 // FX A4
@@ -309,7 +321,7 @@ void FxA4::run() {
     }
 
     EVERY_N_SECONDS(127) {
-        if (countLedsOn(&tpl) > 10) {
+        if (countPixelsBrighter(&tpl) > 10) {
             mode = TurnOff;
             transEffect.prepare(transEffect.selector()+1);
         }
@@ -318,6 +330,10 @@ void FxA4::run() {
 
 JsonObject & FxA4::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
+}
+
+uint8_t FxA4::selectionWeight() const {
+    return 20;
 }
 
 // Fx A5
@@ -372,7 +388,7 @@ void FxA5::run() {
     }
 
     EVERY_N_SECONDS(127) {
-        if (countLedsOn(&tpl) > 10) {
+        if (countPixelsBrighter(&tpl) > 10) {
             mode = TurnOff;
             transEffect.prepare(transEffect.selector()+1);
         }
@@ -383,3 +399,6 @@ JsonObject & FxA5::describeConfig(JsonArray &json) const {
     return LedEffect::describeConfig(json);
 }
 
+uint8_t FxA5::selectionWeight() const {
+    return 20;
+}

@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXB_H
 #define LIGHTFX_FXB_H
@@ -38,6 +38,8 @@ namespace FxB {
         void run() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxB2 : public LedEffect {
@@ -47,6 +49,8 @@ namespace FxB {
         void setup() override;
 
         void run() override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxB3 : public LedEffect {
@@ -58,6 +62,8 @@ namespace FxB {
         void run() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxB4 : public LedEffect {
@@ -69,6 +75,8 @@ namespace FxB {
         void run() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxB5 : public LedEffect {
@@ -80,6 +88,8 @@ namespace FxB {
         void run() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxB6 : public LedEffect {
@@ -89,6 +99,8 @@ namespace FxB {
         void setup() override;
 
         void run() override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxB7 : public LedEffect {
@@ -100,6 +112,8 @@ namespace FxB {
         void run() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxB8 : public LedEffect {
@@ -111,6 +125,8 @@ namespace FxB {
         void run() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxB9 : public LedEffect {
@@ -120,6 +136,8 @@ namespace FxB {
         void setup() override;
 
         void run() override;
+
+        uint8_t selectionWeight() const override;
     };
 }
 

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category E of light effects
@@ -93,6 +93,10 @@ bool FxE1::windDown() {
     return transEffect.offSpots();
 }
 
+uint8_t FxE1::selectionWeight() const {
+    return 22;
+}
+
 // Fx E2
 FxE2::FxE2() : LedEffect(fxe2Desc) {}
 
@@ -134,6 +138,10 @@ void FxE2::beatwave() {
 
 void FxE2::windDownPrep() {
     transEffect.prepare(random8());
+}
+
+uint8_t FxE2::selectionWeight() const {
+    return 17;
 }
 
 //Fx E3
@@ -231,6 +239,10 @@ void FxE3::windDownPrep() {
     transEffect.prepare(random8());
 }
 
+uint8_t FxE3::selectionWeight() const {
+    return 27;
+}
+
 //Fx E4
 FxE4::FxE4() : LedEffect(fxe4Desc) {}
 
@@ -277,6 +289,10 @@ void FxE4::serendipitous() {
 
 void FxE4::windDownPrep() {
     transEffect.prepare(random8());
+}
+
+uint8_t FxE4::selectionWeight() const {
+    return 36;
 }
 
 // FxE5
@@ -330,3 +346,6 @@ void FxE5::windDownPrep() {
     transEffect.prepare(random8());
 }
 
+uint8_t FxE5::selectionWeight() const {
+    return 42;
+}

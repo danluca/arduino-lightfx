@@ -1,13 +1,12 @@
-// Copyright (c) 2023 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_TRANSITION_H
 #define ARDUINO_LIGHTFX_TRANSITION_H
 
 #include <Arduino.h>
-#include <FastLED.h>
-#include <deque>
 #include "global.h"
+#include <deque>
 
 #define SELECTOR_SPOTS  0x0100
 #define SELECTOR_WIPE   0x0200

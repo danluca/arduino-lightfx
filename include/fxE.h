@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXE_H
 #define LIGHTFX_FXE_H
@@ -22,6 +22,8 @@ namespace FxE {
         JsonObject & describeConfig(JsonArray &json) const override;
 
         static void updateParams();
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxE2 : public LedEffect {
@@ -35,6 +37,8 @@ namespace FxE {
         void windDownPrep() override;
 
         void beatwave();
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxE3 : public LedEffect {
@@ -46,6 +50,8 @@ namespace FxE {
         void run() override;
 
         void windDownPrep() override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         const uint8_t sasquatchSize = 3;
@@ -68,6 +74,8 @@ namespace FxE {
 
         void serendipitous();
 
+        uint8_t selectionWeight() const override;
+
     protected:
         uint16_t Xorig = 0x012;
         uint16_t Yorig = 0x015;
@@ -84,6 +92,8 @@ namespace FxE {
         void run() override;
 
         void windDownPrep() override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         CRGBSet wave2, wave3;

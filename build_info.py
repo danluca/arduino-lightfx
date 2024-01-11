@@ -13,7 +13,7 @@ branch = (
 )
 buildTime=datetime.now()
 
-print("'-w'")
+# print("'-w'")
 # print("'-std=gnu++17'")
 # print("'-O2'")
 print("'-DGIT_COMMIT=\"%s\"'" % revision)

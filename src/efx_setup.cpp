@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #include "efx_setup.h"
 #include "log.h"
@@ -291,6 +291,60 @@ bool spreadColor(CRGBSet &set, CRGB color, uint8_t gradient) {
 }
 
 /**
+ * Moves the segment from old position to new position by leveraging blend, for a smooth transition
+ * @param target pixel set that receives the move - this is (much) larger in size than the segment
+ * @param segment the segment to move, will not be changed - this is (much) smaller in size than the target
+ * @param fromPos old position - the index where the segment is currently at in the target pixel set. The index is the next position from the END of the segment.
+ *  Ranges from 0 to target.size()+segment.size()
+ * @param toPos new position - the index where the segment needs to be moved at in the target pixel set. The index is the next position from the END of the segment.
+ *  Ranges from 0 to target.size()+segment.size()
+ * @return true when the move is complete, that is when the segment at new position in the target set matches the original segment completely (has blended)
+ */
+bool moveBlend(CRGBSet &target, const CRGBSet &segment, fract8 overlay, uint16_t fromPos, uint16_t toPos) {
+    const uint16_t segSize = abs(segment.len);  //we want segment reference to be constant, but the size() function is not marked const in the library
+    const uint16_t tgtSize = target.size();
+    const uint16_t maxSize = tgtSize + segSize;
+    if (fromPos == toPos || (fromPos >= maxSize && toPos >= maxSize))
+        return true;
+    bool isOldEndSegmentWithinTarget = fromPos < tgtSize;
+    bool isNewEndSegmentWithinTarget = toPos < tgtSize;
+    bool isOldStartSegmentWithinTarget = fromPos >= segSize;
+    bool isNewStartSegmentWithinTarget = toPos >= segSize;
+    CRGB bkg = isOldEndSegmentWithinTarget ? target[fromPos] : target[fromPos - segSize - 1];   //if old pos (pixel after segment end) wasn't within target boundaries, choose the pixel before the segment begin for background
+    uint16_t newPosTargetStart = qsuba(toPos, segSize);
+    uint16_t newPosTargetEnd = capu(toPos, target.size() - 1);
+    if (toPos > fromPos) {
+        if (isOldStartSegmentWithinTarget || isNewStartSegmentWithinTarget)
+            target(qsuba(fromPos, segSize), qsuba(newPosTargetStart, 1)).nblend(bkg, overlay);
+    } else {
+        if (isOldEndSegmentWithinTarget || isNewEndSegmentWithinTarget)
+            target(capu(fromPos, target.size()-1), qsuba(newPosTargetEnd, 1)).nblend(bkg, overlay);
+    }
+    uint16_t startIndexSeg = isNewStartSegmentWithinTarget ? 0 : segSize - toPos;
+    uint16_t endIndexSeg = isNewEndSegmentWithinTarget ? segSize - 1 : maxSize - toPos - 1;
+    CRGBSet sliceTarget((CRGB*)target, newPosTargetStart, newPosTargetEnd);
+    CRGBSet sliceSeg((CRGB*)segment, startIndexSeg, endIndexSeg);
+    sliceTarget.nblend(sliceSeg, overlay);
+    return areSame(sliceTarget, sliceSeg);
+}
+
+/**
+ * Are contents of the two sets the same - this is different than the == operator (that checks whether they point to the same thing)
+ * @param lhs left hand set
+ * @param rhs right hand set
+ * @return true if same length and same content
+ */
+bool areSame(const CRGBSet &lhs, const CRGBSet &rhs) {
+    if (abs(lhs.len) != abs(rhs.len))
+        return false;
+    for (uint16_t i = 0; i < (uint16_t)abs(lhs.len); ++i) {
+        if (lhs[i] != rhs[i])
+            return false;
+    }
+    return true;
+}
+
+/**
  * Replicate the source set into destination, repeating it as necessary to fill the entire destination
  * <p>Any overlaps between source and destination are skipped from replication - source set backing array is guaranteed unchanged</p>
  * @param src source set
@@ -365,7 +419,7 @@ void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, u
     }
 }
 
-uint16_t countLedsOn(CRGBSet *set, CRGB backg) {
+uint16_t countPixelsBrighter(CRGBSet *set, CRGB backg) {
     uint8_t bkgLuma = backg.getLuma();
     uint16_t ledsOn = 0;
     for (auto p: *set)
@@ -590,7 +644,18 @@ uint16_t EffectRegistry::curEffectPos() const {
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
     if (autoSwitch) {
-        currentEffect = random16(0, effectsCount);
+        //weighted randomization of the next effect index
+        uint16_t totalSelectionWeight = 0;
+        for (auto const *fx:effects)
+            totalSelectionWeight += fx->selectionWeight();  //this allows each effect's weight to vary with time, holiday, etc.
+        uint16_t rnd = random16(0, totalSelectionWeight);
+        for (uint16_t i = 0; i < effectsCount; ++i) {
+            rnd = qsuba(rnd, effects[i]->selectionWeight());
+            if (rnd == 0) {
+                currentEffect = i;
+                break;
+            }
+        }
         transitionEffect();
     }
     return currentEffect;

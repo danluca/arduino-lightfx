@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXC_H
 #define LIGHTFX_FXC_H
@@ -23,6 +23,8 @@ namespace FxC {
         void animationA();
 
         void animationB();
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxC2 : public LedEffect {
@@ -34,6 +36,8 @@ namespace FxC {
         void run() override;
 
         void windDownPrep() override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxC3 : public LedEffect {
@@ -47,6 +51,8 @@ namespace FxC {
         bool windDown() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxC4 : public LedEffect {
@@ -58,6 +64,8 @@ namespace FxC {
         void run() override;
 
         bool windDown() override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         uint8_t frequency {10};
@@ -78,6 +86,8 @@ namespace FxC {
 
         void matrix();
 
+        uint8_t selectionWeight() const override;
+
     protected:
         uint8_t palIndex = 95;
         bool hueRot = false;                                     // Does the hue rotate? 1 = yes
@@ -96,6 +106,8 @@ namespace FxC {
         bool windDown() override;
 
         void one_sine_pal(uint8_t colorIndex);
+
+        uint8_t selectionWeight() const override;
 
     protected:
         uint8_t allfreq = 32;                                     // You can change the frequency, thus distance between bars.

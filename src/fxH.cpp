@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category H of light effects
@@ -154,6 +154,9 @@ void FxH1::windDownPrep() {
     transEffect.prepare(random8());
 }
 
+uint8_t FxH1::selectionWeight() const {
+    return paletteFactory.getHoliday() == Halloween ? 64 : 32;
+}
 
 // FxH2
 FxH2::FxH2() : LedEffect(fxh2Desc) {}
@@ -211,6 +214,10 @@ void FxH2::windDownPrep() {
     transEffect.prepare(random8());
 }
 
+uint8_t FxH2::selectionWeight() const {
+    return 24;
+}
+
 /**
  * fill_colours - TBD whether to keep, too close to rainbow march, etc.
  *
@@ -264,4 +271,8 @@ JsonObject & FxH3::describeConfig(JsonArray &json) const {
 
 void FxH3::windDownPrep() {
     transEffect.prepare(random8());
+}
+
+uint8_t FxH3::selectionWeight() const {
+    return 18;
 }

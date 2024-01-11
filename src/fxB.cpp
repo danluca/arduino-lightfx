@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category B of light effects
@@ -62,11 +62,14 @@ void FxB::rainbow() {
     replicateSet(tpl, others);
 }
 
-
 JsonObject &FxB1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
+}
+
+uint8_t FxB1::selectionWeight() const {
+    return 15;
 }
 
 //FXB2
@@ -102,6 +105,10 @@ void FxB::addGlitter(fract8 chanceOfGlitter) {
     }
 }
 
+uint8_t FxB2::selectionWeight() const {
+    return 40;
+}
+
 //FXB3
 FxB3::FxB3() : LedEffect(fxb3Desc) {}
 
@@ -124,7 +131,7 @@ void FxB3::run() {
         fxb_confetti();
     }
     EVERY_N_SECONDS(133) {
-        if (countLedsOn(&tpl) > 10)
+        if (countPixelsBrighter(&tpl) > 10)
             mode = TurnOff;
     }
 }
@@ -146,6 +153,10 @@ JsonObject &FxB3::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
+}
+
+uint8_t FxB3::selectionWeight() const {
+    return 24;
 }
 
 //FXB4
@@ -181,6 +192,10 @@ JsonObject &FxB4::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
+}
+
+uint8_t FxB4::selectionWeight() const {
+    return 20;
 }
 
 //FXB5
@@ -228,6 +243,10 @@ JsonObject &FxB5::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+uint8_t FxB5::selectionWeight() const {
+    return 30;
+}
+
 //FXB6
 FxB6::FxB6() : LedEffect(fxb6Desc) {}
 
@@ -255,6 +274,10 @@ void FxB::bpm() {
     replicateSet(tpl, others);
     hue += 8;  // slowly cycle the "base color" through the rainbow
     FastLED.show(stripBrightness);
+}
+
+uint8_t FxB6::selectionWeight() const {
+    return 20;
 }
 
 //FXB7
@@ -302,6 +325,10 @@ JsonObject &FxB7::describeConfig(JsonArray &json) const {
     return obj;
 }
 
+uint8_t FxB7::selectionWeight() const {
+    return 10;
+}
+
 //FXB8
 FxB8::FxB8() : LedEffect(fxb8Desc) {}
 
@@ -346,6 +373,10 @@ JsonObject &FxB8::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
     obj["brightness"] = brightness;
     return obj;
+}
+
+uint8_t FxB8::selectionWeight() const {
+    return 15;
 }
 
 // FxB9
@@ -405,3 +436,7 @@ void FxB::juggle_long() {
 }
 
 FxB9::FxB9() : LedEffect(fxb9Desc) {}
+
+uint8_t FxB9::selectionWeight() const {
+    return 14;
+}

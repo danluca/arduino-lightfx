@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category D of light effects
@@ -92,6 +92,10 @@ bool FxD1::windDown() {
     return transEffect.offSpots();
 }
 
+uint8_t FxD1::selectionWeight() const {
+    return 21;
+}
+
 // Fx D2
 /**
  * dots By: John Burroughs
@@ -138,6 +142,10 @@ void FxD2::dot_beat() {
 
 bool FxD2::windDown() {
     return transEffect.offWipe(true);
+}
+
+uint8_t FxD2::selectionWeight() const {
+    return 20;
 }
 
 // Fx D3
@@ -189,6 +197,10 @@ void FxD3::windDownPrep() {
     transEffect.prepare(SELECTOR_WIPE + random8());
 }
 
+uint8_t FxD3::selectionWeight() const {
+    return 24;
+}
+
 // Fx D4
 FxD4::FxD4() : LedEffect(fxd4Desc) {}
 
@@ -237,6 +249,10 @@ void FxD4::rainbow_march() {
 
 bool FxD4::windDown() {
     return transEffect.offSpots();
+}
+
+uint8_t FxD4::selectionWeight() const {
+    return 18;
 }
 
 // Fx D5
@@ -310,3 +326,6 @@ void ripple::Init(CRGBSet *set) {
     step = 0;
 }
 
+uint8_t FxD5::selectionWeight() const {
+    return 42;
+}

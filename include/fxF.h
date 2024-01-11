@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 #ifndef ARDUINO_LIGHTFX_FXF_H
 #define ARDUINO_LIGHTFX_FXF_H
@@ -17,6 +17,8 @@ namespace FxF {
         void run() override;
 
         bool windDown() override;
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxF2 : public LedEffect {
@@ -28,6 +30,8 @@ namespace FxF {
         void run() override;
 
         bool windDown() override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         void makePattern(uint8_t hue);
@@ -80,6 +84,8 @@ namespace FxF {
 
         EyeBlink *findAvailableEye();
 
+        uint8_t selectionWeight() const override;
+
     protected:
         static const uint8_t maxEyes = 5;   //correlated with size of a FRAME
         EyeBlink eyes[maxEyes]{};
@@ -95,12 +101,18 @@ namespace FxF {
 
         bool windDown() override;
 
+        uint8_t selectionWeight() const override;
+
     protected:
         enum FxState {Bounce, Reduce, Flash};
         static const uint8_t dotSize = 4;
+        static const uint8_t wiggleRoom = 10;   //how many pixels variance for the bouncy point
+        static const uint16_t upLim = (FRAME_SIZE + dotSize + wiggleRoom)/2;
         FxState fxState;
-        CRGBSet set1, set2mir;
-        uint16_t bouncyCurve[(FRAME_SIZE+dotSize)/2]{};     //must be equal with (FRAME_SIZE+dotSize)/2
+        CRGBSet set1, set2;
+        int16_t ofs;
+        uint16_t bouncyCurve[upLim]{};     //must be equal with (FRAME_SIZE+dotSize)/2
+        void offsetBounce(const CRGB &feed) const;
     };
 
     struct Spark {
@@ -125,6 +137,8 @@ namespace FxF {
         void run() override;
 
         bool windDown() override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         //Spark sparks[NUM_SPARKS]{};
