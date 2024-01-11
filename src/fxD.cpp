@@ -242,8 +242,10 @@ void FxD4::rainbow_march() {
         tpl.fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
           ColorFromPalette(palette, hue+128, brightness),
           ColorFromPalette(palette, 255-hue, brightness));
-    else
+    else {
         tpl.fill_rainbow(hue, hueDiff);           // I don't change hueDiff on the fly as it's too fast near the end of the strip.
+        tpl.nscale8(brightness);
+    }
     replicateSet(tpl, others);
 }
 

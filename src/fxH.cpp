@@ -253,8 +253,10 @@ void FxH3::run() {
             tpl(1, FRAME_SIZE-2).fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
               ColorFromPalette(palette, hue+128, brightness),
               ColorFromPalette(palette, 255-hue, brightness));
-        else
-            tpl(1, FRAME_SIZE-2).fill_rainbow(hue, hueDiff);
+        else {
+            tpl(1, FRAME_SIZE - 2).fill_rainbow(hue, hueDiff);
+            tpl.nscale8(brightness);
+        }
         hue += 3;
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);

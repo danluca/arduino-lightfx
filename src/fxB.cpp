@@ -57,8 +57,10 @@ void FxB::rainbow() {
         tpl.fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
                               ColorFromPalette(palette, hue + 128, brightness),
                               ColorFromPalette(palette, 255 - hue, brightness));
-    else
+    else {
         tpl.fill_rainbow(hue, 7);
+        tpl.nscale8(brightness);
+    }
     replicateSet(tpl, others);
 }
 
@@ -95,7 +97,6 @@ void FxB2::run() {
  */
 void FxB::rainbowWithGlitter() {
     rainbow();
-    nscale8(leds, NUM_PIXELS, brightness);
     addGlitter(80);
 }
 
