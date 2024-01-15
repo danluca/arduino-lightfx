@@ -133,16 +133,14 @@ Assumptions:
 * the custom tools folder exists at `~/Code/Tools`
 * current working folder is `~/Code/Arduino/repos/arduino-lightfx` 
 
-At a shell prompt, execute the command below to download the OpenOCD package customized by Earle Philhower specifically for RP2040:
+From Earle Philhower's [Pico Quick Toolchain](https://github.com/earlephilhower/pico-quick-toolchain/releases) download the 
+latest [OpenOCD tool](https://github.com/earlephilhower/pico-quick-toolchain/releases/download/2.1.0-a/aarch64-linux-gnu.openocd-4d87f6dca.230911.tar.gz) 
+(file `aarch64-linux-gnu.openocd-4d87f6dca.230911.tar.gz` for Ubuntu) - as of this writing, the latest is version 2.1.0-a from Sep 11, 2023.
 
-`pio pkg install --tool "earlephilhower/tool-openocd-rp2040-earlephilhower"`
+Decompress this archive to `~/Code/Tools/openocd-rp2040-earle` folder.
 
-Make a copy of this package in your home folder and rename it to something simpler, e.g.:
-
-```shell
-cp -rf ~/.platformio/packages/tool-openocd-rp2040-earlephilhower ~/Code/Tools/
-mv ~/Code/Tools/tool-openocd-rp2040-earlephilhower ~/Code/Tools/openocd-rp2040-earle
-````
+_Note: It is also worth checking the platformio registry for [Earle Philhower's OpenOCD for RP2040](https://registry.platformio.org/tools/earlephilhower/tool-openocd-rp2040-earlephilhower) - 
+check the published date (hover over it with mouse). For instance, as of this writing, the version on PlatformIO is from Feb 18, 2023 (version 5.100300.230216)_ 
 
 Clone the [OpenOCD](https://github.com/raspberrypi/openocd.git) git repository for RP2040 and switch to branch `rp2040-v0.12.0`:
 
@@ -175,9 +173,9 @@ As indicated by the platform config file - `~/.platformio/platforms/raspberrypi/
       "version": "~2.1100.0"
     }
 ```
-Ensure you have the `arduino-lightfx` repository open in VSCode and open the `platformio.ini` file.
+Ensure you have the `arduino-lightfx` repository open in VSCode and open the `platformio.ini` file - keep it open while running the commands below.
 
-Run the following commands one time to:
+In the terminal, run the following commands one time to:
 * remove the configured OpenOCD package as it will collide with the custom one we'll install
   * if this package hasn't been downloaded yet, run either `pio pkg update` (update project packages) or `pio run` (builds the project, and it will resolve dependencies)  
 * create a PlatformIO symbolic link to our custom OpenOCD package for this dependency (update your user name)
@@ -188,7 +186,8 @@ pio pkg install --tool "tool-openocd-raspberrypi=symlink:///home/dan/Code/Tools/
 ```
 Note you can choose `file://` instead of `symlink://` prefix and the custom OpenOCD will be copied into PlatformIO packages location instead of linked to your home folder.
 
-One of the side effects of this command is to re-write the platformio.ini file and remove all comments - in VSCode simply press CTRL+Z to undo those changes.
+One of the side effects of this command is to re-write the platformio.ini file and remove all comments - in VSCode simply press CTRL+Z to undo those changes (this is why we keep the file open in editor).
+
 Replace the debug environment with following (adjust for your home path):
 ```ini
 [env:rp2040-dbg]
@@ -238,7 +237,8 @@ VSCode is assumed to be the IDE with the codebase open.
         },
 ```
 * Note that upon finishing setting up the environment, the VSCode will show an error pop-up in the _Debug Console_ tab that states it cannot parse the SVD file.
-The error is known and talked about in the community (message is rather cryptic) and at this time we don't have a fix (suspect the PlatformIO parser as root cause - note other SVD files are loaded properly).
+The error is known and [talked about in the community](https://github.com/platformio/platform-raspberrypi/issues/21) (message is rather cryptic) and at this time 
+we don't have a fix (suspect the PlatformIO parser as root cause - note other SVD files are loaded properly).
 The effect is that _Peripherals_ panel in the debugger is not populated, CPU registries have generic names, etc. but it won't prevent the breakpoints, stepping through the code or variable inspection.
 * The execution should stop somewhere in a main.cpp file and from there you can setup breakpoints in your own code 
 
