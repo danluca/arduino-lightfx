@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category F of light effects
@@ -62,7 +62,11 @@ void FxF1::run() {
 }
 
 bool FxF1::windDown() {
-    return turnOffSpots();
+    return transEffect.offSpots();
+}
+
+uint8_t FxF1::selectionWeight() const {
+    return 12;
 }
 
 // FxF2
@@ -112,7 +116,11 @@ void FxF2::makePattern(uint8_t hue) {
 }
 
 bool FxF2::windDown() {
-    return turnOffWipe(false);
+    return transEffect.offWipe(false);
+}
+
+uint8_t FxF2::selectionWeight() const {
+    return paletteFactory.getHoliday() == Halloween ? 42 : 24;
 }
 
 // FxF3
@@ -203,7 +211,11 @@ Viewport FxF3::nextEyePos() {
 }
 
 bool FxF3::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
+}
+
+uint8_t FxF3::selectionWeight() const {
+    return paletteFactory.getHoliday() == Halloween ? 42 : 24;
 }
 
 /**
@@ -314,17 +326,17 @@ bool EyeBlink::isActive() const {
 void FxF4::setup() {
     LedEffect::setup();
     hue = 0;
-    hueDiff = 9;
+    hueDiff = 11;
     curPos = 0;
     delta = 0;
     dirFwd = true;
     brightness = 200;
     dist = 0;
+    ofs = random8(wiggleRoom);
 }
 
 void FxF4::run() {
     EVERY_N_MILLISECONDS_I(fxf4Timer, 50) {
-        uint16_t upLim = (tpl.size() + dotSize)/2;
         switch (fxState) {
             case Bounce:
                 if (delta > 0) {
@@ -336,7 +348,8 @@ void FxF4::run() {
                         shiftLeft(set1, feed);
                         curPos--;
                     }
-                    set2mir = set1;
+                    set2 = set1;
+                    tpl = frame(ofs, ofs+tpl.size()-1);
                     delta--;
                 } else {
                     uint16_t easePos = bouncyCurve[dist++];
@@ -354,7 +367,8 @@ void FxF4::run() {
             case Reduce:
                 if (delta > 0) {
                     shiftRight(set1, BKG);
-                    set2mir = set1;
+                    set2 = set1;
+                    tpl = frame(ofs, ofs+tpl.size()-1);
                     delta--;
                 } else {
                     fxState = Flash;
@@ -363,16 +377,19 @@ void FxF4::run() {
                 break;
             case Flash:
                 if (delta > 0) {
-                    set1[set1.size()-1] = set2mir[set2mir.size()-1] = CRGB::White;
+                    set1[set1.size()-1] = set2[set2.size() - 1] = CRGB::White;
+                    tpl = frame(ofs, ofs+tpl.size()-1);
                     delta--;
                     fxf4Timer.setPeriod(10);
                 } else {
                     //turn off flash pixels
-                    set1[set1.size()-1] = set2mir[set2mir.size()-1] = BKG;
+                    set1[set1.size()-1] = set2[set2.size() - 1] = BKG;
+                    tpl = frame(ofs, ofs+tpl.size()-1);
                     //start over
                     curPos = 0;
                     delta = 0;
                     dist = 0;
+                    ofs = random8(wiggleRoom);
                     fxState = Bounce;
                     fxf4Timer.setPeriod(50);
                 }
@@ -384,15 +401,45 @@ void FxF4::run() {
     }
 }
 
-FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(tpl(0, tpl.size() / 2 - 1)), set2mir(tpl(tpl.size() - 1, tpl.size() / 2)) {
-    short upLim = (tpl.size() + dotSize)/2;
+void FxF4::offsetBounce(const CRGB &feed) const {
+    if (ofs != 0) {
+        if (curPos >= dotSize) {
+            if (ofs > 0)
+                shiftRight(tpl, BKG, (Viewport) 0, ofs);
+            else
+                shiftLeft(tpl, BKG, (Viewport) 0, abs(ofs));
+        } else {
+            if (abs(ofs) + curPos > dotSize) {
+                if (ofs > 0) {
+                    shiftRight(tpl, feed, (Viewport) 0, dotSize - curPos);
+                    shiftRight(tpl, BKG, (Viewport) 0, ofs + curPos - dotSize);
+                } else {
+                    shiftLeft(tpl, feed, (Viewport) 0, dotSize - curPos);
+                    shiftLeft(tpl, BKG, (Viewport) 0, abs(ofs) + curPos - dotSize);
+                }
+            } else {
+                if (ofs > 0)
+                    shiftRight(tpl, feed, (Viewport) 0, ofs);
+                else
+                    shiftLeft(tpl, feed, (Viewport) 0, abs(ofs));
+            }
+        }
+    }
+}
+
+FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(frame(0, (tpl.size() + wiggleRoom)/ 2 - 1)), set2(frame(tpl.size() + wiggleRoom - 1, (tpl.size() + wiggleRoom)/2)) {
+    ofs = wiggleRoom/2;
     for (short x = 0; x < upLim; x++)
         bouncyCurve[x] = easeOutBounce(x, upLim - 1);
 
 }
 
 bool FxF4::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
+}
+
+uint8_t FxF4::selectionWeight() const {
+    return paletteFactory.getHoliday() == Halloween ? 12 : 42;
 }
 
 // FxF5 - algorithm by Carl Rosendahl, adapted from code published at https://www.anirama.com/1000leds/1d-fireworks/
@@ -524,5 +571,9 @@ void FxF5::explode() const {
 }
 
 bool FxF5::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
+}
+
+uint8_t FxF5::selectionWeight() const {
+    return paletteFactory.getHoliday() == Halloween ? 10 : 64;
 }

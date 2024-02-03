@@ -8,6 +8,8 @@
 #include <Arduino.h>
 #include <Arduino_LSM6DSOX.h>
 #include <ArduinoECCX08.h>
+#include <queue>
+#include <deque>
 #include "timeutil.h"
 #include "config.h"
 #include "secrets.h"
@@ -52,5 +54,21 @@ uint8_t secRandom8(uint8_t minLim = 0, uint8_t maxLim = 0);
 uint16_t secRandom16(uint16_t minLim = 0, uint16_t maxLim = 0);
 uint32_t secRandom(uint32_t minLim = 0, uint32_t maxLim = 0);
 bool secElement_setup();
+
+template <typename T, int MaxSize, typename Container = std::deque<T>> class FixedQueue : public std::queue<T, Container> {
+public:
+    void push(const T& value) {
+        if (this->size() == MaxSize)
+            this->c.pop_front();
+        std::queue<T, Container>::push(value);
+    };
+    typedef typename Container::iterator iterator;
+    typedef typename Container::const_iterator const_iterator;
+
+    iterator begin() { return this->c.begin(); }
+    iterator end() { return this->c.end(); }
+    const_iterator begin() const { return this->c.begin(); }
+    const_iterator end() const { return this->c.end(); }
+};
 
 #endif //ARDUINO_LIGHTFX_UTIL_H

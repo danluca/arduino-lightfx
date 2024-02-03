@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category B of light effects
@@ -41,6 +41,7 @@ void FxB1::setup() {
     LedEffect::setup();
     hue = 0;
     brightness = 148;
+    transEffect.prepare(random8());
 }
 
 void FxB1::run() {
@@ -56,11 +57,12 @@ void FxB::rainbow() {
         tpl.fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
                               ColorFromPalette(palette, hue + 128, brightness),
                               ColorFromPalette(palette, 255 - hue, brightness));
-    else
+    else {
         tpl.fill_rainbow(hue, 7);
+        tpl.nscale8(brightness);
+    }
     replicateSet(tpl, others);
 }
-
 
 JsonObject &FxB1::describeConfig(JsonArray &json) const {
     JsonObject obj = LedEffect::describeConfig(json);
@@ -68,8 +70,8 @@ JsonObject &FxB1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxB1::windDown() {
-    return turnOffSpots();
+uint8_t FxB1::selectionWeight() const {
+    return 15;
 }
 
 //FXB2
@@ -79,6 +81,7 @@ void FxB2::setup() {
     LedEffect::setup();
     hue = 0;
     brightness = 148;
+    transEffect.prepare(random8());
 }
 
 void FxB2::run() {
@@ -89,16 +92,11 @@ void FxB2::run() {
     }
 }
 
-bool FxB2::windDown() {
-    return turnOffWipe(false);
-}
-
 /**
  * Built-in FastLED rainbow, plus some random sparkly glitter.
  */
 void FxB::rainbowWithGlitter() {
     rainbow();
-    nscale8(leds, NUM_PIXELS, brightness);
     addGlitter(80);
 }
 
@@ -108,6 +106,10 @@ void FxB::addGlitter(fract8 chanceOfGlitter) {
     }
 }
 
+uint8_t FxB2::selectionWeight() const {
+    return 40;
+}
+
 //FXB3
 FxB3::FxB3() : LedEffect(fxb3Desc) {}
 
@@ -115,19 +117,22 @@ void FxB3::setup() {
     LedEffect::setup();
     hue = 0;
     brightness = 148;
+    transEffect.prepare(random8());
 }
 
 void FxB3::run() {
     if (mode == TurnOff) {
-        if (turnOffWipe(true))
+        if (transEffect.transition())
             mode = Chase;
+        else
+            return;
     }
 
     EVERY_N_MILLISECONDS(50) {
         fxb_confetti();
     }
     EVERY_N_SECONDS(133) {
-        if (countLedsOn(&tpl) > 10)
+        if (countPixelsBrighter(&tpl) > 10)
             mode = TurnOff;
     }
 }
@@ -151,8 +156,8 @@ JsonObject &FxB3::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxB3::windDown() {
-    return turnOffWipe(true);
+uint8_t FxB3::selectionWeight() const {
+    return 24;
 }
 
 //FXB4
@@ -162,6 +167,7 @@ void FxB4::setup() {
     LedEffect::setup();
     hue = 0;
     brightness = 192;
+    transEffect.prepare(random8());
 }
 
 void FxB4::run() {
@@ -189,8 +195,8 @@ JsonObject &FxB4::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxB4::windDown() {
-    return turnOffWipe(false);
+uint8_t FxB4::selectionWeight() const {
+    return 20;
 }
 
 //FXB5
@@ -199,6 +205,7 @@ FxB5::FxB5() : LedEffect(fxb5Desc) {}
 void FxB5::setup() {
     LedEffect::setup();
     brightness = BRIGHTNESS;
+    transEffect.prepare(random8());
 }
 
 void FxB5::run() {
@@ -237,8 +244,8 @@ JsonObject &FxB5::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxB5::windDown() {
-    return turnOffWipe(false);
+uint8_t FxB5::selectionWeight() const {
+    return 30;
 }
 
 //FXB6
@@ -248,16 +255,13 @@ void FxB6::setup() {
     LedEffect::setup();
     hue = 0;
     brightness = 148;
+    transEffect.prepare(random8());
 }
 
 void FxB6::run() {
     EVERY_N_MILLISECONDS(50) {
         bpm();
     }
-}
-
-bool FxB6::windDown() {
-    return turnOffWipe(false);
 }
 
 void FxB::bpm() {
@@ -273,6 +277,10 @@ void FxB::bpm() {
     FastLED.show(stripBrightness);
 }
 
+uint8_t FxB6::selectionWeight() const {
+    return 20;
+}
+
 //FXB7
 FxB7::FxB7() : LedEffect(fxb7Desc) {}
 
@@ -280,6 +288,7 @@ void FxB7::setup() {
     LedEffect::setup();
     hue = 0;
     brightness = 148;
+    transEffect.prepare(random8());
 }
 
 void FxB7::run() {
@@ -317,8 +326,8 @@ JsonObject &FxB7::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxB7::windDown() {
-    return turnOffWipe(true);
+uint8_t FxB7::selectionWeight() const {
+    return 10;
 }
 
 //FXB8
@@ -328,6 +337,7 @@ void FxB8::setup() {
     LedEffect::setup();
     hue = 0;
     brightness = 148;
+    transEffect.prepare(random8());
 }
 
 void FxB8::run() {
@@ -366,8 +376,8 @@ JsonObject &FxB8::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxB8::windDown() {
-    return turnOffWipe(true);
+uint8_t FxB8::selectionWeight() const {
+    return 15;
 }
 
 // FxB9
@@ -378,6 +388,7 @@ void FxB9::setup() {
     hueDiff = 16;   // Incremental change in hue between each dot.
     hue = 0;    // Starting hue.
     dotBpm = 5; // Higher = faster movement.
+    transEffect.prepare(random8());
 }
 
 void FxB9::run() {
@@ -427,6 +438,6 @@ void FxB::juggle_long() {
 
 FxB9::FxB9() : LedEffect(fxb9Desc) {}
 
-bool FxB9::windDown() {
-    return turnOffSpots();
+uint8_t FxB9::selectionWeight() const {
+    return 14;
 }

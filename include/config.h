@@ -32,6 +32,7 @@
 // Board 1 is the dev board. We have 2 boards.
 #define BOARD_ID    1
 
+// Board specific configurations
 #if BOARD_ID == 1
 
 // static IP - alternatively, the router can be configured to reserve IPs based on MAC

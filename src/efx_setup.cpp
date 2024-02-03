@@ -1,12 +1,11 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #include "efx_setup.h"
 #include "log.h"
 
 //~ Global variables definition
-#define JSON_DOC_SIZE   512
-const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
+#define STATE_JSON_DOC_SIZE   512
 const uint8_t dimmed = 20;
 const char csAutoFxRoll[] = "autoFxRoll";
 const char csStripBrightness[] = "stripBrightness";
@@ -33,7 +32,6 @@ CRGBPalette16 targetPalette;
 OpMode mode = Chase;
 uint8_t brightness = 224;
 uint8_t stripBrightness = brightness;
-bool stripBrightnessLocked = false;
 uint8_t colorIndex = 0;
 uint8_t lastColorIndex = 0;
 uint8_t fade = 8;
@@ -48,12 +46,14 @@ uint16_t hueDiff = 256;
 uint16_t totalAudioBumps = 0;
 int8_t rot = 1;
 int32_t dist = 1;
+bool stripBrightnessLocked = false;
 bool dirFwd = true;
 bool randhue = true;
 float minVcc = 12.0f;
 float maxVcc = 0.0f;
 float minTemp = 100.0f;
 float maxTemp = 0.0f;
+EffectTransition transEffect;
 
 //~ Support functions -----------------
 /**
@@ -73,7 +73,7 @@ void readState() {
     String json;
     size_t stateSize = readTextFile(stateFileName, &json);
     if (stateSize > 0) {
-        StaticJsonDocument<JSON_DOC_SIZE> doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+        StaticJsonDocument<STATE_JSON_DOC_SIZE> doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
         deserializeJson(doc, json);
 
         bool autoAdvance = doc[csAutoFxRoll].as<bool>();
@@ -99,7 +99,7 @@ void readState() {
 }
 
 void saveState() {
-    StaticJsonDocument<JSON_DOC_SIZE> doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+    StaticJsonDocument<STATE_JSON_DOC_SIZE> doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
     doc[csRandomSeed] = random16_get_seed();
     doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
     doc[csCurFx] = fxRegistry.curEffectPos();
@@ -268,6 +268,83 @@ void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp, uint16_t pos) {
 }
 
 /**
+ * Spread the color provided into the pixels set starting from the left, in gradient steps
+ * Note that while the color is spread, the rest of the pixels in the set remain in place - this is
+ * different than shifting the set while feeding the color from one end
+ * @param set LED strip to update
+ * @param color the color to spread
+ * @param gradient amount of gradient to use per each spread call
+ * @return true when all pixels in the set are at full spread color value
+ */
+bool spreadColor(CRGBSet &set, CRGB color, uint8_t gradient) {
+    uint16_t clrPos = 0;
+    while ((set[clrPos] == color) && clrPos < set.size())
+        clrPos++;
+
+    if (clrPos == set.size())
+        return true;
+
+    //the nblend takes care about the edge cases of gradient 0 and 255. When 0 it returns the source color unchanged;
+    //when 255 it replaces source color entirely with the overlay
+    nblend(set[clrPos], color, gradient);
+    return false;
+}
+
+/**
+ * Moves the segment from old position to new position by leveraging blend, for a smooth transition
+ * @param target pixel set that receives the move - this is (much) larger in size than the segment
+ * @param segment the segment to move, will not be changed - this is (much) smaller in size than the target
+ * @param fromPos old position - the index where the segment is currently at in the target pixel set. The index is the next position from the END of the segment.
+ *  Ranges from 0 to target.size()+segment.size()
+ * @param toPos new position - the index where the segment needs to be moved at in the target pixel set. The index is the next position from the END of the segment.
+ *  Ranges from 0 to target.size()+segment.size()
+ * @return true when the move is complete, that is when the segment at new position in the target set matches the original segment completely (has blended)
+ */
+bool moveBlend(CRGBSet &target, const CRGBSet &segment, fract8 overlay, uint16_t fromPos, uint16_t toPos) {
+    const uint16_t segSize = abs(segment.len);  //we want segment reference to be constant, but the size() function is not marked const in the library
+    const uint16_t tgtSize = target.size();
+    const uint16_t maxSize = tgtSize + segSize;
+    if (fromPos == toPos || (fromPos >= maxSize && toPos >= maxSize))
+        return true;
+    bool isOldEndSegmentWithinTarget = fromPos < tgtSize;
+    bool isNewEndSegmentWithinTarget = toPos < tgtSize;
+    bool isOldStartSegmentWithinTarget = fromPos >= segSize;
+    bool isNewStartSegmentWithinTarget = toPos >= segSize;
+    CRGB bkg = isOldEndSegmentWithinTarget ? target[fromPos] : target[fromPos - segSize - 1];   //if old pos (pixel after segment end) wasn't within target boundaries, choose the pixel before the segment begin for background
+    uint16_t newPosTargetStart = qsuba(toPos, segSize);
+    uint16_t newPosTargetEnd = capu(toPos, target.size() - 1);
+    if (toPos > fromPos) {
+        if (isOldStartSegmentWithinTarget || isNewStartSegmentWithinTarget)
+            target(qsuba(fromPos, segSize), qsuba(newPosTargetStart, 1)).nblend(bkg, overlay);
+    } else {
+        if (isOldEndSegmentWithinTarget || isNewEndSegmentWithinTarget)
+            target(capu(fromPos, target.size()-1), qsuba(newPosTargetEnd, 1)).nblend(bkg, overlay);
+    }
+    uint16_t startIndexSeg = isNewStartSegmentWithinTarget ? 0 : segSize - toPos;
+    uint16_t endIndexSeg = isNewEndSegmentWithinTarget ? segSize - 1 : maxSize - toPos - 1;
+    CRGBSet sliceTarget((CRGB*)target, newPosTargetStart, newPosTargetEnd);
+    CRGBSet sliceSeg((CRGB*)segment, startIndexSeg, endIndexSeg);
+    sliceTarget.nblend(sliceSeg, overlay);
+    return areSame(sliceTarget, sliceSeg);
+}
+
+/**
+ * Are contents of the two sets the same - this is different than the == operator (that checks whether they point to the same thing)
+ * @param lhs left hand set
+ * @param rhs right hand set
+ * @return true if same length and same content
+ */
+bool areSame(const CRGBSet &lhs, const CRGBSet &rhs) {
+    if (abs(lhs.len) != abs(rhs.len))
+        return false;
+    for (uint16_t i = 0; i < (uint16_t)abs(lhs.len); ++i) {
+        if (lhs[i] != rhs[i])
+            return false;
+    }
+    return true;
+}
+
+/**
  * Replicate the source set into destination, repeating it as necessary to fill the entire destination
  * <p>Any overlaps between source and destination are skipped from replication - source set backing array is guaranteed unchanged</p>
  * @param src source set
@@ -342,7 +419,7 @@ void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, u
     }
 }
 
-uint16_t countLedsOn(CRGBSet *set, CRGB backg) {
+uint16_t countPixelsBrighter(CRGBSet *set, CRGB backg) {
     uint8_t bkgLuma = backg.getLuma();
     uint16_t ledsOn = 0;
     for (auto p: *set)
@@ -420,8 +497,8 @@ CRGB adjustBrightness(CRGB color, uint8_t bright) {
 
 /**
  * Blend multiply 2 colors
- * @param blendLayer base color, which is also the target (the one receiving the result)
- * @param topLayer color to multiply with
+ * @param blendRGB base color, which is also the target (the one receiving the result)
+ * @param topRGB color to multiply with
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
 void blendMultiply(CRGB &blendRGB, const CRGB &topRGB) {
@@ -490,74 +567,6 @@ void blendOverlay(CRGB &blendRGB, const CRGB &topRGB) {
 void blendOverlay(CRGBSet &blendLayer, const CRGBSet &topLayer) {
     for (CRGBSet::iterator bt = blendLayer.begin(), tp=topLayer.begin(), btEnd = blendLayer.end(), tpEnd = topLayer.end(); bt != btEnd && tp != tpEnd; ++bt, ++tp)
         blendOverlay(*bt, *tp);
-}
-
-/**
- * Turns off entire strip by random spots, in increasing size until all leds are off
- * <p>Implemented with timers, no delay - that is why this function needs called repeatedly until it returns true</p>
- * @return true if all leds are off, false otherwise
- */
-bool turnOffSpots() {
-    static uint16_t led = 0;
-    static uint16_t xOffNow = 0;
-    static uint16_t szOffNow = turnOffSeq[xOffNow];
-    static uint8_t offFade = random8(42, 110);
-    static bool setOff = false;
-    bool allOff = false;
-
-    EVERY_N_MILLISECONDS(30) {
-        uint8_t ledsOn = 0;
-        for (uint16_t x = 0; x < szOffNow; x++) {
-            uint16_t xled = stripShuffleIndex[(led + x)%NUM_PIXELS];
-            FastLED.leds()[xled].fadeToBlackBy(offFade);
-            if (FastLED.leds()[xled].getLuma() < 4)
-                FastLED.leds()[xled] = BKG;
-            else
-                ledsOn++;
-        }
-        FastLED.show(stripBrightness);
-        setOff = ledsOn == 0;
-    }
-
-    EVERY_N_MILLISECONDS(500) {
-        if (setOff) {
-            led = inc(led, szOffNow, NUM_PIXELS);
-            xOffNow = capu(xOffNow + 1, arrSize(turnOffSeq) - 1);
-            szOffNow = turnOffSeq[xOffNow];
-            setOff = false;
-            offFade = random8(42, 110);
-        }
-        allOff = !isAnyLedOn(FastLED.leds(), FastLED.size(), BKG);
-    }
-    //if we're turned off all LEDs, reset the static variables for next time
-    if (allOff) {
-        led = 0;
-        xOffNow = 0;
-        szOffNow = turnOffSeq[xOffNow];
-        setOff = false;
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Turns off entire strip by leveraging the shift right with black feed
- * @return true if all leds are off, false otherwise
- */
-bool turnOffWipe(bool rightDir) {
-    bool allOff = false;
-    EVERY_N_MILLISECONDS(60) {
-        CRGBSet strip(leds, NUM_PIXELS);
-        if (rightDir)
-            shiftRight(strip, BKG);
-        else
-            shiftLeft(strip, BKG);
-        FastLED.show(stripBrightness);
-        allOff = !isAnyLedOn(&strip, BKG);
-    }
-
-    return allOff;
 }
 
 /**
@@ -635,7 +644,18 @@ uint16_t EffectRegistry::curEffectPos() const {
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
     if (autoSwitch) {
-        currentEffect = random16(0, effectsCount);
+        //weighted randomization of the next effect index
+        uint16_t totalSelectionWeight = 0;
+        for (auto const *fx:effects)
+            totalSelectionWeight += fx->selectionWeight();  //this allows each effect's weight to vary with time, holiday, etc.
+        uint16_t rnd = random16(0, totalSelectionWeight);
+        for (uint16_t i = 0; i < effectsCount; ++i) {
+            rnd = qsuba(rnd, effects[i]->selectionWeight());
+            if (rnd == 0) {
+                currentEffect = i;
+                break;
+            }
+        }
         transitionEffect();
     }
     return currentEffect;
@@ -644,29 +664,25 @@ uint16_t EffectRegistry::nextRandomEffectPos() {
 void EffectRegistry::transitionEffect() const {
     if (currentEffect != lastEffectRun) {
         effects[lastEffectRun]->desiredState(Idle);
+        transEffect.setup();
     }
     effects[currentEffect]->desiredState(Running);
 }
 
 uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
-    if (effectsCount < MAX_EFFECTS_COUNT) {
-        uint8_t curIndex = effectsCount++;
-        effects[curIndex] = effect;
-        Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), curIndex);
-        return curIndex;
-    }
-
-    Log.errorln(F("Effects array is FULL, no more effects accepted - this effect NOT registered [%s]"), effect->name());
-    return MAX_EFFECTS_COUNT;
+    effects.push_back(effect);  //pushing from the back to preserve the order or insertion during iteration
+    effectsCount = effects.size();
+    Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), effectsCount-1);
+    return effectsCount-1;
 }
 
 /**
  * Sets the desired state for all effects to setup. It will essentially make each effect ready to run if invoked - the state machine will ensure the setup() is called first
  */
 void EffectRegistry::setup() {
-    for (uint16_t x = 0; x < effectsCount; x++)
-        effects[currentEffect]->desiredState(Setup);
-
+    for (auto &fx : effects)
+        fx->desiredState(Setup);
+    transEffect.setup();
 }
 
 void EffectRegistry::loop() {
@@ -675,14 +691,14 @@ void EffectRegistry::loop() {
         Log.infoln(F("Effect change: from index %d [%s] to %d [%s]"),
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         lastEffectRun = currentEffect;
+        lastEffects.push(lastEffectRun);
     }
     effects[lastEffectRun]->loop();
 }
 
 void EffectRegistry::describeConfig(JsonArray &json) {
-    for (uint16_t x = 0; x < effectsCount; x++) {
-        effects[x]->describeConfig(json);
-    }
+    for (auto & effect : effects)
+        effect->describeConfig(json);
 }
 
 LedEffect *EffectRegistry::getEffect(uint16_t index) const {
@@ -699,6 +715,11 @@ bool EffectRegistry::isAutoRoll() const {
 
 uint16_t EffectRegistry::size() const {
     return effectsCount;
+}
+
+void EffectRegistry::pastEffectsRun(JsonArray &json) {
+    for (const auto &fxIndex: lastEffects)
+        json.add(getEffect(fxIndex)->name());
 }
 
 // LedEffect
@@ -751,11 +772,37 @@ void LedEffect::setup() {
 
 /**
  * Performs the transition to off - by default a pause of 1 second. Subclasses can override the behavior - function is virtual
- * This is a repeat function - it is called multiple times while in TransitionOff state, until it returns true.
+ * This is a repeat function - it is called multiple times while in TransitionBreak state, until it returns true.
  * @return true if transition has completed; false otherwise
  */
-bool LedEffect::transitionOff() {
+bool LedEffect::transitionBreak() {
+    //if we need to customize the amount of pause between effects, make a global variable (same for all effects) or a local class member (custom for each effect)
     return millis() > (transOffStart + 1000);
+}
+
+/**
+ * Called only once as the effect transitions into TransitionBreak state, before the loop calls to <code>transitionBreak</code>
+ */
+void LedEffect::transitionBreakPrep() {
+    //nothing for now
+}
+
+/**
+ * This is a repeat function - it is called multiple times while in WindDown state, until it returns true
+ * @return true if transition has completed; false otherwise
+ */
+bool LedEffect::windDown() {
+    return transEffect.transition();
+}
+
+/**
+ * Called only once as the effect transitions into WindDown state, before the loop calls to <code>windDown</code>
+ */
+void LedEffect::windDownPrep() {
+    CRGBSet strip(leds, NUM_PIXELS);
+    strip.nblend(ColorFromPalette(targetPalette, random8(), 72, LINEARBLEND), 80);
+    FastLED.show(stripBrightness);
+    transEffect.prepare(rot);
 }
 
 /**
@@ -765,12 +812,15 @@ void LedEffect::loop() {
     switch (state) {
         case Setup: setup(); nextState(); break;    //one blocking step, non repeat
         case Running: run(); break;                 //repeat, called multiple times to achieve the light effects designed
+        case WindDownPrep: windDownPrep(); nextState(); break;
         case WindDown:
             if (windDown())
                 nextState();
             break;           //repeat, called multiple times to achieve the fade out for the current light effect
-        case TransitionOff:
-            if (transitionOff())
+        case TransitionBreakPrep:
+            transitionBreakPrep(); nextState(); break;
+        case TransitionBreak:
+            if (transitionBreak())
                 nextState();
             break; //repeat, called multiple times to achieve the transition off for the current light effect
         case Idle: break;                           //no-op
@@ -790,33 +840,61 @@ void LedEffect::desiredState(EffectState dst) {
             switch (dst) {
                 case Idle: state = dst; break;
                 case Running:
+                case WindDownPrep:
                 case WindDown:
-                case TransitionOff: return;   //not a valid transition, Setup may not have completed
+                case TransitionBreakPrep:
+                case TransitionBreak: return;   //not a valid transition, Setup may not have completed
             }
             break;
         case Running:
             switch (dst) {
+                case WindDownPrep:
                 case WindDown:
-                case TransitionOff:
+                case TransitionBreakPrep:
+                case TransitionBreak:
                 case Idle:
-                case Setup: state = WindDown; break;
+                case Setup: state = WindDownPrep; break;
+            }
+            break;
+        case WindDownPrep:
+            switch (dst) {
+                case WindDown:
+                case TransitionBreak:
+                case TransitionBreakPrep:
+                case Setup:
+                case Idle: state = WindDown; break;
+                case Running: state = dst; break;
             }
             break;
         case WindDown:
             //any transitions here will cut short the in-progress windDown function
             switch (dst) {
-                case TransitionOff:
+                case TransitionBreakPrep:
+                case TransitionBreak:
                 case Idle:
-                case Setup: state = TransitionOff; transOffStart = millis(); break;
+                case Setup: state = TransitionBreakPrep; transOffStart = millis(); break;
                 case Running: state = dst; break;
+                case WindDownPrep: return;  //not a valid transition
             }
             break;
-        case TransitionOff:
+        case TransitionBreakPrep:
+            switch (dst) {
+                case Idle:
+                case Setup: state = Idle; break;
+                case Running: state = Setup; break;
+                case TransitionBreak: state = dst; break;
+                case WindDown:
+                case WindDownPrep: return;  //not a valid transition
+            }
+            break;
+        case TransitionBreak:
             //any transitions here will cut short the in-progress transitionOff function
             switch (dst) {
                 case Idle:
                 case Setup: state = Idle; break;
                 case Running: state = Setup; break;
+                case TransitionBreakPrep:
+                case WindDownPrep:
                 case WindDown: return;  //not a valid transition
             }
             break;
@@ -824,8 +902,10 @@ void LedEffect::desiredState(EffectState dst) {
             switch (dst) {
                 case Running:
                 case Setup: state = Setup; break;
+                case WindDownPrep:
                 case WindDown:
-                case TransitionOff: return;   //not a valid transition
+                case TransitionBreakPrep:
+                case TransitionBreak: return;   //not a valid transition
             }
             break;
     }
@@ -834,9 +914,11 @@ void LedEffect::desiredState(EffectState dst) {
 void LedEffect::nextState() {
     switch (state) {
         case Setup: state = Running; break;
-        case Running: state = WindDown; break;
-        case WindDown: state = TransitionOff; transOffStart = millis(); break;
-        case TransitionOff: state = Idle; break;
+        case Running: state = WindDownPrep; break;
+        case WindDownPrep: state = WindDown; break;
+        case WindDown: state = TransitionBreakPrep; transOffStart = millis(); break;
+        case TransitionBreakPrep: state = TransitionBreak; break;
+        case TransitionBreak: state = Idle; break;
         case Idle: state = Setup; break;
     }
 }
@@ -863,6 +945,7 @@ void fx_setup() {
     //initialize ALL the effects configured in the functions above
     //fxRegistry.setup();
     readState();
+    transEffect.setup();
 
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     //ensure the current effect is moved to setup state

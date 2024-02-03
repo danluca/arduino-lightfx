@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXA_H
 #define LIGHTFX_FXA_H
@@ -19,9 +19,9 @@ namespace FxA {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         void makeDot(CRGB color, uint16_t szDot);
@@ -39,9 +39,9 @@ namespace FxA {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         enum Movement { forward, pause, backward };
@@ -60,9 +60,9 @@ namespace FxA {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         CRGBSet dot;
@@ -82,9 +82,9 @@ namespace FxA {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         CRGBSet dot;
@@ -107,9 +107,9 @@ namespace FxA {
 
         void run() override;
 
-        bool windDown() override;
-
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
 
     protected:
         CRGBSet ovr;

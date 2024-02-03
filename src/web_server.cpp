@@ -360,7 +360,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     sz += client->println();    //done with headers
 
     // response body
-    StaticJsonDocument<768> doc;
+    StaticJsonDocument<1152> doc;
     // WiFi
     JsonObject wifi = doc.createNestedObject("wifi");
     wifi["IP"] = WiFi.localIP();         //IP Address
@@ -377,13 +377,15 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
+    JsonArray lastFx = fx.createNestedArray("pastEffects");
+    fxRegistry.pastEffectsRun(lastFx);                   //ordered earliest to latest (current effect is the last element)
     fx["brightness"] = stripBrightness;
     fx["brightnessLocked"] = stripBrightnessLocked;
     fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold
     fx["totalAudioBumps"] = totalAudioBumps;                //how many times (in total) have we bumped the effect due to audio level
     JsonArray audioHist = fx.createNestedArray("audioHist");
-    for (uint8_t x = 0; x < AUDIO_HIST_BINS_COUNT; x++)
-        audioHist.add(maxAudio[x]);
+    for (uint16_t x : maxAudio)
+        audioHist.add(x);
     // Time
     JsonObject time = doc.createNestedObject("time");
     time["ntpSync"] = timeStatus();

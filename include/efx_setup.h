@@ -1,83 +1,18 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 
 #ifndef LIGHTFX_EFX_SETUP_H
 #define LIGHTFX_EFX_SETUP_H
 
+#include <Arduino.h>
 #include "mic.h"
 #include "PaletteFactory.h"
 #include <ArduinoJson.h>
-#include "config.h"
+#include "global.h"
 #include "util.h"
-
-#define capd(x, d) (((x)<=(d))?(d):(x))
-#define capu(x, u) (((x)>=(u))?(u):(x))
-#define capr(x, d, u) (capu(capd(x,d),u))
-#define inr(x, d, u) (((x)>=(d))&&((x)<(u)))
-#define inc(x, i, u) ((x+i)%(u))
-#define incr(x, i, u) x=(x+i)%(u)
-#define arrSize(A) (sizeof(A) / sizeof((A)[0]))
-#define qsubd(x, b) (((x)>(b))?(b):0)                               // Clip. . . . A digital unsigned subtraction macro. if result <0, then x=0. Otherwise, x=b.
-#define qsuba(x, b) (((x)>(b))?(x-b):0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
-#define asub(a, b)  (((a)>(b))?(a-b):(b-a))
-
-#define LED_EFFECT_ID_SIZE  6
-#define MAX_EFFECTS_COUNT   256
-#define AUDIO_HIST_BINS_COUNT   10
-
-extern const uint16_t turnOffSeq[] PROGMEM;
-extern const char csAutoFxRoll[];
-extern const char csStripBrightness[];
-extern const char csAudioThreshold[];
-extern const char csColorTheme[];
-extern const char csAutoColorAdjust[];
-extern const char csRandomSeed[];
-extern const char csCurFx[];
-
-extern const uint8_t dimmed;
-//extern const uint16_t FRAME_SIZE;
-extern const CRGB BKG;
-extern const uint8_t maxChanges;
-enum OpMode { TurnOff, Chase };
-enum EffectState {Setup, Running, WindDown, TransitionOff, Idle};
-extern CRGB leds[NUM_PIXELS];
-extern CRGBArray<NUM_PIXELS> frame;
-extern CRGBSet tpl;
-extern CRGBSet others;
-extern uint16_t stripShuffleIndex[NUM_PIXELS];
-extern CRGBPalette16 palette;
-extern CRGBPalette16 targetPalette;
-extern OpMode mode;
-extern uint8_t brightness;
-extern uint8_t stripBrightness;
-extern bool stripBrightnessLocked;
-extern uint8_t colorIndex;
-extern uint8_t lastColorIndex;
-extern uint8_t fade;
-extern uint8_t hue;
-extern uint8_t dotBpm;
-extern uint8_t saturation;
-extern uint8_t delta;
-extern uint8_t twinkrate;
-extern uint16_t szStack;
-extern uint16_t hueDiff;
-extern bool dirFwd;
-extern int8_t rot;
-extern int32_t dist;
-extern bool randhue;
-extern volatile uint16_t audioBumpThreshold;
-extern volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT];
-extern uint16_t totalAudioBumps;
-extern float minVcc;
-extern float maxVcc;
-extern float minTemp;
-extern float maxTemp;
-
-extern volatile bool fxBump;
-extern volatile uint16_t speed;
-extern volatile uint16_t curPos;
-
+#include "transition.h"
+#include "config.h"
 
 typedef void (*setupFunc)();
 
@@ -104,6 +39,11 @@ void loopRight(CRGBSet &set, Viewport vwp = (Viewport)0, uint16_t pos = 1);
 
 void shiftLeft(CRGBSet &set, CRGB feedRight, Viewport vwp = (Viewport) 0, uint16_t pos = 1);
 
+bool spreadColor(CRGBSet &set, CRGB color = BKG, uint8_t gradient = 255);
+
+bool moveBlend(CRGBSet &target, const CRGBSet &segment, fract8 overlay, uint16_t fromPos, uint16_t toPos);
+bool areSame(const CRGBSet &lhs, const CRGBSet &rhs);
+
 void shuffleIndexes(uint16_t array[], uint16_t szArray);
 void shuffle(CRGBSet &set);
 
@@ -114,7 +54,7 @@ void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
 
 void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, uint16_t length);
 
-uint16_t countLedsOn(CRGBSet *set, CRGB backg = BKG);
+uint16_t countPixelsBrighter(CRGBSet *set, CRGB backg = BKG);
 
 bool isAnyLedOn(CRGBSet *set, CRGB backg = BKG);
 
@@ -124,15 +64,11 @@ void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLen
 
 void replicateSet(const CRGBSet& src, CRGBSet& dest);
 
-bool turnOffWipe(bool rightDir = false);
-
 uint8_t adjustStripBrightness();
 
 void mirrorLow(CRGBSet &set);
 
 void mirrorHigh(CRGBSet &set);
-
-bool turnOffSpots();
 
 void resetGlobals();
 
@@ -201,9 +137,13 @@ public:
 
     virtual void run() = 0;
 
-    virtual bool windDown() = 0;
+    virtual bool windDown();
 
-    virtual bool transitionOff();
+    virtual void windDownPrep();
+
+    virtual bool transitionBreak();
+
+    virtual void transitionBreakPrep();
 
     virtual void desiredState(EffectState dst);
 
@@ -225,12 +165,22 @@ public:
         return state;
     }
 
+    /**
+     * What weight does this effect have when random selection is engaged
+     * Subclasses have the opportunity to customize this value by e.g. the current holiday, time, etc., hence changing/reshaping the chances of selecting an effect
+     * @return a value between 1 and 255. If returning 0, this effectively removes the effect from random selection.
+     */
+    virtual inline uint8_t selectionWeight() const {
+        return 1;
+    }
+
     virtual ~LedEffect() = default;     // Destructor
 };
 
 class EffectRegistry {
 private:
-    LedEffect *effects[MAX_EFFECTS_COUNT];
+    std::deque<LedEffect*> effects;
+    FixedQueue<uint16_t, MAX_EFFECTS_HISTORY> lastEffects;
     uint16_t currentEffect = 0;
     uint16_t effectsCount = 0;
     uint16_t lastEffectRun = 0;
@@ -261,6 +211,8 @@ public:
     void loop();
 
     void describeConfig(JsonArray &json);
+
+    void pastEffectsRun(JsonArray &json);
 
     void autoRoll(bool switchType = true);
 

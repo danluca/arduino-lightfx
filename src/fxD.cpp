@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category D of light effects
@@ -89,7 +89,11 @@ void FxD1::ChangeMe() {
 }
 
 bool FxD1::windDown() {
-    return turnOffSpots();
+    return transEffect.offSpots();
+}
+
+uint8_t FxD1::selectionWeight() const {
+    return 21;
 }
 
 // Fx D2
@@ -137,7 +141,11 @@ void FxD2::dot_beat() {
 }
 
 bool FxD2::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
+}
+
+uint8_t FxD2::selectionWeight() const {
+    return 20;
 }
 
 // Fx D3
@@ -185,8 +193,12 @@ void FxD3::plasma() {
 
 FxD3::FxD3() : LedEffect(fxd3Desc) {}
 
-bool FxD3::windDown() {
-    return turnOffWipe(false);
+void FxD3::windDownPrep() {
+    transEffect.prepare(SELECTOR_WIPE + random8());
+}
+
+uint8_t FxD3::selectionWeight() const {
+    return 24;
 }
 
 // Fx D4
@@ -230,13 +242,19 @@ void FxD4::rainbow_march() {
         tpl.fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
           ColorFromPalette(palette, hue+128, brightness),
           ColorFromPalette(palette, 255-hue, brightness));
-    else
+    else {
         tpl.fill_rainbow(hue, hueDiff);           // I don't change hueDiff on the fly as it's too fast near the end of the strip.
+        tpl.nscale8(brightness);
+    }
     replicateSet(tpl, others);
 }
 
 bool FxD4::windDown() {
-    return turnOffSpots();
+    return transEffect.offSpots();
+}
+
+uint8_t FxD4::selectionWeight() const {
+    return 18;
 }
 
 // Fx D5
@@ -273,8 +291,8 @@ void FxD5::ripples() {
     replicateSet(tpl, others);
 }
 
-bool FxD5::windDown() {
-    return turnOffWipe(true);
+void FxD5::windDownPrep() {
+    transEffect.prepare(SELECTOR_WIPE + random8());
 }
 
 // ripple structure API
@@ -310,3 +328,6 @@ void ripple::Init(CRGBSet *set) {
     step = 0;
 }
 
+uint8_t FxD5::selectionWeight() const {
+    return 42;
+}

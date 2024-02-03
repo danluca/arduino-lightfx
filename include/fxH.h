@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXH_H
 #define LIGHTFX_FXH_H
@@ -46,7 +46,7 @@ namespace FxH {
 
     class FxH1 : public LedEffect {
     private:
-        const static uint8_t numFires = 2;
+        static const uint8_t numFires = 2;
         CRGBSet fires[numFires];
         std::vector<CRGB> hMap;
     public:
@@ -56,11 +56,13 @@ namespace FxH {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
         void Fire2012WithPalette(uint8_t xFire);
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxH2 : public LedEffect {
@@ -71,13 +73,15 @@ namespace FxH {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
 
         static void confetti_pal();
 
         static void updateParams();
+
+        uint8_t selectionWeight() const override;
     };
 
     class FxH3 : public LedEffect {
@@ -88,9 +92,11 @@ namespace FxH {
 
         void run() override;
 
-        bool windDown() override;
+        void windDownPrep() override;
 
         JsonObject & describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
     };
 }
 

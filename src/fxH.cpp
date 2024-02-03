@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category H of light effects
@@ -150,10 +150,13 @@ JsonObject & FxH1::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxH1::windDown() {
-    return turnOffSpots();
+void FxH1::windDownPrep() {
+    transEffect.prepare(random8());
 }
 
+uint8_t FxH1::selectionWeight() const {
+    return paletteFactory.getHoliday() == Halloween ? 64 : 32;
+}
 
 // FxH2
 FxH2::FxH2() : LedEffect(fxh2Desc) {}
@@ -207,8 +210,12 @@ JsonObject & FxH2::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxH2::windDown() {
-    return turnOffWipe(false);
+void FxH2::windDownPrep() {
+    transEffect.prepare(random8());
+}
+
+uint8_t FxH2::selectionWeight() const {
+    return 24;
 }
 
 /**
@@ -246,8 +253,10 @@ void FxH3::run() {
             tpl(1, FRAME_SIZE-2).fill_gradient_RGB(ColorFromPalette(palette, hue, brightness),
               ColorFromPalette(palette, hue+128, brightness),
               ColorFromPalette(palette, 255-hue, brightness));
-        else
-            tpl(1, FRAME_SIZE-2).fill_rainbow(hue, hueDiff);
+        else {
+            tpl(1, FRAME_SIZE - 2).fill_rainbow(hue, hueDiff);
+            tpl.nscale8(brightness);
+        }
         hue += 3;
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
@@ -262,6 +271,10 @@ JsonObject & FxH3::describeConfig(JsonArray &json) const {
     return obj;
 }
 
-bool FxH3::windDown() {
-    return turnOffSpots();
+void FxH3::windDownPrep() {
+    transEffect.prepare(random8());
+}
+
+uint8_t FxH3::selectionWeight() const {
+    return 18;
 }

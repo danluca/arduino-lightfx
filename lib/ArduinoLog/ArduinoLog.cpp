@@ -104,6 +104,18 @@ void Logging::clearSuffix()
 #endif
 }
 
+void Logging::setAdditionalFormatting(printFmtFunc f) {
+#ifndef DISABLE_LOGGING
+    _addtlPrintFormat = f;
+#endif
+}
+
+void Logging::clearAdditionalFormatting() {
+#ifndef DISABLE_LOGGING
+    _addtlPrintFormat = nullptr;
+#endif
+}
+
 void Logging::print(const __FlashStringHelper *format, va_list args)
 {
 #ifndef DISABLE_LOGGING	  	
@@ -135,6 +147,30 @@ void Logging::print(const __FlashStringHelper *format, va_list args)
 	va_end(args_copy);
 #endif
 #endif
+}
+
+/**
+ * Local utility to count the significant nibbles (4-bit sets) of a value (converted to unsigned long) - helpful in printing hex
+ * @param ul value to count significant nibbles of
+ * @return how many nibbles are non-zero in the hex representation of this number
+ */
+uint8_t Logging::countSignificantNibbles(unsigned long ul) {
+    const uint8_t szLong = sizeof(unsigned long);
+    ulong mask = 0x0F << (szLong*8-4);
+    uint8_t sigNibbles = 0;
+    for (uint x=0; x<szLong; x++) {
+        if (ul & mask) {
+            sigNibbles = (szLong-x)*2;
+            break;
+        }
+        mask = mask >> 4;
+        if (ul & mask) {
+            sigNibbles = (szLong-x)*2-1;
+            break;
+        }
+        mask = mask >> 4;
+    }
+    return sigNibbles;
 }
 
 void Logging::print(const char *format, va_list args) {
@@ -175,12 +211,12 @@ void Logging::printFormat(const char format, va_list *args) {
 		    _logOutput->print(format);
             break;
         case 's': {
-            register char *s = (char *) va_arg(*args, int);
+            char *s = (char *) va_arg(*args, int);
             _logOutput->print(s);
             break;
         }
         case 'S': {
-            register __FlashStringHelper *s = (__FlashStringHelper *) va_arg(*args, int);
+            __FlashStringHelper *s = (__FlashStringHelper *) va_arg(*args, int);
             _logOutput->print(s);
             break;
         }
@@ -197,30 +233,14 @@ void Logging::printFormat(const char format, va_list *args) {
             break;
         case 'X': {
             _logOutput->print("0x");
-            //_logOutput->print(va_arg(*args, int), HEX);
-            const uint szLong = sizeof(ulong);
             unsigned long ul = va_arg(*args, unsigned long);
-            ulong mask = 0x0F << (szLong*8-4);
-            uint sigNibbles = 0;
-            for (uint x=0; x<szLong; x++) {
-                if (ul & mask) {
-                    sigNibbles = (szLong-x)*2;
-                    break;
-                }
-                mask = mask >> 4;
-                if (ul & mask) {
-                    sigNibbles = (szLong-x)*2-1;
-                    break;
-                }
-                mask = mask >> 4;
-            }
-            if (sigNibbles%2)
+            if (countSignificantNibbles(ul)%2)
                 _logOutput->print('0');
             _logOutput->print(ul, HEX);
             break;
         }
         case 'p': {
-            register Printable *obj = (Printable *) va_arg(*args, int);
+            Printable *obj = (Printable *) va_arg(*args, int);
             _logOutput->print(*obj);
             break;
         }
@@ -248,7 +268,7 @@ void Logging::printFormat(const char format, va_list *args) {
 		    _logOutput->print((char) va_arg(*args, int));
             break;
         case 'C': {
-            register char c = (char) va_arg( *args, int );
+            char c = (char) va_arg( *args, int );
             if (c>=0x20 && c<0x7F) {
                 _logOutput->print(c);
             } else {
@@ -273,7 +293,10 @@ void Logging::printFormat(const char format, va_list *args) {
             break;
         }
         default:
-		    _logOutput->print("n/s");
+            if (_addtlPrintFormat == nullptr)
+		        _logOutput->print("n/s");
+            else
+                _addtlPrintFormat(_logOutput, format, args);
             break;
     }
 #endif

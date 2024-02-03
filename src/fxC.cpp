@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 /**
  * Category C of light effects
@@ -76,9 +76,12 @@ void FxC1::animationB() {
 }
 
 bool FxC1::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
 }
 
+uint8_t FxC1::selectionWeight() const {
+    return 35;
+}
 //Fx C2
 /**
  * blur
@@ -116,8 +119,12 @@ void FxC2::run() {
     FastLED.show(stripBrightness);
 }
 
-bool FxC2::windDown() {
-    return turnOffSpots();
+void FxC2::windDownPrep() {
+    transEffect.prepare(SELECTOR_SPOTS);
+}
+
+uint8_t FxC2::selectionWeight() const {
+    return 5;
 }
 
 //Fx C3
@@ -173,7 +180,11 @@ JsonObject & FxC3::describeConfig(JsonArray &json) const {
 }
 
 bool FxC3::windDown() {
-    return turnOffSpots();
+    return transEffect.offSpots();
+}
+
+uint8_t FxC3::selectionWeight() const {
+    return 4;
 }
 
 // Fx C4
@@ -213,6 +224,10 @@ void FxC4::run() {
 
 bool FxC4::windDown() {
     return true;
+}
+
+uint8_t FxC4::selectionWeight() const {
+    return paletteFactory.getHoliday() == Halloween ? 20 : 2;
 }
 
 // Fx C5
@@ -276,7 +291,11 @@ void FxC5::matrix() {
 }
 
 bool FxC5::windDown() {
-    return turnOffWipe(false);
+    return transEffect.offWipe(false);
+}
+
+uint8_t FxC5::selectionWeight() const {
+    return 20;
 }
 
 // Fx C6
@@ -328,5 +347,9 @@ void FxC6::one_sine_pal(uint8_t colorIndex) {
 }
 
 bool FxC6::windDown() {
-    return turnOffWipe(true);
+    return transEffect.offWipe(true);
+}
+
+uint8_t FxC6::selectionWeight() const {
+    return 20;
 }
