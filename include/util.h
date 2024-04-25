@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_UTIL_H
@@ -38,6 +38,7 @@ void updateStateLED(uint8_t red, uint8_t green, uint8_t blue);
 uint8_t bmul8(uint8_t a, uint8_t b);
 uint8_t bscr8(uint8_t a, uint8_t b);
 uint8_t bovl8(uint8_t a, uint8_t b);
+bool rblend8(uint8_t &a, uint8_t b, uint8_t amt=22) ;
 
 void fsInit();
 
@@ -71,4 +72,5 @@ public:
     const_iterator end() const { return this->c.end(); }
 };
 
+extern FixedQueue<TimeSync, 8> timeSyncs;
 #endif //ARDUINO_LIGHTFX_UTIL_H

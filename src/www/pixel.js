@@ -22,6 +22,7 @@ $(() => {
         $('#curEffect').html(`${data.curEffectName} - ${data.fx[data.curEffect].description}`);
         $('#curEffectId').html(`Index: ${data.curEffect}`);
         $('#autoFxChange').prop("checked", data.auto);
+        $('#sleepEnabled').prop("checked", data.fx.sleepEnabled);
         $('#curHolidayValue').html(data.holiday);
         $.each(data.holidayList, function(i, hld) {
             if (hld == "None") {
@@ -78,6 +79,7 @@ function getStatus() {
             let desc = config.fx.find(x=> x.registryIndex === data.fx.index)?.description ?? "N/A";
             $('#curEffect').html(`${data.fx.name} - ${desc}`);
             $('#autoFxChange').prop("checked", data.fx.auto);
+            $('#sleepEnabled').prop("checked", data.fx.sleepEnabled);
             let fxlst = $('#fxlist');
             fxlst.val(data.fx.index);
             fxlst.attr("currentFxIndex", data.fx.index);
@@ -145,6 +147,28 @@ function updateAuto() {
         error: function (request, status, error) {
             $('#updateStatus').html(`Automatic effects loop update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
             $('#autoFxChange').prop("checked", !selectedAuto);
+            scheduleClearStatus();
+        }
+    });
+}
+
+function updateSleep() {
+    let selectedSleep = $('#sleepEnabled').prop("checked");
+    let request = {};
+    request["sleepEnabled"] = selectedSleep;
+    $.ajax({
+        type: "PUT",
+        url: "/fx",
+        contentType: "application/json",
+        dataType: "json",
+        data: JSON.stringify(request),
+        success: function (response) {
+            $('#updateStatus').html(`Sleep schedule ${selectedSleep ? 'enabled' : 'disabled'} successfully`).removeClass().addClass("status-ok");
+            scheduleClearStatus();
+        },
+        error: function (request, status, error) {
+            $('#updateStatus').html(`Sleep schedule update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
+            $('#sleepEnabled').prop("checked", !selectedSleep);
             scheduleClearStatus();
         }
     });

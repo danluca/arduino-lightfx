@@ -1,10 +1,11 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
 //
 
 #include "PaletteFactory.h"
 
 using namespace colTheme;
+
 /// Other custom palette definitions
 /**
  * Halloween themed colors - red, orange, purple and black
@@ -15,12 +16,14 @@ extern const TProgmemRGBPalette16 HalloweenColors_p FL_PROGMEM = {
         CRGB::Orange, CRGB::Orange, CRGB::Purple, CRGB::Purple,
         CRGB::Purple, CRGB::Black, CRGB::Black, CRGB::Black
 };
+
 extern const TProgmemRGBPalette16 HalloweenStripeColors_p FL_PROGMEM = {
         CRGB::DarkRed, CRGB::Black, CRGB::Red, CRGB::Black,
         CRGB::DarkOrange, CRGB::Black, CRGB::OrangeRed, CRGB::Black,
         CRGB::Orange, CRGB::Black, CRGB::Purple, CRGB::Black,
         CRGB::DarkGray, CRGB::Black, CRGB::Gray, CRGB::Black
 };
+
 /**
  * Christmas colors - red, green, white
  */
@@ -39,12 +42,41 @@ extern const TProgmemRGBPalette16 ChristmasColors_p FL_PROGMEM = {
         CRGB::LimeGreen, CRGB::DarkTurquoise, CRGB::CornflowerBlue, CRGB::Blue,
         CRGB::BlueViolet, CRGB::DeepPink, CRGB::Bisque, CRGB::White
  };
+
  extern const TProgmemPalette16 PartierColorsCompl_p FL_PROGMEM = {
          0x56AB00, 0x008408, 0x00A6B5, 0x008EE5,
          0x00D1E8, 0x0034AB, 0x8000FF, 0x800080,
          0xCD3280, 0xD10300, 0xED7864, 0xFFFF00,
          0x83E22B, 0x1493FF, 0xC6C4FF, 0xDC143C
  };
+
+extern const TProgmemPalette16 PatrioticColors_p FL_PROGMEM = {
+        CRGB::DarkRed, CRGB::DarkRed, CRGB::Red, CRGB::Red,
+        CRGB::Gray, CRGB::Gray, CRGB::White, CRGB::White,
+        CRGB::DarkBlue, CRGB::DarkBlue, CRGB::Blue, CRGB::Blue,
+        CRGB::White, CRGB::Red, CRGB::Blue, CRGB::Red
+};
+
+extern const TProgmemPalette16 ValentineColors_p FL_PROGMEM = {
+        CRGB::DarkRed, CRGB::DarkRed, CRGB::Red, CRGB::Red,
+        CRGB::DarkViolet, CRGB::DarkViolet, CRGB::Purple, CRGB::Purple,
+        CRGB::Gray, CRGB::Gray, CRGB::White, CRGB::White,
+        CRGB::Pink, CRGB::DeepPink, CRGB::HotPink, CRGB::LightPink
+};
+
+extern const TProgmemPalette16 PatrickColors_p FL_PROGMEM = {
+        CRGB::DarkGreen, CRGB::DarkGreen, CRGB::Green, CRGB::Green,
+        CRGB::GreenYellow, CRGB::GreenYellow, CRGB::YellowGreen, CRGB::YellowGreen,
+        CRGB::DarkOliveGreen, CRGB::DarkSeaGreen, CRGB::ForestGreen, CRGB::LawnGreen,
+        CRGB::LightGreen, CRGB::LightSeaGreen, CRGB::LimeGreen, CRGB::SpringGreen
+};
+
+extern const TProgmemPalette16 SleepyColors_p FL_PROGMEM = {
+         0xc2893e,0xc49d02,  0xcfbd1b, 0xd6d66b,
+         0x54c414, 0x24d64e, 0x86b090, 0xd8dbc5,
+         0x4bd195, 0x1cd6ba, 0xabdbd4, 0x49ebeb,
+         0x49d0eb, 0xb242eb, 0xdd42eb, 0xeb42c0
+};
 
 CRGBPalette16 PaletteFactory::mainPalette(const time_t time) {
     adjustHoliday(time);
@@ -57,6 +89,13 @@ CRGBPalette16 PaletteFactory::mainPalette(const time_t time) {
             return ChristmasColors_p;
         case NewYear:
             return Rainbow_gp;
+        case MemorialDay:
+        case IndependenceDay:
+            return PatrioticColors_p;
+        case ValentineDay:
+            return ValentineColors_p;
+        case StPatrick:
+            return PatrickColors_p;
         case Party:
         default:
             return PartierColors_p;
@@ -74,9 +113,22 @@ CRGBPalette16 PaletteFactory::secondaryPalette(const time_t time) {
             return RainbowColors_p;
         case NewYear:
             return OceanColors_p;
+        case MemorialDay:
+        case IndependenceDay:
+            return PatrioticColors_p;
+        case ValentineDay:
+            return LavaColors_p;
+        case StPatrick:
+            return ForestColors_p;
         case Party:
         default:
             return PartierColorsCompl_p;
+    }
+}
+
+void PaletteFactory::toHSVPalette(CHSVPalette16 &hsvPalette, const CRGBPalette16 &rgbPalette) {
+    for (int i = 0; i < 16; i++) {
+        hsvPalette[i] = rgb2hsv_approximate(rgbPalette[i]);
     }
 }
 

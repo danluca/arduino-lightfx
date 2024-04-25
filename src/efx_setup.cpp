@@ -7,13 +7,19 @@
 //~ Global variables definition
 #define STATE_JSON_DOC_SIZE   512
 const uint8_t dimmed = 20;
-const char csAutoFxRoll[] = "autoFxRoll";
-const char csStripBrightness[] = "stripBrightness";
-const char csAudioThreshold[] = "audioThreshold";
-const char csColorTheme[] = "colorTheme";
-const char csAutoColorAdjust[] = "autoColorAdjust";
-const char csRandomSeed[] = "randomSeed";
-const char csCurFx[] = "curFx";
+const char csAutoFxRoll[] PROGMEM = "autoFxRoll";
+const char csStripBrightness[] PROGMEM = "stripBrightness";
+const char csAudioThreshold[] PROGMEM = "audioThreshold";
+const char csColorTheme[] PROGMEM = "colorTheme";
+const char csAutoColorAdjust[] PROGMEM = "autoColorAdjust";
+const char csRandomSeed[] PROGMEM = "randomSeed";
+const char csCurFx[] PROGMEM = "curFx";
+const char csSleepEnabled[] PROGMEM = "sleepEnabled";
+const char csBrightness[] PROGMEM = "brightness";
+const char csBrightnessLocked[] PROGMEM = "brightnessLocked";
+const char csAuto[] PROGMEM = "auto";
+const char csHoliday[] PROGMEM = "holiday";
+
 
 //const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
 const CRGB BKG = CRGB::Black;
@@ -27,6 +33,7 @@ CRGB leds[NUM_PIXELS];
 CRGBArray<NUM_PIXELS> frame;
 CRGBSet tpl(leds, FRAME_SIZE);                        //array length, indexes go from 0 to length-1
 CRGBSet others(leds, tpl.size(), NUM_PIXELS-1); //start and end indexes are inclusive
+CRGBSet ledSet(leds, NUM_PIXELS);                     //the entire leds CRGB array as a CRGBSet
 CRGBPalette16 palette;
 CRGBPalette16 targetPalette;
 OpMode mode = Chase;
@@ -90,11 +97,14 @@ void readState() {
         audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
         String savedHoliday = doc[csColorTheme].as<String>();
         paletteFactory.setHoliday(parseHoliday(&savedHoliday));
-        bool autoColAdj = doc[csAutoColorAdjust].as<bool>();
-        paletteFactory.setAuto(autoColAdj);
+        paletteFactory.setAuto(doc[csAutoColorAdjust].as<bool>());
+        if (doc.containsKey(csSleepEnabled))
+            fxRegistry.enableSleep(doc[csSleepEnabled].as<bool>());
+        else
+            fxRegistry.enableSleep(false);
 
-        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T)"),
-                   stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), paletteFactory.isAuto());
+        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T), sleepEnabled=%T"),
+                   stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), paletteFactory.isAuto(), fxRegistry.isSleepEnabled());
     }
 }
 
@@ -107,6 +117,7 @@ void saveState() {
     doc[csAudioThreshold] = audioBumpThreshold;
     doc[csColorTheme] = holidayToString(paletteFactory.getHoliday());
     doc[csAutoColorAdjust] = paletteFactory.isAuto();
+    doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
     String str;
     serializeJson(doc, str);
     if (!writeTextFile(stateFileName, &str))
@@ -570,6 +581,52 @@ void blendOverlay(CRGBSet &blendLayer, const CRGBSet &topLayer) {
 }
 
 /**
+ * Repeatedly blends b into a with a given amount until a=b
+ * @param a recipient
+ * @param b source
+ * @param amt amount of blending
+ * @return true when the recipient is the same as source; false otherwise
+ */
+bool rblend8(uint8_t &a, const uint8_t b, const uint8_t amt) {
+    if (a == b || amt == 0)
+        return true;
+    if (amt == 255) {
+        a = b;
+        return true;
+    }
+    if (a < b)
+        a += scale8_video(b - a, amt);
+    else
+        a -= scale8_video(a - b, amt);
+    return a == b;
+}
+
+/**
+ * Blends the target color into an existing (in-place) such that after a number of iterations
+ * the existing becomes equal with the target
+ * <p>For repeated blending calls, this works better than <code>nblend(CRGB &existing, CRGB &target, uint8 overlay)</code> as it
+ * will actually make existing reach the target value</p>
+ * @param existing color to modify
+ * @param target target color
+ * @param frOverlay fraction (number of 256-ths) of the target color to blend into existing. Special meaning to extreme values:
+ * 0 is a no-op, existing is not changed; 255 forces the existing to equal to target
+ * @return true if the existing color has become equal with target or overlay fraction is 0 (no blending); false otherwise
+ */
+bool rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay) {
+    if (existing == target || frOverlay == 0)
+        return true;
+    if (frOverlay == 255) {
+        existing = target;
+        return true;
+    }
+    bool bRed = rblend8(existing.red, target.red, frOverlay);
+    bool bGreen = rblend8(existing.green, target.green, frOverlay);
+    bool bBlue = rblend8(existing.blue, target.blue, frOverlay);
+    return bRed && bGreen && bBlue;
+}
+
+
+/**
  * Adjust strip overall brightness according with the time of day - as follows:
  * <p>Up until 8pm use the max brightness - i.e. <code>BRIGHTNESS</code></p>
  * <p>Between 8pm-9pm - reduce to 80% of full brightness, i.e. scale with 204</p>
@@ -619,9 +676,27 @@ uint8_t getBrightness(const CRGB &rgb) {
     return toHSV(rgb).val;
 }
 
+void adjustCurrentEffect(const time_t time) {
+    if (isAwakeTime(time))
+        fxRegistry.setSleepState(false);
+    else
+        fxRegistry.setSleepState(true);
+}
+
 // EffectRegistry
 LedEffect *EffectRegistry::getCurrentEffect() const {
     return effects[currentEffect];
+}
+
+uint16_t EffectRegistry::nextEffectPos(const char *id) {
+    for (size_t x = 0; x < effects.size(); x++) {
+        if (strcmp(id, effects[x]->name()) == 0) {
+            currentEffect = x;
+            transitionEffect();
+            return lastEffectRun;
+        }
+    }
+    return 0;
 }
 
 uint16_t EffectRegistry::nextEffectPos(uint16_t efx) {
@@ -631,7 +706,7 @@ uint16_t EffectRegistry::nextEffectPos(uint16_t efx) {
 }
 
 uint16_t EffectRegistry::nextEffectPos() {
-    if (!autoSwitch)
+    if (!autoSwitch || sleepState)
         return currentEffect;
     currentEffect = inc(currentEffect, 1, effectsCount);
     transitionEffect();
@@ -643,7 +718,7 @@ uint16_t EffectRegistry::curEffectPos() const {
 }
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
-    if (autoSwitch) {
+    if (autoSwitch && !sleepState) {
         //weighted randomization of the next effect index
         uint16_t totalSelectionWeight = 0;
         for (auto const *fx:effects)
@@ -674,6 +749,44 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     effectsCount = effects.size();
     Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), effectsCount-1);
     return effectsCount-1;
+}
+
+LedEffect *EffectRegistry::findEffect(const char *id) {
+    for (auto &fx : effects) {
+        if (strcmp(id, fx->name()) == 0)
+            return fx;
+    }
+    return nullptr;
+}
+
+void EffectRegistry::setSleepState(const bool sleepFlag) {
+    if (sleepState != sleepFlag) {
+        sleepState = sleepFlag;
+        if (sleepState) {
+            nextEffectPos(FX_SLEEPLIGHT_ID);
+        } else {
+            if (lastEffects.size() < 2)
+                nextRandomEffectPos();
+            else {
+                uint16_t prevFx = *(lastEffects.begin()+1); //second entry in the queue is the previous effect before the sleep mode
+                currentEffect = prevFx;
+                transitionEffect();
+            }
+        }
+    }
+}
+
+void EffectRegistry::enableSleep(bool bSleep) {
+    sleepModeEnabled = bSleep;
+    if (bSleep) {
+        //determine the proper sleep status based on time
+        if (isAwakeTime(now()))
+            setSleepState(false);
+        else
+            setSleepState(true);
+    } else
+        setSleepState(false);
+
 }
 
 /**
@@ -711,6 +824,14 @@ void EffectRegistry::autoRoll(bool switchType) {
 
 bool EffectRegistry::isAutoRoll() const {
     return autoSwitch;
+}
+
+bool EffectRegistry::isSleepEnabled() const {
+    return sleepModeEnabled;
+}
+
+bool EffectRegistry::isAsleep() const {
+    return sleepState;
 }
 
 uint16_t EffectRegistry::size() const {
@@ -986,3 +1107,14 @@ void fx_run() {
     fxRegistry.loop();
     yield();
 }
+
+// FxSchedule functions
+void wakeup() {
+    fxRegistry.setSleepState(false);
+
+}
+
+void bedtime() {
+    fxRegistry.setSleepState(true);
+}
+

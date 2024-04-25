@@ -7,6 +7,7 @@
 #include "efx_setup.h"
 #include "log.h"
 #include "net_setup.h"
+#include "FxSchedule.h"
 #include <SchedulerExt.h>
 
 ThreadTasks fxTasks {fx_setup, fx_run};
@@ -30,6 +31,8 @@ void setup() {
     adc_setup();
     setupStateLED();
 
+    stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
+
     fsInit();
 
     imu_setup();
@@ -43,6 +46,14 @@ void setup() {
         stateLED(CRGB::Indigo);   //ready to show awesome light effects!
     if (!time_setup())
         stateLED(CRGB::Blue);
+	bool bSetupOk = wifi_setup();
+    bSetupOk = bSetupOk && time_setup();
+    if (bSetupOk)
+        stateLED(CLR_ALL_OK);   //ready for awesome light management
+    else
+        stateLED(CLR_SETUP_ERROR);
+
+    setupAlarmSchedule();
 
     Log.infoln(F("System status: %X"), getSysStatus());
     //start the web server/fx in a separate thread - turns out the JSON library crashes if not given enough stack size
@@ -54,5 +65,7 @@ void setup() {
  */
 void loop() {
     wifi_loop();
+ 	alarm_loop();
+    yield();
 }
 

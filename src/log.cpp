@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #include "log.h"
 #ifndef DISABLE_LOGGING
@@ -109,6 +109,13 @@ void logExtraFormats(Print *_logOutput, const char fmt, va_list *args) {
                 _logOutput->print(", ");
             }
             _logOutput->print('}');
+            break;
+        }
+        case 'y': {
+            time_t time = va_arg(*args, time_t);
+            char timeStr[20];
+            strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", localtime(&time));
+            _logOutput->print(timeStr);
             break;
         }
         default:

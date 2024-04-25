@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #include "web_server.h"
 #include "version.h"
@@ -209,6 +209,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     doc["buildTime"] = BUILD_TIME;
     doc["curEffect"] = String(fxRegistry.curEffectPos());
     doc["auto"] = fxRegistry.isAutoRoll();
+    doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
     doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
     doc["holiday"] = holidayToString(paletteFactory.getHoliday());
     JsonArray hldList = doc.createNestedArray("holidayList");
@@ -372,15 +373,17 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     // Fx
     JsonObject fx = doc.createNestedObject("fx");
     fx["count"] = fxRegistry.size();
-    fx["auto"] = fxRegistry.isAutoRoll();
-    fx["holiday"] = holidayToString(paletteFactory.getHoliday());   //could be forced to a fixed value
+    fx[csAuto] = fxRegistry.isAutoRoll();
+    fx[csSleepEnabled] = fxRegistry.isSleepEnabled();
+    fx["asleep"] = fxRegistry.isAsleep();
+    fx[csHoliday] = holidayToString(paletteFactory.getHoliday());   //could be forced to a fixed value
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
     JsonArray lastFx = fx.createNestedArray("pastEffects");
     fxRegistry.pastEffectsRun(lastFx);                   //ordered earliest to latest (current effect is the last element)
-    fx["brightness"] = stripBrightness;
-    fx["brightnessLocked"] = stripBrightnessLocked;
+    fx[csBrightness] = stripBrightness;
+    fx[csBrightnessLocked] = stripBrightnessLocked;
     fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold
     fx["totalAudioBumps"] = totalAudioBumps;                //how many times (in total) have we bumped the effect due to audio level
     JsonArray audioHist = fx.createNestedArray("audioHist");
@@ -398,6 +401,17 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     time["time"] = timeBuf;
     time["dst"] = isSysStatus(SYS_STATUS_DST);
     time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
+    time["syncSize"] = timeSyncs.size();
+    time["averageDrift"] = getAverageTimeDrift();
+    time["lastDrift"] = getLastTimeDrift();
+    time["totalDrift"] = getTotalDrift();
+    JsonArray alarms = time.createNestedArray("alarms");
+    for (const auto &al : scheduledAlarms) {
+        JsonObject jal = alarms.createNestedObject();
+        formatDateTime(timeBuf, al->value);
+        jal["alarmTime"] = timeBuf;
+        jal["taskPtr"] = (long)al->onEventHandler;
+    }
 
     snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
     doc["mbedVersion"] = timeBuf;
@@ -442,37 +456,39 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         return handleInternalError(client, uri, error.c_str());
 
     StaticJsonDocument<128> resp;
-    const char strAuto[] = "auto";
     const char strEffect[] = "effect";
-    const char strHoliday[] = "holiday";
-    const char strBrightness[] = "brightness";
-    const char strBrightnessLocked[] = "brightnessLocked";
     JsonObject upd = resp.createNestedObject("updates");
-    if (doc.containsKey(strAuto)) {
-        bool autoAdvance = doc[strAuto].as<bool>();
+    if (doc.containsKey(csAuto)) {
+        bool autoAdvance = doc[csAuto].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
-        upd[strAuto] = autoAdvance;
+        upd[csAuto] = autoAdvance;
     }
     if (doc.containsKey(strEffect)) {
         uint16_t nextFx = doc[strEffect].as<uint16_t >();
         fxRegistry.nextEffectPos(nextFx);
         upd[strEffect] = nextFx;
     }
-    if (doc.containsKey(strHoliday)) {
-        String userHoliday = doc[strHoliday].as<String>();
+    if (doc.containsKey(csHoliday)) {
+        String userHoliday = doc[csHoliday].as<String>();
         paletteFactory.setHoliday(parseHoliday(&userHoliday));
-        upd[strHoliday] = paletteFactory.adjustHoliday();
+        upd[csHoliday] = paletteFactory.adjustHoliday();
     }
-    if (doc.containsKey(strBrightness)) {
-        uint8_t br = doc[strBrightness].as<uint8_t>();
+    if (doc.containsKey(csBrightness)) {
+        uint8_t br = doc[csBrightness].as<uint8_t>();
         stripBrightnessLocked = br > 0;
         stripBrightness = stripBrightnessLocked ? br : adjustStripBrightness();
-        upd[strBrightness] = stripBrightness;
-        upd[strBrightnessLocked] = stripBrightnessLocked;
+        upd[csBrightness] = stripBrightness;
+        upd[csBrightnessLocked] = stripBrightnessLocked;
     }
     if (doc.containsKey(csAudioThreshold)) {
         audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
         upd[csAudioThreshold] = audioBumpThreshold;
+    }
+    if (doc.containsKey(csSleepEnabled)) {
+        bool sleepEnabled = doc[csSleepEnabled].as<bool>();
+        fxRegistry.enableSleep(sleepEnabled);
+        upd[csSleepEnabled] = sleepEnabled;
+        upd["asleep"] = fxRegistry.isAsleep();
     }
 #ifndef DISABLE_LOGGING
     Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_WEB_SERVER_H
 #define LIGHTFX_WEB_SERVER_H
@@ -9,6 +9,7 @@
 #include <regex>
 #include "net_setup.h"
 #include "efx_setup.h"
+#include "FxSchedule.h"
 
 #include "index_html.h"
 #include "jquery_min_js.h"

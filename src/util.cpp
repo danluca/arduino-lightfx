@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
 //
 
 #include "util.h"
@@ -13,6 +13,7 @@ const uint maxAdc = 1 << ADC_RESOLUTION;
 const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
 
 static uint8_t sysStatus = 0x00;    //system status bit array
+FixedQueue<TimeSync, 8> timeSyncs;
 
 LittleFSWrapper *fsPtr;
 
@@ -256,11 +257,34 @@ const uint8_t getSysStatus() {
     return sysStatus;
 }
 
+/**
+ * Are we in DST (Daylight Savings Time) at this time?
+ * @param time
+ * @return
+ */
 bool isDST(const time_t time) {
-    const uint16_t md = encodeMonthDay(time);
+//    const uint16_t md = encodeMonthDay(time);
     // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
     // to the transition, such that we don't need to implement complex Sunday counting rules
-    return md > 0x030C && md < 0x0B05;
+//    return md > 0x030C && md < 0x0B05;
+    int mo = month(time);
+    int dy = day(time);
+    int hr = hour(time);
+    int dow = weekday(time);
+    // DST runs from second Sunday of March to first Sunday of November
+    // Never in January, February or December
+    if (mo < 3 || mo > 11)
+        return false;
+    // Always in April to October
+    if (mo > 3 && mo < 11)
+        return true;
+    // In March, DST if previous Sunday was on or after the 8th.
+    // Begins at 2am on second Sunday in March
+    int previousSunday = dy - dow;
+    if (mo == 3)
+        return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
+    // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
+    return (previousSunday < 7 && dow == 1) ? (hr < 2) : (previousSunday < 0);
 }
 
 /**

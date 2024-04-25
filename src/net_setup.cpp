@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #include "net_setup.h"
 #include "config.h"
@@ -8,6 +8,11 @@
 using namespace colTheme;
 const char ssid[] PROGMEM = WF_SSID;
 const char pass[] PROGMEM = WF_PSW;
+const char hostname[] PROGMEM = "Arduino Board " BOARD_NAME;
+
+const CRGB CLR_ALL_OK = CRGB::Indigo;
+const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Yellow;
+const CRGB CLR_SETUP_ERROR = CRGB::Red;
 
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 
@@ -33,13 +38,14 @@ uint8_t barSignalLevel(int32_t rssi) {
 bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
     WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
+    WiFi.setHostname(hostname);
     Log.infoln("Connecting to WiFI '%s'", ssid);  // print the network name (SSID);
     // attempt to connect to WiFi network:
     uint attCount = 0;
     uint8_t wifiStatus = WiFi.status();
     while (wifiStatus != WL_CONNECTED) {
         if (attCount > 60)
-            updateStateLED(CRGB::Red);
+            updateStateLED((uint32_t)CLR_SETUP_ERROR);
         Log.infoln(F("Attempting to connect..."));
 
         // Connect to WPA/WPA2 network
@@ -162,8 +168,17 @@ void wifi_loop() {
             Log.infoln(F("Current holiday adjusted from %s to %s"), holidayToString(oldHday), holidayToString(hDay));
 #endif
     }
+    EVERY_N_HOURS(17) {
+        bool result = ntp_sync();
+        Log.infoln(F("Time NTP sync performed; success = %T"), result);
+        if (result && timeSyncs.size() > 2) {
+            //log the current drift
+            time_t from = timeSyncs.end()[-2].unixSeconds;
+            time_t to = now();
+            Log.infoln(F("Current drift between %y and %y (%u s) measured as %d ms"), from, to, (long)(to-from), getLastTimeDrift());
+        }
+    }
     webserver();
-    yield();
 }
 
 void printSuccessfulWifiStatus() {

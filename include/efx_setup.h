@@ -12,6 +12,7 @@
 #include "global.h"
 #include "util.h"
 #include "transition.h"
+#include "FxSchedule.h"
 #include "config.h"
 
 typedef void (*setupFunc)();
@@ -78,6 +79,7 @@ uint8_t getBrightness(const CRGB& rgb);
 inline CHSV toHSV(const CRGB &rgb) { return rgb2hsv_approximate(rgb); }
 inline CRGB toRGB(const CHSV &hsv) { CRGB rgb{}; hsv2rgb_rainbow(hsv, rgb); return rgb; }
 
+bool rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay);
 void blendMultiply(CRGBSet &blendLayer, const CRGBSet &topLayer);
 void blendMultiply(CRGB &blendRGB, const CRGB &topRGB);
 void blendScreen(CRGBSet &blendLayer, const CRGBSet &topLayer);
@@ -185,6 +187,8 @@ private:
     uint16_t effectsCount = 0;
     uint16_t lastEffectRun = 0;
     bool autoSwitch = true;
+    bool sleepState = false;
+    bool sleepModeEnabled = false;
 public:
     EffectRegistry() : effects() {};
 
@@ -193,6 +197,8 @@ public:
     LedEffect *getEffect(uint16_t index) const;
 
     uint16_t nextEffectPos(uint16_t efx);
+
+    uint16_t nextEffectPos(const char* id);
 
     uint16_t nextEffectPos();
 
@@ -203,6 +209,8 @@ public:
     void transitionEffect() const;
 
     uint16_t registerEffect(LedEffect *effect);
+
+    LedEffect* findEffect(const char* id);
 
     uint16_t size() const;
 
@@ -217,6 +225,14 @@ public:
     void autoRoll(bool switchType = true);
 
     bool isAutoRoll() const;
+
+    bool isSleepEnabled() const;
+
+    void enableSleep(bool bSleep);
+
+    bool isAsleep() const;
+
+    void setSleepState(bool sleepFlag);
 };
 
 extern EffectRegistry fxRegistry;
