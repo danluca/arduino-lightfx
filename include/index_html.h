@@ -47,6 +47,7 @@ const char index_html[] PROGMEM = R"~~~(
                         <option value="10">10%</option>
                     </select>
                 </div>
+				<br/>
                 <div id="fxSleepEnabledArea">
                     <input type="checkbox" id="sleepEnabled" onchange="updateSleep()"/>
                     <label for="sleepEnabled" id="sleepEnabledLabel">Sleep schedule enabled</label>
