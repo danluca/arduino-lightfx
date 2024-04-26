@@ -2,6 +2,7 @@
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
 //
 
+#include "global.h"
 #include "timeutil.h"
 #include "PaletteFactory.h"
 
@@ -17,7 +18,6 @@ const char strHalloween[] PROGMEM = "Halloween";
 const char strThanksgiving[] PROGMEM = "Thanksgiving";
 const char strChristmas[] PROGMEM = "Christmas";
 const char strNewYear[] PROGMEM = "NewYear";
-const char strNR[] PROGMEM = "N/R";
 
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
 

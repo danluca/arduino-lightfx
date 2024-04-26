@@ -19,6 +19,7 @@ const char csBrightness[] PROGMEM = "brightness";
 const char csBrightnessLocked[] PROGMEM = "brightnessLocked";
 const char csAuto[] PROGMEM = "auto";
 const char csHoliday[] PROGMEM = "holiday";
+const char strNR[] PROGMEM = "N/R";
 
 
 //const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
