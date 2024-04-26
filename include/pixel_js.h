@@ -78,6 +78,9 @@ function getStatus() {
             $('#timeNtp').html(`${data.time.ntpSync == 2}`);
             $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
             $('#timeHoliday').html(`${data.time.holiday}`);
+            $('#lastDrift').html(`${data.time.lastDrift} ms`);
+            $('#avgDrift').html(`${data.time.averageDrift} ms`);
+            $('#totalDrift').html(`${data.time.totalDrift} ms (${data.time.syncSize} sync points)`);
 
             //update the current effect tiles as well
             $('#curEffectId').html(`Index: ${data.fx.index}`);

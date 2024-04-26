@@ -88,6 +88,13 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
                 <dd>Up Time: <span id="upTime"></span> </dd>
                 <dd>Status code: <span id="overallStatus"></span></dd>
+                <dt>Time</dt>
+                <dd>NTP sync: <span id="timeNtp"></span></dd>
+                <dd>Current time: <span id="timeCurrent"></span></dd>
+                <dd>Holiday: <span id="timeHoliday"></span></dd>
+                <dd>Current drift: <span id="lastDrift"></span></dd>
+                <dd>Average drift: <span id="avgDrift"></span></dd>
+                <dd>Total drift: <span id="totalDrift"></span></dd>
                 </div>
                 <div>
                 <dt>WiFi</dt>
@@ -104,12 +111,6 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Strip Brightness: <span id="fxBrightness"></span></dd>
                 <dd>Audio Effect Changes: <span id="totalAudioBumps"></span></dd>
                 <dd>Audio Level Histogram: <span id="audioLevelHistogram"></span></dd>
-                </div>
-                <div>
-                <dt>Time</dt>
-                <dd>NTP sync: <span id="timeNtp"></span></dd>
-                <dd>Current time: <span id="timeCurrent"></span></dd>
-                <dd>Holiday: <span id="timeHoliday"></span></dd>
                 </div>
             </dl>
         </section>
