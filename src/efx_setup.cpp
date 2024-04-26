@@ -711,6 +711,9 @@ uint16_t EffectRegistry::nextEffectPos() {
     if (!autoSwitch || sleepState)
         return currentEffect;
     currentEffect = inc(currentEffect, 1, effectsCount);
+    //increment past the sleep effect, if landed on it
+    if (currentEffect == sleepEffect)
+        currentEffect = inc(currentEffect, 1, effectsCount);
     transitionEffect();
     return lastEffectRun;
 }
@@ -729,7 +732,7 @@ uint16_t EffectRegistry::nextRandomEffectPos() {
         for (uint16_t i = 0; i < effectsCount; ++i) {
             rnd = qsuba(rnd, effects[i]->selectionWeight());
             if (rnd == 0) {
-                currentEffect = i;
+                currentEffect = i;  //sleep effect weight is 0, so it cannot be chosen randomly
                 break;
             }
         }
@@ -749,8 +752,11 @@ void EffectRegistry::transitionEffect() const {
 uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     effects.push_back(effect);  //pushing from the back to preserve the order or insertion during iteration
     effectsCount = effects.size();
-    Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), effectsCount-1);
-    return effectsCount-1;
+    uint16_t fxIndex = effectsCount - 1;
+    if (strcmp(FX_SLEEPLIGHT_ID, effect->name()))
+        sleepEffect = fxIndex;
+    Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), fxIndex);
+    return fxIndex;
 }
 
 LedEffect *EffectRegistry::findEffect(const char *id) {
@@ -780,15 +786,8 @@ void EffectRegistry::setSleepState(const bool sleepFlag) {
 
 void EffectRegistry::enableSleep(bool bSleep) {
     sleepModeEnabled = bSleep;
-    if (sleepModeEnabled) {
-        //determine the proper sleep status based on time
-        if (isAwakeTime(now()))
-            setSleepState(false);
-        else
-            setSleepState(true);
-    } else
-        setSleepState(false);
-
+    //determine the proper sleep status based on time
+    setSleepState(sleepModeEnabled && !isAwakeTime(now()));
 }
 
 /**
