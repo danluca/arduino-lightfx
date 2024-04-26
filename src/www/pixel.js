@@ -62,7 +62,11 @@ function getStatus() {
                 $('#wfVersion').html(`WiFi NINA v${data.wifi.curVersion} (latest)`);
             }
             $('#fxCount').html(`${data.fx.count} effects`);
-            $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
+            if (data.fx.asleep) {
+                $('#fxCurEffect').html(`${data.fx.name} - asleep [${data.fx.index}]`);
+            } else {
+                $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
+            }
             $('#pastEffects').html(`${data.fx.pastEffects.reverse().join(', ')}`);
             $('#fxCurHoliday').html(`${data.fx.holiday}`);
             $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);

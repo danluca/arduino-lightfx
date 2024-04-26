@@ -90,7 +90,6 @@ void readState() {
         random16_add_entropy(seed);
 
         uint16_t fx = doc[csCurFx].as<uint16_t>();
-        fxRegistry.nextEffectPos(fx);
 
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
 
@@ -101,7 +100,13 @@ void readState() {
         if (doc.containsKey(csSleepEnabled))
             fxRegistry.enableSleep(doc[csSleepEnabled].as<bool>());
         else
-            fxRegistry.enableSleep(false);
+            fxRegistry.enableSleep(false);      //this doesn't invoke effect changing because sleep state is initialized with false
+        //we need the sleep mode flag setup first to properly advance to next effect
+        const uint16_t sleepFxIndex = fxRegistry.findEffect(FX_SLEEPLIGHT_ID)->getRegistryIndex();
+        if (fx == sleepFxIndex && !fxRegistry.isAsleep())
+            fxRegistry.nextRandomEffectPos();
+        else
+            fxRegistry.nextEffectPos(fx);
 
         Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T), sleepEnabled=%T"),
                    stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), paletteFactory.isAuto(), fxRegistry.isSleepEnabled());
@@ -677,10 +682,7 @@ uint8_t getBrightness(const CRGB &rgb) {
 }
 
 void adjustCurrentEffect(const time_t time) {
-    if (isAwakeTime(time))
-        fxRegistry.setSleepState(false);
-    else
-        fxRegistry.setSleepState(true);
+    fxRegistry.setSleepState(!isAwakeTime(time));
 }
 
 // EffectRegistry
@@ -778,7 +780,7 @@ void EffectRegistry::setSleepState(const bool sleepFlag) {
 
 void EffectRegistry::enableSleep(bool bSleep) {
     sleepModeEnabled = bSleep;
-    if (bSleep) {
+    if (sleepModeEnabled) {
         //determine the proper sleep status based on time
         if (isAwakeTime(now()))
             setSleepState(false);
