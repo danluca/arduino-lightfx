@@ -52,8 +52,7 @@ void scheduleDay(const time_t time) {
         if (time < bedTime)
             scheduledAlarms.push_back(new AlarmData{.value=bedTime, .type=BEDTIME, .onEventHandler=bedtime});
         else
-            scheduledAlarms.push_back(
-                    new AlarmData{.value=bedTime + SECS_PER_DAY, .type=BEDTIME, .onEventHandler=bedtime});
+            scheduledAlarms.push_back(new AlarmData{.value=bedTime + SECS_PER_DAY, .type=BEDTIME, .onEventHandler=bedtime});
     }
     Log.infoln(F("Scheduled %d new alarms for Day %y"), scheduledAlarms.size() - curAlarmCount, time);
 }
@@ -68,7 +67,6 @@ void logAlarms() {
 
 /**
  * Setup the default sleep/wake-up schedule
- * TODO: how to save and read from JSON?
  */
 void setupAlarmSchedule() {
     //alarms for today
@@ -83,9 +81,11 @@ bool isAwakeTime(time_t time) {
     time_t startDay = previousMidnight(time);
     time_t bedTime = startDay + dailyBedTime;
     time_t wakeTime = startDay + dailyWakeupTime;
+    //if bedtime - midnight - waketime; then check if current time is before bedtime and after waketime
     if (bedTime > wakeTime)
         return !(time >= bedTime || time < wakeTime);
-    return (time >= wakeTime && time < bedTime);
+    //midnight - bedtime - waketime; check if current time is less than bedtime or more than waketime
+    return (time >= wakeTime || time < bedTime);
 }
 
 void alarm_loop() {
