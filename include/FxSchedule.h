@@ -21,6 +21,7 @@ enum AlarmType:uint8_t {
     BEDTIME, WAKEUP
 };
 
+const char* alarmTypeToString(AlarmType alType);
 uint countFutureAlarms(AlarmType alType, time_t refTime);
 
 struct AlarmData {

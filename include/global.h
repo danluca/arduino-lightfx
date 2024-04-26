@@ -37,7 +37,7 @@ extern const char csBrightness[];
 extern const char csBrightnessLocked[];
 extern const char csAuto[];
 extern const char csHoliday[];
-
+extern const char strNR[];
 
 extern const uint8_t dimmed;
 //extern const uint16_t FRAME_SIZE;

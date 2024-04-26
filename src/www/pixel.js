@@ -80,6 +80,9 @@ function getStatus() {
             $('#lastDrift').html(`${data.time.lastDrift} ms`);
             $('#avgDrift').html(`${data.time.averageDrift} ms`);
             $('#totalDrift').html(`${data.time.totalDrift} ms (${data.time.syncSize} sync points)`);
+            let strAlarms = "";
+            data.time.alarms.forEach(al =>  strAlarms += `${al.alarmType} @ ${al.alarmTime};`);
+            $('#schAlarms').html(strAlarms.length > 0 ? strAlarms : "None");
 
             //update the current effect tiles as well
             $('#curEffectId').html(`Index: ${data.fx.index}`);

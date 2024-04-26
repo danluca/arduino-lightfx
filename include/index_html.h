@@ -95,6 +95,7 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Current drift: <span id="lastDrift"></span></dd>
                 <dd>Average drift: <span id="avgDrift"></span></dd>
                 <dd>Total drift: <span id="totalDrift"></span></dd>
+                <dd>Next Alarms: <span id="schAlarms"></span></dd>
                 </div>
                 <div>
                 <dt>WiFi</dt>

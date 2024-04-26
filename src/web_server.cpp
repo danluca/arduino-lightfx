@@ -410,7 +410,8 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
         JsonObject jal = alarms.createNestedObject();
         formatDateTime(timeBuf, al->value);
         jal["alarmTime"] = timeBuf;
-        jal["taskPtr"] = (long)al->onEventHandler;
+        jal["alarmType"] = alarmTypeToString(al->type);
+//        jal["taskPtr"] = (long)al->onEventHandler;
     }
 
     snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
