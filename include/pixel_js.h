@@ -82,7 +82,10 @@ function getStatus() {
             $('#avgDrift').html(`${data.time.averageDrift} ms`);
             $('#totalDrift').html(`${data.time.totalDrift} ms (${data.time.syncSize} sync points)`);
             let strAlarms = "";
-            data.time.alarms.forEach(al =>  strAlarms += `${al.alarmType} @ ${al.alarmTime};`);
+            data.time.alarms.forEach(al =>  strAlarms += `${al.alarmType} @ ${al.alarmTime}; `);
+            if (!data.fx.sleepEnabled) {
+                strAlarms += "<i>(alarms disabled)</i>"
+            }
             $('#schAlarms').html(strAlarms.length > 0 ? strAlarms : "None");
 
             //update the current effect tiles as well
