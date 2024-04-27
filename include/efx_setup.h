@@ -234,8 +234,6 @@ public:
     bool isAsleep() const;
 
     void setSleepState(bool sleepFlag);
-
-    void logSecondEffect();
 };
 
 extern EffectRegistry fxRegistry;

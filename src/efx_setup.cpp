@@ -771,22 +771,25 @@ LedEffect *EffectRegistry::findEffect(const char *id) {
 void EffectRegistry::setSleepState(const bool sleepFlag) {
     if (sleepState != sleepFlag) {
         sleepState = sleepFlag;
+        Log.infoln(F("Switching to sleep state %T (sleep mode enabled %T)"), sleepState, sleepModeEnabled);
         if (sleepState) {
             nextEffectPos(FX_SLEEPLIGHT_ID);
         } else {
             if (lastEffects.size() < 2)
                 nextRandomEffectPos();
             else {
-                uint16_t prevFx = *(lastEffects.begin()+1); //second entry in the queue is the previous effect before the sleep mode
+                uint16_t prevFx = *(lastEffects.end()+1); //second entry in the queue (from the inserting point - the end) is the previous effect before the sleep mode
                 currentEffect = prevFx;
                 transitionEffect();
             }
         }
-    }
+    } else
+        Log.infoln(F("Sleep state is already %T - no changes"), sleepState);
 }
 
 void EffectRegistry::enableSleep(bool bSleep) {
     sleepModeEnabled = bSleep;
+    Log.infoln(F("Sleep mode enabled is now %T"), sleepModeEnabled);
     //determine the proper sleep status based on time
     setSleepState(sleepModeEnabled && !isAwakeTime(now()));
 }
@@ -843,15 +846,6 @@ uint16_t EffectRegistry::size() const {
 void EffectRegistry::pastEffectsRun(JsonArray &json) {
     for (const auto &fxIndex: lastEffects)
         json.add(getEffect(fxIndex)->name());
-}
-
-void EffectRegistry::logSecondEffect() {
-    if (lastEffects.size() < 2)
-        Log.infoln("logSecondEffect: Less than 2 effects in the list");
-    else {
-        uint16_t prevFx = *(lastEffects.begin() + 1); //second effect index
-        Log.infoln("logSecondEffect: Second effect index in the lastEffects is %d", prevFx);
-    }
 }
 
 // LedEffect
@@ -1106,8 +1100,6 @@ void fx_run() {
             minTemp = msmt;
         if (msmt > maxTemp)
             maxTemp = msmt;
-
-        fxRegistry.logSecondEffect();
     }
     EVERY_N_MINUTES(7) {
         fxRegistry.nextRandomEffectPos();
@@ -1130,5 +1122,7 @@ void wakeup() {
 void bedtime() {
     if (fxRegistry.isSleepEnabled())
         fxRegistry.setSleepState(true);
+    else
+        Log.warningln(F("Bedtime alarm triggered, sleep mode is disabled - no changes"));
 }
 
