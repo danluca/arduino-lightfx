@@ -845,6 +845,15 @@ void EffectRegistry::pastEffectsRun(JsonArray &json) {
         json.add(getEffect(fxIndex)->name());
 }
 
+void EffectRegistry::logSecondEffect() {
+    if (lastEffects.size() < 2)
+        Log.infoln("logSecondEffect: Less than 2 effects in the list");
+    else {
+        uint16_t prevFx = *(lastEffects.begin() + 1); //second effect index
+        Log.infoln("logSecondEffect: Second effect index in the lastEffects is %d", prevFx);
+    }
+}
+
 // LedEffect
 uint16_t LedEffect::getRegistryIndex() const {
     return registryIndex;
@@ -1097,6 +1106,8 @@ void fx_run() {
             minTemp = msmt;
         if (msmt > maxTemp)
             maxTemp = msmt;
+
+        fxRegistry.logSecondEffect();
     }
     EVERY_N_MINUTES(7) {
         fxRegistry.nextRandomEffectPos();
@@ -1112,11 +1123,12 @@ void fx_run() {
 
 // FxSchedule functions
 void wakeup() {
+//    if (fxRegistry.isSleepEnabled())
     fxRegistry.setSleepState(false);
-
 }
 
 void bedtime() {
-    fxRegistry.setSleepState(true);
+    if (fxRegistry.isSleepEnabled())
+        fxRegistry.setSleepState(true);
 }
 
