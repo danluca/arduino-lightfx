@@ -13,11 +13,11 @@ using namespace FxF;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxf1Desc[] PROGMEM = "FxF1: beat wave";
-const char fxf2Desc[] PROGMEM = "FxF2: Halloween breathe with various color blends";
-const char fxf3Desc[] PROGMEM = "FxF3: Eye Blink";
-const char fxf4Desc[] PROGMEM = "FxF4: Bouncy segments";
-const char fxf5Desc[] PROGMEM = "FxF5: Fireworks";
+const char fxf1Desc[] PROGMEM = "FXF1: beat wave";
+const char fxf2Desc[] PROGMEM = "FXF2: Halloween breathe with various color blends";
+const char fxf3Desc[] PROGMEM = "FXF3: Eye Blink";
+const char fxf4Desc[] PROGMEM = "FXF4: Bouncy segments";
+const char fxf5Desc[] PROGMEM = "FXF5: Fireworks";
 
 void FxF::fxRegister() {
     static FxF1 fxF1;

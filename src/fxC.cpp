@@ -16,8 +16,8 @@ const char fxc1Desc[] PROGMEM = "FXC1: blend between two concurrent animations";
 const char fxc2Desc[] PROGMEM = "FXC2: blur function";
 const char fxc3Desc[] PROGMEM = "FXC3: Perlin Noise for moving up and down the strand";
 const char fxc4Desc[] PROGMEM = "FxC4: lightnings";
-const char fxc5Desc[] PROGMEM = "FxC5: matrix";
-const char fxc6Desc[] PROGMEM = "FxC6: one sine";
+const char fxc5Desc[] PROGMEM = "FXC5: matrix";
+const char fxc6Desc[] PROGMEM = "FXC6: one sine";
 
 void FxC::fxRegister() {
     static FxC1 fxC1;

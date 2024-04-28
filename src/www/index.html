@@ -5,7 +5,9 @@
     <meta charset="utf-8">
     <title>Luca Light FX</title>
     <link href="pixel.css" rel="stylesheet" type="text/css" />
-    <script src="jquery.min.js" type="text/javascript"></script>
+<!--    <script src="jquery.min.js" type="text/javascript"></script>-->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" type="text/javascript"></script>
+    <script src="https://cdn.canvasjs.com/jquery.canvasjs.min.js" type="text/javascript"></script>
     <script src="pixel.js" type="text/javascript"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
@@ -83,7 +85,7 @@
                 <dt>Board</dt>
                 <dd>Mbed OS: <span id="mbedVersion"></span></dd>
                 <dd>Temperature: <span id="boardTemp"></span> <br/><span id="rangeTemp" class="indent2"></span></dd>
-                <dd>Vcc: <span id="boardVcc"></span> <br/><span id="rangeVcc" class="indent2"></span></dd>
+                <dd>Vcc: <span id="boardVcc"></span> <span id="rangeVcc" class="indent2"></span></dd>
                 <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
                 <dd>Up Time: <span id="upTime"></span> </dd>
                 <dd>Status code: <span id="overallStatus"></span></dd>
@@ -110,7 +112,8 @@
                 <dd>Color Theme: <span id="fxCurHoliday"></span></dd>
                 <dd>Strip Brightness: <span id="fxBrightness"></span></dd>
                 <dd>Audio Effect Changes: <span id="totalAudioBumps"></span></dd>
-                <dd>Audio Level Histogram: <span id="audioLevelHistogram"></span></dd>
+<!--                <dd>Audio Level Histogram: <span id="audioLevelHistogram"></span></dd>-->
+                <div id="audioHistogram"></div>
                 </div>
             </dl>
         </section>

@@ -13,9 +13,9 @@ using namespace colTheme;
 //~ Effect description strings stored in flash
 const char fxe1Desc[] PROGMEM = "FXE1: twinkle";
 const char fxe2Desc[] PROGMEM = "FXE2: beat wave";
-const char fxe3Desc[] PROGMEM = "FxE3: sawtooth back/forth";
-const char fxe4Desc[] PROGMEM = "FxE4: serendipitous";
-const char fxe5Desc[] PROGMEM = "FxE5: three single color beat-waves";
+const char fxe3Desc[] PROGMEM = "FXE3: sawtooth back/forth";
+const char fxe4Desc[] PROGMEM = "FXE4: serendipitous";
+const char fxe5Desc[] PROGMEM = "FXE5: three single color beat-waves";
 
 void FxE::fxRegister() {
     static FxE1 fxe1;

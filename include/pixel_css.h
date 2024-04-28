@@ -143,5 +143,12 @@ dd span {
 .indent2 {
     padding-left: 2em;
 }
-
+#audioHistogram {
+    width: 400px;
+    height: 300px;
+    padding-left: 0 !important;
+}
+.canvasjs-chart-credit {
+    display: none;
+}
 )~~~";

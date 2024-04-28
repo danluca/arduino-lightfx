@@ -12,7 +12,7 @@
 #include "FxSchedule.h"
 
 #include "index_html.h"
-#include "jquery_min_js.h"
+//#include "jquery_min_js.h"
 #include "pixel_css.h"
 #include "pixel_js.h"
 

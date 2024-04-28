@@ -280,8 +280,8 @@ size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy
 
     // figure out which JS source we need
     const char* src = pixel_js;
-    if (uri->endsWith("jquery.min.js"))
-        src = jquery_min_js;
+//    if (uri->endsWith("jquery.min.js"))
+//        src = jquery_min_js;
     // determine size
     size_t jsLen = strlen(src);
     sz += writeContentLengthHeader(client, jsLen);
