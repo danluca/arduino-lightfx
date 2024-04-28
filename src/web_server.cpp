@@ -408,9 +408,10 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     JsonArray alarms = time.createNestedArray("alarms");
     for (const auto &al : scheduledAlarms) {
         JsonObject jal = alarms.createNestedObject();
+        jal["timeLong"] = al->value;
         formatDateTime(timeBuf, al->value);
-        jal["alarmTime"] = timeBuf;
-        jal["alarmType"] = alarmTypeToString(al->type);
+        jal["timeFmt"] = timeBuf;
+        jal["type"] = alarmTypeToString(al->type);
 //        jal["taskPtr"] = (long)al->onEventHandler;
     }
 

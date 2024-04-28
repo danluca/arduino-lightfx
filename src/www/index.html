@@ -55,13 +55,12 @@
                 </div>
             </div>
             <div id="curEffectArea">
-                <p id="curEffectLabel">Current effect: </p>
-                <p id="curEffect"></p>
-                <p id="curEffectId"></p>
+                <span id="curEffectLabel">Current effect: </span> <span id="curEffect"></span> (<span id="curEffectId"></span>)
             </div>
-        </section>
-        <section id="time">
-            <h1>Time</h1>
+<!--        </section>-->
+<!--        <section id="time">-->
+<!--            <h1>Time</h1>-->
+            <div class="separator"></div>
             <div id="timeChangeArea">
                 <label for="holidayList" id="holidayListLabel">Change current color theme</label>
                 <select id="holidayList" onchange="updateHoliday()">
@@ -69,7 +68,7 @@
                 </select>
             </div>
             <div id="curHolidayArea">
-                <p><span id="curHolidayLabel">Current color theme: </span><span id="curHolidayValue"></span></p>
+                <span id="curHolidayLabel">Current color theme: </span><span id="curHolidayValue"></span>
             </div>
         </section>
         <section id="settings">

@@ -45,7 +45,7 @@ footer {
     box-sizing: border-box;
 }
 
-#effects #fxChangeArea, #time #timeChangeArea {
+#effects #fxChangeArea {
     float: left;
 }
 
@@ -61,6 +61,19 @@ footer {
     padding-right: 2em;
     float: left;
 }
+#curHolidayLabel {
+    padding-left: 6em;
+}
+#holidayListLabel {
+    padding-left: 0;
+}
+#curHolidayValue {
+    float: left;
+}
+#effects .separator {
+    float: left;
+    width: 100%;
+}
 
 #brightListLabel {
 }
@@ -69,7 +82,7 @@ footer {
     text-overflow: ellipsis;
 }
 
-#effects #curEffectArea, #time #curHolidayArea {
+#effects #curEffectArea, #effects #timeChangeArea, #effects #curHolidayArea {
     float: left;
 }
 

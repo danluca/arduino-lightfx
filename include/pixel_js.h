@@ -102,15 +102,15 @@ function getStatus() {
             $('#lastDrift').html(`${data.time.lastDrift} ms`);
             $('#avgDrift').html(`${data.time.averageDrift} ms/hr`);
             $('#totalDrift').html(`${data.time.totalDrift} ms (${data.time.syncSize} sync points @ 17 hrs)`);
+
             let strAlarms = "";
-            data.time.alarms.forEach(al =>  strAlarms += `${al.alarmType} @ ${al.alarmTime}; `);
-            if (!data.fx.sleepEnabled) {
-                strAlarms += "<i>(alarms disabled)</i>"
-            }
-            $('#schAlarms').html(strAlarms.length > 0 ? strAlarms : "None");
+            data.time.alarms.sort((a, b) => a.timeLong - b.timeLong);
+            data.time.alarms.forEach(al =>  strAlarms += `<li>${al.timeFmt} (${al.type})</li>`);
+            let strAlarmsEnabled = data.fx.sleepEnabled ? "" : "<i>(alarms disabled)</i>"
+            $('#schAlarms').html(`${strAlarmsEnabled}${strAlarms.length > 0 ? "<br/><ul>"+strAlarms+"</ul>" : ": None"}`);
 
             //update the current effect tiles as well
-            $('#curEffectId').html(`Index: ${data.fx.index}`);
+            $('#curEffectId').html(`index: ${data.fx.index}`);
             let desc = config?.fx?.find(x=> x.registryIndex === data.fx.index)?.description ?? "N/A";
             $('#curEffect').html(`${data.fx.name} - ${desc}`);
             $('#autoFxChange').prop("checked", data.fx.auto);
