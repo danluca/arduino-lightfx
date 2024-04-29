@@ -65,6 +65,7 @@ footer {
     padding-left: 6em;
 }
 #holidayListLabel {
+    color: #7f7fBf;
     padding-left: 0;
 }
 #curHolidayValue {

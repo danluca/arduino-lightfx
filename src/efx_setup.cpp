@@ -754,7 +754,7 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     effects.push_back(effect);  //pushing from the back to preserve the order or insertion during iteration
     effectsCount = effects.size();
     uint16_t fxIndex = effectsCount - 1;
-    if (strcmp(FX_SLEEPLIGHT_ID, effect->name()))
+    if (strcmp(FX_SLEEPLIGHT_ID, effect->name()) == 0)
         sleepEffect = fxIndex;
     Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), fxIndex);
     return fxIndex;
