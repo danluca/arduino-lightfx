@@ -410,7 +410,6 @@ SleepLight::SleepLight() : LedEffect(fxa6Desc), state(Fade), refPixel(&ledSet[0]
     for (int x = 5; x < ledSet.size(); x += 10) {
         slOffSegs.push_front(ledSet(x, x+4));
     }
-    fxRegistry.registerEffect(this);
 }
 
 uint8_t excludeActiveColors(uint8_t hue) {
@@ -451,12 +450,12 @@ uint8_t flrSub(uint8_t val, uint8_t sub, uint8_t floor) {
 
 void SleepLight::run() {
     if (state == Fade) {
-        EVERY_N_SECONDS(11) {
+        EVERY_N_SECONDS(5) {
             colorBuf.val = flrSub(colorBuf.val, 3, minBrightness);
             state = colorBuf.val > minBrightness ? FadeColorTransition : SleepTransition;
             Log.infoln(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
         }
-        EVERY_N_SECONDS(5) {
+        EVERY_N_SECONDS(3) {
             colorBuf.hue = excludeActiveColors(colorBuf.hue + random8(2, 19));
             colorBuf.sat = map(colorBuf.val, minBrightness, brightness, 20, 96);
             state = colorBuf.val > minBrightness ? FadeColorTransition : SleepTransition;

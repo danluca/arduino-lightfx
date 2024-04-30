@@ -25,13 +25,9 @@ float boardTemperature(bool bFahrenheit) {
     if (IMU.temperatureAvailable()) {
         float tempC = 0.0f;
         IMU.readTemperatureFloat(tempC);
-#ifndef DISABLE_LOGGING
-        // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
-        // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
-        Log.infoln(F("Board temperature %D 'C (%D 'F)"), tempC, toFahrenheit(tempC));
-#endif
         return bFahrenheit ? toFahrenheit(tempC) : tempC;
-    }
+    } else
+        Log.warningln(F("IMU temperature not available - using %D for board temperature value (Fahrenheit flag = %T)"), IMU_TEMPERATURE_NOT_AVAILABLE, bFahrenheit);
     return IMU_TEMPERATURE_NOT_AVAILABLE;
 }
 
@@ -55,8 +51,9 @@ float chipTemperature(bool bFahrenheit) {
     for (uint x = 0; x < avgSize; x++)
         valSum += adc_read();
     adc_select_input(curAdc);   //restore the ADC input selection
-    Log.traceln(F("Internal Temperature %d average reading: %d"), avgSize, valSum/avgSize);
-
+#ifndef DISABLE_LOGGING
+    Log.traceln(F("Internal temperature value: %d; average reading: %d"), avgSize, valSum/avgSize);
+#endif
     auto tV = (float)(valSum*MV3_3/avgSize/maxAdc);   //voltage in mV
     //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
     //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius

@@ -27,6 +27,7 @@
 
 extern const char stateFileName[];
 
+inline static float toFahrenheit(float celsius);
 float boardTemperature(bool bFahrenheit = false);
 float chipTemperature(bool bFahrenheit = false);
 float controllerVoltage();

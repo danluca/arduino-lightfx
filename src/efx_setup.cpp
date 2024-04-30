@@ -1093,13 +1093,20 @@ void fx_run() {
             maxVcc = msmt;
 #ifndef DISABLE_LOGGING
         Log.infoln(F("Board Vcc voltage %D V"), msmt);
-        Log.infoln(F("Chip internal temperature %D 'C"), chipTemperature());
+        // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
+        // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
+        float tempChip = chipTemperature();
+        Log.infoln(F("Chip internal temperature %D 'C (%D 'F)"), tempChip, toFahrenheit(tempChip));
 #endif
         msmt = boardTemperature();
         if (msmt < minTemp)
             minTemp = msmt;
         if (msmt > maxTemp)
             maxTemp = msmt;
+#ifndef DISABLE_LOGGING
+        Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), msmt, toFahrenheit(msmt), minTemp, maxTemp);
+        Log.infoln(F("Current time: %y"), now());
+#endif
     }
     EVERY_N_MINUTES(7) {
         fxRegistry.nextRandomEffectPos();
