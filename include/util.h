@@ -27,9 +27,12 @@
 
 extern const char stateFileName[];
 
-inline static float toFahrenheit(float celsius);
 float boardTemperature(bool bFahrenheit = false);
 float chipTemperature(bool bFahrenheit = false);
+inline static float toFahrenheit(float celsius) {
+    return celsius * 9.0f / 5 + 32;
+}
+
 float controllerVoltage();
 ulong adcRandom();
 void setupStateLED();

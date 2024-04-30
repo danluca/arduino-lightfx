@@ -17,10 +17,6 @@ FixedQueue<TimeSync, 8> timeSyncs;
 
 LittleFSWrapper *fsPtr;
 
-inline static float toFahrenheit(float celsius) {
-    return celsius * 9.0f / 5 + 32;
-}
-
 float boardTemperature(bool bFahrenheit) {
     if (IMU.temperatureAvailable()) {
         float tempC = 0.0f;
