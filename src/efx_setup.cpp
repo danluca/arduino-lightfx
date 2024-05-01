@@ -1069,7 +1069,6 @@ void fx_setup() {
     for (auto x : categorySetup)
         x();
     //initialize ALL the effects configured in the functions above
-    //fxRegistry.setup();
     readState();
     transEffect.setup();
 
@@ -1082,6 +1081,7 @@ void fx_setup() {
 void fx_run() {
     EVERY_N_SECONDS(30) {
         if (fxBump) {
+            Log.infoln(F("Audio triggered effect incremental change"));
             fxRegistry.nextEffectPos();
             fxBump = false;
             totalAudioBumps++;
@@ -1095,8 +1095,8 @@ void fx_run() {
         Log.infoln(F("Board Vcc voltage %D V"), msmt);
         // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
         // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
-        float tempChip = chipTemperature();
-        Log.infoln(F("Chip internal temperature %D 'C (%D 'F)"), tempChip, toFahrenheit(tempChip));
+        msmt = chipTemperature();
+        Log.infoln(F("Chip internal temperature %D 'C (%D 'F)"), msmt, toFahrenheit(msmt));
 #endif
         msmt = boardTemperature();
         if (msmt < minTemp)
@@ -1109,6 +1109,7 @@ void fx_run() {
 #endif
     }
     EVERY_N_MINUTES(7) {
+        Log.infoln(F("Switching effect to a new random one"));
         fxRegistry.nextRandomEffectPos();
         random16_add_entropy(secRandom16());        //this may or may not help
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);

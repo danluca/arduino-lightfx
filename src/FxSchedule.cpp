@@ -114,8 +114,14 @@ void alarm_loop() {
             } else
                 ++it;
         }
-        Log.infoln(F("Alarms remaining:"));
-        logAlarms();
+        //if no more alarms - attempt to schedule next ones
+        if (scheduledAlarms.empty()) {
+            Log.infoln(F("Alarms queue empty - schedule more"));
+            setupAlarmSchedule();
+        } else {
+            Log.infoln(F("Alarms remaining:"));
+            logAlarms();
+        }
 
 //        for (size_t x = 0; x < scheduledAlarms.size(); x++) {
 //            AlarmData *al = scheduledAlarms.front();
