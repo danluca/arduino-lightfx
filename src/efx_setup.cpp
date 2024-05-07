@@ -778,7 +778,7 @@ void EffectRegistry::setSleepState(const bool sleepFlag) {
             if (lastEffects.size() < 2)
                 nextRandomEffectPos();
             else {
-                uint16_t prevFx = *(lastEffects.end()+1); //second entry in the queue (from the inserting point - the end) is the previous effect before the sleep mode
+                uint16_t prevFx = *(lastEffects.end()-2); //second entry in the queue (from the inserting point - the end) is the previous effect before the sleep mode
                 currentEffect = prevFx;
                 transitionEffect();
             }
@@ -1099,10 +1099,12 @@ void fx_run() {
         Log.infoln(F("Chip internal temperature %D 'C (%D 'F)"), msmt, toFahrenheit(msmt));
 #endif
         msmt = boardTemperature();
-        if (msmt < minTemp)
-            minTemp = msmt;
-        if (msmt > maxTemp)
-            maxTemp = msmt;
+        if (msmt != IMU_TEMPERATURE_NOT_AVAILABLE) {
+            if (msmt < minTemp)
+                minTemp = msmt;
+            if (msmt > maxTemp)
+                maxTemp = msmt;
+        }
 #ifndef DISABLE_LOGGING
         Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), msmt, toFahrenheit(msmt), minTemp, maxTemp);
         Log.infoln(F("Current time: %y"), now());
