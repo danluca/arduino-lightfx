@@ -8,7 +8,7 @@
 using namespace colTheme;
 const char ssid[] PROGMEM = WF_SSID;
 const char pass[] PROGMEM = WF_PSW;
-const char hostname[] PROGMEM = "Arduino Board " BOARD_NAME;
+const char hostname[] PROGMEM = "Arduino-RP2040-" BOARD_NAME;
 
 const CRGB CLR_ALL_OK = CRGB::Indigo;
 const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Yellow;
@@ -146,6 +146,7 @@ void wifi_reconnect() {
 void wifi_loop() {
     EVERY_N_MINUTES(7) {
         if (!wifi_check()) {
+            updateStateLED((uint32_t)CLR_SETUP_ERROR);
             Log.warningln(F("WiFi connection unusable/lost - reconnecting..."));
             wifi_reconnect();
         }

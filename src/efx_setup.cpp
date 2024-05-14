@@ -137,8 +137,10 @@ void saveState() {
  * <p>This needs to account for ALL global variables</p>
  */
 void resetGlobals() {
-    //turn off the LEDs on the strip and the frame buffer
-    FastLED.clear(true);
+    //turn off the LEDs on the strip and the frame buffer - flush to the LED strip if we have the time and not in sleep time
+    //flushing to strip may cause a short blink if called mid-effect, like an audio effect bump would do for the same effect when sleeping
+    bool flushStrip = isSysStatus(SYS_STATUS_NTP) && !fxRegistry.isAsleep();
+    FastLED.clear(flushStrip);
     FastLED.setBrightness(BRIGHTNESS);
     frame.fill_solid(BKG);
 
