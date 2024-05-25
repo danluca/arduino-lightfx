@@ -81,7 +81,7 @@ void readState() {
     String json;
     size_t stateSize = readTextFile(stateFileName, &json);
     if (stateSize > 0) {
-        StaticJsonDocument<STATE_JSON_DOC_SIZE> doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+        JsonDocument doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
         deserializeJson(doc, json);
 
         bool autoAdvance = doc[csAutoFxRoll].as<bool>();
@@ -115,7 +115,7 @@ void readState() {
 }
 
 void saveState() {
-    StaticJsonDocument<STATE_JSON_DOC_SIZE> doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+    JsonDocument doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
     doc[csRandomSeed] = random16_get_seed();
     doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
     doc[csCurFx] = fxRegistry.curEffectPos();
@@ -878,7 +878,7 @@ LedEffect::LedEffect(const char *description) : state(Idle), desc(description) {
 }
 
 JsonObject &LedEffect::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.createNestedObject();
+    JsonObject obj = json.add<JsonObject>();
     baseConfig(obj);
     return obj;
 }
