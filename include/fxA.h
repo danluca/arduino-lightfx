@@ -132,7 +132,7 @@ namespace FxA {
         ~SleepLight() override = default;
 
     protected:
-        static const uint8_t minBrightness = 11;
+        static const uint8_t minBrightness = 24;
         enum SleepLightState:uint8_t {Fade, FadeColorTransition, SleepTransition, Sleep} state;
         CHSV colorBuf{};
         uint8_t timer{};

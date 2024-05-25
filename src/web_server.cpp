@@ -485,6 +485,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     if (doc.containsKey(csAudioThreshold)) {
         audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
         upd[csAudioThreshold] = audioBumpThreshold;
+        clearLevelHistory();
     }
     if (doc.containsKey(csSleepEnabled)) {
         bool sleepEnabled = doc[csSleepEnabled].as<bool>();

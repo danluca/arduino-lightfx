@@ -11,7 +11,7 @@ const char pass[] PROGMEM = WF_PSW;
 const char hostname[] PROGMEM = "Arduino-RP2040-" BOARD_NAME;
 
 const CRGB CLR_ALL_OK = CRGB::Indigo;
-const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Yellow;
+const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;
 const CRGB CLR_SETUP_ERROR = CRGB::Red;
 
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
@@ -89,7 +89,7 @@ bool imu_setup() {
     // initialize the IMU (Inertial Measurement Unit)
     if (!IMU.begin()) {
         Log.errorln(F("Failed to initialize IMU!"));
-        updateStateLED(CRGB::Red);
+        updateStateLED((uint32_t )CLR_SETUP_ERROR);
         //rtos::ThisThread::terminate();
         while (true) yield();
     }
@@ -130,7 +130,7 @@ bool wifi_check() {
  */
 void wifi_reconnect() {
     resetSysStatus(SYS_STATUS_WIFI);
-    updateStateLED(CRGB::Orange);
+    updateStateLED((uint32_t)CLR_SETUP_IN_PROGRESS);
     server.clearWriteError();
     WiFiClient client = server.available();
     if (client) client.stop();
@@ -139,7 +139,7 @@ void wifi_reconnect() {
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     delay(2000);    //let disconnect state settle
     if (wifi_connect())
-        updateStateLED(CRGB::Indigo);
+        updateStateLED((uint32_t)CLR_ALL_OK);
     //NVIC_SystemReset();
 }
 
@@ -153,9 +153,9 @@ void wifi_loop() {
 
         if (!timeClient.isTimeSet()) {
             if (time_setup())
-                updateStateLED(CRGB::Indigo);
+                updateStateLED((uint32_t)CLR_ALL_OK);
             else
-                updateStateLED(CRGB::Green);
+                updateStateLED((uint32_t)CLR_SETUP_ERROR);
         }
         Log.infoln(F("System status: %X"), getSysStatus());
     }

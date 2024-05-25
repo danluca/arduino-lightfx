@@ -6,11 +6,12 @@
 #include "global.h"
 #include "timeutil.h"
 #include "log.h"
+#include "util.h"
 
 const uint16_t dailyBedTime = 30*SECS_PER_MIN;          //12:30am bedtime
 const uint16_t dailyWakeupTime = 6*SECS_PER_HOUR;       //6:00am wakeup time
 const char strWakeup[] PROGMEM = "Wake-Up";
-const char strBedtime[] PROGMEM = "Bed time";
+const char strBedtime[] PROGMEM = "Bed-time";
 
 uint16_t currentDay = 0;
 
@@ -34,6 +35,23 @@ uint countFutureAlarms(const AlarmType alType, const time_t refTime) {
     uint count = 0;
     for (const auto &al : scheduledAlarms) {
         if (al->value > refTime && al->type == alType)
+            count++;
+    }
+    return count;
+}
+
+/**
+ * Counts the alarms of a type that have been scheduled on the same day as the reference time
+ * @param alType alarm type
+ * @param refTime time reference
+ * @return how many alarms are scheduled for same day as the reference time
+ */
+uint countTodayAlarms(const AlarmType alType, const time_t refTime) {
+    time_t startDay = previousMidnight(refTime);
+    time_t startNextDay = startDay+SECS_PER_DAY;
+    uint count = 0;
+    for (const auto &al : scheduledAlarms) {
+        if (al->type == alType && al->value >= startDay && al->value < startNextDay)
             count++;
     }
     return count;
@@ -80,6 +98,10 @@ void logAlarms() {
  * Setup the default sleep/wake-up schedule
  */
 void setupAlarmSchedule() {
+    if (!isSysStatus(SYS_STATUS_WIFI)) {
+        Log.warningln(F("Cannot setup alarms without WiFi, likely time is not set"));
+        return;
+    }
     //alarms for today
     time_t time = now();
     currentDay = day(time);
@@ -101,8 +123,6 @@ bool isAwakeTime(time_t time) {
 
 void alarm_loop() {
     EVERY_N_SECONDS(60) {
-        if (currentDay != day())
-            setupAlarmSchedule();
         time_t time = now();
         for (auto it = scheduledAlarms.begin(); it != scheduledAlarms.end();) {
             auto al = *it;
@@ -114,9 +134,9 @@ void alarm_loop() {
             } else
                 ++it;
         }
-        //if no more alarms - attempt to schedule next ones
-        if (scheduledAlarms.empty()) {
-            Log.infoln(F("Alarms queue empty - schedule more"));
+        //if no more alarms or a new day - attempt to schedule next alarms
+        if (scheduledAlarms.empty() || currentDay != day(time)) {
+            Log.infoln(F("Alarms queue empty or a new day - scheduling more"));
             setupAlarmSchedule();
         } else {
             Log.infoln(F("Alarms remaining:"));

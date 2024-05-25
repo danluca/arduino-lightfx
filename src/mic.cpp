@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 
 #include "mic.h"
@@ -20,6 +20,11 @@ volatile size_t samplesRead;
 
 volatile uint16_t maxAudio[10] {};
 volatile uint16_t audioBumpThreshold = 2000;
+
+void clearLevelHistory() {
+    for (auto &l : maxAudio)
+        l = 0;
+}
 
 /**
   * Callback function to process the data from the PDM microphone.

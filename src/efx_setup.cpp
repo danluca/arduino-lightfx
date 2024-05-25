@@ -1070,7 +1070,6 @@ void fx_setup() {
     //instantiate effect categories
     for (auto x : categorySetup)
         x();
-    //initialize ALL the effects configured in the functions above
     readState();
     transEffect.setup();
 

@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 
 #ifndef ARDUINO_LIGHTFX_MIC_H
@@ -10,5 +10,7 @@
 void mic_setup();
 
 void mic_run();
+
+void clearLevelHistory();
 
 #endif //ARDUINO_LIGHTFX_MIC_H
