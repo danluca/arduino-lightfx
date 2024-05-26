@@ -426,7 +426,7 @@ void SleepLight::setup() {
     state = FadeColorTransition;
     hue = colorBuf.hue = excludeActiveColors(0);
     colorBuf.sat = 160;
-    colorBuf.val = brightness;
+    colorBuf.val = stripBrightness;
     Log.infoln(F("SleepLight setup: colorBuf=%r, hue=%d, sat=%d, val=%d"), (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val);
 }
 
@@ -461,7 +461,7 @@ void SleepLight::run() {
     EVERY_N_MILLIS(125) {
         SleepLightState oldState = step();
         if (!(oldState == state && state == Sleep))
-            FastLED.show();
+            FastLED.show(); //overall brightness is managed through color's value of HSV structure, which stabilizes at minBrightness, hence no need to scale with stripBrightness here
     }
 
 }

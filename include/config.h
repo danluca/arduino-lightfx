@@ -1,5 +1,5 @@
 //
-// Copyright 2023 by Dan Luca. All rights reserved
+// Copyright 2023,2024 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_CONFIG_H
 #define LIGHTFX_CONFIG_H
@@ -15,7 +15,7 @@
 
 //#define NUM_PIXELS  300    //number of pixels on the house edge strip
 #define NUM_PIXELS  320      //number of pixels on the house edge (300 measured + reserve)
-#define FRAME_SIZE  68       //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBArray must fit at least 3 frames
+#define FRAME_SIZE  75       //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBArray must fit at least 3 frames
 
 // initial global brightness 0-255
 #define BRIGHTNESS 255
