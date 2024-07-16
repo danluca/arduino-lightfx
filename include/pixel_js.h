@@ -53,6 +53,7 @@ $(() => {
         $('#buildVersion').html(data.fwVersion);
         $('#buildBranch').html(data.fwBranch);
         $('#buildTime').html(data.buildTime);
+        $('#macAddress').html(data.MAC);
     });
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status

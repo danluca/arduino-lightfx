@@ -35,6 +35,22 @@ uint8_t barSignalLevel(int32_t rssi) {
     return (uint8_t) ((float) (rssi - minRSSI) * outRange / inRange);
 }
 
+/**
+ * Formats the MAC address into the character buffer provided
+ * @param buf buffer to write MAC address into, must have room for at least 20 characters - including null terminator
+ * @return number of characters written
+ */
+int formatMACAddress(char *buf) {
+    uint8_t mac[WL_MAC_ADDR_LENGTH];
+    WiFi.macAddress(mac);
+    int x = 0;
+    for (auto &b : mac)
+        x += sprintf(buf+x, "%02X:", b);
+    //last character - at index x-1 is a ':', make it null to trim the last colon character
+    buf[x-1] = 0;
+    return x-1;
+}
+
 bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
     WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
@@ -191,9 +207,9 @@ void printSuccessfulWifiStatus() {
     Log.infoln(F("IP Address: %p"), ip);
 
     // print your board's MAC address
-    uint8_t mac[WL_MAC_ADDR_LENGTH];
-    WiFi.macAddress(mac);
-    Log.infoln(F("MAC Address %x:%x:%x:%x:%x:%x"), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    char buf[20];
+    formatMACAddress(buf);
+    Log.infoln(F("MAC Address %s"), buf);
 
     // print the received signal strength:
     int32_t rssi = WiFi.RSSI();

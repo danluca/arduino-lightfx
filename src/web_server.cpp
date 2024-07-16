@@ -157,20 +157,7 @@ size_t web::handleGetWifi(WiFiClient *client, String *uri, String *hd, String *b
     // response body
     JsonDocument doc;
 
-    //MAC address
-    uint8_t mac[WL_MAC_ADDR_LENGTH];
-    WiFi.macAddress(mac);
-    char chrBuf[20];
-    sprintf(chrBuf, "%X:%X:%X:%X:%X:%X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    doc["MAC"] = chrBuf;
-    doc["IP"] = WiFi.localIP();         //IP Address
-    const int32_t rssi = WiFi.RSSI();
-    doc["RSSI"] = String(rssi);         //Wi-Fi signal level
-    doc["bars"] = barSignalLevel(rssi);
-    doc["millis"] = millis();           //current time in ms
-    //current temperature
-    doc["boardTemp"] = boardTemperature();
-    doc["ntpSync"] = timeStatus();
+    //NO NEED FOR THIS API
 
     //send it out
     sz += serializeJson(doc, *client);
@@ -215,12 +202,14 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     JsonArray hldList = doc["holidayList"].to<JsonArray>();
     for (uint8_t hi = None; hi <= NewYear; hi++)
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
-    char datetime[20];
-    formatDateTime(datetime, now());
-    doc["currentTime"] = datetime;
+    char buf[20];
+    formatDateTime(buf, now());
+    doc["currentTime"] = buf;
     bool bDST = isSysStatus(SYS_STATUS_DST);
     doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
     doc["dst"] = bDST;
+    formatMACAddress(buf);
+    doc["MAC"] = buf;
     JsonArray fxArray = doc["fx"].to<JsonArray>();
     fxRegistry.describeConfig(fxArray);
     //send it out

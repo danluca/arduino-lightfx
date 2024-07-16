@@ -21,6 +21,7 @@ bool imu_setup();
 void server_setup();
 void webserver();
 void wifi_loop();
+int formatMACAddress(char *buf);
 void printSuccessfulWifiStatus();
 void checkFirmwareVersion();
 uint8_t barSignalLevel(int32_t rssi);

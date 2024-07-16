@@ -1100,7 +1100,7 @@ void fx_run() {
         Log.infoln(F("Chip internal temperature %D 'C (%D 'F)"), msmt, toFahrenheit(msmt));
 #endif
         msmt = boardTemperature();
-        if (msmt != IMU_TEMPERATURE_NOT_AVAILABLE) {
+        if (fabs(msmt - IMU_TEMPERATURE_NOT_AVAILABLE) <= TEMP_NA_COMPARE_EPSILON) {
             if (msmt < minTemp)
                 minTemp = msmt;
             if (msmt > maxTemp)

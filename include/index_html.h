@@ -101,6 +101,7 @@ const char index_html[] PROGMEM = R"~~~(
                 <div>
                 <dt>WiFi</dt>
                 <dd>IP Address: <span id="wfIpAddress"></span></dd>
+                <dd>MAC Address: <span id="macAddress"></span></dd>
                 <dd>Signal: <span id="wfSignal"></span></dd>
                 <dd>WiFi FW: <span id="wfVersion"></span></dd>
                 </div>
