@@ -18,7 +18,7 @@
 #include "log.h"
 
 #define IMU_TEMPERATURE_NOT_AVAILABLE   0.001f
-#define TEMP_NA_COMPARE_EPSILON      0.000001f
+#define TEMP_NA_COMPARE_EPSILON      0.0001f
 
 #define SYS_STATUS_WIFI    0x01
 #define SYS_STATUS_NTP     0x02
@@ -52,10 +52,10 @@ size_t readTextFile(const char *fname, String *s);
 size_t writeTextFile(const char *fname, String *s);
 bool removeFile(const char *fname);
 
-const uint8_t setSysStatus(uint8_t bitMask);
-const uint8_t resetSysStatus(uint8_t bitMask);
+uint8_t setSysStatus(uint8_t bitMask);
+uint8_t resetSysStatus(uint8_t bitMask);
 bool isSysStatus(uint8_t bitMask);
-const uint8_t getSysStatus();
+uint8_t getSysStatus();
 
 uint8_t secRandom8(uint8_t minLim = 0, uint8_t maxLim = 0);
 uint16_t secRandom16(uint16_t minLim = 0, uint16_t maxLim = 0);

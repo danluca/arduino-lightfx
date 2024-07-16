@@ -35,7 +35,6 @@ static const char hdFmtDate[] PROGMEM = "Date: %4d-%02d-%02d %02d:%02d:%02d CST"
 static const char hdFmtContentDisposition[] PROGMEM = "Content-Disposition: inline; filename=\"%s\"";
 static const char msgRequestNotMapped[] PROGMEM = "URI not mapped to a handler on this server";
 static const char configJsonFilename[] PROGMEM = "config.json";
-static const char wifiJsonFilename[] PROGMEM = "wifi.json";
 static const char statusJsonFilename[] PROGMEM = "status.json";
 
 /**
@@ -47,7 +46,6 @@ static const char statusJsonFilename[] PROGMEM = "status.json";
 static const std::map<std::string, reqHandler> webMappings PROGMEM = {
         {"^GET /config\\.json$",  handleGetConfig},
         {"^GET /status\\.json$",  handleGetStatus},
-        {"^GET /wifi\\.json$",    handleGetWifi},
         {"^GET /\\w+\\.css$",     handleGetCss},
         {"^GET /[\\w.]+\\.js$",   handleGetJs},
         {"^GET /\\w+\\.html$",    handleGetHtml},
@@ -133,39 +131,6 @@ size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
         srcPos += szRead;
         pos += szRead;
     }
-    return sz;
-}
-
-/**
- * Handles <code>GET /wifi.json</code> - responds with JSON document containing WiFi connectivity details
- * <p>Must comply with the <code>reqHandler</code> function pointer signature</p>
- * @param client the web client to respond to
- * @param uri URI invoked
- * @param hd request headers
- * @param bdy request body - empty (this is a GET request)
- * @return number of bytes sent to the client
- */
-size_t web::handleGetWifi(WiFiClient *client, String *uri, String *hd, String *bdy) {
-    //main status and headers
-    size_t sz = client->println(http200Status);
-    sz += client->println(hdJson);
-    sz += client->println(hdConClose);
-    sz += writeDateHeader(client);
-    sz += writeFilenameHeader(client, wifiJsonFilename);
-    sz += client->println();    //done with headers
-
-    // response body
-    JsonDocument doc;
-
-    //NO NEED FOR THIS API
-
-    //send it out
-    sz += serializeJson(doc, *client);
-    sz += client->println();
-
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetWifi invoked for %s"), uri->c_str());
-#endif
     return sz;
 }
 
@@ -455,7 +420,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         upd[csAuto] = autoAdvance;
     }
     if (doc.containsKey(strEffect)) {
-        uint16_t nextFx = doc[strEffect].as<uint16_t >();
+        auto nextFx = doc[strEffect].as<uint16_t >();
         fxRegistry.nextEffectPos(nextFx);
         upd[strEffect] = nextFx;
     }
@@ -465,7 +430,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         upd[csHoliday] = paletteFactory.adjustHoliday();
     }
     if (doc.containsKey(csBrightness)) {
-        uint8_t br = doc[csBrightness].as<uint8_t>();
+        auto br = doc[csBrightness].as<uint8_t>();
         stripBrightnessLocked = br > 0;
         stripBrightness = stripBrightnessLocked ? br : adjustStripBrightness();
         upd[csBrightness] = stripBrightness;

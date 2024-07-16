@@ -232,12 +232,12 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
     return 255-bmul8(255-a, 255-b)*2;
 }
 
-const uint8_t setSysStatus(uint8_t bitMask) {
+uint8_t setSysStatus(uint8_t bitMask) {
     sysStatus |= bitMask;
     return sysStatus;
 }
 
-const uint8_t resetSysStatus(uint8_t bitMask) {
+uint8_t resetSysStatus(uint8_t bitMask) {
     sysStatus &= (~bitMask);
     return sysStatus;
 }
@@ -246,7 +246,7 @@ bool isSysStatus(uint8_t bitMask) {
     return (sysStatus & bitMask);
 }
 
-const uint8_t getSysStatus() {
+uint8_t getSysStatus() {
     return sysStatus;
 }
 

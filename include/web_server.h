@@ -22,7 +22,6 @@ namespace web {
 
     size_t handleGetConfig(WiFiClient *client, String *uri, String *hd, String *bdy);
     size_t handleGetStatus(WiFiClient *client, String *uri, String *hd, String *bdy);
-    size_t handleGetWifi(WiFiClient *client, String *uri, String *hd, String *bdy);
     size_t handleGetCss(WiFiClient *client, String *uri, String *hd, String *bdy);
     size_t handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy);
     size_t handleGetHtml(WiFiClient *client, String *uri, String *hd, String *bdy);
