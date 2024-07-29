@@ -126,11 +126,11 @@ public:
         rtos::ScopedMutexLock lock(mutex_);
         for (size_t i = 0; i < sz; i++) {
             buffer_[head_] = value[i];
+            if(full_)
+                tail_ = (tail_ + 1) % buffer_.size();
             head_ = (head_ + 1) % buffer_.size();
+            full_ = head_ == tail_;
         }
-        if (full_)
-            tail_ = (tail_ + sz) % buffer_.size();
-        full_ = head_ == tail_;
     }
 
     T pop_front() {
@@ -154,6 +154,7 @@ public:
             dest[i] = buffer_[tail_];
             tail_ = (tail_ + 1) % buffer_.size();
         }
+        full_ = false;
         return avail;
     }
 

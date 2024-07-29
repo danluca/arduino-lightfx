@@ -11,14 +11,12 @@
 #define MIC_CHANNELS    1
 // default PCM output frequency - 20kHz for Nano RP2040. Max is ~24kHz.
 #define PCM_SAMPLE_FREQ 24000
-// the audio signal level beyond which entropy is added and an effect change is triggered
-//#define AUDIO_LEVEL_EFFECT_BUMP 2000
 // Buffer to read samples into, each sample is 16-bits
 short sampleBuffer[MIC_SAMPLE_SIZE];
-// Number of audio samples read
-volatile size_t samplesRead;
-volatile uint16_t maxAudio[10] {};
-volatile uint16_t audioBumpThreshold = 2000;
+
+volatile size_t samplesRead;                    // Number of audio samples read
+volatile uint16_t maxAudio[10] {};              // audio max levels histogram
+volatile uint16_t audioBumpThreshold = 2000;    // the audio signal level beyond which entropy is added and an effect change is triggered
 
 CircularBuffer<short> *audioData = new CircularBuffer<short>(1024);
 
@@ -62,6 +60,7 @@ void mic_run() {
     // Wait for samples to be read
     if (samplesRead) {
         audioData->push_back(sampleBuffer, samplesRead);
+        Log.infoln(F("Audio data - added %d samples to circular buffer, size updated to %d items"), samplesRead, audioData->size());
         short maxSample = INT16_MIN;
         for (uint i = 0; i < samplesRead; i++) {
             if (sampleBuffer[i] > maxSample)
