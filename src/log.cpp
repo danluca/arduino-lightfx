@@ -5,6 +5,8 @@
 #ifndef DISABLE_LOGGING
 #include <mbed.h>
 #include <FastLED.h>
+
+time_t logTimeOffset = 0;
 #endif
 
 void log_setup() {
@@ -24,19 +26,16 @@ void printTimestamp(Print* _logOutput) {
 #ifndef DISABLE_LOGGING
     // Division constants
     const unsigned long MSECS_PER_SEC       = 1000;
-    const unsigned long SECS_PER_MIN        = 60;
-    const unsigned long SECS_PER_HOUR       = 3600;
-    const unsigned long SECS_PER_DAY        = 86400;
 
     // Total time
-    const unsigned long msecs               =  millis();
-    const unsigned long secs                =  msecs / MSECS_PER_SEC;
+    const time_t msecs =  millis() + logTimeOffset;
+    const unsigned long secs =  msecs / MSECS_PER_SEC;
 
     // Time in components
-    const unsigned long MilliSeconds        =  msecs % MSECS_PER_SEC;
-    const unsigned long Seconds             =  secs  % SECS_PER_MIN ;
-    const unsigned long Minutes             = (secs  / SECS_PER_MIN) % SECS_PER_MIN;
-    const unsigned long Hours               = (secs  % SECS_PER_DAY) / SECS_PER_HOUR;
+    const unsigned long MilliSeconds =  msecs % MSECS_PER_SEC;
+    const unsigned long Seconds =  secs  % SECS_PER_MIN ;
+    const unsigned long Minutes = (secs  / SECS_PER_MIN) % SECS_PER_MIN;
+    const unsigned long Hours = (secs  % SECS_PER_DAY) / SECS_PER_HOUR;
 
     // Time as string
     char timestamp[20];

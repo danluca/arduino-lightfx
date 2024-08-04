@@ -60,7 +60,7 @@ void mic_run() {
     // Wait for samples to be read
     if (samplesRead) {
         audioData->push_back(sampleBuffer, samplesRead);
-        Log.infoln(F("Audio data - added %d samples to circular buffer, size updated to %d items"), samplesRead, audioData->size());
+        //Log.infoln(F("Audio data - added %d samples to circular buffer, size updated to %d items"), samplesRead, audioData->size());
         short maxSample = INT16_MIN;
         for (uint i = 0; i < samplesRead; i++) {
             if (sampleBuffer[i] > maxSample)

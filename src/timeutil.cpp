@@ -39,6 +39,8 @@ bool time_setup() {
             timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
         setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
         hday = paletteFactory.adjustHoliday();    //update the holiday for new time
+        if (logTimeOffset == 0)
+            logTimeOffset = now() - millis();                //capture current time into the log offset, such that log statements use current time
 #ifndef DISABLE_LOGGING
         Log.infoln(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
                    bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
