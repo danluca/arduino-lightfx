@@ -1122,6 +1122,8 @@ void fx_run() {
         Log.infoln(F("Current time: %y"), now());
         //log RAM metrics
         Log.infoln(F("Remaining available RAM: %u bytes"), getFreeHeap());
+        Log.logAllThreadInfo();
+        Log.logHeapAndStackInfo();
 #endif
     }
     EVERY_N_MINUTES(7) {

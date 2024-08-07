@@ -28,7 +28,6 @@ LIABILITY, WHETHER IN AN ACTION OF  CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-
 #include "ArduinoLog.h"
 
 #ifndef DISABLE_LOGGING
@@ -303,3 +302,75 @@ void Logging::printFormat(const char format, va_list *args) {
 }
  
 Logging Log = Logging();
+
+#ifdef MEMORY_STATS
+void Logging::logThreadInfo(osThreadId_t threadId) {
+    // Refs: rtx_lib.h - #define os_thread_t osRtxThread_t
+    //       rtx_os.h  - typedef struct osRtxThread_s { } osRtxThread_t
+
+    if (!threadId) return;
+
+    os_thread_t * tcb = (os_thread_t *) threadId;
+
+    uint32_t stackSize = osThreadGetStackSize(threadId);
+    uint32_t stackUsed = osThreadGetStackSpace(threadId);
+
+    printLevel(LOG_LEVEL_VERBOSE, true, "    stack ( start: %X end: %X size: %X used: %X ) thread ( id: %X entry: %X name: %s )",
+               tcb->stack_mem, (uint8_t *) tcb->stack_mem + stackSize, stackSize, stackSize-stackUsed, threadId, tcb->thread_addr, osThreadGetName(threadId) ? osThreadGetName(threadId) : "unknown");
+}
+
+void Logging::logAllThreadInfo() {
+    // Refs: mbed_stats.c - mbed_stats_stack_get_each()
+
+    uint32_t     threadCount = osThreadGetCount();
+    osThreadId_t threads[threadCount]; // g++ will throw a -Wvla on this, but it is likely ok.
+
+    // osThreadId_t * threads = malloc(sizeof(osThreadId_t) * threadCount);
+    // MBED_ASSERT(NULL != threads);
+
+    memset(threads, 0, threadCount * sizeof(osThreadId_t));
+
+    // This will probably only work if the number of threads remains constant
+    // (i.e. the number of thread control blocks remains constant)
+    //
+    // This is probably the case on a deterministic realtime embedded system
+    // with limited SRAM.
+
+    osKernelLock();
+
+    threadCount = osThreadEnumerate(threads, threadCount);
+
+    for (uint32_t i = 0; i < threadCount; i++)
+    {
+        // There seems to be a Heisenbug when calling print_thread_info()
+        // inside of osKernelLock()!
+
+        // This error may appear on the serial console:
+        // mbed assertation failed: os_timer->get_tick() == svcRtxKernelGetTickCount(), file: .\mbed-os\rtos\TARGET_CORTEX\mbed_rtx_idle.c
+
+        // The RTOS seems to be asserting an idle constraint violation due
+        // to the slowness of sending data through the serial port, but it
+        // does not happen consistently.
+        logThreadInfo(threads[i]);
+    }
+
+    osKernelUnlock();
+
+    // free(threads);
+}
+
+void Logging::logHeapAndStackInfo() {
+    extern unsigned char * mbed_heap_start;
+    extern uint32_t        mbed_heap_size;
+    extern uint32_t        mbed_stack_isr_size;
+    extern unsigned char * mbed_stack_isr_start;
+
+    mbed_stats_heap_t      heap_stats;
+
+    mbed_stats_heap_get(&heap_stats);
+
+    printLevel(LOG_LEVEL_VERBOSE, true, "     heap ( start: %X end: %X size: %X used: %X )  alloc ( ok: %X  fail: %X ) isr_stack ( start: %X end: %X size: %X )",
+               mbed_heap_start, mbed_heap_start + mbed_heap_size, mbed_heap_size, heap_stats.max_size, heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt, mbed_stack_isr_start, mbed_stack_isr_start + mbed_stack_isr_size, mbed_stack_isr_size);
+
+}
+#endif

@@ -41,6 +41,9 @@ typedef void (*printFmtFunc)(Print *, const char, va_list *);
 
 #ifndef DISABLE_LOGGING
 extern rtos::Mutex serial_mtx;
+#ifdef MEMORY_STATS
+#include <rtx_lib.h>
+#endif
 #endif
 
 // *************************************************************************
@@ -420,6 +423,12 @@ private:
     printfunction _prefix = nullptr;
     printfunction _suffix = nullptr;
     printFmtFunc _addtlPrintFormat = nullptr;
+#ifdef MEMORY_STATS
+public:
+    void logThreadInfo(osThreadId threadId);
+    void logAllThreadInfo();
+    void logHeapAndStackInfo();
+#endif
 #endif
 };
 
