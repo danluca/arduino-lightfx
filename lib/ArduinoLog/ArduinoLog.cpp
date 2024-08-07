@@ -32,6 +32,7 @@ SOFTWARE.
 
 #ifndef DISABLE_LOGGING
 rtos::Mutex serial_mtx;
+static const char unknown[] PROGMEM = "N/A";
 #endif
 
 void Logging::begin(int level, Print* logOutput, bool showLevel)
@@ -301,9 +302,6 @@ void Logging::printFormat(const char format, va_list *args) {
 #endif
 }
  
-Logging Log = Logging();
-
-#ifdef MEMORY_STATS
 void Logging::logThreadInfo(osThreadId_t threadId) {
     // Refs: rtx_lib.h - #define os_thread_t osRtxThread_t
     //       rtx_os.h  - typedef struct osRtxThread_s { } osRtxThread_t
@@ -315,8 +313,21 @@ void Logging::logThreadInfo(osThreadId_t threadId) {
     uint32_t stackSize = osThreadGetStackSize(threadId);
     uint32_t stackUsed = osThreadGetStackSpace(threadId);
 
-    printLevel(LOG_LEVEL_VERBOSE, true, "    stack ( start: %X end: %X size: %X used: %X ) thread ( id: %X entry: %X name: %s )",
-               tcb->stack_mem, (uint8_t *) tcb->stack_mem + stackSize, stackSize, stackSize-stackUsed, threadId, tcb->thread_addr, osThreadGetName(threadId) ? osThreadGetName(threadId) : "unknown");
+    if (LOG_LEVEL_VERBOSE > _level) return;
+    mbed::ScopedLock<rtos::Mutex> lock(serial_mtx);
+    if (_prefix != nullptr)
+        _prefix(_logOutput, LOG_LEVEL_VERBOSE);
+    if (_showLevel) {
+        _logOutput->print(levels[LOG_LEVEL_VERBOSE - 1]);
+        _logOutput->print(": ");
+    }
+    print(F("Thread:: name: %s id: %x entry: %x"), osThreadGetName(threadId) ? osThreadGetName(threadId) : unknown, (int)threadId, (int)tcb->thread_addr);
+    _logOutput->print(CR);
+    print(F("  Stack:: start: %U end: %U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
+    if (_suffix != nullptr) {
+        _suffix(_logOutput, LOG_LEVEL_VERBOSE);
+    }
+    _logOutput->print(CR);
 }
 
 void Logging::logAllThreadInfo() {
@@ -369,8 +380,9 @@ void Logging::logHeapAndStackInfo() {
 
     mbed_stats_heap_get(&heap_stats);
 
-    printLevel(LOG_LEVEL_VERBOSE, true, "     heap ( start: %X end: %X size: %X used: %X )  alloc ( ok: %X  fail: %X ) isr_stack ( start: %X end: %X size: %X )",
-               mbed_heap_start, mbed_heap_start + mbed_heap_size, mbed_heap_size, heap_stats.max_size, heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt, mbed_stack_isr_start, mbed_stack_isr_start + mbed_stack_isr_size, mbed_stack_isr_size);
+    printLevel(LOG_LEVEL_VERBOSE, true, "     heap ( start: %x end: %x size: %x used: %x free: %x )  alloc ( ok: %x fail: %x ) isr_stack ( start: %x end: %x size: %x )",
+               mbed_heap_start, mbed_heap_start + mbed_heap_size, mbed_heap_size, heap_stats.max_size, mbed_heap_size-heap_stats.current_size, heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt, mbed_stack_isr_start, mbed_stack_isr_start + mbed_stack_isr_size, mbed_stack_isr_size);
 
 }
-#endif
+
+Logging Log = Logging();

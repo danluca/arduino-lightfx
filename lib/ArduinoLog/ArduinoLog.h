@@ -41,9 +41,7 @@ typedef void (*printFmtFunc)(Print *, const char, va_list *);
 
 #ifndef DISABLE_LOGGING
 extern rtos::Mutex serial_mtx;
-#ifdef MEMORY_STATS
 #include <rtx_lib.h>
-#endif
 #endif
 
 // *************************************************************************
@@ -363,11 +361,26 @@ public:
         printLevel(LOG_LEVEL_VERBOSE, true, msg, args...);
 #endif
     }
+    void logThreadInfo(osThreadId threadId);
+    void logAllThreadInfo();
+    void logHeapAndStackInfo();
 
 private:
     void print(const char *format, va_list args);
 
     void print(const __FlashStringHelper *format, va_list args);
+
+    void print(const char *format, ...) {
+        va_list args;
+        va_start(args, format);
+        print(format, args);
+    }
+
+    void print (const __FlashStringHelper *format, ...) {
+        va_list args;
+        va_start(args, format);
+        print(format, args);
+    }
 
     void print(const Printable &obj, va_list args) {
 #ifndef DISABLE_LOGGING
@@ -390,13 +403,11 @@ private:
             level = LOG_LEVEL_SILENT;
         }
 
-
         if (_prefix != nullptr) {
             _prefix(_logOutput, level);
         }
 
         if (_showLevel) {
-            static const char levels[] = "FEWITV";
             _logOutput->print(levels[level - 1]);
             _logOutput->print(": ");
         }
@@ -423,12 +434,8 @@ private:
     printfunction _prefix = nullptr;
     printfunction _suffix = nullptr;
     printFmtFunc _addtlPrintFormat = nullptr;
-#ifdef MEMORY_STATS
-public:
-    void logThreadInfo(osThreadId threadId);
-    void logAllThreadInfo();
-    void logHeapAndStackInfo();
-#endif
+    /** One character for each LOG_LEVEL_* definition above */
+    constexpr static const char levels[] = "FEWITV";
 #endif
 };
 
