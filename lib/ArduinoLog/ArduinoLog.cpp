@@ -31,7 +31,7 @@ SOFTWARE.
 #include "ArduinoLog.h"
 
 #ifndef DISABLE_LOGGING
-#include <malloc.h>
+//#include <malloc.h>
 /** One character for each LOG_LEVEL_* definition  */
 const char* Logging::levels PROGMEM = "FEWITV";
 rtos::Mutex serial_mtx;
@@ -305,6 +305,12 @@ void Logging::printFormat(const char format, va_list *args) {
 #endif
 }
 
+/**
+ * This method and following few aren't really in the basic domain of providing logging capabilities to the system.
+ * <p>Nonetheless, the stats they provide took deeper advantage of the logging infrastructure elements for an enhanced
+ * look & feel - multi-line, spaced, information about threads, memory, system.</p>
+ * @param threadId
+ */
 void Logging::logThreadInfo(osThreadId_t threadId) {
 #ifndef DISABLE_LOGGING
     // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_thread_info
@@ -368,6 +374,14 @@ void Logging::logAllThreadInfo() {
         _logOutput->print(CR);
         print(F("    Stack:: start: 0x%U end: 0x%U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
     }
+    // CPU timing - ref: https://github.com/ARMmbed/mbed-os-example-cpu-stats/blob/mbed-os-6.7.0/main.cpp
+    mbed_stats_cpu_t statsCPU;
+    mbed_stats_cpu_get(&statsCPU);
+    _logOutput->print(CR);
+    print(F("CPU TIME"));
+    _logOutput->print(CR);
+    print(F("    CPU timing(us): up %u, idle %u, sleep %u, deepSleep %u"),
+               statsCPU.uptime, statsCPU.idle_time, statsCPU.sleep_time, statsCPU.deep_sleep_time);
     if (_suffix != nullptr) {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
     }
@@ -385,7 +399,7 @@ void Logging::logHeapAndStackInfo() {
     extern uint32_t        mbed_heap_size;
     extern uint32_t        mbed_stack_isr_size;
     extern unsigned char * mbed_stack_isr_start;
-    extern char __StackLimit, __bss_end__;
+//    extern char __StackLimit, __bss_end__;
 
     if (_prefix != nullptr)
         _prefix(_logOutput, LOG_LEVEL_VERBOSE);
@@ -397,15 +411,15 @@ void Logging::logHeapAndStackInfo() {
 
     mbed_stats_heap_t      heap_stats;
     mbed_stats_heap_get(&heap_stats);
-    //another way to get free heap, numbers don't match with heap stats, analysing
-    uint32_t totalHeap = &__StackLimit - &__bss_end__;  //this matches mbed_heap_size
-    uint32_t freeHeap = totalHeap - mallinfo().uordblks;
+    //another way to get free heap
+//    uint32_t totalHeap = &__StackLimit - &__bss_end__;      //this matches mbed_heap_size
+//    uint32_t freeHeap = totalHeap - mallinfo().uordblks;    //this matches mbed_heap_size-heap_stats.current_size-heap_stats.overhead_size
 
     _logOutput->print(CR);
     print(F("    Heap:: start: %X end: %X size: %u used: %u free: %u"), mbed_heap_start, mbed_heap_start+mbed_heap_size, mbed_heap_size,
           heap_stats.max_size, mbed_heap_size-heap_stats.current_size-heap_stats.overhead_size);
     _logOutput->print(CR);
-    print(F("           maxUsed: %u, currentUse: %u, allocNotFreed: %u, reserved: %u, overhead: %u"), heap_stats.max_size, heap_stats.current_size, heap_stats.total_size, heap_stats.reserved_size, heap_stats.overhead_size);
+    print(F("           maxUsed: %u, currentUse: %u, totalAllocated: %u, reserved: %u, overhead: %u"), heap_stats.max_size, heap_stats.current_size, heap_stats.total_size, heap_stats.reserved_size, heap_stats.overhead_size);
     _logOutput->print(CR);
     print(F("    Alloc:: ok: %u fail: %u"), heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt);
     _logOutput->print(CR);
@@ -415,6 +429,86 @@ void Logging::logHeapAndStackInfo() {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
     }
     _logOutput->print(CR);
+#endif
+}
+
+//#if !defined(MBED_CPU_STATS_ENABLED) || !defined(DEVICE_LPTICKER) || !defined(DEVICE_SLEEP)
+//#error [NOT_SUPPORTED] test not supported
+//#endif
+//#if !defined(MBED_SYS_STATS_ENABLED)
+//#error [NOT_SUPPORTED] System statistics not supported
+//#endif
+
+void Logging::logSystemInfo() {
+#ifndef DISABLE_LOGGING
+    // Refs: https://os.mbed.com/docs/mbed-os/v6.16/apis/mbed-statistics.html
+    //       https://github.com/ARMmbed/mbed-os-example-sys-info/blob/mbed-os-6.7.0/main.cpp
+
+    if (LOG_LEVEL_INFO > _level) return;
+    mbed::ScopedLock<rtos::Mutex> lock(serial_mtx);
+
+    // System info
+    mbed_stats_sys_t statsSys;
+    mbed_stats_sys_get(&statsSys);
+
+    /* CPUID Register information
+    [31:24]Implementer      0x41 = ARM
+    [23:20]Variant          Major revision 0x0  =  Revision 0
+    [19:16]Architecture     0xC  = Baseline Architecture
+                            0xF  = Constant (Mainline Architecture)
+    [15:4]PartNO            0xC20 = Cortex-M0
+                            0xC60 = Cortex-M0+
+                            0xC23 = Cortex-M3
+                            0xC24 = Cortex-M4
+                            0xC27 = Cortex-M7
+                            0xD20 = Cortex-M23
+                            0xD21 = Cortex-M33
+    [3:0]Revision           Minor revision: 0x1 = Patch 1
+
+     Compiler IDs
+        ARM     = 1
+        GCC_ARM = 2
+        IAR     = 3
+
+     Compiler versions:
+       ARM: PVVbbbb (P = Major; VV = Minor; bbbb = build number)
+       GCC: VVRRPP  (VV = Version; RR = Revision; PP = Patch)
+       IAR: VRRRPPP (V = Version; RRR = Revision; PPP = Patch)
+    */
+    if (_prefix != nullptr)
+        _prefix(_logOutput, LOG_LEVEL_INFO);
+    if (_showLevel) {
+        _logOutput->print(levels[LOG_LEVEL_INFO - 1]);
+        _logOutput->print(": ");
+    }
+    print(F("SYSTEM INFO"));
+    _logOutput->print(CR);
+    print(F("    Mbed OS version %u"), statsSys.os_version);
+    _logOutput->print(CR);
+    print(F("    CPU ID %u"), statsSys.cpu_id);
+    _logOutput->print(CR);
+    print(F("    Compiler ID %u"), statsSys.compiler_id);
+    _logOutput->print(CR);
+    print(F("    Compiler Version %u"), statsSys.compiler_version);
+    _logOutput->print(CR);
+    print(F("  RAM"));
+    /* RAM / ROM memory start and size information */
+    for (int i = 0; i < MBED_MAX_MEM_REGIONS; i++) {
+        if (statsSys.ram_size[i] != 0) {
+            _logOutput->print(CR);
+            print(F("    RAM%i: Start %X Size: %X"), i, statsSys.ram_start[i], statsSys.ram_size[i]);
+        }
+        if (statsSys.rom_size[i] != 0) {
+            _logOutput->print(CR);
+            print(F("    ROM%i: Start %X Size: %X"), i, statsSys.rom_start[i], statsSys.rom_size[i]);
+        }
+    }
+
+    if (_suffix != nullptr) {
+        _suffix(_logOutput, LOG_LEVEL_INFO);
+    }
+    _logOutput->print(CR);
+
 #endif
 }
 

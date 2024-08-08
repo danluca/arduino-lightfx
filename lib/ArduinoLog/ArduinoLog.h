@@ -364,18 +364,17 @@ public:
     void logThreadInfo(osThreadId threadId);
     void logAllThreadInfo();
     void logHeapAndStackInfo();
+    void logSystemInfo();
 
 private:
     void print(const char *format, va_list args);
-
-    void print(const __FlashStringHelper *format, va_list args);
-
     void print(const char *format, ...) {
         va_list args;
         va_start(args, format);
         print(format, args);
     }
 
+    void print(const __FlashStringHelper *format, va_list args);
     void print (const __FlashStringHelper *format, ...) {
         va_list args;
         va_start(args, format);
