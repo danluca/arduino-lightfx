@@ -1121,9 +1121,9 @@ void fx_run() {
         Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), msmt, toFahrenheit(msmt), minTemp, maxTemp);
         Log.infoln(F("Current time: %y"), now());
         //log RAM metrics
-        Log.infoln(F("Remaining available RAM: %u bytes"), getFreeHeap());
         Log.logAllThreadInfo();
         Log.logHeapAndStackInfo();
+        Log.infoln(F("Heap: size %u, free %u bytes"), getTotalHeap(), getFreeHeap());
 #endif
     }
     EVERY_N_MINUTES(7) {
