@@ -3,7 +3,6 @@
 //
 #include "efx_setup.h"
 #include "log.h"
-#include <malloc.h>
 
 //~ Global variables definition
 #define STATE_JSON_DOC_SIZE   512
@@ -1080,16 +1079,6 @@ void fx_setup() {
 }
 
 //Run currently selected effect -------
-uint32_t getTotalHeap() {
-    extern char __StackLimit, __bss_end__;
-    return &__StackLimit - &__bss_end__;
-}
-
-uint32_t getFreeHeap() {
-    struct mallinfo m = mallinfo();
-    return getTotalHeap() - m.uordblks;
-}
-
 void fx_run() {
     EVERY_N_SECONDS(30) {
         if (fxBump) {
@@ -1123,7 +1112,6 @@ void fx_run() {
         //log RAM metrics
         Log.logAllThreadInfo();
         Log.logHeapAndStackInfo();
-        Log.infoln(F("Heap: size %u, free %u bytes"), getTotalHeap(), getFreeHeap());
 #endif
     }
     EVERY_N_MINUTES(7) {

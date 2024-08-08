@@ -31,6 +31,7 @@ SOFTWARE.
 #include "ArduinoLog.h"
 
 #ifndef DISABLE_LOGGING
+#include <malloc.h>
 /** One character for each LOG_LEVEL_* definition  */
 const char* Logging::levels PROGMEM = "FEWITV";
 rtos::Mutex serial_mtx;
@@ -303,8 +304,9 @@ void Logging::printFormat(const char format, va_list *args) {
     }
 #endif
 }
- 
+
 void Logging::logThreadInfo(osThreadId_t threadId) {
+#ifndef DISABLE_LOGGING
     // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_thread_info
     // Refs: rtx_lib.h - #define os_thread_t osRtxThread_t
     //       rtx_os.h  - typedef struct osRtxThread_s { } osRtxThread_t
@@ -331,9 +333,11 @@ void Logging::logThreadInfo(osThreadId_t threadId) {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
     }
     _logOutput->print(CR);
+#endif
 }
 
 void Logging::logAllThreadInfo() {
+#ifndef DISABLE_LOGGING
     // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_all_thread_info
     // Refs: mbed_stats.c - mbed_stats_stack_get_each()
     if (LOG_LEVEL_VERBOSE > _level) return;
@@ -368,9 +372,11 @@ void Logging::logAllThreadInfo() {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
     }
     _logOutput->print(CR);
+#endif
 }
 
 void Logging::logHeapAndStackInfo() {
+#ifndef DISABLE_LOGGING
     // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_heap_and_isr_stack_info
     if (LOG_LEVEL_VERBOSE > _level) return;
     mbed::ScopedLock<rtos::Mutex> lock(serial_mtx);
@@ -379,6 +385,7 @@ void Logging::logHeapAndStackInfo() {
     extern uint32_t        mbed_heap_size;
     extern uint32_t        mbed_stack_isr_size;
     extern unsigned char * mbed_stack_isr_start;
+    extern char __StackLimit, __bss_end__;
 
     if (_prefix != nullptr)
         _prefix(_logOutput, LOG_LEVEL_VERBOSE);
@@ -390,9 +397,13 @@ void Logging::logHeapAndStackInfo() {
 
     mbed_stats_heap_t      heap_stats;
     mbed_stats_heap_get(&heap_stats);
+    //another way to get free heap, numbers don't match with heap stats, analysing
+    uint32_t totalHeap = &__StackLimit - &__bss_end__;  //this matches mbed_heap_size
+    uint32_t freeHeap = totalHeap - mallinfo().uordblks;
 
     _logOutput->print(CR);
-    print(F("    Heap:: start: %X end: %X size: %u used: %u free: %u"), mbed_heap_start, mbed_heap_start+mbed_heap_size, mbed_heap_size, heap_stats.max_size, mbed_heap_size-heap_stats.current_size);
+    print(F("    Heap:: start: %X end: %X size: %u used: %u free: %u (%u); max=%u, cur=%u, total=%u, res=%u, ovr=%u"), mbed_heap_start, mbed_heap_start+mbed_heap_size, mbed_heap_size,
+          heap_stats.max_size, mbed_heap_size-heap_stats.current_size, freeHeap, heap_stats.max_size, heap_stats.current_size, heap_stats.total_size, heap_stats.reserved_size, heap_stats.overhead_size);
     _logOutput->print(CR);
     print(F("    Alloc:: ok: %u fail: %u"), heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt);
     _logOutput->print(CR);
@@ -402,6 +413,7 @@ void Logging::logHeapAndStackInfo() {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
     }
     _logOutput->print(CR);
+#endif
 }
 
 Logging Log = Logging();
