@@ -411,23 +411,28 @@ void Logging::logHeapAndStackInfo() {
         _logOutput->print(levels[LOG_LEVEL_VERBOSE - 1]);
         _logOutput->print(": ");
     }
-    print(F("HEAP & ISR STACK INFO"));
+    print(F("HEAP & STACK INFO"));
 
     mbed_stats_heap_t      heap_stats;
     mbed_stats_heap_get(&heap_stats);
+    mbed_stats_stack_t allStack;
+    mbed_stats_stack_get(&allStack);
+
     //another way to get free heap
 //    uint32_t totalHeap = &__StackLimit - &__bss_end__;      //this matches mbed_heap_size
 //    uint32_t freeHeap = totalHeap - mallinfo().uordblks;    //this matches mbed_heap_size-heap_stats.current_size-heap_stats.overhead_size
 
     _logOutput->print(CR);
-    print(F("    Heap:: start: %X end: %X size: %u used: %u free: %u"), mbed_heap_start, mbed_heap_start+mbed_heap_size, mbed_heap_size,
+    print(F("  Heap:: start: %X end: %X size: %u used: %u free: %u"), mbed_heap_start, mbed_heap_start+mbed_heap_size, mbed_heap_size,
           heap_stats.max_size, mbed_heap_size-heap_stats.current_size-heap_stats.overhead_size);
     _logOutput->print(CR);
-    print(F("           maxUsed: %u, currentUse: %u, totalAllocated: %u, reserved: %u, overhead: %u"), heap_stats.max_size, heap_stats.current_size, heap_stats.total_size, heap_stats.reserved_size, heap_stats.overhead_size);
+    print(F("    maxUsed: %u, currentUse: %u, totalAllocated: %u, reserved: %u, overhead: %u"), heap_stats.max_size, heap_stats.current_size, heap_stats.total_size, heap_stats.reserved_size, heap_stats.overhead_size);
     _logOutput->print(CR);
-    print(F("    Alloc:: ok: %u fail: %u"), heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt);
+    print(F("  Alloc:: ok: %u fail: %u"), heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt);
     _logOutput->print(CR);
-    print(F("    ISR_Stack:: start: %X end: %X size: %u"), mbed_stack_isr_start, mbed_stack_isr_start+mbed_stack_isr_size, mbed_stack_isr_size);
+    print(F("  Gen Stack:: allocated: %u used: %u stats: %u thread: %X"), allStack.reserved_size, allStack.max_size, allStack.stack_cnt, allStack.thread_id);
+    _logOutput->print(CR);
+    print(F("  ISR Stack:: start: %X end: %X size: %u"), mbed_stack_isr_start, mbed_stack_isr_start+mbed_stack_isr_size, mbed_stack_isr_size);
 
     if (_suffix != nullptr) {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
