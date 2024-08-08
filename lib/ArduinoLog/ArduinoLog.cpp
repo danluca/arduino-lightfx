@@ -359,9 +359,12 @@ void Logging::logAllThreadInfo() {
 
     uint32_t     threadCount = osThreadGetCount();
     osThreadId_t threads[threadCount]; // g++ will throw a -Wvla on this, but it is likely ok.
+    mbed_stats_stack_t stacks[threadCount];
 
     memset(threads, 0, threadCount * sizeof(osThreadId_t));
     threadCount = osThreadEnumerate(threads, threadCount);
+    mbed_stats_stack_get_each(stacks, threadCount);
+
     for (uint32_t i = 0; i < threadCount; i++) {
         osThreadId_t threadId = threads[i];
         if (!threadId) continue;
@@ -374,6 +377,8 @@ void Logging::logAllThreadInfo() {
         print(F("[%u] Thread:: name: %s id: %X entry: %X"), i, osThreadGetName(threadId) ? osThreadGetName(threadId) : unknown, (int)threadId, (int)tcb->thread_addr);
         _logOutput->print(CR);
         print(F("      Stack:: start: 0x%U end: 0x%U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
+        _logOutput->print(CR);
+        print(F("      Stack:: allocated: %u used: %u free: %u statsCount: %u thread: %X"), stacks[i].reserved_size, stacks[i].max_size, stacks[i].reserved_size-stacks[i].max_size, stacks[i].stack_cnt, stacks[i].thread_id);
     }
     if (_suffix != nullptr) {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
@@ -415,11 +420,11 @@ void Logging::logHeapAndStackInfo() {
     print(F("  Heap:: start: %X end: %X size: %u used: %u free: %u"), mbed_heap_start, mbed_heap_start+mbed_heap_size, mbed_heap_size,
           heap_stats.max_size, mbed_heap_size-heap_stats.current_size-heap_stats.overhead_size);
     _logOutput->print(CR);
-    print(F("    maxUsed: %u, currentUse: %u, totalAllocated: %u, reserved: %u"), heap_stats.max_size, heap_stats.current_size, heap_stats.total_size, heap_stats.reserved_size, heap_stats.overhead_size);
+    print(F("    maxUsed: %u currentUse: %u totalAllocated: %u reserved: %u"), heap_stats.max_size, heap_stats.current_size, heap_stats.total_size, heap_stats.reserved_size, heap_stats.overhead_size);
     _logOutput->print(CR);
     print(F("    overhead: %u allocated ok: %u allocated err: %u"), heap_stats.overhead_size, heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt);
     _logOutput->print(CR);
-    print(F("  Gen Stack:: allocated: %u used: %u free: %u stats count: %u thread: %X"), allStack.reserved_size, allStack.max_size, allStack.reserved_size-allStack.max_size, allStack.stack_cnt, allStack.thread_id);
+    print(F("  Gen Stack:: allocated: %u used: %u free: %u statsCount: %u thread: %X"), allStack.reserved_size, allStack.max_size, allStack.reserved_size-allStack.max_size, allStack.stack_cnt, allStack.thread_id);
     _logOutput->print(CR);
     print(F("  ISR Stack:: start: %X end: %X size: %u"), mbed_stack_isr_start, mbed_stack_isr_start+mbed_stack_isr_size, mbed_stack_isr_size);
 
