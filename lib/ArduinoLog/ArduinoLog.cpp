@@ -31,6 +31,8 @@ SOFTWARE.
 #include "ArduinoLog.h"
 
 #ifndef DISABLE_LOGGING
+/** One character for each LOG_LEVEL_* definition  */
+const char* Logging::levels PROGMEM = "FEWITV";
 rtos::Mutex serial_mtx;
 static const char unknown[] PROGMEM = "N/A";
 #endif
@@ -303,6 +305,7 @@ void Logging::printFormat(const char format, va_list *args) {
 }
  
 void Logging::logThreadInfo(osThreadId_t threadId) {
+    // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_thread_info
     // Refs: rtx_lib.h - #define os_thread_t osRtxThread_t
     //       rtx_os.h  - typedef struct osRtxThread_s { } osRtxThread_t
 
@@ -323,7 +326,7 @@ void Logging::logThreadInfo(osThreadId_t threadId) {
     }
     print(F("Thread:: name: %s id: %x entry: %x"), osThreadGetName(threadId) ? osThreadGetName(threadId) : unknown, (int)threadId, (int)tcb->thread_addr);
     _logOutput->print(CR);
-    print(F("  Stack:: start: %U end: %U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
+    print(F("    Stack:: start: %U end: %U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
     if (_suffix != nullptr) {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
     }
@@ -331,58 +334,74 @@ void Logging::logThreadInfo(osThreadId_t threadId) {
 }
 
 void Logging::logAllThreadInfo() {
+    // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_all_thread_info
     // Refs: mbed_stats.c - mbed_stats_stack_get_each()
+    if (LOG_LEVEL_VERBOSE > _level) return;
+    mbed::ScopedLock<rtos::Mutex> lock(serial_mtx);
+    if (_prefix != nullptr)
+        _prefix(_logOutput, LOG_LEVEL_VERBOSE);
+    if (_showLevel) {
+        _logOutput->print(levels[LOG_LEVEL_VERBOSE - 1]);
+        _logOutput->print(": ");
+    }
+    print(F("THREAD INFO"));
 
     uint32_t     threadCount = osThreadGetCount();
     osThreadId_t threads[threadCount]; // g++ will throw a -Wvla on this, but it is likely ok.
 
-    // osThreadId_t * threads = malloc(sizeof(osThreadId_t) * threadCount);
-    // MBED_ASSERT(NULL != threads);
-
     memset(threads, 0, threadCount * sizeof(osThreadId_t));
-
-    // This will probably only work if the number of threads remains constant
-    // (i.e. the number of thread control blocks remains constant)
-    //
-    // This is probably the case on a deterministic realtime embedded system
-    // with limited SRAM.
-
-    osKernelLock();
-
     threadCount = osThreadEnumerate(threads, threadCount);
+    for (uint32_t i = 0; i < threadCount; i++) {
+        osThreadId_t threadId = threads[i];
+        if (!threadId) continue;
 
-    for (uint32_t i = 0; i < threadCount; i++)
-    {
-        // There seems to be a Heisenbug when calling print_thread_info()
-        // inside of osKernelLock()!
+        os_thread_t * tcb = (os_thread_t *) threadId;
+        uint32_t stackSize = osThreadGetStackSize(threadId);
+        uint32_t stackUsed = osThreadGetStackSpace(threadId);
 
-        // This error may appear on the serial console:
-        // mbed assertation failed: os_timer->get_tick() == svcRtxKernelGetTickCount(), file: .\mbed-os\rtos\TARGET_CORTEX\mbed_rtx_idle.c
-
-        // The RTOS seems to be asserting an idle constraint violation due
-        // to the slowness of sending data through the serial port, but it
-        // does not happen consistently.
-        logThreadInfo(threads[i]);
+        _logOutput->print(CR);
+        print(F("[%u] Thread:: name: %s id: %X entry: %X"), i, osThreadGetName(threadId) ? osThreadGetName(threadId) : unknown, (int)threadId, (int)tcb->thread_addr);
+        _logOutput->print(CR);
+        print(F("    Stack:: start: 0x%U end: 0x%U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
     }
-
-    osKernelUnlock();
-
-    // free(threads);
+    if (_suffix != nullptr) {
+        _suffix(_logOutput, LOG_LEVEL_VERBOSE);
+    }
+    _logOutput->print(CR);
 }
 
 void Logging::logHeapAndStackInfo() {
+    // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_heap_and_isr_stack_info
+    if (LOG_LEVEL_VERBOSE > _level) return;
+    mbed::ScopedLock<rtos::Mutex> lock(serial_mtx);
+
     extern unsigned char * mbed_heap_start;
     extern uint32_t        mbed_heap_size;
     extern uint32_t        mbed_stack_isr_size;
     extern unsigned char * mbed_stack_isr_start;
 
-    mbed_stats_heap_t      heap_stats;
+    if (_prefix != nullptr)
+        _prefix(_logOutput, LOG_LEVEL_VERBOSE);
+    if (_showLevel) {
+        _logOutput->print(levels[LOG_LEVEL_VERBOSE - 1]);
+        _logOutput->print(": ");
+    }
+    print(F("HEAP & STACK INFO"));
 
+    mbed_stats_heap_t      heap_stats;
     mbed_stats_heap_get(&heap_stats);
 
-    printLevel(LOG_LEVEL_VERBOSE, true, "     heap ( start: %x end: %x size: %x used: %x free: %x )  alloc ( ok: %x fail: %x ) isr_stack ( start: %x end: %x size: %x )",
-               mbed_heap_start, mbed_heap_start + mbed_heap_size, mbed_heap_size, heap_stats.max_size, mbed_heap_size-heap_stats.current_size, heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt, mbed_stack_isr_start, mbed_stack_isr_start + mbed_stack_isr_size, mbed_stack_isr_size);
+    _logOutput->print(CR);
+    print(F("    Heap:: start: %X end: %X size: %u used: %u free: %u"), mbed_heap_start, mbed_heap_start+mbed_heap_size, mbed_heap_size, heap_stats.max_size, mbed_heap_size-heap_stats.current_size);
+    _logOutput->print(CR);
+    print(F("    Alloc:: ok: %u fail: %u"), heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt);
+    _logOutput->print(CR);
+    print(F("    ISR_Stack:: start: %X end: %X size: %u"), mbed_stack_isr_start, mbed_stack_isr_start+mbed_stack_isr_size, mbed_stack_isr_size);
 
+    if (_suffix != nullptr) {
+        _suffix(_logOutput, LOG_LEVEL_VERBOSE);
+    }
+    _logOutput->print(CR);
 }
 
 Logging Log = Logging();

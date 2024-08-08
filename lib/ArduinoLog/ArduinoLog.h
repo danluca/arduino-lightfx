@@ -434,8 +434,7 @@ private:
     printfunction _prefix = nullptr;
     printfunction _suffix = nullptr;
     printFmtFunc _addtlPrintFormat = nullptr;
-    /** One character for each LOG_LEVEL_* definition above */
-    constexpr static const char levels[] = "FEWITV";
+    static const char* levels;
 #endif
 };
 
