@@ -373,19 +373,8 @@ void Logging::logAllThreadInfo() {
         _logOutput->print(CR);
         print(F("[%u] Thread:: name: %s id: %X entry: %X"), i, osThreadGetName(threadId) ? osThreadGetName(threadId) : unknown, (int)threadId, (int)tcb->thread_addr);
         _logOutput->print(CR);
-        print(F("    Stack:: start: 0x%U end: 0x%U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
+        print(F("      Stack:: start: 0x%U end: 0x%U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
     }
-#if defined(MBED_CPU_STATS_ENABLED)
-    // CPU timing - ref: https://github.com/ARMmbed/mbed-os-example-cpu-stats/blob/mbed-os-6.7.0/main.cpp
-    // these are all 0 - our system has no idle, sleep threads
-//    mbed_stats_cpu_t statsCPU;
-//    mbed_stats_cpu_get(&statsCPU);
-//    _logOutput->print(CR);
-//    print(F("CPU TIME"));
-//    _logOutput->print(CR);
-//    print(F("    CPU timing(us): up %u, idle %u, sleep %u, deepSleep %u"),
-//               statsCPU.uptime, statsCPU.idle_time, statsCPU.sleep_time, statsCPU.deep_sleep_time);
-#endif
     if (_suffix != nullptr) {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
     }
@@ -426,11 +415,11 @@ void Logging::logHeapAndStackInfo() {
     print(F("  Heap:: start: %X end: %X size: %u used: %u free: %u"), mbed_heap_start, mbed_heap_start+mbed_heap_size, mbed_heap_size,
           heap_stats.max_size, mbed_heap_size-heap_stats.current_size-heap_stats.overhead_size);
     _logOutput->print(CR);
-    print(F("    maxUsed: %u, currentUse: %u, totalAllocated: %u, reserved: %u, overhead: %u"), heap_stats.max_size, heap_stats.current_size, heap_stats.total_size, heap_stats.reserved_size, heap_stats.overhead_size);
+    print(F("    maxUsed: %u, currentUse: %u, totalAllocated: %u, reserved: %u"), heap_stats.max_size, heap_stats.current_size, heap_stats.total_size, heap_stats.reserved_size, heap_stats.overhead_size);
     _logOutput->print(CR);
-    print(F("  Alloc:: ok: %u fail: %u"), heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt);
+    print(F("    overhead: %u allocated ok: %u allocated err: %u"), heap_stats.overhead_size, heap_stats.alloc_cnt, heap_stats.alloc_fail_cnt);
     _logOutput->print(CR);
-    print(F("  Gen Stack:: allocated: %u used: %u stats: %u thread: %X"), allStack.reserved_size, allStack.max_size, allStack.stack_cnt, allStack.thread_id);
+    print(F("  Gen Stack:: allocated: %u used: %u free: %u stats count: %u thread: %X"), allStack.reserved_size, allStack.max_size, allStack.reserved_size-allStack.max_size, allStack.stack_cnt, allStack.thread_id);
     _logOutput->print(CR);
     print(F("  ISR Stack:: start: %X end: %X size: %u"), mbed_stack_isr_start, mbed_stack_isr_start+mbed_stack_isr_size, mbed_stack_isr_size);
 
@@ -443,7 +432,7 @@ void Logging::logHeapAndStackInfo() {
 
 void Logging::logSystemInfo() {
 #ifndef DISABLE_LOGGING
-#if defined(MBED_SYS_STATS_ENABLED)
+    // this only works if MBED_SYS_STATS_ENABLED is on
     // Refs: https://os.mbed.com/docs/mbed-os/v6.16/apis/mbed-statistics.html
     //       https://github.com/ARMmbed/mbed-os-example-sys-info/blob/mbed-os-6.7.0/main.cpp
 
@@ -489,20 +478,18 @@ void Logging::logSystemInfo() {
     }
     print(F("SYSTEM INFO"));
     _logOutput->print(CR);
+    print(F("    CPU ID %X"), statsSys.cpu_id);
+    _logOutput->print(CR);
     print(F("    Mbed OS version %u"), statsSys.os_version);
     _logOutput->print(CR);
-    print(F("    CPU ID %u"), statsSys.cpu_id);
-    _logOutput->print(CR);
-    print(F("    Compiler ID %u"), statsSys.compiler_id);
-    _logOutput->print(CR);
-    print(F("    Compiler Version %u"), statsSys.compiler_version);
+    print(F("    Compiler ID %X version %u"), statsSys.compiler_id, statsSys.compiler_version);
     // Flash UID
     char buf[FLASH_UNIQUE_ID_SIZE_BYTES*2+1] {};
     int i = 0;
     for (unsigned char &b : fuid)
         i += sprintf(buf+i, "%02X", b);
     _logOutput->print(CR);
-    print(F("    Board (Flash) ID %s"), buf);
+    print(F("    Board (Flash) ID 0x%s"), buf);
 
     // RAM / ROM memory start and size information - this is empty, RAM/ROM areas are set to 0 in our system
 //    _logOutput->print(CR);
@@ -522,7 +509,6 @@ void Logging::logSystemInfo() {
         _suffix(_logOutput, LOG_LEVEL_INFO);
     }
     _logOutput->print(CR);
-#endif
 #endif
 }
 
