@@ -31,8 +31,6 @@ SOFTWARE.
 #include <flash.h>
 #include "ArduinoLog.h"
 
-#define MAC_ADDR_SIZE_BYTES 6
-
 #ifndef DISABLE_LOGGING
 //#include <malloc.h>
 /** One character for each LOG_LEVEL_* definition  */
@@ -449,12 +447,10 @@ void Logging::logSystemInfo() {
 
     // System info
     uint8_t fuid[FLASH_UNIQUE_ID_SIZE_BYTES];
-    char mac[MAC_ADDR_SIZE_BYTES];
     mbed_stats_sys_t statsSys;
 
     mbed_stats_sys_get(&statsSys);
     flash_get_unique_id(fuid);
-    mbed_mac_address(mac);
 
     /* CPUID Register information
     [31:24]Implementer      0x41 = ARM
@@ -495,15 +491,13 @@ void Logging::logSystemInfo() {
     print(F("    Compiler ID %u"), statsSys.compiler_id);
     _logOutput->print(CR);
     print(F("    Compiler Version %u"), statsSys.compiler_version);
-    //MAC and Flash UID
+    // Flash UID
+    char buf[FLASH_UNIQUE_ID_SIZE_BYTES*2+1] {};
+    int i = 0;
+    for (unsigned char &b : fuid)
+        i += sprintf(buf+i, "%02X", b);
     _logOutput->print(CR);
-    print(F("    MAC Address "));
-    for (char &i : mac)
-        _logOutput->print(i, HEX);
-    _logOutput->print(CR);
-    print(F("    Board (Flash) ID "));
-    for (unsigned char &i : fuid)
-        _logOutput->print(i, HEX);
+    print(F("    Board (Flash) ID %s"), buf);
 
     // RAM / ROM memory start and size information - this is empty, RAM/ROM areas are set to 0 in our system
 //    _logOutput->print(CR);
