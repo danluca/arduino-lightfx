@@ -28,7 +28,10 @@ LIABILITY, WHETHER IN AN ACTION OF  CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+#include <flash.h>
 #include "ArduinoLog.h"
+
+#define MAC_ADDR_SIZE_BYTES 6
 
 #ifndef DISABLE_LOGGING
 //#include <malloc.h>
@@ -374,14 +377,17 @@ void Logging::logAllThreadInfo() {
         _logOutput->print(CR);
         print(F("    Stack:: start: 0x%U end: 0x%U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
     }
+#if defined(MBED_CPU_STATS_ENABLED)
     // CPU timing - ref: https://github.com/ARMmbed/mbed-os-example-cpu-stats/blob/mbed-os-6.7.0/main.cpp
-    mbed_stats_cpu_t statsCPU;
-    mbed_stats_cpu_get(&statsCPU);
-    _logOutput->print(CR);
-    print(F("CPU TIME"));
-    _logOutput->print(CR);
-    print(F("    CPU timing(us): up %u, idle %u, sleep %u, deepSleep %u"),
-               statsCPU.uptime, statsCPU.idle_time, statsCPU.sleep_time, statsCPU.deep_sleep_time);
+    // these are all 0 - our system has no idle, sleep threads
+//    mbed_stats_cpu_t statsCPU;
+//    mbed_stats_cpu_get(&statsCPU);
+//    _logOutput->print(CR);
+//    print(F("CPU TIME"));
+//    _logOutput->print(CR);
+//    print(F("    CPU timing(us): up %u, idle %u, sleep %u, deepSleep %u"),
+//               statsCPU.uptime, statsCPU.idle_time, statsCPU.sleep_time, statsCPU.deep_sleep_time);
+#endif
     if (_suffix != nullptr) {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
     }
@@ -432,15 +438,9 @@ void Logging::logHeapAndStackInfo() {
 #endif
 }
 
-//#if !defined(MBED_CPU_STATS_ENABLED) || !defined(DEVICE_LPTICKER) || !defined(DEVICE_SLEEP)
-//#error [NOT_SUPPORTED] test not supported
-//#endif
-//#if !defined(MBED_SYS_STATS_ENABLED)
-//#error [NOT_SUPPORTED] System statistics not supported
-//#endif
-
 void Logging::logSystemInfo() {
 #ifndef DISABLE_LOGGING
+#if defined(MBED_SYS_STATS_ENABLED)
     // Refs: https://os.mbed.com/docs/mbed-os/v6.16/apis/mbed-statistics.html
     //       https://github.com/ARMmbed/mbed-os-example-sys-info/blob/mbed-os-6.7.0/main.cpp
 
@@ -448,8 +448,13 @@ void Logging::logSystemInfo() {
     mbed::ScopedLock<rtos::Mutex> lock(serial_mtx);
 
     // System info
+    uint8_t fuid[FLASH_UNIQUE_ID_SIZE_BYTES];
+    char mac[MAC_ADDR_SIZE_BYTES];
     mbed_stats_sys_t statsSys;
+
     mbed_stats_sys_get(&statsSys);
+    flash_get_unique_id(fuid);
+    mbed_mac_address(mac);
 
     /* CPUID Register information
     [31:24]Implementer      0x41 = ARM
@@ -490,25 +495,35 @@ void Logging::logSystemInfo() {
     print(F("    Compiler ID %u"), statsSys.compiler_id);
     _logOutput->print(CR);
     print(F("    Compiler Version %u"), statsSys.compiler_version);
+    //MAC and Flash UID
     _logOutput->print(CR);
-    print(F("  RAM"));
-    /* RAM / ROM memory start and size information */
-    for (int i = 0; i < MBED_MAX_MEM_REGIONS; i++) {
-        if (statsSys.ram_size[i] != 0) {
-            _logOutput->print(CR);
-            print(F("    RAM%i: Start %X Size: %X"), i, statsSys.ram_start[i], statsSys.ram_size[i]);
-        }
-        if (statsSys.rom_size[i] != 0) {
-            _logOutput->print(CR);
-            print(F("    ROM%i: Start %X Size: %X"), i, statsSys.rom_start[i], statsSys.rom_size[i]);
-        }
-    }
+    print(F("    MAC Address "));
+    for (char &i : mac)
+        _logOutput->print(i, HEX);
+    _logOutput->print(CR);
+    print(F("    Board (Flash) ID "));
+    for (unsigned char &i : fuid)
+        _logOutput->print(i, HEX);
+
+    // RAM / ROM memory start and size information - this is empty, RAM/ROM areas are set to 0 in our system
+//    _logOutput->print(CR);
+//    print(F("  RAM"));
+//    for (int i = 0; i < MBED_MAX_MEM_REGIONS; i++) {
+//        if (statsSys.ram_size[i] != 0) {
+//            _logOutput->print(CR);
+//            print(F("    RAM%i: Start %X Size: %X"), i, statsSys.ram_start[i], statsSys.ram_size[i]);
+//        }
+//        if (statsSys.rom_size[i] != 0) {
+//            _logOutput->print(CR);
+//            print(F("    ROM%i: Start %X Size: %X"), i, statsSys.rom_start[i], statsSys.rom_size[i]);
+//        }
+//    }
 
     if (_suffix != nullptr) {
         _suffix(_logOutput, LOG_LEVEL_INFO);
     }
     _logOutput->print(CR);
-
+#endif
 #endif
 }
 
