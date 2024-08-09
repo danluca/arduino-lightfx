@@ -323,7 +323,7 @@ void Logging::logThreadInfo(osThreadId_t threadId) {
     os_thread_t * tcb = (os_thread_t *) threadId;
 
     uint32_t stackSize = osThreadGetStackSize(threadId);
-    uint32_t stackUsed = osThreadGetStackSpace(threadId);
+    uint32_t stackFree = osThreadGetStackSpace(threadId);
 
     if (LOG_LEVEL_VERBOSE > _level) return;
     mbed::ScopedLock<rtos::Mutex> lock(serial_mtx);
@@ -335,7 +335,7 @@ void Logging::logThreadInfo(osThreadId_t threadId) {
     }
     print(F("Thread:: name: %s id: %x entry: %x"), osThreadGetName(threadId) ? osThreadGetName(threadId) : unknown, (int)threadId, (int)tcb->thread_addr);
     _logOutput->print(CR);
-    print(F("    Stack:: start: %U end: %U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
+    print(F("    Stack:: start: %U end: %U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackSize-stackFree, stackFree);
     if (_suffix != nullptr) {
         _suffix(_logOutput, LOG_LEVEL_VERBOSE);
     }
@@ -371,12 +371,12 @@ void Logging::logAllThreadInfo() {
 
         os_thread_t * tcb = (os_thread_t *) threadId;
         uint32_t stackSize = osThreadGetStackSize(threadId);
-        uint32_t stackUsed = osThreadGetStackSpace(threadId);
+        uint32_t stackFree = osThreadGetStackSpace(threadId);
 
         _logOutput->print(CR);
         print(F("[%u] Thread:: name: %s id: %X entry: %X"), i, osThreadGetName(threadId) ? osThreadGetName(threadId) : unknown, (int)threadId, (int)tcb->thread_addr);
         _logOutput->print(CR);
-        print(F("      Stack:: start: 0x%U end: 0x%U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackUsed, stackSize-stackUsed);
+        print(F("      Stack:: start: 0x%U end: 0x%U size: %u used: %u free: %u"), (uint32_t)tcb->stack_mem, (uint32_t)(uint8_t *)tcb->stack_mem + stackSize, stackSize, stackSize-stackFree, stackFree);
         _logOutput->print(CR);
         print(F("      Stack:: allocated: %u used: %u free: %u statsCount: %u thread: %X"), stacks[i].reserved_size, stacks[i].max_size, stacks[i].reserved_size-stacks[i].max_size, stacks[i].stack_cnt, stacks[i].thread_id);
     }
