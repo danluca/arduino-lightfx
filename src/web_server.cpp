@@ -4,6 +4,7 @@
 #include "web_server.h"
 #include "version.h"
 #include "log.h"
+#include "sysinfo.h"
 
 static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
 static const char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
@@ -156,6 +157,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     JsonDocument doc;
 
     doc["boardName"] = BOARD_NAME;
+    doc["boardUid"] = boardId;
     doc["fwVersion"] = BUILD_VERSION;
     doc["fwBranch"] = GIT_BRANCH;
     doc["buildTime"] = BUILD_TIME;

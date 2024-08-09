@@ -9,6 +9,7 @@
 #include "net_setup.h"
 #include "FxSchedule.h"
 #include <SchedulerExt.h>
+#include "sysinfo.h"
 
 ThreadTasks fxTasks {fx_setup, fx_run};
 ThreadTasks micTasks {mic_setup, mic_run};
@@ -48,8 +49,9 @@ void setup() {
 
     setupAlarmSchedule();
 
+    fillBoardId();
     Log.infoln(F("System status: %X"), getSysStatus());
-    Log.logSystemInfo();
+    logSystemInfo();
     //start the web server/fx in a separate thread - turns out the JSON library crashes if not given enough stack size
     // Scheduler.startLoop(wifi_loop, 2048);
 }

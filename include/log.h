@@ -7,8 +7,7 @@
 // *************************************************************************
 //  Uncomment line below to fully disable logging, and reduce project size
 // ************************************************************************
-#define DISABLE_LOGGING
-#define MEMORY_STATS
+//#define DISABLE_LOGGING
 
 #include <ArduinoLog.h>
 #include <TimeLib.h>

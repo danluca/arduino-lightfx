@@ -3,6 +3,7 @@
 //
 #include "efx_setup.h"
 #include "log.h"
+#include "sysinfo.h"
 
 //~ Global variables definition
 #define STATE_JSON_DOC_SIZE   512
@@ -1110,8 +1111,8 @@ void fx_run() {
         Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), msmt, toFahrenheit(msmt), minTemp, maxTemp);
         Log.infoln(F("Current time: %y"), now());
         //log RAM metrics
-        Log.logAllThreadInfo();
-        Log.logHeapAndStackInfo();
+        logAllThreadInfo();
+        logHeapAndStackInfo();
 #endif
     }
     EVERY_N_MINUTES(7) {

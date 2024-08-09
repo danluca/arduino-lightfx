@@ -13,9 +13,8 @@ Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 */
 #pragma once
 
-#include <inttypes.h>
-#include <stdarg.h>
-#include <mbed.h>
+#include <cinttypes>
+#include <cstdarg>
 #include <Mutex.h>
 
 // Non standard: Arduino.h also chosen if ARDUINO is not defined. To facilitate use in non-Arduino test environments
@@ -41,7 +40,6 @@ typedef void (*printFmtFunc)(Print *, const char, va_list *);
 
 #ifndef DISABLE_LOGGING
 extern rtos::Mutex serial_mtx;
-#include <rtx_lib.h>
 #endif
 
 // *************************************************************************
@@ -104,9 +102,7 @@ extern rtos::Mutex serial_mtx;
 
 class Logging {
 public:
-    /**
-     * default Constructor
-     */
+    /** default Constructor */
     Logging()
 #ifndef DISABLE_LOGGING
             : _level(LOG_LEVEL_SILENT),
@@ -361,26 +357,10 @@ public:
         printLevel(LOG_LEVEL_VERBOSE, true, msg, args...);
 #endif
     }
-    void logThreadInfo(osThreadId threadId);
-    void logAllThreadInfo();
-    void logHeapAndStackInfo();
-    void logSystemInfo();
 
 private:
     void print(const char *format, va_list args);
-    void print(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        print(format, args);
-    }
-
     void print(const __FlashStringHelper *format, va_list args);
-    void print (const __FlashStringHelper *format, ...) {
-        va_list args;
-        va_start(args, format);
-        print(format, args);
-    }
-
     void print(const Printable &obj, va_list args) {
 #ifndef DISABLE_LOGGING
         _logOutput->print(obj);
