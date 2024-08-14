@@ -8,22 +8,28 @@ static const char threadInfoFmt[] PROGMEM = "Thread[%u]:: name='%s' id=%X stack 
 static const char threadInfoVerboseFmt[] PROGMEM = "Thread[%u]:: name='%s' id=%X entry=%X\n  Stack[0x%U - 0x%U] size=%u free=%u";
 static const char heapInfoFmt[] PROGMEM = "Heap:: size=%u free=%u";
 static const char heapInfoVerboseFmt[] PROGMEM = "Heap:: start=%X end=%X size=%u used=%u free=%u\n  maxUsed=%u totalAllocated=%u overhead=%u\n  allocated ok=%u err=%u";
-static const char stackInfoFmt[] PROGMEM = "Stack:: size=%u free=%u";
+//static const char stackInfoFmt[] PROGMEM = "Stack:: size=%u free=%u";
 static const char genStackInfoFmt[] PROGMEM = "Gen Stack:: size=%u free=%u statsCount=%u";
 static const char isrStackInfoFmt[] PROGMEM = "ISR Stack:: start=%X end=%X size=%u";
 static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %X\n  Mbed OS version %u\n  Compiler ID %X version %u\n  Board UID 0x%s name '%s' vendor %X model %X\n  Flash size %u";
 
 char boardId[FLASH_UNIQUE_ID_SIZE_BYTES*2+1] {0};
 
-#define STORAGE_CMD_TOTAL_BYTES 4
+//#define STORAGE_CMD_TOTAL_BYTES 32
 
+/**
+ * <p>Per AT25SF128A Flash specifications, command ox9F returns 0x1F8901, where last byte 0x01 should represent density (size)
+ * Trial/error shows the command returns 0xFF1F89011F</p>
+ * <p>We won't use the flash chip SPI commands - very chip specific - but instead leverage the constant PICO_FLASH_SIZE_BYTES already tailored to the board we use, Nano RP2040</p>
+ * @return
+ */
 uint get_flash_capacity() {
-    uint8_t txbuf[STORAGE_CMD_TOTAL_BYTES] = {0x9f};
-    uint8_t rxbuf[STORAGE_CMD_TOTAL_BYTES] = {0};
-    flash_do_cmd(txbuf, rxbuf, STORAGE_CMD_TOTAL_BYTES);
+//    uint8_t txbuf[STORAGE_CMD_TOTAL_BYTES] = {0x9f};
+//    uint8_t rxbuf[STORAGE_CMD_TOTAL_BYTES] = {0};
+//    flash_do_cmd(txbuf, rxbuf, STORAGE_CMD_TOTAL_BYTES);
 
-    return 1 << rxbuf[3];
-//    return PICO_FLASH_SIZE_BYTES;
+//    return 1 << rxbuf[3];
+    return PICO_FLASH_SIZE_BYTES;
 }
 
 /**
@@ -45,7 +51,7 @@ const char* fillBoardId() {
  * look & feel - multi-line, spaced, information about threads, memory, system.</p>
  * @param threadId
  */
-void logThreadInfo(osThreadId_t threadId) {
+void logThreadInfo(osThreadId threadId) {
 #ifndef DISABLE_LOGGING
     // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_thread_info
     // Refs: rtx_lib.h - #define os_thread_t osRtxThread_t

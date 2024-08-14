@@ -15,6 +15,7 @@ Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 
 #include <cinttypes>
 #include <cstdarg>
+#include <mbed.h>
 #include <Mutex.h>
 
 // Non standard: Arduino.h also chosen if ARDUINO is not defined. To facilitate use in non-Arduino test environments
