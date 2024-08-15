@@ -12,8 +12,11 @@ static const char heapInfoVerboseFmt[] PROGMEM = "Heap:: start=%X end=%X size=%u
 static const char genStackInfoFmt[] PROGMEM = "Gen Stack:: size=%u free=%u statsCount=%u\n";
 static const char isrStackInfoFmt[] PROGMEM = "ISR Stack:: start=%X end=%X size=%u\n";
 static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %X\n  Mbed OS version %u\n  Compiler ID %X version %u\n  Board UID 0x%s name '%s' vendor %X model %X\n  Flash size %u";
+static const char cpuStatsFmt[] PROGMEM = "Time (µs): Uptime %u Idle: %u Sleep: %u DeepSleep: %u Idle: %d%% Usage: %d%%\n";
 
 char boardId[FLASH_UNIQUE_ID_SIZE_BYTES*2+1] {0};
+unsigned long prevStatTime = 0;
+us_timestamp_t prevIdleTime = 0;
 
 //#define STORAGE_CMD_TOTAL_BYTES 32
 
@@ -102,6 +105,7 @@ void logAllThreadInfo() {
         else
             Log.trace(threadInfoVerboseFmt, i, thrdName, (int)threadId, tcb->thread_addr, tcb->stack_mem, (uint8_t *)tcb->stack_mem+stackSize, stackSize, stackFree);
     }
+    Log.endContinuation();
 #endif
 }
 
@@ -135,6 +139,7 @@ void logHeapAndStackInfo() {
         Log.trace(genStackInfoFmt, allStack.reserved_size, allStack.reserved_size-allStack.max_size, allStack.stack_cnt);
         Log.trace(isrStackInfoFmt, mbed_stack_isr_start, mbed_stack_isr_start+mbed_stack_isr_size, mbed_stack_isr_size);
     }
+    Log.endContinuation();
 #endif
 }
 
@@ -176,6 +181,28 @@ void logSystemInfo() {
     Log.infoln(sysInfoFmt, statsSys.cpu_id, statsSys.os_version, statsSys.compiler_id, statsSys.compiler_version, boardId,
                BOARD_NAME, BOARD_VENDORID, BOARD_PRODUCTID, get_flash_capacity());
 
+#endif
+}
+
+void logCPUStats() {
+#ifndef DISABLE_LOGGING
+    mbed_stats_cpu_t stats;
+    mbed_stats_cpu_get(&stats);
+    unsigned long curStatTime = millis();
+    unsigned long sampleTime = curStatTime - prevStatTime;
+
+    // Calculate the percentage of CPU usage
+    uint64_t diff_usec = (stats.idle_time - prevIdleTime);
+    uint8_t idle = (diff_usec * 100) / (sampleTime*1000);
+    uint8_t usage = 100 - ((diff_usec * 100) / (sampleTime*1000));
+    prevIdleTime = stats.idle_time;
+
+    Log.info(F("CPU STATS\n"));
+    Log.info(cpuStatsFmt, stats.uptime, stats.idle_time, stats.sleep_time, stats.deep_sleep_time, idle, usage);
+
+    prevStatTime = curStatTime;
+
+    Log.endContinuation();
 #endif
 }
 

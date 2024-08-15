@@ -1113,6 +1113,7 @@ void fx_run() {
         //log RAM metrics
         logAllThreadInfo();
         logHeapAndStackInfo();
+        logCPUStats();
 #endif
     }
     EVERY_N_MINUTES(7) {

@@ -117,6 +117,11 @@ void logExtraFormats(Print *_logOutput, const char fmt, va_list *args) {
             _logOutput->print(timeStr);
             break;
         }
+        case 'v': {
+            uint64_t value = va_arg(*args, uint64_t);
+            _logOutput->print(value, DEC);
+            break;
+        }
         default:
             _logOutput->print("n/s");
     }

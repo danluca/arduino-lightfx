@@ -199,6 +199,10 @@ public:
      */
     void clearAdditionalFormatting();
 
+    inline void endContinuation() {
+        _continuation = false;
+    }
+
     static uint8_t countSignificantNibbles(unsigned long ul);
 
     /**

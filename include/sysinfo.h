@@ -11,10 +11,14 @@
 #endif
 
 extern char boardId[];
+extern unsigned long prevStatTime;
+extern us_timestamp_t prevIdleTime;
+
 void logThreadInfo(osThreadId threadId);
 void logAllThreadInfo();
 void logHeapAndStackInfo();
 void logSystemInfo();
+void logCPUStats();
 const char* fillBoardId();
 
 #endif //ARDUINO_LIGHTFX_SYSINFO_H
