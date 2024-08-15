@@ -107,7 +107,7 @@ public:
     Logging()
 #ifndef DISABLE_LOGGING
             : _level(LOG_LEVEL_SILENT),
-              _showLevel(true),
+              _showLevel(true), _continuation(false),
               _logOutput(NULL)
 #endif
     {
@@ -383,25 +383,29 @@ private:
             level = LOG_LEVEL_SILENT;
         }
 
-        if (_prefix != nullptr) {
-            _prefix(_logOutput, level);
-        }
+        if (!_continuation) {
+            if (_prefix != nullptr) {
+                _prefix(_logOutput, level);
+            }
 
-        if (_showLevel) {
-            _logOutput->print(levels[level - 1]);
-            _logOutput->print(": ");
+            if (_showLevel) {
+                _logOutput->print(levels[level - 1]);
+                _logOutput->print(": ");
+            }
         }
 
         va_list args;
         va_start(args, msg);
         print(msg, args);
 
-        if (_suffix != nullptr) {
+        if (_suffix != nullptr && !_continuation) {
             _suffix(_logOutput, level);
         }
         if (cr) {
             _logOutput->print(CR);
-        }
+            _continuation = false;
+        } else
+            _continuation = true;
         //serial_mtx.unlock();
 #endif
     }
@@ -409,6 +413,7 @@ private:
 #ifndef DISABLE_LOGGING
     int _level;
     bool _showLevel;
+    bool _continuation;
     Print *_logOutput;
 
     printfunction _prefix = nullptr;
