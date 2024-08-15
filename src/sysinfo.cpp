@@ -12,7 +12,7 @@ static const char heapInfoVerboseFmt[] PROGMEM = "Heap:: start=%X end=%X size=%u
 static const char genStackInfoFmt[] PROGMEM = "Gen Stack:: size=%u free=%u statsCount=%u\n";
 static const char isrStackInfoFmt[] PROGMEM = "ISR Stack:: start=%X end=%X size=%u\n";
 static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %X\n  Mbed OS version %u\n  Compiler ID %X version %u\n  Board UID 0x%s name '%s' vendor %X model %X\n  Flash size %u";
-static const char cpuStatsFmt[] PROGMEM = "Time (µs): Uptime %u Idle: %u Sleep: %u DeepSleep: %u Idle: %d%% Usage: %d%%\n";
+static const char cpuStatsFmt[] PROGMEM = "Time (µs): Uptime: %u Idle: %u Sleep: %u DeepSleep: %u Idle: %d%% Usage: %d%%\n";
 
 char boardId[FLASH_UNIQUE_ID_SIZE_BYTES*2+1] {0};
 unsigned long prevStatTime = 0;
@@ -184,6 +184,10 @@ void logSystemInfo() {
 #endif
 }
 
+/**
+ * This shows zero always on RP2040, the Nano RP2040 board is missing low power timers that seem to be required for these stats
+ * See https://github.com/ARMmbed/mbed-os-example-cpu-stats/blob/mbed-os-6.7.0/main.cpp
+ */
 void logCPUStats() {
 #ifndef DISABLE_LOGGING
     mbed_stats_cpu_t stats;
