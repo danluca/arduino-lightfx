@@ -98,6 +98,54 @@ namespace FxH {
 
         uint8_t selectionWeight() const override;
     };
+
+    class FxH4 : public LedEffect {
+    public:
+        FxH4();
+
+        void setup() override;
+
+        void run() override;
+
+        void windDownPrep() override;
+
+        JsonObject &describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
+    private:
+        static const uint8_t twinkleDensity = 5;
+        static const uint8_t twinkleSpeed = 4;
+        static const uint8_t secondsPerPalette = 40;
+
+        static void drawTwinkles(CRGBSet& set);
+        static CRGB computeOneTwinkle(uint32_t ms, uint32_t salt);
+        static uint8_t attackDecayWave8( uint8_t i);
+        static void coolLikeIncandescent( CRGB& c, uint8_t phase);
+    };
+
+    class FxH5 : public LedEffect {
+    public:
+        FxH5();
+
+        void setup() override;
+
+        void run() override;
+
+        bool windDown() override;
+
+        void windDownPrep() override;
+
+        JsonObject &describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
+    private:
+        int red {0};
+        int green {0};
+        int blue {255};
+        int colorTime {5};
+
+        void electromagneticSpectrum(int transitionSpeed);
+    };
 }
 
 #endif //LIGHTFX_FXH_H

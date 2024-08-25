@@ -30,7 +30,14 @@ namespace colTheme {
 
         static CRGBPalette16 randomPalette(uint8_t ofsHue = 0, time_t time = 0);
 
+        static CRGBPalette16 selectRandomPalette();
+
+        static CRGBPalette16 selectNextPalette();
+
         static void toHSVPalette(CHSVPalette16 &hsvPalette, const CRGBPalette16 &rgbPalette);
+
+    private:
+        static uint8_t activePaletteIndex;
     };
 }
 
