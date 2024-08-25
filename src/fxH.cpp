@@ -21,6 +21,8 @@ void FxH::fxRegister() {
     static FxH1 fxH1;
     static FxH2 fxH2;
     static FxH3 fxH3;
+    static FxH4 fxH4;
+    static FxH5 fxH5;
 }
 
 // Fire2012 with programmable Color Palette standard example, broken into multiple segments
@@ -373,16 +375,12 @@ uint8_t FxH4::selectionWeight() const {
     return 12;
 }
 
-//  This function loops over each pixel, calculates the
-//  adjusted 'clock' that this pixel should use, and calls
-//  "CalculateOneTwinkle" on each pixel.  It then displays
-//  either the twinkle color of the background color,
+//  This function loops over each pixel, calculates the adjusted 'clock' that this pixel should use, and calls
+//  "CalculateOneTwinkle" on each pixel.  It then displays either the twinkle color of the background color,
 //  whichever is brighter.
 void FxH4::drawTwinkles(CRGBSet &set) {
-    // "PRNG16" is the pseudorandom number generator
-    // It MUST be reset to the same starting value each time
-    // this function is called, so that the sequence of 'random'
-    // numbers that it generates is (paradoxically) stable.
+    // "PRNG16" is the pseudorandom number generator. It MUST be reset to the same starting value each time
+    // this function is called, so that the sequence of 'random' numbers that it generates is (paradoxically) stable.
     uint16_t PRNG16 = 11337;
 
     uint32_t clock32 = millis();
@@ -422,30 +420,24 @@ void FxH4::drawTwinkles(CRGBSet &set) {
         uint8_t cbright = c.getAverageLight();
         int16_t deltabright = cbright - backgroundBrightness;
         if (deltabright >= 32 || (!bg)) {
-            // If the new pixel is significantly brighter than the background color,
-            // use the new color.
+            // If the new pixel is significantly brighter than the background color, use the new color.
             pixel = c;
         } else if (deltabright > 0) {
-            // If the new pixel is just slightly brighter than the background color,
-            // mix a blend of the new color and the background color
+            // If the new pixel is just slightly brighter than the background color, mix a blend of the new color and
+            // the background color
             pixel = blend(bg, c, deltabright * 8);
         } else {
-            // if the new pixel is not at all brighter than the background color,
-            // just use the background color.
+            // if the new pixel is not at all brighter than the background color, just use the background color.
             pixel = bg;
         }
     }
 }
 
-//  This function takes a time in pseudo-milliseconds,
-//  figures out brightness = f( time ), and also hue = f( time )
-//  The 'low digits' of the millisecond time are used as
-//  input to the brightness wave function.
-//  The 'high digits' are used to select a color, so that the color
-//  does not change over the course of the fade-in, fade-out
-//  of one cycle of the brightness wave function.
-//  The 'high digits' are also used to determine whether this pixel
-//  should light at all during this cycle, based on the TWINKLE_DENSITY.
+//  This function takes a time in pseudo-milliseconds, figures out brightness = f( time ), and also hue = f( time )
+//  The 'low digits' of the millisecond time are used as input to the brightness wave function.
+//  The 'high digits' are used to select a color, so that the color does not change over the course of the fade-in,
+//  fade-out of one cycle of the brightness wave function. The 'high digits' are also used to determine whether this
+//  pixel should light at all during this cycle, based on the TWINKLE_DENSITY.
 CRGB FxH4::computeOneTwinkle(uint32_t ms, uint32_t salt) {
     uint16_t ticks = ms >> (8 - FxH4::twinkleSpeed);
     uint8_t fastcycle8 = ticks;
@@ -470,9 +462,8 @@ CRGB FxH4::computeOneTwinkle(uint32_t ms, uint32_t salt) {
     return c;
 }
 
-// This function is like 'triwave8', which produces a
-// symmetrical up-and-down triangle sawtooth waveform, except that this
-// function produces a triangle wave with a faster attack and a slower decay:
+// This function is like 'triwave8', which produces a symmetrical up-and-down triangle sawtooth waveform, except that
+// this function produces a triangle wave with a faster attack and a slower decay:
 //
 //     / \
 //    /     \
@@ -489,9 +480,8 @@ uint8_t FxH4::attackDecayWave8(uint8_t i) {
     }
 }
 
-// This function takes a pixel, and if its in the 'fading down'
-// part of the cycle, it adjusts the color a little bit like the
-// way that incandescent bulbs fade toward 'red' as they dim.
+// This function takes a pixel, and if its in the 'fading down' part of the cycle, it adjusts the color a little bit
+// like the way that incandescent bulbs fade toward 'red' as they dim.
 void FxH4::coolLikeIncandescent(CRGB &c, uint8_t phase) {
     if (phase < 128) return;
 
@@ -500,9 +490,9 @@ void FxH4::coolLikeIncandescent(CRGB &c, uint8_t phase) {
     c.b = qsub8(c.b, cooling * 2);
 }
 
-
+//Ref: https://github.com/Electriangle/RainbowSparkle_Main/blob/main/Rainbow_Sparkle_Main.ino
 //FxH5
-FxH5::FxH5() : LedEffect(fxh5Desc) {
+FxH5::FxH5() : LedEffect(fxh5Desc), small(leds, 7), rest(leds, small.size(), NUM_PIXELS-1) {
 }
 
 void FxH5::setup() {
@@ -511,12 +501,12 @@ void FxH5::setup() {
 
 void FxH5::run() {
     EVERY_N_MILLISECONDS(25) {
-        int pixel = random(tpl.size());
-        tpl[pixel].setRGB(red, green, blue);
-        replicateSet(tpl, others);
+        int pixel = random(small.size());
+        small[pixel].setRGB(red, green, blue);
+        replicateSet(small, rest);
         FastLED.show();
         delay(colorTime);
-        tpl[pixel].setRGB(0, 0, 0);
+        small[pixel].setRGB(0, 0, 0);
         electromagneticSpectrum(20);
     }
 }

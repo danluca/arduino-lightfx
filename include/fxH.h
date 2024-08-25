@@ -142,7 +142,8 @@ namespace FxH {
         int red {0};
         int green {0};
         int blue {255};
-        int colorTime {5};
+        int colorTime {1};
+        CRGBSet small, rest;
 
         void electromagneticSpectrum(int transitionSpeed);
     };
