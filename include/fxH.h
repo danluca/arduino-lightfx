@@ -143,7 +143,10 @@ namespace FxH {
         int green {0};
         int blue {255};
         int colorTime {1};
-        CRGBSet small, rest;
+        CRGBSet buf, small, rest;
+        uint8_t timer;
+        enum FxState {Sparkle, RampUp, Glitter, RampDown};
+        FxState fxState {Sparkle};
 
         void electromagneticSpectrum(int transitionSpeed);
     };

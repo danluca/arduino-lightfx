@@ -492,7 +492,7 @@ void FxH4::coolLikeIncandescent(CRGB &c, uint8_t phase) {
 
 //Ref: https://github.com/Electriangle/RainbowSparkle_Main/blob/main/Rainbow_Sparkle_Main.ino
 //FxH5
-FxH5::FxH5() : LedEffect(fxh5Desc), small(leds, 7), rest(leds, small.size(), NUM_PIXELS-1) {
+FxH5::FxH5() : LedEffect(fxh5Desc), small(leds, 7), rest(leds, small.size(), NUM_PIXELS-1), buf(frame(0, 6)) {
 }
 
 void FxH5::setup() {
@@ -502,12 +502,36 @@ void FxH5::setup() {
 void FxH5::run() {
     EVERY_N_MILLISECONDS(25) {
         int pixel = random(small.size());
-        small[pixel].setRGB(red, green, blue);
+        CRGB c(red, green, blue);
+        CRGB prevPixel = small[pixel];
+
+        switch (fxState) {
+            case Sparkle:
+                small[pixel] = c;
+                break;
+            case RampUp:
+                rblend(small[pixel], c, 10);
+                break;
+            case Glitter:
+                small[pixel] += CRGB::White;
+                break;
+            case RampDown:
+                rblend(small[pixel], BKG, 20);
+                break;
+        }
         replicateSet(small, rest);
         FastLED.show();
         delay(colorTime);
-        small[pixel].setRGB(0, 0, 0);
+        switch (fxState) {
+            case Sparkle:
+            case Glitter:
+                small[pixel] = prevPixel;
+        }
+    }
+    EVERY_N_MILLISECONDS(250) {
         electromagneticSpectrum(20);
+        //effect phases
+        fxState = static_cast<FxState>((timer++ / 40) % 4);       //fxState increments every 40*250ms=10sec, modulo 4 (size of state enum)
     }
 }
 

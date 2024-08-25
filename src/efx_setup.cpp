@@ -32,10 +32,10 @@ volatile uint16_t curPos = 0;
 
 EffectRegistry fxRegistry;
 CRGB leds[NUM_PIXELS];
-CRGBArray<NUM_PIXELS> frame;
 CRGBSet tpl(leds, FRAME_SIZE);                        //array length, indexes go from 0 to length-1
 CRGBSet others(leds, tpl.size(), NUM_PIXELS-1); //start and end indexes are inclusive
 CRGBSet ledSet(leds, NUM_PIXELS);                     //the entire leds CRGB array as a CRGBSet
+CRGBArray<NUM_PIXELS> frame;                              //side LED buffer for preparing/saving state/etc. with main LEDs array
 CRGBPalette16 palette;
 CRGBPalette16 targetPalette;
 OpMode mode = Chase;
