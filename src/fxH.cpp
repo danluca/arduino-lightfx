@@ -534,7 +534,7 @@ JsonObject &FxH5::describeConfig(JsonArray &json) const {
 }
 
 uint8_t FxH5::selectionWeight() const {
-    return LedEffect::selectionWeight();
+    return 5;
 }
 
 void FxH5::electromagneticSpectrum(int transitionSpeed) {

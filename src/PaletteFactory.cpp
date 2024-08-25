@@ -138,6 +138,8 @@ static const TProgmemPalette16 *allPalettes[] = {
         &Ice_p
 };
 
+uint8_t PaletteFactory::activePaletteIndex = 0;
+
 CRGBPalette16 PaletteFactory::mainPalette(const time_t time) {
     adjustHoliday(time);
     switch (holiday) {
@@ -243,5 +245,4 @@ CRGBPalette16 PaletteFactory::selectNextPalette() {
     return *allPalettes[activePaletteIndex];
 }
 
-uint8_t PaletteFactory::activePaletteIndex = 0;
 PaletteFactory paletteFactory;
