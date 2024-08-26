@@ -516,23 +516,33 @@ void FxH5::run() {
         pixelPos = random(small.size());
         prevClr = small[pixelPos];
         CRGB clr(red, green, blue);
+        CHSV hsv = rgb2hsv_approximate(clr);
 
         switch (fxState) {
             case Sparkle:
                 small[pixelPos] = clr;
+                small[pixelPos].maximizeBrightness(255);
                 break;
             case RampUp:
-                rblend(small[pixelPos], clr, 10);
+                rblend(small[pixelPos], clr, 32);
                 break;
             case Glitter:
                 small[pixelPos] += CRGB::White;
                 break;
             case RampDown:
-                rblend(small[pixelPos], BKG, 64);
+                rblend(small[pixelPos], BKG, 96);
                 break;
+        }
+        CRGB c = small[pixelPos];
+        if (fxState == RampUp) {
+            small[pixelPos] = clr;
+            small[pixelPos].maximizeBrightness(255);
         }
         replicateSet(small, rest);
         FastLED.show(stripBrightness);
+        if (fxState == RampUp) {
+            small[pixelPos] = c;
+        }
     }
     EVERY_N_MILLISECONDS(250) {
         electromagneticSpectrum(20);
