@@ -492,16 +492,17 @@ void FxH4::coolLikeIncandescent(CRGB &c, uint8_t phase) {
 
 //Ref: https://github.com/Electriangle/RainbowSparkle_Main/blob/main/Rainbow_Sparkle_Main.ino
 //FxH5
-FxH5::FxH5() : LedEffect(fxh5Desc), small(leds, 7), rest(leds, small.size(), NUM_PIXELS-1), buf(frame(0, 6)), pixel(small[0]) {
+FxH5::FxH5() : LedEffect(fxh5Desc), small(leds, 7), rest(leds, small.size(), NUM_PIXELS-1) {
     timer = 0;
     prevClr = BKG;
+    pixelPos = 0;
 }
 
 void FxH5::setup() {
     LedEffect::setup();
     fxState = Sparkle;
-    pixel = small[0];
     prevClr = BKG;
+    pixelPos = 0;
 }
 
 void FxH5::run() {
@@ -509,25 +510,25 @@ void FxH5::run() {
         switch (fxState) {
             case Sparkle:
             case Glitter:
-                pixel = prevClr;
+                small[pixelPos] = prevClr;
         }
 
-        CRGB c(red, green, blue);
-        pixel = small[random(small.size())];
-        prevClr = pixel;
+        pixelPos = random(small.size());
+        prevClr = small[pixelPos];
+        CRGB clr(red, green, blue);
 
         switch (fxState) {
             case Sparkle:
-                pixel = c;
+                small[pixelPos] = clr;
                 break;
             case RampUp:
-                rblend(pixel, c, 10);
+                rblend(small[pixelPos], clr, 10);
                 break;
             case Glitter:
-                pixel += CRGB::White;
+                small[pixelPos] += CRGB::White;
                 break;
             case RampDown:
-                rblend(pixel, BKG, 64);
+                rblend(small[pixelPos], BKG, 20);
                 break;
         }
         replicateSet(small, rest);
