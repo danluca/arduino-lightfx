@@ -528,7 +528,7 @@ void FxH5::run() {
                 small[pixelPos] += CRGB::White;
                 break;
             case RampDown:
-                rblend(small[pixelPos], BKG, 20);
+                rblend(small[pixelPos], BKG, 64);
                 break;
         }
         replicateSet(small, rest);
