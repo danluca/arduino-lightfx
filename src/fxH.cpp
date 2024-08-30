@@ -506,7 +506,7 @@ void FxH5::setup() {
 }
 
 void FxH5::run() {
-    EVERY_N_MILLISECONDS(25) {
+    EVERY_N_MILLISECONDS(20) {
         switch (fxState) {
             case Sparkle:
             case Glitter:
@@ -517,6 +517,7 @@ void FxH5::run() {
         prevClr = small[pixelPos];
         CRGB clr(red, green, blue);
         CHSV hsv = rgb2hsv_approximate(clr);
+        hsv.val = qsub8(hsv.val, 20);
 
         switch (fxState) {
             case Sparkle:
@@ -524,27 +525,22 @@ void FxH5::run() {
                 small[pixelPos].maximizeBrightness(255);
                 break;
             case RampUp:
-                rblend(small[pixelPos], clr, 32);
+                small.fadeToBlackBy(16);
+                small[pixelPos] = prevClr;  //restore value of this pixel (captured above in prevClr) after fade
+                rblend(small[pixelPos], hsv, 48);
                 break;
             case Glitter:
                 small[pixelPos] += CRGB::White;
                 break;
             case RampDown:
-                rblend(small[pixelPos], BKG, 96);
+                rblend(small[pixelPos], BKG, 112);
                 break;
         }
-        CRGB c = small[pixelPos];
-        if (fxState == RampUp) {
-            small[pixelPos] = clr;
-            small[pixelPos].maximizeBrightness(255);
-        }
+
         replicateSet(small, rest);
         FastLED.show(stripBrightness);
-        if (fxState == RampUp) {
-            small[pixelPos] = c;
-        }
     }
-    EVERY_N_MILLISECONDS(250) {
+    EVERY_N_MILLISECONDS(350) {
         electromagneticSpectrum(20);
         //effect phases
         FxState prevState = fxState;
