@@ -153,6 +153,29 @@ namespace FxH {
 
         void electromagneticSpectrum(int transitionSpeed);
     };
+
+    class FxH6 : public LedEffect {
+    public:
+        explicit FxH6();
+
+        void setup() override;
+
+        void run() override;
+
+        bool windDown() override;
+
+        void windDownPrep() override;
+
+        uint8_t selectionWeight() const override;
+    private:
+        uint timerCounter = 0;
+        CRGB clr {};
+
+        static const int frameSize = 7;
+        CRGBSet window, buffer, rest;
+        bool lit[frameSize] {}; //arguably, we could have used the ability of CRGB color to store 1 bit of information see CRGB::setParity
+
+    };
 }
 
 #endif //LIGHTFX_FXH_H

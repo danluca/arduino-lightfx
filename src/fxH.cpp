@@ -16,6 +16,7 @@ const char fxh2Desc[] PROGMEM = "FXH2: confetti H";
 const char fxh3Desc[] PROGMEM = "FXH3: filling the strand with colours";
 const char fxh4Desc[] PROGMEM = "FXH4: TwinkleFox";
 const char fxh5Desc[] PROGMEM = "FXH5: RainbowSparkle";
+const char fxh6Desc[] PROGMEM = "FXH6: JustSparkle";
 
 void FxH::fxRegister() {
     static FxH1 fxH1;
@@ -23,6 +24,7 @@ void FxH::fxRegister() {
     static FxH3 fxH3;
     static FxH4 fxH4;
     static FxH5 fxH5;
+    static FxH6 fxH6;
 }
 
 // Fire2012 with programmable Color Palette standard example, broken into multiple segments
@@ -597,3 +599,60 @@ void FxH5::electromagneticSpectrum(int transitionSpeed) {
             break;
     }
 }
+
+// FxH6
+FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), buffer(frame(0, frameSize-1)),
+                                      rest(leds, frameSize, NUM_PIXELS-1) {
+    timerCounter = 0;
+    clr = BKG;
+}
+
+void FxH6::setup() {
+    LedEffect::setup();
+    for (auto &b: lit) {
+        b = false;
+    }
+    timerCounter = 0;
+    clr = ColorFromPalette(palette, 0, 255, LINEARBLEND);
+}
+
+void FxH6::run() {
+    EVERY_N_MILLISECONDS(25) {
+        uint8_t x = random8();
+        const uint8_t threshold = 160;
+        for (int n = 0; n < window.size(); n++) {
+            CRGB &pix = window[n];
+            if (lit[n]) {
+                pix = BKG;
+                lit[n] = false;
+            } else {
+                bool prevPx = n != 0 && lit[n - 1];
+                if (prevPx)
+                    continue;   //we don't want two pixels lit one next to each other
+                if (x > threshold) {
+                    pix = clr;
+                    lit[n] = true;
+                }
+            }
+        }
+        replicateSet(window, rest);
+        FastLED.show(brightness);
+        timerCounter++;
+        if ((timerCounter % 60) == 0) {
+            clr = ColorFromPalette(palette, sin8(timerCounter/7200 - 64), 255, LINEARBLEND);
+        }
+    }
+}
+
+bool FxH6::windDown() {
+    return LedEffect::windDown();
+}
+
+void FxH6::windDownPrep() {
+    LedEffect::windDownPrep();
+}
+
+uint8_t FxH6::selectionWeight() const {
+    return 5;
+}
+
