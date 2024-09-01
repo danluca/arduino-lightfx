@@ -639,7 +639,7 @@ void FxH6::run() {
         FastLED.show(brightness);
         timerCounter++;
         if ((timerCounter % 60) == 0) {
-            clr = ColorFromPalette(palette, sin8(timerCounter/7200 - 64), 255, LINEARBLEND);
+            clr = ColorFromPalette(palette, sin8(timerCounter/60 - 64), 255, LINEARBLEND);
         }
     }
 }
