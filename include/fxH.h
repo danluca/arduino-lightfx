@@ -154,6 +154,21 @@ namespace FxH {
         void electromagneticSpectrum(int transitionSpeed);
     };
 
+    class Spark {
+    public:
+        explicit Spark(CRGB& ref);
+        void step(CRGB clr, uint8_t dice);
+        void on(CRGB clr);
+        void off();
+        void updateParams(uint8_t minDelay, uint8_t maxDelay, uint8_t chance);
+    protected:
+        CRGB& pixel;
+        uint8_t minDelay, maxDelay;
+        uint8_t counter, chance;
+
+        friend class FxH6;  //intended to work closely with FxH6 effect
+    };
+
     class FxH6 : public LedEffect {
     public:
         explicit FxH6();
@@ -167,15 +182,19 @@ namespace FxH {
         void windDownPrep() override;
 
         uint8_t selectionWeight() const override;
+
+        ~FxH6() override;
+
     private:
-        uint timerCounter = 0;
-        CRGB clr {};
+        uint8_t timerCounter {};
+        std::vector<Spark*> sparks {};
 
         static const int frameSize = 7;
-        CRGBSet window, buffer, rest;
-        bool lit[frameSize] {}; //arguably, we could have used the ability of CRGB color to store 1 bit of information see CRGB::setParity
-
+        CRGBSet window, rest;
+        CRGB clr {};
     };
+
+
 }
 
 #endif //LIGHTFX_FXH_H

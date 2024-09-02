@@ -601,40 +601,39 @@ void FxH5::electromagneticSpectrum(int transitionSpeed) {
 }
 
 // FxH6
-FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), buffer(frame(0, frameSize-1)),
-                                      rest(leds, frameSize, NUM_PIXELS-1) {
-    timerCounter = 0;
+FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSize, NUM_PIXELS-1) {
+    for (auto &p : window) {
+        sparks.push_back(new Spark(p));
+    }
     clr = BKG;
+    timerCounter = 0;
 }
 
 void FxH6::setup() {
     LedEffect::setup();
-    for (auto &b: lit) {
-        b = false;
-    }
-    timerCounter = 0;
     clr = ColorFromPalette(palette, 0, 255, LINEARBLEND);
+    for (auto s: sparks)
+        s->updateParams(8, 24, 64);
+
 }
 
 void FxH6::run() {
     EVERY_N_MILLISECONDS(25) {
         uint8_t x = random8();
-        const uint8_t threshold = 160;
-        for (int n = 0; n < window.size(); n++) {
-            CRGB &pix = window[n];
-            if (lit[n]) {
-                pix = BKG;
-                lit[n] = false;
-            } else {
-                bool prevPx = n != 0 && lit[n - 1];
-                if (prevPx)
-                    continue;   //we don't want two pixels lit one next to each other
-                if (x > threshold) {
-                    pix = clr;
-                    lit[n] = true;
-                }
+        for (auto s: sparks) {
+            s->step(clr, x);
+            
+            if ((timerCounter % 40) == 0) {
+                uint8_t min = qsub8(s->minDelay, 1);
+                min = min < 3 ? 3 : min;
+                uint8_t max = qsub8(s->maxDelay, 2);
+                max = max < 10 ? 10 : max;
+                uint8_t ch = qadd8(s->chance, 2);
+                ch = ch > 192 ? 192 : ch;
+                s->updateParams(min, max, ch);
             }
         }
+
         replicateSet(window, rest);
         FastLED.show(brightness);
         timerCounter++;
@@ -656,3 +655,41 @@ uint8_t FxH6::selectionWeight() const {
     return 5;
 }
 
+FxH6::~FxH6() {
+    for (auto s: sparks)
+        delete s;
+}
+
+// FxH6 Spark
+Spark::Spark(CRGB &ref) : pixel(ref) {
+    counter = 0;
+    minDelay = 8;
+    maxDelay = 32;
+    chance = 64;
+}
+
+void Spark::step(const CRGB clr, const uint8_t dice) {
+    if (counter == 0) {
+        if (dice < chance)
+            on(clr);
+        counter = random8(minDelay, maxDelay);
+    } else {
+        counter = qsub8(counter, 1);
+        off();
+    }
+}
+
+void Spark::on(const CRGB clr) {
+    pixel = clr;
+}
+
+void Spark::off() {
+    pixel = BKG;
+}
+
+void Spark::updateParams(const uint8_t minDelay, const uint8_t maxDelay, const uint8_t chance) {
+    this->minDelay = minDelay;
+    this->maxDelay = maxDelay;
+    this->chance = chance;
+    this->counter = random8(this->minDelay, this->maxDelay);
+}
