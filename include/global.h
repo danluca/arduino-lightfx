@@ -85,5 +85,14 @@ extern volatile bool fxBump;
 extern volatile uint16_t speed;
 extern volatile uint16_t curPos;
 
+static inline uint8_t cadd8(uint8_t i, uint8_t j, uint8_t cap) {
+    uint8_t t = qadd8(i, j);    //this saturates at 0xFF
+    return t > cap ? cap : t;
+}
+
+static inline uint8_t csub8(uint8_t i, uint8_t j, uint8_t cap) {
+    uint8_t t = qsub8(i, j);    //this saturates at 0x00
+    return t < cap ? cap : t;
+}
 
 #endif //ARDUINO_LIGHTFX_GLOBAL_H

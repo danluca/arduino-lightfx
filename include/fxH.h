@@ -157,10 +157,11 @@ namespace FxH {
     class Spark {
     public:
         explicit Spark(CRGB& ref);
-        void step(CRGB clr, uint8_t dice);
+        void step(CRGB clr, uint8_t dice, bool dimBkg);
         void on(CRGB clr);
-        void off();
-        void updateParams(uint8_t minDelay, uint8_t maxDelay, uint8_t chance);
+        void off(bool dimBkg);
+        void setParams(uint8_t minDelay, uint8_t maxDelay, uint8_t chance);
+        void updateParams();
     protected:
         CRGB& pixel;
         uint8_t minDelay, maxDelay;
@@ -188,6 +189,7 @@ namespace FxH {
     private:
         uint8_t timerCounter {};
         std::vector<Spark*> sparks {};
+        bool bkg = false;
 
         static const int frameSize = 7;
         CRGBSet window, rest;

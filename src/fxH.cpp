@@ -607,31 +607,25 @@ FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSiz
     }
     clr = BKG;
     timerCounter = 0;
+    bkg = false;
 }
 
 void FxH6::setup() {
     LedEffect::setup();
     clr = ColorFromPalette(palette, 0, 255, LINEARBLEND);
     for (auto s: sparks)
-        s->updateParams(8, 24, 64);
-
+        s->setParams(8, 24, 64);
+    bkg = false;
 }
 
 void FxH6::run() {
     EVERY_N_MILLISECONDS(25) {
         uint8_t x = random8();
         for (auto s: sparks) {
-            s->step(clr, x);
+            s->step(clr, x, bkg);
             
-            if ((timerCounter % 40) == 0) {
-                uint8_t min = qsub8(s->minDelay, 1);
-                min = min < 3 ? 3 : min;
-                uint8_t max = qsub8(s->maxDelay, 2);
-                max = max < 10 ? 10 : max;
-                uint8_t ch = qadd8(s->chance, 2);
-                ch = ch > 192 ? 192 : ch;
-                s->updateParams(min, max, ch);
-            }
+            if ((timerCounter % 40) == 0)
+                s->updateParams();
         }
 
         replicateSet(window, rest);
@@ -640,6 +634,8 @@ void FxH6::run() {
         if ((timerCounter % 60) == 0) {
             clr = ColorFromPalette(palette, sin8(timerCounter/60 - 64), 255, LINEARBLEND);
         }
+        if ((timerCounter % 400) == 0)
+            bkg = !bkg;
     }
 }
 
@@ -668,14 +664,16 @@ Spark::Spark(CRGB &ref) : pixel(ref) {
     chance = 64;
 }
 
-void Spark::step(const CRGB clr, const uint8_t dice) {
+void Spark::step(const CRGB clr, const uint8_t dice, bool dimBkg) {
     if (counter == 0) {
-        if (dice < chance)
+        if (dice < chance) {
             on(clr);
-        counter = random8(minDelay, maxDelay);
+            counter = random8(minDelay, maxDelay);
+        } else
+            counter++;
     } else {
         counter = qsub8(counter, 1);
-        off();
+        off(dimBkg);
     }
 }
 
@@ -683,11 +681,18 @@ void Spark::on(const CRGB clr) {
     pixel = clr;
 }
 
-void Spark::off() {
-    pixel = BKG;
+void Spark::off(bool dimBkg) {
+    pixel = dimBkg ? ((-pixel)%=192) : BKG;
 }
 
-void Spark::updateParams(const uint8_t minDelay, const uint8_t maxDelay, const uint8_t chance) {
+void Spark::updateParams() {
+    minDelay = csub8(minDelay, 1, 3);
+    maxDelay = csub8(maxDelay, 2, 10);
+    chance = cadd8(chance, 2, 192);
+    counter = random8(minDelay, maxDelay);
+}
+
+void Spark::setParams(uint8_t minDelay, uint8_t maxDelay, uint8_t chance) {
     this->minDelay = minDelay;
     this->maxDelay = maxDelay;
     this->chance = chance;
