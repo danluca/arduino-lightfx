@@ -613,8 +613,10 @@ FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSiz
 void FxH6::setup() {
     LedEffect::setup();
     clr = ColorFromPalette(palette, 0, 255, LINEARBLEND);
-    for (auto s: sparks)
-        s->setParams(8, 24, 64);
+    for (auto s: sparks) {
+        s->setParams(9, 26, 62);
+        s->updateParams();
+    }
     bkg = false;
 }
 
@@ -670,7 +672,7 @@ void Spark::step(const CRGB clr, const uint8_t dice, bool dimBkg) {
             on(clr);
             counter = random8(minDelay, maxDelay);
         } else
-            counter++;
+            counter += random8(7);
     } else {
         counter = qsub8(counter, 1);
         off(dimBkg);
@@ -682,13 +684,18 @@ void Spark::on(const CRGB clr) {
 }
 
 void Spark::off(bool dimBkg) {
-    pixel = dimBkg ? ((-pixel)%=192) : BKG;
+    if (dimBkg) {
+        CRGB litBkg = pixel;
+        litBkg = (-litBkg %= 128);
+        pixel = litBkg;
+    } else
+        pixel = BKG;
 }
 
 void Spark::updateParams() {
     minDelay = csub8(minDelay, 1, 3);
     maxDelay = csub8(maxDelay, 2, 10);
-    chance = cadd8(chance, 2, 192);
+    chance = cadd8(chance, 2, 220);
     counter = random8(minDelay, maxDelay);
 }
 
