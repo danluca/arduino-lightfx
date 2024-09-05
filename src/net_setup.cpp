@@ -8,7 +8,7 @@
 using namespace colTheme;
 const char ssid[] PROGMEM = WF_SSID;
 const char pass[] PROGMEM = WF_PSW;
-const char hostname[] PROGMEM = "Arduino-RP2040-" BOARD_NAME;
+const char hostname[] PROGMEM = "Arduino-RP2040-" DEVICE_NAME;
 
 const CRGB CLR_ALL_OK = CRGB::Indigo;
 const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;

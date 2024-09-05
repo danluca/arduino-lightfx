@@ -46,7 +46,7 @@
 // measured RP2040 internal temp sensor parameters - see RP2040 datasheet page 565
 #define CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27      604.499363f     //in mV
 #define CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE   1.807087f       //in mV/degree (value is negative, but that is accounted in the formula)
-#define BOARD_NAME  "Dev"
+#define DEVICE_NAME  "Dev"
 
 #endif
 
@@ -63,7 +63,7 @@
 // measured RP2040 internal temp sensor parameters - see RP2040 datasheet page 565
 #define CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27      604.499363f     //in mV
 #define CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE   1.807087f       //in mV/degree (value is negative, but that is accounted in the formula)
-#define BOARD_NAME  "FX01"
+#define DEVICE_NAME  "FX01"
 
 #endif
 

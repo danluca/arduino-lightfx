@@ -50,6 +50,8 @@ $(() => {
         });
         $('#holidayList').val(data.holiday);
         $('#boardName').html(data.boardName);
+        $('#deviceName').html(data.boardName);
+        $('#boardUid').html(data.boardUid);
         $('#buildVersion').html(data.fwVersion);
         $('#buildBranch').html(data.fwBranch);
         $('#buildTime').html(data.buildTime);

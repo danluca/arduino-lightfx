@@ -11,7 +11,7 @@ static const char heapInfoVerboseFmt[] PROGMEM = "Heap:: start=%X end=%X size=%u
 //static const char stackInfoFmt[] PROGMEM = "Stack:: size=%u free=%u";
 static const char genStackInfoFmt[] PROGMEM = "Gen Stack:: size=%u free=%u statsCount=%u\n";
 static const char isrStackInfoFmt[] PROGMEM = "ISR Stack:: start=%X end=%X size=%u\n";
-static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %X\n  Mbed OS version %u\n  Compiler ID %X version %u\n  Board UID 0x%s name '%s' vendor %X model %X\n  Flash size %u";
+static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %X\n  Mbed OS version %u\n  Compiler ID %X version %u\n  Board UID 0x%s name '%s' vendor %X model %X\n  Device name %s\n  Flash size %u";
 static const char cpuStatsFmt[] PROGMEM = "Time (µs): Uptime: %u Idle: %u Sleep: %u DeepSleep: %u Idle: %d%% Usage: %d%%\n";
 
 char boardId[FLASH_UNIQUE_ID_SIZE_BYTES*2+1] {0};
@@ -179,7 +179,7 @@ void logSystemInfo() {
     */
 
     Log.infoln(sysInfoFmt, statsSys.cpu_id, statsSys.os_version, statsSys.compiler_id, statsSys.compiler_version, boardId,
-               BOARD_NAME, BOARD_VENDORID, BOARD_PRODUCTID, get_flash_capacity());
+               BOARD_NAME, BOARD_VENDORID, BOARD_PRODUCTID, DEVICE_NAME, get_flash_capacity());
 
 #endif
 }

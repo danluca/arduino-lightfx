@@ -7,6 +7,7 @@
 #include "log.h"
 #include <flash.h>
 #ifndef DISABLE_LOGGING
+#include "config.h"
 #include <rtx_lib.h>
 #endif
 

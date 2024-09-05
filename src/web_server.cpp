@@ -156,7 +156,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     // response body
     JsonDocument doc;
 
-    doc["boardName"] = BOARD_NAME;
+    doc["boardName"] = DEVICE_NAME;
     doc["boardUid"] = boardId;
     doc["fwVersion"] = BUILD_VERSION;
     doc["fwBranch"] = GIT_BRANCH;
