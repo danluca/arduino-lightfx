@@ -154,25 +154,6 @@ namespace FxH {
         void electromagneticSpectrum(int transitionSpeed);
     };
 
-    class Spark {
-    public:
-        explicit Spark(CRGB& ref);
-        enum State:uint8_t {Idle, On, Off, WaitOn};
-        State step(uint8_t dice);
-        void on();
-        void off();
-        void reset();
-        void activate(CRGB clr);
-    protected:
-        State state;
-        CRGB& pixel;
-        CRGB fgClr, bgClr;
-        bool dimBkg = false;
-        uint8_t onCntr, offCntr, phCntr;
-
-        friend class FxH6;  //intended to work closely with FxH6 effect
-    };
-
     struct Cycle {
         union {
             uint32_t compact;
@@ -183,6 +164,27 @@ namespace FxH {
                 uint8_t _reserved;
             };
         };
+
+        Cycle(uint32_t compact);
+    };
+
+    class Spark {
+    public:
+        explicit Spark(CRGB& ref);
+        enum State:uint8_t {Idle, On, Off, WaitOn};
+        State step(uint8_t dice);
+        void on();
+        void off();
+        void reset();
+        void activate(CRGB clr, Cycle cycle);
+    protected:
+        State state;
+        CRGB& pixel;
+        CRGB fgClr, bgClr;
+        bool dimBkg = false;
+        uint8_t onCntr, offCntr, phCntr;
+
+        friend class FxH6;  //intended to work closely with FxH6 effect
     };
 
     class FxH6 : public LedEffect {

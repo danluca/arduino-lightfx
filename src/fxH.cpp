@@ -650,7 +650,7 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
 }
 
 void FxH6::run() {
-    EVERY_N_MILLISECONDS(20) {
+    EVERY_N_MILLISECONDS(15) {
         uint8_t x = random8();
         for (auto it = activeSparks.begin(); it != activeSparks.end();) {
             Spark* s = *it;
@@ -669,7 +669,7 @@ void FxH6::run() {
         if (activeSparks.size() < 2)
             activateSparks(random8(1, sparks.size()-activeSparks.size()-2), ((timerCounter+x)>>4)-64);
 
-        if ((timerCounter++ % 200) == 0) {
+        if ((timerCounter++ % 300) == 0) {
             for (auto &s: sparks)
                 s->dimBkg = !s->dimBkg;
 //            if (sparks.front()->dimBkg)
@@ -708,10 +708,16 @@ void Spark::reset() {
     onCntr = offCntr = phCntr = 0;
 }
 
-void Spark::activate(CRGB clr) {
-    onCntr = random8(1, 3);
-    offCntr = random8(2, 8);
-    phCntr = random8(3);
+void Spark::activate(CRGB clr, const Cycle cycle = 0) {
+    if (cycle.compact == 0) {
+        onCntr = random8(1, 3);
+        offCntr = random8(2, 8);
+        phCntr = random8(3);
+    } else {
+        onCntr = cycle.onTime;
+        offCntr = cycle.offTime;
+        phCntr = cycle.phase;
+    }
     fgClr = clr;
     bgClr = (-clr)%=22;
     state = WaitOn;
@@ -738,7 +744,8 @@ Spark::State Spark::step(const uint8_t dice) {
         case Off:
             offCntr = qsub8(offCntr, 1);
             if (offCntr == 0)
-                state = Idle;
+//                state = Idle;
+                state = WaitOn;
             break;
     }
     return state;
@@ -751,3 +758,5 @@ void Spark::on() {
 void Spark::off() {
     pixel = dimBkg ? bgClr : BKG;
 }
+
+Cycle::Cycle(uint32_t compact) : compact(compact) {}
