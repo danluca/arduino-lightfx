@@ -632,14 +632,13 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
         }
     } else {
         for (auto it = notUsed.begin(); it != notUsed.end();) {
-            if (howMany == 0)
-                break;
             if (random8()%2) {
                 Spark *s = *it;
                 activeSparks.push_back(s);
                 s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND));
                 it = notUsed.erase(it);
-                howMany--;
+                if (--howMany == 0)
+                    break;
             } else
                 ++it;
         }
@@ -654,6 +653,8 @@ void FxH6::run() {
             //if spark becomes idle, remove from list
             if (s->step(x) == Spark::Idle)
                 it = activeSparks.erase(it);
+            else
+                ++it;
         }
 
         CRGBSet segment = ledSet(0, frameSize*2-1);
