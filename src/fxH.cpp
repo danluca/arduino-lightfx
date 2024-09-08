@@ -646,7 +646,7 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
 }
 
 void FxH6::run() {
-    EVERY_N_MILLISECONDS(25) {
+    EVERY_N_MILLISECONDS(30) {
         uint8_t x = random8();
         for (auto it = activeSparks.begin(); it != activeSparks.end();) {
             Spark* s = *it;
@@ -666,9 +666,12 @@ void FxH6::run() {
             activateSparks(random8(1, sparks.size()-activeSparks.size()), ((timerCounter+x)>>4)-64);
         }
 
-        if ((timerCounter++ % 300) == 0)
-            for (auto &s : sparks)
+        if ((timerCounter++ % 200) == 0) {
+            for (auto &s: sparks)
                 s->dimBkg = !s->dimBkg;
+            if (sparks.front()->dimBkg)
+                window |= sparks.front()->bgClr;
+        }
     }
 }
 
@@ -705,8 +708,8 @@ void Spark::reset() {
 void Spark::activate(CRGB clr) {
     dimBkg = false;
     onCntr = random8(1, 4);
-    offCntr = random8(5, 20);
-    phCntr = random8(11);
+    offCntr = random8(3, 10);
+    phCntr = random8(7);
     fgClr = clr;
     bgClr = -clr%=128;
     state = WaitOn;
