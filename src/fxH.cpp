@@ -509,17 +509,15 @@ void FxH5::setup() {
 
 void FxH5::run() {
     EVERY_N_MILLISECONDS(20) {
+        //modify pixel after being shown, before the pixel index changes
         switch (fxState) {
-            case Sparkle:
-            case Glitter:
-                small[pixelPos] = prevClr;
+            case Sparkle: small[pixelPos] = BKG; break;
+            case Glitter: small[pixelPos] = prevClr; break;
         }
 
         pixelPos = random(small.size());
         prevClr = small[pixelPos];
         CRGB clr(red, green, blue);
-        CHSV hsv = rgb2hsv_approximate(clr);
-        hsv.val = qsub8(hsv.val, 20);
 
         switch (fxState) {
             case Sparkle:
@@ -527,15 +525,16 @@ void FxH5::run() {
                 small[pixelPos].maximizeBrightness(255);
                 break;
             case RampUp:
-                small.fadeToBlackBy(16);
-                small[pixelPos] = prevClr;  //restore value of this pixel (captured above in prevClr) after fade
-                rblend(small[pixelPos], hsv, 48);
+                small.fadeToBlackBy(32);
+                small[pixelPos] |= clr;
                 break;
             case Glitter:
                 small[pixelPos] += CRGB::White;
                 break;
             case RampDown:
-                rblend(small[pixelPos], BKG, 112);
+//                CHSV hsv = rgb2hsv_approximate(clr);
+//                hsv.val = qsub8(hsv.val, 64);
+                rblend(small[pixelPos], BKG, 48);
                 break;
         }
 
@@ -605,39 +604,70 @@ FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSiz
     for (auto &p : window) {
         sparks.push_back(new Spark(p));
     }
-    clr = BKG;
     timerCounter = 0;
-    bkg = false;
 }
 
 void FxH6::setup() {
     LedEffect::setup();
-    clr = ColorFromPalette(palette, 0, 255, LINEARBLEND);
-    for (auto s: sparks) {
-        s->setParams(9, 26, 62);
-        s->updateParams();
+    for (auto s: sparks)
+        s->reset();
+    //pick a random number of active sparks to start with
+    activeSparks.clear();
+    activateSparks(random8(1, sparks.size()), 192);
+}
+
+void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
+    //create a list of not used sparks
+    std::deque<Spark*> notUsed;
+    for (auto &s : sparks)
+        if (s->state == Spark::Idle)
+            notUsed.push_back(s);
+    if (howMany > notUsed.size())
+        howMany = notUsed.size();
+
+    if (howMany == notUsed.size()) {
+        for (auto &s : notUsed) {
+            activeSparks.push_back(s);
+            s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND));
+        }
+    } else {
+        for (auto it = notUsed.begin(); it != notUsed.end();) {
+            if (howMany == 0)
+                break;
+            if (random8()%2) {
+                Spark *s = *it;
+                activeSparks.push_back(s);
+                s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND));
+                it = notUsed.erase(it);
+                howMany--;
+            } else
+                ++it;
+        }
     }
-    bkg = false;
 }
 
 void FxH6::run() {
     EVERY_N_MILLISECONDS(25) {
         uint8_t x = random8();
-        for (auto s: sparks) {
-            s->step(clr, x, bkg);
-            
-            if ((timerCounter % 40) == 0)
-                s->updateParams();
+        for (auto it = activeSparks.begin(); it != activeSparks.end();) {
+            Spark* s = *it;
+            //if spark becomes idle, remove from list
+            if (s->step(x) == Spark::Idle)
+                it = activeSparks.erase(it);
         }
 
-        replicateSet(window, rest);
+        CRGBSet segment = ledSet(0, frameSize*2-1);
+        segment(frameSize, frameSize*2-1) = -window;    //mirror the window into the upper half of the segment
+        replicateSet(segment, rest);
         FastLED.show(brightness);
-        timerCounter++;
-        if ((timerCounter % 60) == 0) {
-            clr = ColorFromPalette(palette, sin8(timerCounter/60 - 64), 255, LINEARBLEND);
+
+        if (activeSparks.size() < 3) {
+            activateSparks(random8(1, sparks.size()-activeSparks.size()), ((timerCounter+x)>>4)-64);
         }
-        if ((timerCounter % 400) == 0)
-            bkg = !bkg;
+
+        if ((timerCounter++ % 300) == 0)
+            for (auto &s : sparks)
+                s->dimBkg = !s->dimBkg;
     }
 }
 
@@ -659,49 +689,59 @@ FxH6::~FxH6() {
 }
 
 // FxH6 Spark
-Spark::Spark(CRGB &ref) : pixel(ref) {
-    counter = 0;
-    minDelay = 8;
-    maxDelay = 32;
-    chance = 64;
+Spark::Spark(CRGB &ref) : pixel(ref), fgClr(CRGB::White), bgClr(BKG) {
+    dimBkg = false;
+    state = Idle;
+    onCntr = offCntr = phCntr = 0;   //idle state
 }
 
-void Spark::step(const CRGB clr, const uint8_t dice, bool dimBkg) {
-    if (counter == 0) {
-        if (dice < chance) {
-            on(clr);
-            counter = random8(minDelay, maxDelay);
-        } else
-            counter += random8(7);
-    } else {
-        counter = qsub8(counter, 1);
-        off(dimBkg);
+void Spark::reset() {
+    dimBkg = false;
+    state = Idle;
+    onCntr = offCntr = phCntr = 0;
+}
+
+void Spark::activate(CRGB clr) {
+    dimBkg = false;
+    onCntr = random8(1, 4);
+    offCntr = random8(5, 20);
+    phCntr = random8(11);
+    fgClr = clr;
+    bgClr = -clr%=128;
+    state = WaitOn;
+}
+
+Spark::State Spark::step(const uint8_t dice) {
+    if (onCntr == 0 && offCntr == 0 && phCntr == 0)
+        state = Idle;
+    switch (state) {
+        case WaitOn:
+            phCntr = qsub8(phCntr, 1);
+            if (phCntr == 0) {
+                on();
+                state = On;
+            }
+            break;
+        case On:
+            onCntr = qsub8(onCntr, 1);
+            if (onCntr == 0) {
+                off();
+                state = Off;
+            }
+            break;
+        case Off:
+            offCntr = qsub8(offCntr, 1);
+            if (offCntr == 0)
+                state = Idle;
+            break;
     }
+    return state;
 }
 
-void Spark::on(const CRGB clr) {
-    pixel = clr;
+void Spark::on() {
+    pixel = fgClr;
 }
 
-void Spark::off(bool dimBkg) {
-    if (dimBkg) {
-        CRGB litBkg = pixel;
-        litBkg = (-litBkg %= 128);
-        pixel = litBkg;
-    } else
-        pixel = BKG;
-}
-
-void Spark::updateParams() {
-    minDelay = csub8(minDelay, 1, 3);
-    maxDelay = csub8(maxDelay, 2, 10);
-    chance = cadd8(chance, 2, 220);
-    counter = random8(minDelay, maxDelay);
-}
-
-void Spark::setParams(uint8_t minDelay, uint8_t maxDelay, uint8_t chance) {
-    this->minDelay = minDelay;
-    this->maxDelay = maxDelay;
-    this->chance = chance;
-    this->counter = random8(this->minDelay, this->maxDelay);
+void Spark::off() {
+    pixel = dimBkg ? fgClr : BKG;
 }

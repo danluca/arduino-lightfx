@@ -157,15 +157,18 @@ namespace FxH {
     class Spark {
     public:
         explicit Spark(CRGB& ref);
-        void step(CRGB clr, uint8_t dice, bool dimBkg);
-        void on(CRGB clr);
-        void off(bool dimBkg);
-        void setParams(uint8_t minDelay, uint8_t maxDelay, uint8_t chance);
-        void updateParams();
+        enum State:uint8_t {Idle, On, Off, WaitOn};
+        State step(uint8_t dice);
+        void on();
+        void off();
+        void reset();
+        void activate(CRGB clr);
     protected:
+        State state;
         CRGB& pixel;
-        uint8_t minDelay, maxDelay;
-        uint8_t counter, chance;
+        CRGB fgClr, bgClr;
+        bool dimBkg = false;
+        uint8_t onCntr, offCntr, phCntr;
 
         friend class FxH6;  //intended to work closely with FxH6 effect
     };
@@ -187,13 +190,14 @@ namespace FxH {
         ~FxH6() override;
 
     private:
-        uint8_t timerCounter {};
-        std::vector<Spark*> sparks {};
-        bool bkg = false;
-
         static const int frameSize = 7;
+        uint16_t timerCounter {};
+        std::deque<Spark*> sparks {};
+        std::deque<Spark*> activeSparks {};
+
         CRGBSet window, rest;
-        CRGB clr {};
+
+        void activateSparks(uint8_t howMany, uint8_t clrHint);
     };
 
 
