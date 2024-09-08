@@ -200,7 +200,9 @@ public:
     void clearAdditionalFormatting();
 
     inline void endContinuation() {
+#ifndef DISABLE_LOGGING
         _continuation = false;
+#endif
     }
 
     static uint8_t countSignificantNibbles(unsigned long ul);

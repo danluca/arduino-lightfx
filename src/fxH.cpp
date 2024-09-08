@@ -602,6 +602,8 @@ void FxH5::electromagneticSpectrum(int transitionSpeed) {
 }
 
 // FxH6
+static const FxH::Cycle cycles[] = {0x000109, 0x020107, 0x030106, 0x050105, 0x020206, 0x050204, 0x080200};
+
 FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSize, NUM_PIXELS-1) {
     for (auto &p : window) {
         sparks.push_back(new Spark(p));
@@ -712,7 +714,7 @@ void Spark::reset() {
     onCntr = offCntr = phCntr = 0;
 }
 
-void Spark::activate(CRGB clr, const Cycle cycle = 0) {
+void Spark::activate(CRGB clr, const Cycle cycle) {
     if (cycle.compact == 0) {
         onCntr = random8(1, 3);
         offCntr = random8(2, 8);

@@ -176,7 +176,7 @@ namespace FxH {
         void on();
         void off();
         void reset();
-        void activate(CRGB clr, Cycle cycle);
+        void activate(CRGB clr, Cycle cycle = 0);
     protected:
         State state;
         CRGB& pixel;
@@ -205,7 +205,6 @@ namespace FxH {
 
     private:
         static const int frameSize = 7;
-        constexpr static const Cycle cycles[frameSize] = {0x000109, 0x020107, 0x030106, 0x050105, 0x020206, 0x050204, 0x080200};
         uint16_t timerCounter {};
         std::deque<Spark*> sparks {};
         std::deque<Spark*> activeSparks {};

@@ -238,7 +238,7 @@ public:
 
 extern EffectRegistry fxRegistry;
 
-const setupFunc categorySetup[] = {FxA::fxRegister, FxB::fxRegister, FxC::fxRegister, FxD::fxRegister, FxE::fxRegister, FxF::fxRegister, FxH::fxRegister, FxI::fxRegister, FxJ::fxRegister, FxK::fxRegister};
+extern const setupFunc categorySetup[];
 
 
 #endif //LIGHTFX_EFX_SETUP_H
