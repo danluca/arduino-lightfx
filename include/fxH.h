@@ -162,8 +162,7 @@ namespace FxH {
             uint8_t offTime;
             uint8_t _reserved;
         };
-
-        inline Cycle(uint32_t compact) : compact(compact) {};
+        inline Cycle(uint32_t compact) : compact(compact) { _reserved = 0; };
     };
 
     class Spark {
@@ -181,7 +180,7 @@ namespace FxH {
         CRGB& pixel;
         CRGB fgClr, bgClr;
         bool dimBkg = false, loop = false;
-        uint8_t onCntr, offCntr, phCntr;
+        Cycle pattern, curCycle;
 
         friend class FxH6;  //intended to work closely with FxH6 effect
     };

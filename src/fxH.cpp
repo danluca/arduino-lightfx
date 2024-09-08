@@ -671,22 +671,17 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
 void FxH6::run() {
     EVERY_N_MILLISECONDS(15) {
         uint8_t x = random8();
-        for (auto it = activeSparks.begin(); it != activeSparks.end();) {
-            Spark* s = *it;
+        for (auto it = activeSparks.begin(); it != activeSparks.end();)
             //if spark becomes idle, remove from list
-            if (s->step(x) == Spark::Idle)
-                it = activeSparks.erase(it);
-            else
-                ++it;
-        }
+            (*it)->step(x) == Spark::Idle ? it = activeSparks.erase(it) : ++it;
 
         CRGBSet segment = ledSet(0, frameSize*2-1);
         segment(frameSize, frameSize*2-1) = -window;    //mirror the window into the upper half of the segment
         replicateSet(segment, rest);
         FastLED.show(brightness);
 
-        //activate more sparks if needed, in random mode
-        if (activeSparks.size() < 2 && stage == Random)
+        //activate more sparks if needed, in random mode; in pattern mode all sparks are active, hence the check below is always false
+        if (activeSparks.size() < 2)
             activateSparks(random8(1, sparks.size()-activeSparks.size()-2), ((timerCounter+x)>>4)-64);
 
         if (timerCounter % 300 == 0) {
@@ -709,7 +704,7 @@ void FxH6::run() {
             resetActivateAllSparks((millis()>>11)-64);
         else
             for (auto &s : sparks)
-                s->loop = false;    //stage == DefinedPattern;
+                s->loop = false;    //stage == DefinedPattern;  ends looping, which turns the sparks idle when they finish cycle, removing them from active sparks list
     }
 }
 
@@ -731,16 +726,15 @@ FxH6::~FxH6() {
 }
 
 // FxH6 Spark
-Spark::Spark(CRGB &ref) : pixel(ref), fgClr(CRGB::White), bgClr(BKG) {
+Spark::Spark(CRGB &ref) : pixel(ref), fgClr(CRGB::White), bgClr(BKG), pattern(0), curCycle(0) {
     loop = dimBkg = false;
     state = Idle;
-    onCntr = offCntr = phCntr = 0;   //idle state
 }
 
 void Spark::reset() {
     loop = dimBkg = false;
     state = Idle;
-    onCntr = offCntr = phCntr = 0;
+    pattern = curCycle = 0;
 }
 
 void Spark::setColor(const CRGB clr) {
@@ -749,43 +743,40 @@ void Spark::setColor(const CRGB clr) {
 }
 
 void Spark::activate(const CRGB clr, const Cycle cycle) {
-    if (cycle.compact == 0) {
-        onCntr = random8(1, 3);
-        offCntr = random8(2, 8);
-        phCntr = random8(3);
-        loop = false;
-    } else {
-        onCntr = cycle.onTime;
-        offCntr = cycle.offTime;
-        phCntr = cycle.phase;
-        loop = true;
-    }
+    pattern = cycle;
+    loop = pattern.compact > 0; //if we have a defined pattern, we'll loop indefinitely
+    if (!loop) {
+        curCycle.onTime = random8(1, 3);
+        curCycle.offTime = random8(2, 8);
+        curCycle.phase = random8(3);
+    } else
+        curCycle = pattern;
     setColor(clr);
     state = WaitOn;
 }
 
 Spark::State Spark::step(const uint8_t dice) {
-    if (onCntr == 0 && offCntr == 0 && phCntr == 0)
-        state = Idle;
     switch (state) {
         case WaitOn:
-            phCntr = qsub8(phCntr, 1);
-            if (phCntr == 0) {
+            curCycle.phase = qsub8(curCycle.phase, 1);
+            if (curCycle.phase == 0) {
                 on();
                 state = On;
             }
             break;
         case On:
-            onCntr = qsub8(onCntr, 1);
-            if (onCntr == 0) {
+            curCycle.onTime = qsub8(curCycle.onTime, 1);
+            if (curCycle.onTime == 0) {
                 off();
                 state = Off;
             }
             break;
         case Off:
-            offCntr = qsub8(offCntr, 1);
-            if (offCntr == 0)
+            curCycle.offTime = qsub8(curCycle.offTime, 1);
+            if (curCycle.offTime == 0) {
                 state = loop ? WaitOn : Idle;
+                curCycle = pattern; //end of off state means all counters are at 0; copy pattern into current cycle to start over, if needed
+            }
             break;
     }
     return state;
