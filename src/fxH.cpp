@@ -611,9 +611,10 @@ void FxH6::setup() {
     LedEffect::setup();
     for (auto s: sparks)
         s->reset();
+    random16_add_entropy(secRandom16());
     //pick a random number of active sparks to start with
     activeSparks.clear();
-    activateSparks(random8(1, sparks.size()), 192);
+    activateSparks(random8(1, sparks.size()-3), 192);
 }
 
 void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
@@ -631,17 +632,18 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
             s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND));
         }
     } else {
-        for (auto it = notUsed.begin(); it != notUsed.end();) {
-            if (random8()%2) {
-                Spark *s = *it;
-                activeSparks.push_back(s);
-                s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND));
-                it = notUsed.erase(it);
-                if (--howMany == 0)
-                    break;
-            } else
-                ++it;
-        }
+        while (howMany > 0)
+            for (auto it = notUsed.begin(); it != notUsed.end();) {
+                if (random8()%2) {
+                    Spark *s = *it;
+                    activeSparks.push_back(s);
+                    s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND));
+                    it = notUsed.erase(it);
+                    if (--howMany == 0)
+                        break;
+                } else
+                    ++it;
+            }
     }
 }
 
@@ -662,9 +664,8 @@ void FxH6::run() {
         replicateSet(segment, rest);
         FastLED.show(brightness);
 
-        if (activeSparks.size() < 2) {
-            activateSparks(random8(1, sparks.size()-activeSparks.size()), ((timerCounter+x)>>4)-64);
-        }
+        if (activeSparks.size() < 2)
+            activateSparks(random8(1, sparks.size()-activeSparks.size()-2), ((timerCounter+x)>>4)-64);
 
         if ((timerCounter++ % 200) == 0) {
             for (auto &s: sparks)
