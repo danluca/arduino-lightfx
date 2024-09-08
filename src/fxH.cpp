@@ -662,15 +662,15 @@ void FxH6::run() {
         replicateSet(segment, rest);
         FastLED.show(brightness);
 
-        if (activeSparks.size() < 3) {
+        if (activeSparks.size() < 2) {
             activateSparks(random8(1, sparks.size()-activeSparks.size()), ((timerCounter+x)>>4)-64);
         }
 
         if ((timerCounter++ % 200) == 0) {
             for (auto &s: sparks)
                 s->dimBkg = !s->dimBkg;
-            if (sparks.front()->dimBkg)
-                window |= sparks.front()->bgClr;
+//            if (sparks.front()->dimBkg)
+//                window |= sparks.front()->bgClr;
         }
     }
 }
@@ -706,12 +706,11 @@ void Spark::reset() {
 }
 
 void Spark::activate(CRGB clr) {
-    dimBkg = false;
-    onCntr = random8(1, 4);
-    offCntr = random8(3, 10);
-    phCntr = random8(7);
+    onCntr = random8(1, 3);
+    offCntr = random8(2, 8);
+    phCntr = random8(4);
     fgClr = clr;
-    bgClr = -clr%=128;
+    bgClr = (-clr)%=22;
     state = WaitOn;
 }
 
@@ -747,5 +746,5 @@ void Spark::on() {
 }
 
 void Spark::off() {
-    pixel = dimBkg ? fgClr : BKG;
+    pixel = dimBkg ? bgClr : BKG;
 }
