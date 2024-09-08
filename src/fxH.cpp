@@ -616,7 +616,8 @@ void FxH6::setup() {
     random16_add_entropy(secRandom16());
     //pick a random number of active sparks to start with
     activeSparks.clear();
-    activateSparks(random8(1, sparks.size()-3), 192);
+//    activateSparks(random8(1, sparks.size()-3), 192);
+    activateSparks(sparks.size(), 192);
 }
 
 void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
@@ -629,9 +630,12 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
         howMany = notUsed.size();
 
     if (howMany == notUsed.size()) {
+        uint16_t index[frameSize];
+        shuffleIndexes(index, frameSize);
+        uint8_t x = 0;
         for (auto &s : notUsed) {
             activeSparks.push_back(s);
-            s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND));
+            s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND), cycles[index[x++]]);
         }
     } else {
         while (howMany > 0)
@@ -717,6 +721,7 @@ void Spark::activate(CRGB clr, const Cycle cycle = 0) {
         onCntr = cycle.onTime;
         offCntr = cycle.offTime;
         phCntr = cycle.phase;
+        Log.infoln("Spark params from %u: on %d, off %d, ph %d", cycle.compact, onCntr, offCntr, phCntr);
     }
     fgClr = clr;
     bgClr = (-clr)%=22;
