@@ -601,9 +601,10 @@ void FxH5::electromagneticSpectrum(int transitionSpeed) {
     }
 }
 
-// FxH6
-static const FxH::Cycle cycles[] = {0x000109, 0x020107, 0x030106, 0x050105, 0x020206, 0x050204, 0x080200};
+// static cycles initialization - 0x[00-reserved][AA-offTime][BB-onTime][CC-phase] - per declaration of Cycle structure and union
+static const FxH::Cycle cycles[] = {0x090100, 0x070102, 0x060103, 0x050105, 0x060202, 0x040205, 0x000208};
 
+// FxH6
 FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSize, NUM_PIXELS-1) {
     for (auto &p : window) {
         sparks.push_back(new Spark(p));
@@ -613,16 +614,37 @@ FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSiz
 
 void FxH6::setup() {
     LedEffect::setup();
-    for (auto s: sparks)
-        s->reset();
+
     random16_add_entropy(secRandom16());
     //pick a random number of active sparks to start with
+    stage = DefinedPattern;
+    activateSparks(random8(1, sparks.size()-3), 192);
+}
+
+void FxH6::resetActivateAllSparks(uint8_t clrHint) {
     activeSparks.clear();
-//    activateSparks(random8(1, sparks.size()-3), 192);
-    activateSparks(sparks.size(), 192);
+    uint16_t index[frameSize];
+    shuffleIndexes(index, frameSize);
+    uint8_t x = 0;
+    for (auto &s : sparks) {
+        activeSparks.push_back(s);
+        s->reset();
+        s->activate(ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND), cycles[index[x++]]);
+        clrHint+=17;
+    }
+}
+
+inline void activateSparkRandom(std::deque<Spark*> &active, Spark*& s, CRGB clr) {
+    active.push_back(s);
+    s->activate(clr);   //no cycle pattern provided, defaults to random initialization of parameters
 }
 
 void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
+    switch (stage) {
+        case DefinedPattern:
+            resetActivateAllSparks(clrHint);
+            return;
+    }
     //create a list of not used sparks
     std::deque<Spark*> notUsed;
     for (auto &s : sparks)
@@ -630,28 +652,19 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
             notUsed.push_back(s);
     if (howMany > notUsed.size())
         howMany = notUsed.size();
+    bool all = howMany == notUsed.size();
+    while (howMany > 0) {
+        for (auto it = notUsed.begin(); it != notUsed.end();) {
+            if (all || random8()%2) {
+                activateSparkRandom(activeSparks, *it, ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND));
+                clrHint+=23;
 
-    if (howMany == notUsed.size()) {
-        uint16_t index[frameSize];
-        shuffleIndexes(index, frameSize);
-        uint8_t x = 0;
-        for (auto &s : notUsed) {
-            activeSparks.push_back(s);
-            s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND), cycles[index[x++]]);
+                it = notUsed.erase(it);
+                if (--howMany == 0)
+                    break;
+            } else
+                ++it;
         }
-    } else {
-        while (howMany > 0)
-            for (auto it = notUsed.begin(); it != notUsed.end();) {
-                if (random8()%2) {
-                    Spark *s = *it;
-                    activeSparks.push_back(s);
-                    s->activate(ColorFromPalette(palette, sin8(clrHint++), 255, LINEARBLEND));
-                    it = notUsed.erase(it);
-                    if (--howMany == 0)
-                        break;
-                } else
-                    ++it;
-            }
     }
 }
 
@@ -672,15 +685,31 @@ void FxH6::run() {
         replicateSet(segment, rest);
         FastLED.show(brightness);
 
-        if (activeSparks.size() < 2)
+        //activate more sparks if needed, in random mode
+        if (activeSparks.size() < 2 && stage == Random)
             activateSparks(random8(1, sparks.size()-activeSparks.size()-2), ((timerCounter+x)>>4)-64);
 
-        if ((timerCounter++ % 300) == 0) {
-            for (auto &s: sparks)
+        if (timerCounter % 300 == 0) {
+            if (stage == DefinedPattern) {
+                //rotate colors
+                uint8_t clrHint = ((millis()+x)>>10)-64;
+                for (auto &s: sparks) {
+                    s->setColor(ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND));
+                    clrHint+=23;
+                }
+            }
+            for (auto &s : sparks)
                 s->dimBkg = !s->dimBkg;
-//            if (sparks.front()->dimBkg)
-//                window |= sparks.front()->bgClr;
         }
+    }
+
+    EVERY_N_SECONDS(20) {
+        stage = static_cast<Phase>((stage+1)%2);
+        if (stage == DefinedPattern)
+            resetActivateAllSparks((millis()>>11)-64);
+        else
+            for (auto &s : sparks)
+                s->loop = false;    //stage == DefinedPattern;
     }
 }
 
@@ -703,30 +732,35 @@ FxH6::~FxH6() {
 
 // FxH6 Spark
 Spark::Spark(CRGB &ref) : pixel(ref), fgClr(CRGB::White), bgClr(BKG) {
-    dimBkg = false;
+    loop = dimBkg = false;
     state = Idle;
     onCntr = offCntr = phCntr = 0;   //idle state
 }
 
 void Spark::reset() {
-    dimBkg = false;
+    loop = dimBkg = false;
     state = Idle;
     onCntr = offCntr = phCntr = 0;
 }
 
-void Spark::activate(CRGB clr, const Cycle cycle) {
+void Spark::setColor(const CRGB clr) {
+    fgClr = clr;
+    bgClr = (-clr)%=19;
+}
+
+void Spark::activate(const CRGB clr, const Cycle cycle) {
     if (cycle.compact == 0) {
         onCntr = random8(1, 3);
         offCntr = random8(2, 8);
         phCntr = random8(3);
+        loop = false;
     } else {
         onCntr = cycle.onTime;
         offCntr = cycle.offTime;
         phCntr = cycle.phase;
-        Log.infoln("Spark params from %u: on %d, off %d, ph %d", cycle.compact, onCntr, offCntr, phCntr);
+        loop = true;
     }
-    fgClr = clr;
-    bgClr = (-clr)%=22;
+    setColor(clr);
     state = WaitOn;
 }
 
@@ -751,8 +785,7 @@ Spark::State Spark::step(const uint8_t dice) {
         case Off:
             offCntr = qsub8(offCntr, 1);
             if (offCntr == 0)
-//                state = Idle;
-                state = WaitOn;
+                state = loop ? WaitOn : Idle;
             break;
     }
     return state;
@@ -765,5 +798,3 @@ void Spark::on() {
 void Spark::off() {
     pixel = dimBkg ? bgClr : BKG;
 }
-
-Cycle::Cycle(uint32_t compact) : compact(compact) {}

@@ -154,18 +154,16 @@ namespace FxH {
         void electromagneticSpectrum(int transitionSpeed);
     };
 
-    struct Cycle {
-        union {
-            uint32_t compact;
-            struct {
-                uint8_t phase;
-                uint8_t onTime;
-                uint8_t offTime;
-                uint8_t _reserved;
-            };
+    union Cycle {
+        uint32_t compact;
+        struct {
+            uint8_t phase;
+            uint8_t onTime;
+            uint8_t offTime;
+            uint8_t _reserved;
         };
 
-        Cycle(uint32_t compact);
+        inline Cycle(uint32_t compact) : compact(compact) {};
     };
 
     class Spark {
@@ -177,11 +175,12 @@ namespace FxH {
         void off();
         void reset();
         void activate(CRGB clr, Cycle cycle = 0);
+        void setColor(CRGB clr);
     protected:
         State state;
         CRGB& pixel;
         CRGB fgClr, bgClr;
-        bool dimBkg = false;
+        bool dimBkg = false, loop = false;
         uint8_t onCntr, offCntr, phCntr;
 
         friend class FxH6;  //intended to work closely with FxH6 effect
@@ -205,6 +204,8 @@ namespace FxH {
 
     private:
         static const int frameSize = 7;
+        enum Phase:uint8_t {DefinedPattern, Random} stage;
+
         uint16_t timerCounter {};
         std::deque<Spark*> sparks {};
         std::deque<Spark*> activeSparks {};
@@ -212,6 +213,7 @@ namespace FxH {
         CRGBSet window, rest;
 
         void activateSparks(uint8_t howMany, uint8_t clrHint);
+        void resetActivateAllSparks(uint8_t clrHint);
     };
 
 
