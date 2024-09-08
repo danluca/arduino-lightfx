@@ -508,7 +508,7 @@ void FxH5::setup() {
 }
 
 void FxH5::run() {
-    EVERY_N_MILLISECONDS(20) {
+    EVERY_N_MILLISECONDS(40) {
         //modify pixel after being shown, before the pixel index changes
         switch (fxState) {
             case Sparkle: small[pixelPos] = BKG; break;
@@ -538,7 +538,9 @@ void FxH5::run() {
                 break;
         }
 
-        replicateSet(small, rest);
+        CRGBSet segment = ledSet(0, small.size()*2-1);
+        segment(small.size(), small.size()*2-1) = -small;    //mirror the small into the upper half of the segment
+        replicateSet(segment, rest);
         FastLED.show(stripBrightness);
     }
     EVERY_N_MILLISECONDS(350) {
@@ -648,7 +650,7 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
 }
 
 void FxH6::run() {
-    EVERY_N_MILLISECONDS(30) {
+    EVERY_N_MILLISECONDS(40) {
         uint8_t x = random8();
         for (auto it = activeSparks.begin(); it != activeSparks.end();) {
             Spark* s = *it;
@@ -667,7 +669,7 @@ void FxH6::run() {
         if (activeSparks.size() < 2)
             activateSparks(random8(1, sparks.size()-activeSparks.size()-2), ((timerCounter+x)>>4)-64);
 
-        if ((timerCounter++ % 200) == 0) {
+        if ((timerCounter++ % 150) == 0) {
             for (auto &s: sparks)
                 s->dimBkg = !s->dimBkg;
 //            if (sparks.front()->dimBkg)
@@ -709,7 +711,7 @@ void Spark::reset() {
 void Spark::activate(CRGB clr) {
     onCntr = random8(1, 3);
     offCntr = random8(2, 8);
-    phCntr = random8(4);
+    phCntr = random8();
     fgClr = clr;
     bgClr = (-clr)%=22;
     state = WaitOn;
