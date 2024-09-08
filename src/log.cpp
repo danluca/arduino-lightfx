@@ -77,6 +77,17 @@ void logPrefix(Print *_logOutput, int logLevel) {
 #endif
 }
 
+#ifndef DISABLE_LOGGING
+void printRGB(Print* const out, const CRGB rgb) {
+    uint32_t numClr = (uint32_t)rgb & 0xFFFFFF; //conversion to uint32 uses 0xFF for the alpha channel - we're not interested in the alpha channel
+    out->print("0x");
+    uint8_t padding = 6 - Logging::countSignificantNibbles(numClr); //3 bytes, 6 digits 0 padded
+    while (padding-- > 0)
+        out->print('0');
+    out->print(numClr, HEX);
+}
+#endif
+
 /**
  * Additional format character handling in excess of what <code>Logging::printFormat(const char, va_list*)</code> provides
  * @param _logOutput the logger object
@@ -88,11 +99,7 @@ void logExtraFormats(Print *_logOutput, const char fmt, va_list *args) {
     switch (fmt) {
         case 'r': {
             CRGB clr = va_arg(*args, CRGB);
-            uint32_t numClr = (uint32_t)clr & 0xFFFFFF; //conversion to uint32 uses 0xFF for the alpha channel - we're not interested in the alpha channel
-            _logOutput->print("0x");
-            if (Logging::countSignificantNibbles(numClr)%2)
-                _logOutput->print('0');
-            _logOutput->print(numClr, HEX);
+            printRGB(_logOutput, clr);
             break;
         }
         case 'R': {
@@ -100,11 +107,7 @@ void logExtraFormats(Print *_logOutput, const char fmt, va_list *args) {
             _logOutput->print('['); _logOutput->print(set->size()); _logOutput->print(']');
             _logOutput->print('{');
             for (const auto &clr:*set) {
-                _logOutput->print("0x");
-                uint32_t numClr = (uint32_t)clr & 0xFFFFFF; //mask out the alpha channel (the fourth byte, MSB) as it is set to 0xFF
-                if (Logging::countSignificantNibbles(numClr)%2)
-                    _logOutput->print('0');
-                _logOutput->print(numClr, HEX);
+                printRGB(_logOutput, clr);
                 _logOutput->print(", ");
             }
             _logOutput->print('}');

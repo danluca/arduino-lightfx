@@ -173,6 +173,18 @@ namespace FxH {
         friend class FxH6;  //intended to work closely with FxH6 effect
     };
 
+    struct Cycle {
+        union {
+            uint32_t compact;
+            struct {
+                uint8_t phase;
+                uint8_t onTime;
+                uint8_t offTime;
+                uint8_t _reserved;
+            };
+        };
+    };
+
     class FxH6 : public LedEffect {
     public:
         explicit FxH6();
@@ -191,6 +203,7 @@ namespace FxH {
 
     private:
         static const int frameSize = 7;
+        constexpr static const Cycle cycles[frameSize] = {0x000109, 0x020107, 0x030106, 0x050105, 0x020206, 0x050204, 0x080200};
         uint16_t timerCounter {};
         std::deque<Spark*> sparks {};
         std::deque<Spark*> activeSparks {};
