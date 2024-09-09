@@ -630,7 +630,7 @@ void FxH6::resetActivateAllSparks(uint8_t clrHint) {
         activeSparks.push_back(s);
         s->reset();
         s->activate(ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND), cycles[index[x++]]);
-        clrHint+=17;
+//        clrHint+=17;
     }
 }
 
@@ -657,7 +657,7 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
         for (auto it = notUsed.begin(); it != notUsed.end();) {
             if (all || random8()%2) {
                 activateSparkRandom(activeSparks, *it, ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND));
-                clrHint+=23;
+//                clrHint+=23;
 
                 it = notUsed.erase(it);
                 if (--howMany == 0)
@@ -690,7 +690,7 @@ void FxH6::run() {
                 uint8_t clrHint = ((millis()+x)>>10)-64;
                 for (auto &s: sparks) {
                     s->setColor(ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND));
-                    clrHint+=23;
+//                    clrHint+=23;
                 }
             }
             for (auto &s : sparks)
