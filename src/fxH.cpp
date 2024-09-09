@@ -684,7 +684,7 @@ void FxH6::run() {
         if (activeSparks.size() < 2)
             activateSparks(random8(1, sparks.size()-activeSparks.size()-2), ((timerCounter+x)>>4)-64);
 
-        if (timerCounter % 300 == 0) {
+        if (timerCounter++ % 300 == 0) {
             if (stage == DefinedPattern) {
                 //rotate colors
                 uint8_t clrHint = ((millis()+x)>>10)-64;
