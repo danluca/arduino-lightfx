@@ -14,6 +14,7 @@
 #include "transition.h"
 #include "FxSchedule.h"
 #include "config.h"
+#include "fixed_queue.h"
 
 typedef void (*setupFunc)();
 

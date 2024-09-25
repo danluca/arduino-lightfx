@@ -80,18 +80,19 @@ void stateLED(CRGB color) {
 
 void readState() {
     String json;
+    json.reserve(256);  // approximation - currently at 150 bytes
     size_t stateSize = readTextFile(stateFileName, &json);
     if (stateSize > 0) {
-        JsonDocument doc; //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+        JsonDocument doc;
         deserializeJson(doc, json);
 
         bool autoAdvance = doc[csAutoFxRoll].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
 
-        uint16_t seed = doc[csRandomSeed].as<uint16_t>();
+        uint16_t seed = doc[csRandomSeed];
         random16_add_entropy(seed);
 
-        uint16_t fx = doc[csCurFx].as<uint16_t>();
+        uint16_t fx = doc[csCurFx];
 
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
 
@@ -116,7 +117,7 @@ void readState() {
 }
 
 void saveState() {
-    JsonDocument doc;    //this takes memory from the thread stack, ensure fx thread's memory size is adjusted if this value is
+    JsonDocument doc;
     doc[csRandomSeed] = random16_get_seed();
     doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
     doc[csCurFx] = fxRegistry.curEffectPos();
@@ -1123,9 +1124,11 @@ void fx_run() {
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
         stripBrightness = adjustStripBrightness();
         saveState();
+        saveSysInfo();
     }
 
     fxRegistry.loop();
+    watchdogPing();
     yield();
 }
 

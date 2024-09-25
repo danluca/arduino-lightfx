@@ -143,7 +143,7 @@ namespace FxH {
         int green {0};
         int blue {255};
 
-        int colorTime {1};
+        int colorStep {0};
         int pixelPos {0};
 
         CRGB prevClr {};

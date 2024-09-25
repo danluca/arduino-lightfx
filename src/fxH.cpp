@@ -498,6 +498,7 @@ FxH5::FxH5() : LedEffect(fxh5Desc), small(leds, 7), rest(leds, small.size(), NUM
     timer = 0;
     prevClr = BKG;
     pixelPos = 0;
+    colorStep = 0;
 }
 
 void FxH5::setup() {
@@ -505,6 +506,7 @@ void FxH5::setup() {
     fxState = Sparkle;
     prevClr = BKG;
     pixelPos = 0;
+    colorStep = 0;
 }
 
 void FxH5::run() {
@@ -570,33 +572,36 @@ uint8_t FxH5::selectionWeight() const {
 }
 
 void FxH5::electromagneticSpectrum(int transitionSpeed) {
-    switch(colorTime) {
-        case 1:
+    switch(colorStep) {
+        case 0:
             green += transitionSpeed;
             blue -= transitionSpeed;
             if (green >= 255 or blue <= 0) {
                 green = 255;
                 blue = 0;
-                colorTime = 2;
+                colorStep = addmod8(colorStep, 1, 3);
             }
             break;
-        case 2:
+        case 1:
             red += transitionSpeed;
             green -= transitionSpeed;
             if (red >= 255 or green <= 0) {
                 red = 255;
                 green = 0;
-                colorTime = 3;
+                colorStep = addmod8(colorStep, 1, 3);
             }
             break;
-        case 3:
+        case 2:
             red -= transitionSpeed;
             blue += transitionSpeed;
             if (red <= 0 or blue >= 255) {
                 red = 0;
                 blue = 255;
-                colorTime = 1;
+                colorStep = addmod8(colorStep, 1, 3);
             }
+            break;
+        default:
+            colorStep %= 3;
             break;
     }
 }
@@ -614,7 +619,6 @@ FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSiz
 
 void FxH6::setup() {
     LedEffect::setup();
-
     random16_add_entropy(secRandom16());
     //pick a random number of active sparks to start with
     stage = DefinedPattern;
@@ -630,7 +634,6 @@ void FxH6::resetActivateAllSparks(uint8_t clrHint) {
         activeSparks.push_back(s);
         s->reset();
         s->activate(ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND), cycles[index[x++]]);
-//        clrHint+=17;
     }
 }
 
@@ -640,11 +643,12 @@ inline void activateSparkRandom(std::deque<Spark*> &active, Spark*& s, CRGB clr)
 }
 
 void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
-    switch (stage) {
-        case DefinedPattern:
-            resetActivateAllSparks(clrHint);
-            return;
+    //in pattern stage we're using all the sparks, this call is invoked once per stage
+    if (stage == DefinedPattern) {
+        resetActivateAllSparks(clrHint);
+        return;
     }
+    //in random stage, we're using a random number of sparks, this call is invoked when running low on active sparks
     //create a list of not used sparks
     std::deque<Spark*> notUsed;
     for (auto &s : sparks)
@@ -657,7 +661,6 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
         for (auto it = notUsed.begin(); it != notUsed.end();) {
             if (all || random8()%2) {
                 activateSparkRandom(activeSparks, *it, ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND));
-//                clrHint+=23;
 
                 it = notUsed.erase(it);
                 if (--howMany == 0)
@@ -669,7 +672,7 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
 }
 
 void FxH6::run() {
-    EVERY_N_MILLISECONDS(15) {
+    EVERY_N_MILLISECONDS(25) {
         uint8_t x = random8();
         for (auto it = activeSparks.begin(); it != activeSparks.end();)
             //if spark becomes idle, remove from list
@@ -686,11 +689,10 @@ void FxH6::run() {
 
         if (timerCounter++ % 300 == 0) {
             if (stage == DefinedPattern) {
-                //rotate colors
+                //rotate colors - keep all sparks on same color, when they flash rapidly it puts more strain to the eyes if they are different colors
                 uint8_t clrHint = ((millis()+x)>>10)-64;
                 for (auto &s: sparks) {
                     s->setColor(ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND));
-//                    clrHint+=23;
                 }
             }
             for (auto &s : sparks)

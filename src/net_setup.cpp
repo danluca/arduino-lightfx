@@ -212,8 +212,8 @@ void printSuccessfulWifiStatus() {
     Log.infoln(F("MAC Address %s"), buf);
 
     // print the received signal strength:
-    int32_t rssi = WiFi.RSSI();
 #ifndef DISABLE_LOGGING
+    int32_t rssi = WiFi.RSSI();
     Log.infoln(F("Signal strength (RSSI) %d dBm; %d bars"), rssi, barSignalLevel(rssi));
 #endif
 

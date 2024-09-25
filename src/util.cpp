@@ -7,10 +7,12 @@
 // increase the amount of space for file system to 128kB (default 64kB)
 #define RP2040_FS_SIZE_KB   (128)
 #include <LittleFSWrapper.h>
+#include "hardware/watchdog.h"
 
 #define FILE_BUF_SIZE   256
 const uint maxAdc = 1 << ADC_RESOLUTION;
-const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
+const char stateFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/state.json";
+const char sysFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/sys.json";
 
 static uint8_t sysStatus = 0x00;    //system status bit array
 FixedQueue<TimeSync, 8> timeSyncs;
@@ -183,9 +185,15 @@ bool removeFile(const char *fname) {
     FILE *f = fopen(fname, "r");
     if (f) {
         fclose(f);
-        return lfs.remove(fname) == 0;
+        int retCode = remove(fname);        //lfs.remove(fname) can be an option, likely if fname is relative to lfs root
+        if (retCode == 0)
+            Log.infoln(F("File %s successfully removed"), fname);
+        else
+            Log.errorln(F("File %s can NOT be removed; error code: %d"), fname, retCode);
+        return retCode == 0;
     }
     //file does not exist - return true to the caller, the intent is already fulfilled
+    Log.infoln(F("File %s does not exist, no need to remove"), fname);
     return true;
 }
 
@@ -340,4 +348,25 @@ bool secElement_setup() {
     return true;
 }
 
+/**
+ * Setup the watchdog to 10 seconds - this is run once in the setup step at the program start
+ * Take the opportunity and log if this program start is the result of a watchdog reboot
+ */
+void watchdogSetup() {
+    if (watchdog_caused_reboot()) {
+        time_t rebootTime = now();
+        Log.warningln(F("A watchdog caused reboot has occurred at %y"), rebootTime);
+        wdReboots.push(rebootTime);
+        //markDirtyBoot();
+    }
+    //if no ping in 10 seconds, reboot
+    watchdog_enable(10000, false);
+}
+
+/**
+ * Reset the watchdog
+ */
+void watchdogPing() {
+    watchdog_update();
+}
 

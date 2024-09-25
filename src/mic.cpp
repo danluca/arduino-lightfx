@@ -5,6 +5,7 @@
 #include "mic.h"
 #include "log.h"
 #include "efx_setup.h"
+#include "circular_buffer.h"
 
 #define MIC_SAMPLE_SIZE 512
 // one channel - mono mode for Nano RP2040 microphone, MP34DT06JTR

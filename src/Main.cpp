@@ -36,6 +36,7 @@ void setup() {
 
     fsInit();
 
+    readSysInfo();
     imu_setup();
     secElement_setup();
 
@@ -53,6 +54,8 @@ void setup() {
     Log.infoln(F("System status: %X"), getSysStatus());
     logSystemInfo();
 
+    watchdogSetup();
+
     //start the web server/fx in a separate thread - turns out the JSON library crashes if not given enough stack size
     // Scheduler.startLoop(wifi_loop, 2048);
 }
@@ -62,7 +65,8 @@ void setup() {
  */
 void loop() {
     wifi_loop();
- 	alarm_loop();
+    alarm_loop();
+    watchdogPing();
     yield();
 }
 

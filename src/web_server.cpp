@@ -155,6 +155,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
 
     // response body
     JsonDocument doc;
+    char buf[20];
 
     doc["boardName"] = DEVICE_NAME;
     doc["boardUid"] = boardId;
@@ -169,7 +170,6 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     JsonArray hldList = doc["holidayList"].to<JsonArray>();
     for (uint8_t hi = None; hi <= NewYear; hi++)
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
-    char buf[20];
     formatDateTime(buf, now());
     doc["currentTime"] = buf;
     bool bDST = isSysStatus(SYS_STATUS_DST);
@@ -386,6 +386,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     //human readable format
     snprintf(timeBuf, 15, "%2dD %2dH %2dm", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     doc["upTime"] = timeBuf;
+    doc["watchdogRebootsCount"] = wdReboots.size();
 
     //send it out
     sz += serializeJson(doc, *client);

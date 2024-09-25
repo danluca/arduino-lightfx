@@ -20,6 +20,7 @@ let histOptions = {
 };
 
 $(() => {
+    $('#curYear').html(`-${new Date().getFullYear()}`);
 
     $.getJSON( "config.json")
     .done(function( data ) {

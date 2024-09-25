@@ -17,6 +17,7 @@ static const char cpuStatsFmt[] PROGMEM = "Time (µs): Uptime: %u Idle: %u Sleep
 char boardId[FLASH_UNIQUE_ID_SIZE_BYTES*2+1] {0};
 unsigned long prevStatTime = 0;
 us_timestamp_t prevIdleTime = 0;
+WatchdogQueue wdReboots;
 
 //#define STORAGE_CMD_TOTAL_BYTES 32
 
