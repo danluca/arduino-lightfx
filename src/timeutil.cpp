@@ -31,9 +31,9 @@ bool time_setup() {
     Holiday hday;
     if (ntpTimeAvailable) {
         bool bDST = isDST(timeClient.getEpochTime());
-        setSysStatus(SYS_STATUS_NTP);
+        sysInfo->setSysStatus(SYS_STATUS_NTP);
         if (bDST) {
-            setSysStatus(SYS_STATUS_DST);
+            sysInfo->setSysStatus(SYS_STATUS_DST);
             timeClient.setTimeOffset(CDT_OFFSET_SECONDS);   //getEpochTime calls account for the offset
         } else
             timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
@@ -53,11 +53,11 @@ bool time_setup() {
         Log.infoln(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
 #endif
     } else {
-        resetSysStatus(SYS_STATUS_NTP);
+        sysInfo->resetSysStatus(SYS_STATUS_NTP);
         hday = paletteFactory.adjustHoliday();    //update the holiday for new time
         bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
         if (bDST)
-            setSysStatus(SYS_STATUS_DST);
+            sysInfo->setSysStatus(SYS_STATUS_DST);
 #ifndef DISABLE_LOGGING
         char timeBuf[20];
         formatDateTime(timeBuf, now());
@@ -115,7 +115,7 @@ uint8_t formatDateTime(char *buf, time_t time) {
 time_t curUnixTime() {
     if (timeClient.isTimeSet())
         return timeClient.getEpochTime();
-    if (isSysStatus(SYS_STATUS_WIFI)) {
+    if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time telling purpose
         //determine what offset to use
         time_t wifiTime = WiFi.getTime() + CST_OFFSET_SECONDS;
@@ -174,7 +174,7 @@ Holiday buildHoliday(time_t time) {
 }
 
 Holiday currentHoliday() {
-    return isSysStatus(SYS_STATUS_WIFI) ? buildHoliday(now()) : Party;
+    return sysInfo->isSysStatus(SYS_STATUS_WIFI) ? buildHoliday(now()) : Party;
 }
 
 /**

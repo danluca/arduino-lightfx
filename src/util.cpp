@@ -14,7 +14,6 @@ const uint maxAdc = 1 << ADC_RESOLUTION;
 const char stateFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/state.json";
 const char sysFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/sys.json";
 
-static uint8_t sysStatus = 0x00;    //system status bit array
 FixedQueue<TimeSync, 8> timeSyncs;
 
 LittleFSWrapper *fsPtr;
@@ -122,7 +121,7 @@ void fsInit() {
 
     fsPtr = new LittleFSWrapper();
     if (fsPtr->init()) {
-        setSysStatus(SYS_STATUS_FILESYSTEM);
+        sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
         Log.infoln("Filesystem OK");
     }
 
@@ -154,10 +153,8 @@ size_t readTextFile(const char *fname, String *s) {
             fsize += cread;
         }
         fclose(f);
-#ifndef DISABLE_LOGGING
         Log.infoln(F("Read %d bytes from %s file"), fsize, fname);
-        Log.traceln(F("File %s content [%d]: %s"), fname, fsize, s->c_str());
-#endif
+        Log.traceln(F("Read file %s content [%d]: %s"), fname, fsize, s->c_str());
     } else
         Log.errorln(F("Text file %s was not found/could not read"), fname);
     return fsize;
@@ -176,6 +173,7 @@ size_t writeTextFile(const char *fname, String *s) {
         fsize = fwrite(s->c_str(), sizeof(s->charAt(0)), s->length(), f);
         fclose(f);
         Log.infoln(F("File %s has been saved, size %d bytes"), fname, s->length());
+        Log.traceln(F("Saved file %s content [%d]: %s"), fname, fsize, s->c_str());
     } else
         Log.errorln(F("Failed to create file %s for writing"), fname);
     return fsize;
@@ -238,24 +236,6 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
     if (a < 128)
         return bmul8(a, b)*2;
     return 255-bmul8(255-a, 255-b)*2;
-}
-
-uint8_t setSysStatus(uint8_t bitMask) {
-    sysStatus |= bitMask;
-    return sysStatus;
-}
-
-uint8_t resetSysStatus(uint8_t bitMask) {
-    sysStatus &= (~bitMask);
-    return sysStatus;
-}
-
-bool isSysStatus(uint8_t bitMask) {
-    return (sysStatus & bitMask);
-}
-
-uint8_t getSysStatus() {
-    return sysStatus;
 }
 
 /**
@@ -322,7 +302,7 @@ uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
     long low = (long)minLim;
     long high = maxLim > 0 ? (long)maxLim : INT32_MAX;
-    return isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
+    return sysInfo->isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
 }
 
 bool secElement_setup() {
@@ -330,7 +310,8 @@ bool secElement_setup() {
         Log.errorln(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
         return false;
     }
-    const char* eccSerial = ECCX08.serialNumber().c_str();
+    sysInfo->setSecureElementId(ECCX08.serialNumber());
+    const char* eccSerial = sysInfo->getSecureElementId().c_str();
     if (!ECCX08.locked()) {
         Log.warningln(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
         if (!ECCX08.writeConfiguration(ECCX08_DEFAULT_TLS_CONFIG)) {
@@ -344,7 +325,7 @@ bool secElement_setup() {
         Log.infoln(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
     }
     Log.infoln(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
-    setSysStatus(SYS_STATUS_ECC);
+    sysInfo->setSysStatus(SYS_STATUS_ECC);
     return true;
 }
 
@@ -356,8 +337,8 @@ void watchdogSetup() {
     if (watchdog_caused_reboot()) {
         time_t rebootTime = now();
         Log.warningln(F("A watchdog caused reboot has occurred at %y"), rebootTime);
-        wdReboots.push(rebootTime);
-        //markDirtyBoot();
+        sysInfo->watchdogReboots().push(rebootTime);
+        sysInfo->markDirtyBoot();
     }
     //if no ping in 10 seconds, reboot
     watchdog_enable(10000, false);

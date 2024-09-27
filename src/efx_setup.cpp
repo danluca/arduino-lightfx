@@ -141,7 +141,7 @@ void saveState() {
 void resetGlobals() {
     //turn off the LEDs on the strip and the frame buffer - flush to the LED strip if we have the time and not in sleep time
     //flushing to strip may cause a short blink if called mid-effect, like an audio effect bump would do for the same effect when sleeping
-    bool flushStrip = isSysStatus(SYS_STATUS_NTP) && !fxRegistry.isAsleep();
+    bool flushStrip = sysInfo->isSysStatus(SYS_STATUS_NTP) && !fxRegistry.isAsleep();
     FastLED.clear(flushStrip);
     FastLED.setBrightness(BRIGHTNESS);
     frame.fill_solid(BKG);
@@ -644,7 +644,7 @@ bool rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay) {
  * <p>After 10pm - reduce to 40% of full brightness, i.e. scale with 102</p>
  */
 uint8_t adjustStripBrightness() {
-    if (!stripBrightnessLocked && isSysStatus(SYS_STATUS_WIFI)) {
+    if (!stripBrightnessLocked && sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         int hr = hour();
         fract8 scale;
         if (hr < 8)
@@ -1114,6 +1114,7 @@ void fx_run() {
         //log RAM metrics
         logAllThreadInfo();
         logHeapAndStackInfo();
+        //logSystemInfo();
         //logCPUStats();
 #endif
     }

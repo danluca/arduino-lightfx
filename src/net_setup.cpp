@@ -3,6 +3,7 @@
 //
 #include "net_setup.h"
 #include "config.h"
+#include "sysinfo.h"
 #include "log.h"
 
 using namespace colTheme;
@@ -35,22 +36,6 @@ uint8_t barSignalLevel(int32_t rssi) {
     return (uint8_t) ((float) (rssi - minRSSI) * outRange / inRange);
 }
 
-/**
- * Formats the MAC address into the character buffer provided
- * @param buf buffer to write MAC address into, must have room for at least 20 characters - including null terminator
- * @return number of characters written
- */
-int formatMACAddress(char *buf) {
-    uint8_t mac[WL_MAC_ADDR_LENGTH];
-    WiFi.macAddress(mac);
-    int x = 0;
-    for (auto &b : mac)
-        x += sprintf(buf+x, "%02X:", b);
-    //last character - at index x-1 is a ':', make it null to trim the last colon character
-    buf[x-1] = 0;
-    return x-1;
-}
-
 bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
     WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
@@ -72,7 +57,7 @@ bool wifi_connect() {
     }
     bool result = wifiStatus == WL_CONNECTED;
     if (result) {
-        setSysStatus(SYS_STATUS_WIFI);
+        sysInfo->setSysStatus(SYS_STATUS_WIFI);
         int resPing = WiFi.ping(WiFi.gatewayIP());
         if (resPing >= 0)
             Log.infoln(F("Gateway ping successful: %d ms"), resPing);
@@ -121,7 +106,7 @@ bool imu_setup() {
  */
 bool wifi_check() {
     if (WiFi.status() != WL_CONNECTED) {
-        resetSysStatus(SYS_STATUS_WIFI);
+        sysInfo->resetSysStatus(SYS_STATUS_WIFI);
         Log.warningln(F("WiFi Connection lost"));
         return false;
     }
@@ -129,12 +114,12 @@ bool wifi_check() {
     int32_t rssi = WiFi.RSSI();
     uint8_t wifiBars = barSignalLevel(rssi);
     if ((gwPingTime < 0) || (wifiBars < 3)) {
-        resetSysStatus(SYS_STATUS_WIFI);
+        sysInfo->resetSysStatus(SYS_STATUS_WIFI);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
         Log.warningln(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable"), rssi, wifiBars);
         return false;
     }
-    setSysStatus(SYS_STATUS_WIFI);
+    sysInfo->setSysStatus(SYS_STATUS_WIFI);
     Log.infoln(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%d bars)"), gwPingTime, rssi, wifiBars);
     return true;
 }
@@ -145,7 +130,7 @@ bool wifi_check() {
  * Should we invoke a board reset instead? (NVIC_SystemReset)
  */
 void wifi_reconnect() {
-    resetSysStatus(SYS_STATUS_WIFI);
+    sysInfo->resetSysStatus(SYS_STATUS_WIFI);
     updateStateLED((uint32_t)CLR_SETUP_IN_PROGRESS);
     server.clearWriteError();
     WiFiClient client = server.available();
@@ -173,7 +158,7 @@ void wifi_loop() {
             else
                 updateStateLED((uint32_t)CLR_SETUP_ERROR);
         }
-        Log.infoln(F("System status: %X"), getSysStatus());
+        Log.infoln(F("System status: %X"), sysInfo->getSysStatus());
     }
     EVERY_N_HOURS(12) {
         Holiday oldHday = paletteFactory.getHoliday();
@@ -199,17 +184,15 @@ void wifi_loop() {
 }
 
 void printSuccessfulWifiStatus() {
+    sysInfo->setWiFiInfo(WiFi);
     // print the SSID of the network you're attached to:
-    Log.infoln(F("Connected to SSID: %s"), WiFi.SSID());
+    Log.infoln(F("Connected to SSID: %s"), sysInfo->getSSID().c_str());
 
     // print your board's IP address:
-    IPAddress ip = WiFi.localIP();
-    Log.infoln(F("IP Address: %p"), ip);
+    Log.infoln(F("IP Address: %s"), sysInfo->getIpAddress().c_str());
 
     // print your board's MAC address
-    char buf[20];
-    formatMACAddress(buf);
-    Log.infoln(F("MAC Address %s"), buf);
+    Log.infoln(F("MAC Address %s"), sysInfo->getMacAddress().c_str());
 
     // print the received signal strength:
 #ifndef DISABLE_LOGGING
@@ -218,7 +201,7 @@ void printSuccessfulWifiStatus() {
 #endif
 
     // print where to go in a browser:
-    Log.infoln(F("To see this page in action, open a browser to http://%p"), ip);
+    Log.infoln(F("To see this page in action, open a browser to http://%s"), sysInfo->getIpAddress().c_str());
 }
 
 void checkFirmwareVersion() {

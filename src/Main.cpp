@@ -34,6 +34,7 @@ void setup() {
 
     stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
 
+    sysInfo = new SysInfo();    //system information object built once per run
     fsInit();
 
     readSysInfo();
@@ -50,8 +51,8 @@ void setup() {
 
     setupAlarmSchedule();
 
-    fillBoardId();
-    Log.infoln(F("System status: %X"), getSysStatus());
+    sysInfo->fillBoardId();
+    Log.infoln(F("System status: %X"), sysInfo->getSysStatus());
     logSystemInfo();
 
     watchdogSetup();

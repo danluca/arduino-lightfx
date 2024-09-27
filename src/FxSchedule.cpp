@@ -98,7 +98,7 @@ void logAlarms() {
  * Setup the default sleep/wake-up schedule
  */
 void setupAlarmSchedule() {
-    if (!isSysStatus(SYS_STATUS_WIFI)) {
+    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         Log.warningln(F("Cannot setup alarms without WiFi, likely time is not set"));
         return;
     }

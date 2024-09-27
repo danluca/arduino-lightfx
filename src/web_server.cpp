@@ -157,11 +157,16 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     JsonDocument doc;
     char buf[20];
 
-    doc["boardName"] = DEVICE_NAME;
-    doc["boardUid"] = boardId;
-    doc["fwVersion"] = BUILD_VERSION;
-    doc["fwBranch"] = GIT_BRANCH;
-    doc["buildTime"] = BUILD_TIME;
+    doc["boardName"] = sysInfo->getBoardName();
+    doc["boardUid"] = sysInfo->getBoardId();
+    doc["fwVersion"] = sysInfo->getBuildVersion();
+    doc["fwBranch"] = sysInfo->getScmBranch();
+    doc["buildTime"] = sysInfo->getBuildTime();
+    doc["cleanBoot"] = sysInfo->isCleanBoot();
+    if (!sysInfo->isCleanBoot()) {
+        formatDateTime(buf, sysInfo->watchdogReboots().back());
+        doc["lastWatchdogReboot"] = buf;
+    }
     doc["curEffect"] = String(fxRegistry.curEffectPos());
     doc["auto"] = fxRegistry.isAutoRoll();
     doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
@@ -172,11 +177,10 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
     formatDateTime(buf, now());
     doc["currentTime"] = buf;
-    bool bDST = isSysStatus(SYS_STATUS_DST);
+    bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
     doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
     doc["dst"] = bDST;
-    formatMACAddress(buf);
-    doc["MAC"] = buf;
+    doc["MAC"] = sysInfo->getMacAddress();
     JsonArray fxArray = doc["fx"].to<JsonArray>();
     fxRegistry.describeConfig(fxArray);
     //send it out
@@ -320,11 +324,11 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     JsonDocument doc;
     // WiFi
     JsonObject wifi = doc["wifi"].to<JsonObject>();
-    wifi["IP"] = WiFi.localIP();         //IP Address
+    wifi["IP"] = sysInfo->getIpAddress();         //IP Address
     int32_t rssi = WiFi.RSSI();
     wifi["bars"] = barSignalLevel(rssi);  //Wi-Fi signal level
     wifi["rssi"] = rssi;
-    wifi["curVersion"] = WiFiClass::firmwareVersion();
+    wifi["curVersion"] = sysInfo->getWiFiFwVersion();
     wifi["latestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
     // Fx
     JsonObject fx = doc["fx"].to<JsonObject>();
@@ -355,7 +359,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     time["date"] = timeBuf;
     formatTime(timeBuf, curTime);
     time["time"] = timeBuf;
-    time["dst"] = isSysStatus(SYS_STATUS_DST);
+    time["dst"] = sysInfo->isSysStatus(SYS_STATUS_DST);
     time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
     time["syncSize"] = timeSyncs.size();
     time["averageDrift"] = getAverageTimeDrift();
@@ -380,13 +384,13 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     doc["maxVcc"] = maxVcc;
     doc["boardMinTemp"] = minTemp;
     doc["boardMaxTemp"] = maxTemp;
-    doc["overallStatus"] = getSysStatus();
+    doc["overallStatus"] = sysInfo->getSysStatus();
     //ISO8601 format
     //snprintf(timeBuf, 15, "P%2dDT%2dH%2dM", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     //human readable format
     snprintf(timeBuf, 15, "%2dD %2dH %2dm", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     doc["upTime"] = timeBuf;
-    doc["watchdogRebootsCount"] = wdReboots.size();
+    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
 
     //send it out
     sz += serializeJson(doc, *client);

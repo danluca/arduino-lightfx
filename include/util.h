@@ -52,11 +52,6 @@ size_t readTextFile(const char *fname, String *s);
 size_t writeTextFile(const char *fname, String *s);
 bool removeFile(const char *fname);
 
-uint8_t setSysStatus(uint8_t bitMask);
-uint8_t resetSysStatus(uint8_t bitMask);
-bool isSysStatus(uint8_t bitMask);
-uint8_t getSysStatus();
-
 uint8_t secRandom8(uint8_t minLim = 0, uint8_t maxLim = 0);
 uint16_t secRandom16(uint16_t minLim = 0, uint16_t maxLim = 0);
 uint32_t secRandom(uint32_t minLim = 0, uint32_t maxLim = 0);

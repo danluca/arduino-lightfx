@@ -2,6 +2,12 @@
 //
 
 #include "sysinfo.h"
+#include <flash.h>
+#include <ArduinoJson.h>
+#include "util.h"
+#include "version.h"
+
+#define BUF_ID_SIZE  20
 
 static const char unknown[] PROGMEM = "N/A";
 static const char threadInfoFmt[] PROGMEM = "Thread[%u]:: name='%s' id=%X stack size=%u free=%u\n";
@@ -11,43 +17,30 @@ static const char heapInfoVerboseFmt[] PROGMEM = "Heap:: start=%X end=%X size=%u
 //static const char stackInfoFmt[] PROGMEM = "Stack:: size=%u free=%u";
 static const char genStackInfoFmt[] PROGMEM = "Gen Stack:: size=%u free=%u statsCount=%u\n";
 static const char isrStackInfoFmt[] PROGMEM = "ISR Stack:: start=%X end=%X size=%u\n";
-static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %X\n  Mbed OS version %u\n  Compiler ID %X version %u\n  Board UID 0x%s name '%s' vendor %X model %X\n  Device name %s\n  Flash size %u";
+static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %X\n  Mbed OS version %u\n  Compiler ID %X version %u\n  Board UID 0x%s name '%s' vendor %X model %X\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 static const char cpuStatsFmt[] PROGMEM = "Time (µs): Uptime: %u Idle: %u Sleep: %u DeepSleep: %u Idle: %d%% Usage: %d%%\n";
+static const char *const csBuildVersion PROGMEM = "buildVersion";
+static const char *const csBoardName PROGMEM = "boardName";
+static const char *const csBuildTime PROGMEM = "buildTime";
+static const char *const csScmBranch PROGMEM = "scmBranch";
+static const char *const csWdReboots PROGMEM = "wdReboots";
+static const char *const csBoardId PROGMEM = "boardId";
+static const char *const csSecElemId PROGMEM = "secElemId";
+static const char *const csMacAddress PROGMEM = "macAddress";
+static const char *const csWifiFwVersion PROGMEM = "wifiFwVersion";
+static const char *const csIpAddress PROGMEM = "ipAddress";
+static const char *const csGatewayAddress PROGMEM = "gatewayIpAddress";
+static const char *const csHeapSize PROGMEM = "heapSize";
+static const char *const csFreeHeap PROGMEM = "freeHeap";
+static const char *const csStackSize PROGMEM = "stackSize";
+static const char *const csFreeStack PROGMEM = "freeStack";
+static const char *const csStatus PROGMEM = "status";
 
-char boardId[FLASH_UNIQUE_ID_SIZE_BYTES*2+1] {0};
 unsigned long prevStatTime = 0;
 us_timestamp_t prevIdleTime = 0;
-WatchdogQueue wdReboots;
+SysInfo *sysInfo;
 
 //#define STORAGE_CMD_TOTAL_BYTES 32
-
-/**
- * <p>Per AT25SF128A Flash specifications, command ox9F returns 0x1F8901, where last byte 0x01 should represent density (size)
- * Trial/error shows the command returns 0xFF1F89011F</p>
- * <p>We won't use the flash chip SPI commands - very chip specific - but instead leverage the constant PICO_FLASH_SIZE_BYTES already tailored to the board we use, Nano RP2040</p>
- * @return
- */
-uint get_flash_capacity() {
-//    uint8_t txbuf[STORAGE_CMD_TOTAL_BYTES] = {0x9f};
-//    uint8_t rxbuf[STORAGE_CMD_TOTAL_BYTES] = {0};
-//    flash_do_cmd(txbuf, rxbuf, STORAGE_CMD_TOTAL_BYTES);
-
-//    return 1 << rxbuf[3];
-    return PICO_FLASH_SIZE_BYTES;
-}
-
-/**
- * Capture Flash UID as board unique identifier in HEX string format
- */
-const char* fillBoardId() {
-    // Flash UID
-    uint8_t fuid[FLASH_UNIQUE_ID_SIZE_BYTES];
-    flash_get_unique_id(fuid);
-    int i = 0;
-    for (unsigned char &b : fuid)
-        i += sprintf(boardId+i, "%02X", b);
-    return boardId;
-}
 
 /**
  * This method and following few aren't really in the basic domain of providing logging capabilities to the system.
@@ -77,11 +70,13 @@ void logThreadInfo(osThreadId threadId) {
 }
 
 void logAllThreadInfo() {
-#ifndef DISABLE_LOGGING
     // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_all_thread_info
     // Refs: mbed_stats.c - mbed_stats_stack_get_each()
 
-    uint32_t     threadCount = osThreadGetCount();
+    uint32_t threadCount = osThreadGetCount();
+    sysInfo->threadCount = threadCount;
+
+#ifndef DISABLE_LOGGING
     osThreadId_t threads[threadCount]; // g++ will throw a -Wvla on this, but it is likely ok.
     mbed_stats_stack_t stacks[threadCount];
 
@@ -111,14 +106,12 @@ void logAllThreadInfo() {
 }
 
 void logHeapAndStackInfo() {
-#ifndef DISABLE_LOGGING
     // Refs: ~\.platformio\packages\framework-arduino-mbed\libraries\mbed-memory-status\mbed_memory_status.cpp#print_heap_and_isr_stack_info
     extern unsigned char * mbed_heap_start;
     extern uint32_t        mbed_heap_size;
     extern uint32_t        mbed_stack_isr_size;
     extern unsigned char * mbed_stack_isr_start;
 //    extern char __StackLimit, __bss_end__;
-
 
     mbed_stats_heap_t      heap_stats;
     mbed_stats_heap_get(&heap_stats);
@@ -129,9 +122,16 @@ void logHeapAndStackInfo() {
 //    uint32_t totalHeap = &__StackLimit - &__bss_end__;      //this matches mbed_heap_size
 //    uint32_t freeHeap = totalHeap - mallinfo().uordblks;    //this matches mbed_heap_size-heap_stats.current_size-heap_stats.overhead_size
 
+    // update the system info
+    sysInfo->heapSize = mbed_heap_size;
+    sysInfo->freeHeap = mbed_heap_size-heap_stats.current_size-heap_stats.overhead_size;
+    sysInfo->stackSize = allStack.reserved_size;
+    sysInfo->freeStack = allStack.reserved_size-allStack.max_size;
+
+#ifndef DISABLE_LOGGING
     Log.info(F("HEAP & STACK INFO\n"));
     if (LOG_LEVEL_TRACE > Log.getLevel()) {
-        Log.info(heapInfoFmt, mbed_heap_size, mbed_heap_size-heap_stats.current_size-heap_stats.overhead_size);
+        Log.info(heapInfoFmt, mbed_heap_size, sysInfo->freeHeap);
         Log.info(genStackInfoFmt, allStack.reserved_size, allStack.reserved_size-allStack.max_size, allStack.stack_cnt);
     } else {
         Log.trace(heapInfoVerboseFmt, mbed_heap_start, heap_stats.reserved_size, mbed_heap_size, heap_stats.current_size,
@@ -179,8 +179,8 @@ void logSystemInfo() {
        IAR: VRRRPPP (V = Version; RRR = Revision; PPP = Patch)
     */
 
-    Log.infoln(sysInfoFmt, statsSys.cpu_id, statsSys.os_version, statsSys.compiler_id, statsSys.compiler_version, boardId,
-               BOARD_NAME, BOARD_VENDORID, BOARD_PRODUCTID, DEVICE_NAME, get_flash_capacity());
+    Log.infoln(sysInfoFmt, statsSys.cpu_id, statsSys.os_version, statsSys.compiler_id, statsSys.compiler_version, sysInfo->getBoardId().c_str(),
+               BOARD_NAME, BOARD_VENDORID, BOARD_PRODUCTID, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->get_flash_capacity());
 
 #endif
 }
@@ -211,3 +211,163 @@ void logCPUStats() {
 #endif
 }
 
+// SysInfo
+SysInfo::SysInfo() : boardName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildTime(BUILD_TIME), scmBranch(GIT_BRANCH) {
+    boardId.reserve(BUF_ID_SIZE);       // flash unique ID in hex, \0 terminator
+    secElemId.reserve(BUF_ID_SIZE);     // 18 from ECCX08Class::serialNumber() implementation
+    macAddress.reserve(BUF_ID_SIZE);    // 6 (WL_MAC_ADDR_LENGTH) groups of 2 hex digits and ':' separator, includes \0 terminator
+    ipAddress.reserve(BUF_ID_SIZE);     // 4 groups of 3 digits, 3 '.' separators, \0 terminator
+    wifiFwVersion.reserve(BUF_ID_SIZE); // typical semantic version e.g. v1.5.0, 3 groups of 2 digits, '.' separator, \0 terminator
+    ssid.reserve(BUF_ID_SIZE);          // initial space, most networks are short names
+    status = 0;
+    cleanBoot = true;
+}
+
+/**
+ * Capture Flash UID as board unique identifier in HEX string format
+ */
+void SysInfo::fillBoardId() {
+    // Flash UID
+    uint8_t fuid[FLASH_UNIQUE_ID_SIZE_BYTES];
+    flash_get_unique_id(fuid);
+    int i = 0;
+    char buff[BUF_ID_SIZE];
+    for (auto &b : fuid)
+        i += sprintf(buff+i, "%02X", b);    //boardId string must already have reserved space for Flash UID, see constructor
+    buff[i] = 0;    //null terminator
+    boardId = buff;
+}
+
+/**
+ * <p>Per AT25SF128A Flash specifications, command ox9F returns 0x1F8901, where last byte 0x01 should represent density (size)
+ * Trial/error shows the command returns 0xFF1F89011F</p>
+ * <p>We won't use the flash chip SPI commands - very chip specific - but instead leverage the constant PICO_FLASH_SIZE_BYTES already tailored to the board we use, Nano RP2040</p>
+ * @return Board flash size in bytes - currently fixed at PICO_FLASH_SIZE_BYTES
+ */
+uint SysInfo::get_flash_capacity() const {
+//    uint8_t txbuf[STORAGE_CMD_TOTAL_BYTES] = {0x9f};
+//    uint8_t rxbuf[STORAGE_CMD_TOTAL_BYTES] = {0};
+//    flash_do_cmd(txbuf, rxbuf, STORAGE_CMD_TOTAL_BYTES);
+
+//    return 1 << rxbuf[3];
+    return PICO_FLASH_SIZE_BYTES;
+}
+
+uint8_t SysInfo::setSysStatus(uint8_t bitMask) {
+    status |= bitMask;
+    return status;
+}
+
+uint8_t SysInfo::resetSysStatus(uint8_t bitMask) {
+    status &= (~bitMask);
+    return status;
+}
+
+bool SysInfo::isSysStatus(uint8_t bitMask) const {
+    return (status & bitMask);
+}
+
+uint8_t SysInfo::getSysStatus() const {
+    return status;
+}
+
+void SysInfo::setWiFiInfo(WiFiClass &wifi) {
+    ssid = wifi.SSID();
+    wifiFwVersion = WiFiClass::firmwareVersion();
+    ipAddress = wifi.localIP().toString();
+    gatewayIpAddress = wifi.gatewayIP().toString();
+
+    //MAC address - Formats the MAC address into the character buffer provided, space for 20 chars is needed (includes nul terminator)
+    uint8_t mac[WL_MAC_ADDR_LENGTH];
+    wifi.macAddress(mac);
+
+    char buf[BUF_ID_SIZE];
+    int x = 0;
+    for (auto &b : mac)
+        x += sprintf(buf+x, "%02X:", b);
+    //last character - at index x-1 is a ':', make it null to trim the last colon character
+    buf[x-1] = 0;
+    macAddress = buf;
+}
+
+void SysInfo::setSecureElementId(const String &secId) {
+    secElemId = secId;
+}
+
+/**
+ * Read the saved sys info file - no op, if there is no file
+ * Note the time this is performed, the WiFi is not ready, nor other fields even populated yet
+ */
+void readSysInfo() {
+    auto json = new String();
+    json->reserve(512);  // approximation
+    size_t sysSize = readTextFile(sysFileName, json);
+    if (sysSize > 0) {
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, *json);
+        if (error) {
+            Log.errorln(F("Error reading the system information JSON file %s [%d bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
+            delete json;
+            return;
+        }
+        //const fields
+        String bldVersion = doc[csBuildVersion];
+        String brdName = doc[csBoardName];
+        String bldTime = doc[csBuildTime];
+        String gitBranch = doc[csScmBranch].as<String>();
+        if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {
+            JsonArray wdReboots = doc[csWdReboots].as<JsonArray>();
+            for (JsonVariant i: wdReboots)
+                sysInfo->wdReboots.push(i.as<time_t>());
+        } else
+            Log.warningln(F("Build version change detected - previous watchdog reboot timestamps %s have been discarded"), doc[csWdReboots].as<String>().c_str());
+        sysInfo->boardId = doc[csBoardId].as<String>();
+        sysInfo->secElemId = doc[csSecElemId].as<String>();
+        sysInfo->macAddress = doc[csMacAddress].as<String>();
+        sysInfo->wifiFwVersion = doc[csWifiFwVersion].as<String>();
+        sysInfo->ipAddress = doc[csIpAddress].as<String>();
+        sysInfo->gatewayIpAddress = doc[csGatewayAddress].as<String>();
+        sysInfo->heapSize = doc[csHeapSize];
+        sysInfo->freeHeap = doc[csFreeHeap];
+        sysInfo->stackSize = doc[csStackSize];
+        sysInfo->freeStack = doc[csFreeStack];
+        sysInfo->status = doc[csStatus];
+
+        Log.infoln(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%X, IP=%s, Gateway=%s"),
+                   sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status,
+                   sysInfo->ipAddress.c_str(), sysInfo->gatewayIpAddress.c_str());
+    }
+    delete json;
+}
+
+/**
+ * Saves the sys info to the file
+ */
+void saveSysInfo() {
+    JsonDocument doc;
+    doc[csBuildVersion] = sysInfo->buildVersion;
+    doc[csBoardName] = sysInfo->boardName;
+    doc[csBuildTime] = sysInfo->buildTime;
+    doc[csScmBranch] = sysInfo->scmBranch;
+    doc[csBoardId] = sysInfo->boardId;
+    doc[csSecElemId] = sysInfo->secElemId;
+    doc[csMacAddress] = sysInfo->macAddress;
+    doc[csWifiFwVersion] = sysInfo->wifiFwVersion;
+    doc[csIpAddress] = sysInfo->ipAddress;
+    doc[csGatewayAddress] = sysInfo->gatewayIpAddress;
+    doc[csHeapSize] = sysInfo->heapSize;
+    doc[csFreeHeap] = sysInfo->freeHeap;
+    doc[csStackSize] = sysInfo->stackSize;
+    doc[csFreeStack] = sysInfo->freeStack;
+    doc[csStatus] = sysInfo->status;
+    JsonArray reboots = doc[csWdReboots].to<JsonArray>();
+    for (auto & t : sysInfo->wdReboots)
+        reboots.add(t);
+
+    auto str = new String();    //larger temporary string, put it on the heap
+    str->reserve(512);
+    serializeJson(doc, *str);
+    if (!writeTextFile(sysFileName, str))
+        Log.errorln(F("Failed to create/write the system information file %s"), sysFileName);
+    delete str;
+}
