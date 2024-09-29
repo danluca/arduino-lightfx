@@ -340,8 +340,8 @@ void watchdogSetup() {
         sysInfo->watchdogReboots().push(rebootTime);
         sysInfo->markDirtyBoot();
     }
-    //if no ping in 10 seconds, reboot
-    watchdog_enable(10000, false);
+    //if no ping in 3 seconds, reboot
+    watchdog_enable(3000, true);
 }
 
 /**
