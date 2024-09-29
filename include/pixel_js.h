@@ -57,6 +57,8 @@ $(() => {
         $('#buildBranch').html(data.fwBranch);
         $('#buildTime').html(data.buildTime);
         $('#macAddress').html(data.MAC);
+        $('#cleanBoot').html(data.cleanBoot);
+        $('#wdReboots').html(`${data.watchdogRebootsCount}<br/>  [last @ ${data.lastWatchdogReboot}]`);
     });
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status

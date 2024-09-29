@@ -86,11 +86,10 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>UID: <span id="boardUid"></span><div>[vendor: 0x2341, model: 0x5E]</div></dd>
                 <dd>Device Name: <span id="deviceName"></span></dd>
                 <dd>Mbed OS: <span id="mbedVersion"></span></dd>
-                <dd>Temperature: <span id="boardTemp"></span> <br/><span id="rangeTemp" class="indent2"></span></dd>
-                <dd>Vcc: <span id="boardVcc"></span> <span id="rangeVcc" class="indent2"></span></dd>
-                <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
                 <dd>Up Time: <span id="upTime"></span> </dd>
+                <dd>Clean Boot: <span id="cleanBoot"></span></dd>
                 <dd>Status code: <span id="overallStatus"></span></dd>
+                <dd>Watchdog Reboots: <span id="wdReboots"></span></dd>
                 <dt>Time</dt>
                 <dd>NTP sync: <span id="timeNtp"></span></dd>
                 <dd>Current time: <span id="timeCurrent"></span></dd>
@@ -106,6 +105,9 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>MAC Address: <span id="macAddress"></span></dd>
                 <dd>Signal: <span id="wfSignal"></span></dd>
                 <dd>WiFi FW: <span id="wfVersion"></span></dd>
+                <dt>Environment</dt>
+                <dd>Temperature: <span id="boardTemp"></span> <br/><span id="rangeTemp" class="indent2"></span></dd>
+                <dd>Vcc: <span id="boardVcc"></span> <span id="rangeVcc" class="indent2"></span></dd>
                 </div>
                 <div>
                 <dt>Effects</dt>
@@ -114,6 +116,7 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Past Effects: <span id="pastEffects"></span></dd>
                 <dd>Color Theme: <span id="fxCurHoliday"></span></dd>
                 <dd>Strip Brightness: <span id="fxBrightness"></span></dd>
+                <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
                 <dd>Audio Effect Changes: <span id="totalAudioBumps"></span></dd>
 <!--                <dd>Audio Level Histogram: <span id="audioLevelHistogram"></span></dd>-->
                 <div id="audioHistogram"></div>

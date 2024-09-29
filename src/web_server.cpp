@@ -162,6 +162,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     doc["fwVersion"] = sysInfo->getBuildVersion();
     doc["fwBranch"] = sysInfo->getScmBranch();
     doc["buildTime"] = sysInfo->getBuildTime();
+    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
     doc["cleanBoot"] = sysInfo->isCleanBoot();
     if (!sysInfo->isCleanBoot()) {
         formatDateTime(buf, sysInfo->watchdogReboots().back());
@@ -390,7 +391,6 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     //human readable format
     snprintf(timeBuf, 15, "%2dD %2dH %2dm", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     doc["upTime"] = timeBuf;
-    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
 
     //send it out
     sz += serializeJson(doc, *client);
