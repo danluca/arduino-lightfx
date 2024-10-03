@@ -57,7 +57,8 @@ $(() => {
         $('#buildTime').html(data.buildTime);
         $('#macAddress').html(data.MAC);
         $('#cleanBoot').html(`${data.cleanBoot}`);
-        $('#wdReboots').html(`${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`);
+        let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
+        $('#wdReboots').html(wdr);
     });
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status
@@ -90,7 +91,6 @@ function getStatus() {
                 $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
             }
             $('#pastEffects').html(`${data.fx.pastEffects.reverse().join(', ')}`);
-            $('#fxCurHoliday').html(`${data.fx.holiday}`);
             $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
             let lblHistogram = data.fx.audioHist.map((elem, ix)=>
                 `${ix===(data.fx.audioHist.length-1)?'>':''}${data.fx.audioThreshold+ix*500}`);
@@ -117,7 +117,7 @@ function getStatus() {
             //update the current effect tiles as well
             $('#curEffectId').html(`index: ${data.fx.index}`);
             let desc = config?.fx?.find(x=> x.registryIndex === data.fx.index)?.description ?? "N/A";
-            $('#curEffect').html(`${data.fx.name} - ${desc}`);
+            $('#curEffect').html(`${desc}`);
             $('#autoFxChange').prop("checked", data.fx.auto);
             $('#sleepEnabled').prop("checked", data.fx.sleepEnabled);
             let fxlst = $('#fxlist');

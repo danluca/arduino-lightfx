@@ -17,7 +17,9 @@
 
 #include "SchedulerExt.h"
 
-SchedulerClassExt::SchedulerClassExt() = default;
+static const char *const unknown PROGMEM = "Thd N/R";
+
+SchedulerClassExt Scheduler;
 
 /**
  * Method that implements optional setup + continuous run of the task
@@ -43,53 +45,69 @@ SchedulerClassExt::SchedulerClassExt() = default;
 }
 
 /**
- * Starts a task with setup (optional) and main loop
- * @param tasks optional setup and (required) main loop
- * @param stackSize thread's stack size - defaults to 1024 if not specified
- * @return
+ * Starts a task with optional setup step and main loop
+ * @param task the task structure - setup (optional, executed once) and main loop (required, executed indefinitely) callback pointers, stack and name info
+ * @return the rtos thread pointer for the newly created thread that handles this task actions
  */
-rtos::Thread* SchedulerClassExt::startLoop(TasksPtr tasks, uint32_t stackSize) {
+rtos::Thread* SchedulerClassExt::startTask(TasksPtr task) {
     uint i = findNextThreadSlot();
     if (i >= MAX_THREADS_NUMBER)
         return nullptr;
 
-    const char *tName = createThreadName(i);
-    threads[i] = new rtos::Thread(osPriorityNormal, stackSize, nullptr, tName);
-    threads[i]->start(mbed::callback(setupLoopHelper, tasks));
-    return threads[i];
+    threads[i] = task->threadName ? new ThreadWrapper(task->threadName, task->stackSize) : new ThreadWrapper(i, task->stackSize);
+    threads[i]->getThread()->start(mbed::callback(setupLoopHelper, task));
+    return threads[i]->getThread();
 }
 
+/**
+ * Starts a new thread with main loop only, executed indefinitely
+ * @param task main loop task
+ * @param stackSize stack size in bytes to allocate for the task; default to 1024 if not specified
+ * @return the new OS thread created
+ */
 rtos::Thread* SchedulerClassExt::startLoop(SchedulerTask task, uint32_t stackSize) {
     uint i = findNextThreadSlot();
     if (i >= MAX_THREADS_NUMBER)
         return nullptr;
 
-    const char *tName = createThreadName(i);
-    threads[i] = new rtos::Thread(osPriorityNormal, stackSize, nullptr, tName);
-    threads[i]->start(mbed::callback(loopHelper, task));
-    return threads[i];
+    threads[i] = new ThreadWrapper(i, stackSize);
+    threads[i]->getThread()->start(mbed::callback(loopHelper, task));
+    return threads[i]->getThread();
 }
 
+/**
+ * Starts a new thread that runs once a task
+ * @param task the task
+ * @param stackSize stack size in bytes to allocate for the task; default to 1024 if not specified
+ * @return the new OS thread created
+ * @see SchedulerClassExt::waitToEnd
+ */
 rtos::Thread* SchedulerClassExt::start(SchedulerTask task, uint32_t stackSize) {
     uint i = findNextThreadSlot();
     if (i >= MAX_THREADS_NUMBER)
         return nullptr;
 
-    const char *tName = createThreadName(i);
-    threads[i] = new rtos::Thread(osPriorityNormal, stackSize, nullptr, tName);
-    threads[i]->start(task);
-    return threads[i];
+    threads[i] = new ThreadWrapper(i, stackSize);
+    threads[i]->getThread()->start(task);
+    return threads[i]->getThread();
 }
 
+/**
+ * Starts a new thread that runs once a parameterized task (one parameter of type pointer to any data type)
+ * @param task the task
+ * @param taskData argument to pass to the task
+ * @param stackSize stack size in bytes to allocate for the task; default to 1024 if not specified
+ * @return the new OS thread created
+ * @see SchedulerClassExt::waitToEnd
+ */
 rtos::Thread* SchedulerClassExt::start(SchedulerParametricTask task, void *taskData, uint32_t stackSize) {
     uint i = findNextThreadSlot();
     if (i >= MAX_THREADS_NUMBER)
         return nullptr;
 
-    const char *tName = createThreadName(i);
-    threads[i] = new rtos::Thread(osPriorityNormal, stackSize, nullptr, tName);
-    threads[i]->start(mbed::callback(task, taskData));
-    return threads[i];
+    threads[i] = new ThreadWrapper(i, stackSize);
+    threads[i]->getThread()->start(mbed::callback(task, taskData));
+    return threads[i]->getThread();
 }
 
 /**
@@ -101,11 +119,9 @@ rtos::Thread* SchedulerClassExt::start(SchedulerParametricTask task, void *taskD
 osStatus SchedulerClassExt::waitToEnd(rtos::Thread *pt) {
     osStatus tStat = osErrorParameter;
     for (auto & thread : threads) {
-        if (thread == pt) {
+        if (thread->getThread() == pt) {
             //waits for thread to terminate
-            tStat = thread->join();
-            //deallocate the thread (created with new) and its name
-            delete [] thread->get_name();
+            tStat = thread->getThread()->join();
             delete thread;
             //free-up the thread array spot for it
             thread = nullptr;
@@ -129,20 +145,6 @@ uint SchedulerClassExt::findNextThreadSlot() const {
 }
 
 /**
- * Utility to create a simple thread name - using pattern Thread <n>, where n is the index in the local thread array
- * Note this method creates the string on the heap, the thread name must be available for the life of the thread. When thread is disposed of,
- * the memory allocated for name needs also released.
- * @param index the index to create name for (0 based)
- * @return pointer to the thread name string on the heap
- * @see SchedulerClassExt::waitToEnd
- */
-const char *SchedulerClassExt::createThreadName(uint index) {
-    char* tName = new char[MAX_THREAD_NAME_SIZE] {};
-    sprintf(tName, "Thread %d", index);
-    return tName;
-}
-
-/**
  * How many slots do we have available in the local threads array
  * @return number of available threads, if any
  */
@@ -154,5 +156,47 @@ uint SchedulerClassExt::availableThreads() const {
     return i;
 }
 
-SchedulerClassExt Scheduler;
+//ThreadWrapper
+/**
+ * Creates a thread using the stack size and name determined as below.<br/>
+ * Creates a simple thread name - using pattern Thd <n>, where n is the index in the local thread array
+ * Note this method creates the string on the heap, the thread name must be available for the life of the thread. When thread is disposed of,
+ * the memory allocated for name needs also released.
+ * @param index index to use in the thread name
+ * @param stackSize stack size to allocate to new thread, in bytes
+ */
+ThreadWrapper::ThreadWrapper(const uint index, const uint32_t stackSize) {
+    size_t sz = sprintf(nullptr, "Thd %d", index);
+    name = new char[sz+1](); //zero initialized array
+    sprintf(name, "Thd %d", index);
+    thread = new rtos::Thread(osPriorityNormal, stackSize, nullptr, name);
+}
+
+/**
+ * Creates a thread using the stack size and name determined as below. <br/>
+ * Uses the name provided for the thread name
+ * @param thName thread name
+ * @param stackSize stack size to allocate to new thread, in bytes
+ */
+ThreadWrapper::ThreadWrapper(const char *thName, uint32_t stackSize) {
+    if (thName != nullptr) {
+        size_t sz = strlen(thName);
+        name = new char[sz + 1]();    //zero initialized array
+        strcpy(name, thName);
+        thread = new rtos::Thread(osPriorityNormal, stackSize, nullptr, name);
+    } else {
+        name = nullptr;
+        thread = new rtos::Thread(osPriorityNormal, stackSize, nullptr, unknown);
+    }
+}
+
+/**
+ * Frees up the resources allocated on the heap - name and thread. Ensures the thread has been terminated
+ */
+ThreadWrapper::~ThreadWrapper() {
+    thread->terminate();
+    delete thread;
+    delete name;
+}
+
 

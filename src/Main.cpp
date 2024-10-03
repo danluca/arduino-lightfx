@@ -11,8 +11,8 @@
 #include <SchedulerExt.h>
 #include "sysinfo.h"
 
-ThreadTasks fxTasks {fx_setup, fx_run};
-ThreadTasks micTasks {mic_setup, mic_run};
+ThreadTasks fxTasks {fx_setup, fx_run, 3072, "Fx"};
+ThreadTasks micTasks {mic_setup, mic_run, 1024, "Mic"};
 
 void adc_setup() {
     //disable ADC
@@ -27,7 +27,7 @@ void adc_setup() {
  * Setup LED strip and global data structures - executed once
  */
 void setup() {
-    delay(1000);    //safety delay
+    delay(2000);    //safety delay
     log_setup();
     adc_setup();
     setupStateLED();
@@ -41,8 +41,8 @@ void setup() {
     imu_setup();
     secElement_setup();
 
-    Scheduler.startLoop(&fxTasks, 3072);
-    Scheduler.startLoop(&micTasks, 1024);
+    Scheduler.startTask(&fxTasks);
+    Scheduler.startTask(&micTasks);
 
     stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
 	bool bSetupOk = wifi_setup();

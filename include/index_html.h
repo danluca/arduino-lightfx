@@ -114,7 +114,6 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Total: <span id="fxCount"></span></dd>
                 <dd>Current: <span id="fxCurEffect"></span></dd>
                 <dd>Past Effects: <span id="pastEffects"></span></dd>
-                <dd>Color Theme: <span id="fxCurHoliday"></span></dd>
                 <dd>Strip Brightness: <span id="fxBrightness"></span></dd>
                 <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
                 <dd>Audio Effect Changes: <span id="totalAudioBumps"></span></dd>
