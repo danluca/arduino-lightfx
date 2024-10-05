@@ -41,7 +41,7 @@ void MeasurementRange::setMeasurement(const Measurement &msmt) volatile {
         Log.warningln(F("MeasurementRange::setMeasurement - incompatible units, cannot set %F unit %d at %y into range of unit %d"), msmt.value, msmt.unit, msmt.time, current.unit);
         return;
     }
-    if (msmt < min)
+    if (msmt < min || !min.time)
         min.copy(msmt);
     if (msmt > max)
         max.copy(msmt);
