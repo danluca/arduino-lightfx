@@ -29,12 +29,15 @@ const uint8_t maxChanges = 24;
 volatile bool fxBump = false;
 volatile uint16_t speed = 100;
 volatile uint16_t curPos = 0;
+volatile MeasurementRange imuTempRange(Unit::Deg_C);
+volatile MeasurementRange cpuTempRange(Unit::Deg_C);
+volatile MeasurementRange lineVoltage(Unit::Volts);
 
 EffectRegistry fxRegistry;
-CRGB leds[NUM_PIXELS];
+CRGB leds[NUM_PIXELS];                                    //the main LEDs array of CRGB type
+CRGBSet ledSet(leds, NUM_PIXELS);                     //the entire leds CRGB array as a CRGBSet
 CRGBSet tpl(leds, FRAME_SIZE);                        //array length, indexes go from 0 to length-1
 CRGBSet others(leds, tpl.size(), NUM_PIXELS-1); //start and end indexes are inclusive
-CRGBSet ledSet(leds, NUM_PIXELS);                     //the entire leds CRGB array as a CRGBSet
 CRGBArray<NUM_PIXELS> frame;                              //side LED buffer for preparing/saving state/etc. with main LEDs array
 CRGBPalette16 palette;
 CRGBPalette16 targetPalette;
@@ -58,10 +61,6 @@ int32_t dist = 1;
 bool stripBrightnessLocked = false;
 bool dirFwd = true;
 bool randhue = true;
-float minVcc = 12.0f;
-float maxVcc = 0.0f;
-float minTemp = 100.0f;
-float maxTemp = 0.0f;
 EffectTransition transEffect;
 
 //~ Support functions -----------------
@@ -1089,28 +1088,19 @@ void fx_run() {
             fxBump = false;
             totalAudioBumps++;
         }
-        float msmt = controllerVoltage();
-        if (msmt < minVcc)
-            minVcc = msmt;
-        if (msmt > maxVcc)
-            maxVcc = msmt;
+        lineVoltage.setMeasurement(controllerVoltage());
+        cpuTempRange.setMeasurement(chipTemperature());
+        Measurement msmt = boardTemperature();
+        if (fabs(msmt.value - IMU_TEMPERATURE_NOT_AVAILABLE) > TEMP_NA_COMPARE_EPSILON)
+            imuTempRange.setMeasurement(msmt);
+
 #ifndef DISABLE_LOGGING
-        Log.infoln(F("Board Vcc voltage %D V"), msmt);
+        Log.infoln(F("Board Vcc voltage %D V"), lineVoltage.current.value);
         // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
         // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
-        msmt = chipTemperature();
-        Log.infoln(F("Chip internal temperature %D 'C (%D 'F)"), msmt, toFahrenheit(msmt));
-#endif
-        msmt = boardTemperature();
-        if (fabs(msmt - IMU_TEMPERATURE_NOT_AVAILABLE) > TEMP_NA_COMPARE_EPSILON) {
-            if (msmt < minTemp)
-                minTemp = msmt;
-            if (msmt > maxTemp)
-                maxTemp = msmt;
-        }
-#ifndef DISABLE_LOGGING
-        Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), msmt, toFahrenheit(msmt), minTemp, maxTemp);
-        Log.infoln(F("Current time: %y"), now());
+        Log.infoln(F("Chip internal temperature %D 'C (%D 'F)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value));
+        Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), imuTempRange.current.value, toFahrenheit(imuTempRange.current.value), imuTempRange.min.value, imuTempRange.max.value);
+        //Log.infoln(F("Current time: %y"), now());
         //log RAM metrics
         logAllThreadInfo();
         logHeapAndStackInfo();

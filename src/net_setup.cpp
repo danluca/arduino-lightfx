@@ -96,7 +96,8 @@ bool imu_setup() {
     }
     Log.infoln(F("IMU sensor OK"));
     // print the board temperature
-    boardTemperature();
+    Measurement temp = boardTemperature();
+    Log.infoln(F("Board temperature %D 'C (%D 'F) at %y"), temp.value, toFahrenheit(temp.value), temp.time);
     return true;
 }
 

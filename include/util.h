@@ -29,13 +29,49 @@
 extern const char stateFileName[];
 extern const char sysFileName[];
 
-float boardTemperature(bool bFahrenheit = false);
-float chipTemperature(bool bFahrenheit = false);
-inline static float toFahrenheit(float celsius) {
+enum Unit:uint8_t {Volts, Deg_F, Deg_C};
+
+struct Measurement {
+    float value;
+    time_t time;
+    const Unit unit;
+
+    void copy(const Measurement& msmt) volatile;
+
+    inline bool operator<(volatile Measurement &other) const {
+        if (unit == other.unit)
+            return value < other.value;
+        return false;
+    };
+    inline bool operator>(volatile Measurement &other) const {
+        if (unit == other.unit)
+            return value > other.value;
+        return false;
+    }
+};
+
+struct MeasurementRange {
+    Measurement min;
+    Measurement max;
+    Measurement current;
+    void setMeasurement(const Measurement& msmt) volatile;
+    explicit MeasurementRange(Unit unit);
+};
+
+extern volatile MeasurementRange imuTempRange;
+extern volatile MeasurementRange cpuTempRange;
+extern volatile MeasurementRange lineVoltage;
+
+inline static float toFahrenheit(const float celsius) {
     return celsius * 9.0f / 5 + 32;
 }
+inline static Measurement toFahrenheit(const Measurement &msmt) {
+    return Measurement {toFahrenheit(msmt.value), msmt.time, Deg_F};
+}
 
-float controllerVoltage();
+Measurement boardTemperature();
+Measurement chipTemperature();
+Measurement controllerVoltage();
 ulong adcRandom();
 void setupStateLED();
 void updateStateLED(uint32_t colorCode);

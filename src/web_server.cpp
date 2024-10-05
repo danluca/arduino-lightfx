@@ -378,13 +378,13 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
 
     snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
     doc["mbedVersion"] = timeBuf;
-    doc["boardTemp"] = boardTemperature();
-    doc["chipTemp"] = chipTemperature();
-    doc["vcc"] = controllerVoltage();
-    doc["minVcc"] = minVcc;
-    doc["maxVcc"] = maxVcc;
-    doc["boardMinTemp"] = minTemp;
-    doc["boardMaxTemp"] = maxTemp;
+    doc["boardTemp"] = imuTempRange.current.value;
+    doc["chipTemp"] = cpuTempRange.current.value;
+    doc["vcc"] = lineVoltage.current.value;
+    doc["minVcc"] = lineVoltage.min.value;
+    doc["maxVcc"] = lineVoltage.max.value;
+    doc["boardMinTemp"] = imuTempRange.min.value;
+    doc["boardMaxTemp"] = imuTempRange.max.value;
     doc["overallStatus"] = sysInfo->getSysStatus();
     //ISO8601 format
     //snprintf(timeBuf, 15, "P%2dDT%2dH%2dM", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
