@@ -5,6 +5,7 @@
 #include "global.h"
 #include "timeutil.h"
 #include "PaletteFactory.h"
+#include "sysinfo.h"
 
 const char fmtDate[] PROGMEM = "%4d-%02d-%02d";
 const char fmtTime[] PROGMEM = "%02d:%02d:%02d";

@@ -4,24 +4,16 @@
 // Collection of light strip effects with ability to be configured through Wi-Fi
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+#include <SchedulerExt.h>
+#include "net_setup.h"
 #include "efx_setup.h"
 #include "log.h"
-#include "net_setup.h"
-#include "FxSchedule.h"
-#include <SchedulerExt.h>
 #include "sysinfo.h"
+#include "diag.h"
 
 ThreadTasks fxTasks {fx_setup, fx_run, 3072, "Fx"};
 ThreadTasks micTasks {mic_setup, mic_run, 1024, "Mic"};
-
-void adc_setup() {
-    //disable ADC
-    //hw_clear_bits(&adc_hw->cs, ADC_CS_EN_BITS);
-    //enable ADC, including temp sensor
-    adc_init();
-    adc_set_temp_sensor_enabled(true);
-    analogReadResolution(ADC_RESOLUTION);   //get us the higher resolution of the ADC
-}
+ThreadTasks diagTasks {diag_setup, diag_run, 1024, "Diag"};
 
 /**
  * Setup LED strip and global data structures - executed once
@@ -29,7 +21,6 @@ void adc_setup() {
 void setup() {
     delay(2000);    //safety delay
     log_setup();
-    adc_setup();
     setupStateLED();
 
     stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
@@ -38,11 +29,11 @@ void setup() {
     fsInit();
 
     readSysInfo();
-    imu_setup();
     secElement_setup();
 
     Scheduler.startTask(&fxTasks);
     Scheduler.startTask(&micTasks);
+    Scheduler.startTask(&diagTasks);
 
     stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
 	bool bSetupOk = wifi_setup();

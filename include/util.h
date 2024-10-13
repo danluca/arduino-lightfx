@@ -5,19 +5,9 @@
 #ifndef ARDUINO_LIGHTFX_UTIL_H
 #define ARDUINO_LIGHTFX_UTIL_H
 
-#include <Arduino.h>
-#include <Arduino_LSM6DSOX.h>
 #include <ArduinoECCX08.h>
-#include "circular_buffer.h"
-#include "fixed_queue.h"
-#include "timeutil.h"
 #include "config.h"
-#include "secrets.h"
 #include "log.h"
-#include "sysinfo.h"
-
-#define IMU_TEMPERATURE_NOT_AVAILABLE   0.001f
-#define TEMP_NA_COMPARE_EPSILON      0.0001f
 
 #define SYS_STATUS_WIFI    0x01
 #define SYS_STATUS_NTP     0x02
@@ -25,53 +15,11 @@
 #define SYS_STATUS_MIC     0x08
 #define SYS_STATUS_FILESYSTEM     0x10
 #define SYS_STATUS_ECC     0x20
+#define SYS_STATUS_DIAG    0x40
 
 extern const char stateFileName[];
 extern const char sysFileName[];
 
-enum Unit:uint8_t {Volts, Deg_F, Deg_C};
-
-struct Measurement {
-    float value;
-    time_t time;
-    const Unit unit;
-
-    void copy(const Measurement& msmt) volatile;
-
-    inline bool operator<(volatile Measurement &other) const {
-        if (unit == other.unit)
-            return value < other.value;
-        return false;
-    };
-    inline bool operator>(volatile Measurement &other) const {
-        if (unit == other.unit)
-            return value > other.value;
-        return false;
-    }
-};
-
-struct MeasurementRange {
-    Measurement min;
-    Measurement max;
-    Measurement current;
-    void setMeasurement(const Measurement& msmt) volatile;
-    explicit MeasurementRange(Unit unit);
-};
-
-extern volatile MeasurementRange imuTempRange;
-extern volatile MeasurementRange cpuTempRange;
-extern volatile MeasurementRange lineVoltage;
-
-inline static float toFahrenheit(const float celsius) {
-    return celsius * 9.0f / 5 + 32;
-}
-inline static Measurement toFahrenheit(const Measurement &msmt) {
-    return Measurement {toFahrenheit(msmt.value), msmt.time, Deg_F};
-}
-
-Measurement boardTemperature();
-Measurement chipTemperature();
-Measurement controllerVoltage();
 ulong adcRandom();
 void setupStateLED();
 void updateStateLED(uint32_t colorCode);
@@ -95,7 +43,5 @@ bool secElement_setup();
 void watchdogSetup();
 void watchdogPing();
 
-extern FixedQueue<TimeSync, 8> timeSyncs;
-extern CircularBuffer<short> *audioData;
 
 #endif //ARDUINO_LIGHTFX_UTIL_H

@@ -5,7 +5,6 @@
 #define LIGHTFX_NET_SETUP_H
 
 #include <WiFiNINA.h>
-#include <Arduino_LSM6DSOX.h>
 #include "PaletteFactory.h"
 #include "util.h"
 #include "secrets.h"
@@ -17,7 +16,6 @@ extern const CRGB CLR_SETUP_ERROR;
 
 bool wifi_setup();
 
-bool imu_setup();
 void server_setup();
 void webserver();
 void wifi_loop();

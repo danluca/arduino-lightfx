@@ -4,109 +4,20 @@
 
 #include "util.h"
 #include "utility/ECCX08DefaultTLSConfig.h"
+#include "timeutil.h"
 // increase the amount of space for file system to 128kB (default 64kB)
 #define RP2040_FS_SIZE_KB   (128)
 #include <LittleFSWrapper.h>
 #include "hardware/watchdog.h"
+#include "sysinfo.h"
 
 #define FILE_BUF_SIZE   256
-const uint maxAdc = 1 << ADC_RESOLUTION;
 const char stateFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/state.json";
 const char sysFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/sys.json";
 
 FixedQueue<TimeSync, 8> timeSyncs;
 
 LittleFSWrapper *fsPtr;
-
-/**
- * Copying data from another measurement, for a volatile instance
- * @param msmt measurement to copy fields from
- */
-void Measurement::copy(const Measurement &msmt) volatile {
-    if (unit == msmt.unit) {
-        value = msmt.value;
-        time = msmt.time;
-    } else
-        Log.warningln(F("Measurement::copy - incompatible units, cannot copy %F unit %d at %y into current %F unit %d measurement"), msmt.value, msmt.unit, msmt.time, value, unit);
-}
-
-/**
- * Sets the current measurement while capturing min and max
- * Note: The range min/max measurements as well as incoming measurement are expected to have the same unit,
- * as otherwise the min/max comparisons are not meaningful
- * @param msmt measurement to set
- */
-void MeasurementRange::setMeasurement(const Measurement &msmt) volatile {
-    if (current.unit != msmt.unit) {
-        Log.warningln(F("MeasurementRange::setMeasurement - incompatible units, cannot set %F unit %d at %y into range of unit %d"), msmt.value, msmt.unit, msmt.time, current.unit);
-        return;
-    }
-    if (msmt < min || !min.time)
-        min.copy(msmt);
-    if (msmt > max)
-        max.copy(msmt);
-    current.copy(msmt);
-}
-
-/**
- * Initializes the unit of all measurements in the range
- * @param unit the unit
- */
-MeasurementRange::MeasurementRange(const Unit unit) : min {0.0f, 0, unit}, current {0.0f, 0, unit}, max {0.0f, 0, unit} {
-}
-
-/**
- * Reads the temperature of the IMU chip, if available, in degrees Celsius
- * @return measurement object with temperature of the IMU chip or IMU_TEMPERATURE_NOT_AVAILABLE along with current time and Celsius unit
- */
-Measurement boardTemperature() {
-    if (IMU.temperatureAvailable()) {
-        float tempC = 0.0f;
-        IMU.readTemperatureFloat(tempC);
-        return Measurement {tempC, now(), Deg_C};
-    } else
-        Log.warningln(F("IMU temperature not available - using %D 'C for board temperature value"), IMU_TEMPERATURE_NOT_AVAILABLE);
-    return Measurement {IMU_TEMPERATURE_NOT_AVAILABLE, now(), Deg_C};
-}
-
-/**
- * Reads the input line voltage of the controller box - expected to be 12V. Measured through a resistive divisor on a ADC pin
- * @return measurement object with line voltage, current time and Volts unit
- */
-Measurement controllerVoltage() {
-    const uint avgSize = 8;  //we'll average 8 readings back to back
-    uint valSum = 0;
-    for (uint x = 0; x < avgSize; x++)
-        valSum += analogRead(A0);
-    Log.traceln(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
-    valSum = valSum*MV3_3/avgSize;
-    valSum = valSum/VCC_DIV_R5*(VCC_DIV_R5+VCC_DIV_R4)/maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
-    return Measurement {(float)valSum/1000.0f, now(), Volts};
-}
-
-/**
- * Attempt to read the CPU's temperature in degrees Celsius using ADC channel 4 (internal temperature sensor)
- * Note: This sensor requires individual board calibration and is very imprecise
- * @return measurement object with temperature along with current time and Celsius unit
- */
-Measurement chipTemperature() {
-    uint curAdc = adc_get_selected_input();
-    const uint avgSize = 8;   //we'll average 8 readings back to back
-
-    adc_select_input(4);    //internal temperature sensor is on ADC channel 4
-    uint valSum = 0;
-    for (uint x = 0; x < avgSize; x++)
-        valSum += adc_read();
-    adc_select_input(curAdc);   //restore the ADC input selection
-#ifndef DISABLE_LOGGING
-    Log.traceln(F("Internal temperature value: %d; average reading: %d"), avgSize, valSum/avgSize);
-#endif
-    auto tV = (float)(valSum*MV3_3/avgSize/maxAdc);   //voltage in mV
-    //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
-    //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
-    float temp = 27.0f - (tV - CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27)/CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE;
-    return Measurement {temp, now(), Deg_C};
-}
 
 /**
  * Adapted from article https://rheingoldheavy.com/better-arduino-random-values/

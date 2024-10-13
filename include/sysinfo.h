@@ -5,9 +5,9 @@
 #define ARDUINO_LIGHTFX_SYSINFO_H
 
 #include "log.h"
+#include <WiFiNINA.h>
 #include "fixed_queue.h"
 #include "config.h"
-#include "WiFiNINA.h"
 #ifndef DISABLE_LOGGING
 #include <rtx_lib.h>
 #endif
@@ -25,6 +25,11 @@ void logSystemInfo();
 void logCPUStats();
 void readSysInfo();
 void saveSysInfo();
+
+// self-calibration functions
+void readCalibrationInfo();
+void saveCalibrationInfo();
+// end self-calibration functions
 
 /**
  * Overall System information, covers both static (board/chip IDs) and dynamic (free memory, WiFi, status)

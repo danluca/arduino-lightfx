@@ -4,6 +4,7 @@
 #include "net_setup.h"
 #include "config.h"
 #include "sysinfo.h"
+#include "timeutil.h"
 #include "log.h"
 
 using namespace colTheme;
@@ -84,21 +85,6 @@ bool wifi_setup() {
     WiFi.lowPowerMode();
 
     return wifi_connect();
-}
-
-bool imu_setup() {
-    // initialize the IMU (Inertial Measurement Unit)
-    if (!IMU.begin()) {
-        Log.errorln(F("Failed to initialize IMU!"));
-        updateStateLED((uint32_t )CLR_SETUP_ERROR);
-        //rtos::ThisThread::terminate();
-        while (true) yield();
-    }
-    Log.infoln(F("IMU sensor OK"));
-    // print the board temperature
-    Measurement temp = boardTemperature();
-    Log.infoln(F("Board temperature %D 'C (%D 'F) at %y"), temp.value, toFahrenheit(temp.value), temp.time);
-    return true;
 }
 
 /**

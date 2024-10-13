@@ -3,6 +3,7 @@
 //
 
 #include "PaletteFactory.h"
+#include "sysinfo.h"
 
 using namespace colTheme;
 

@@ -5,7 +5,7 @@
 #include "FastLED.h"
 #include "global.h"
 #include "timeutil.h"
-#include "log.h"
+#include "sysinfo.h"
 #include "util.h"
 
 const uint16_t dailyBedTime = 30*SECS_PER_MIN;          //12:30am bedtime

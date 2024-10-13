@@ -2,9 +2,10 @@
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #include "web_server.h"
-#include "version.h"
 #include "log.h"
+#include "timeutil.h"
 #include "sysinfo.h"
+#include "diag.h"
 
 static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
 static const char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
@@ -375,7 +376,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
         jal["type"] = alarmTypeToString(al->type);
 //        jal["taskPtr"] = (long)al->onEventHandler;
     }
-
+    //System
     snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
     doc["mbedVersion"] = timeBuf;
     doc["boardTemp"] = imuTempRange.current.value;
@@ -391,6 +392,12 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     //human readable format
     snprintf(timeBuf, 15, "%2dD %2dH %2dm", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     doc["upTime"] = timeBuf;
+    JsonObject cpuTempCal = doc["cpuTempCal"].to<JsonObject>();
+    cpuTempCal["valid"] = calibCpuTemp.valid;
+    cpuTempCal["refTemp"] = calibCpuTemp.refTemp;
+    cpuTempCal["vtRef"] = calibCpuTemp.vtref;
+    cpuTempCal["slope"] = calibCpuTemp.slope;
+    cpuTempCal["refDelta"] = calibCpuTemp.refDelta;
 
     //send it out
     sz += serializeJson(doc, *client);

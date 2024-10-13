@@ -36,11 +36,11 @@ static const char *const csStackSize PROGMEM = "stackSize";
 static const char *const csFreeStack PROGMEM = "freeStack";
 static const char *const csStatus PROGMEM = "status";
 
+//#define STORAGE_CMD_TOTAL_BYTES 32
+
 unsigned long prevStatTime = 0;
 us_timestamp_t prevIdleTime = 0;
 SysInfo *sysInfo;
-
-//#define STORAGE_CMD_TOTAL_BYTES 32
 
 /**
  * This method and following few aren't really in the basic domain of providing logging capabilities to the system.

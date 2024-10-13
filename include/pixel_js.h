@@ -70,8 +70,8 @@ function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
             $('#status h1').removeClass('red');
-            $('#boardTemp').html(`${data.boardTemp.toFixed(2)} °C (${(data.boardTemp*9/5+32).toFixed(2)} °F)`);
-            $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(2)} - ${data.boardMaxTemp.toFixed(2)}] °C (chip ${data.chipTemp.toFixed(2)} °C)`);
+            $('#boardTemp').html(`${data.boardTemp.toFixed(1)} °C (${(data.boardTemp*9/5+32).toFixed(1)} °F)`);
+            $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(1)} - ${data.boardMaxTemp.toFixed(1)}] °C (chip ${data.chipTemp.toFixed(1)} °C)`);
             $('#boardVcc').html(`${data.vcc.toFixed(2)} V`);
             $('#rangeVcc').html(`[${data.minVcc.toFixed(2)} - ${data.maxVcc.toFixed(2)}] V`);
             $('#mbedVersion').html(`${data.mbedVersion}`);
