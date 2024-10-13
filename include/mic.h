@@ -6,6 +6,9 @@
 #define ARDUINO_LIGHTFX_MIC_H
 
 #include "PDM2040.h"
+#include "circular_buffer.h"
+
+extern CircularBuffer<short> *audioData;
 
 void mic_setup();
 

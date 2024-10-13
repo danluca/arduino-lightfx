@@ -5,8 +5,11 @@
 #include <flash.h>
 #include <ArduinoJson.h>
 #include "util.h"
-#include "diag.h"
 #include "version.h"
+#ifndef DISABLE_LOGGING
+#include "diag.h"
+#include <rtx_lib.h>
+#endif
 
 #define BUF_ID_SIZE  20
 

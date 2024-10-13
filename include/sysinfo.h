@@ -4,13 +4,10 @@
 #ifndef ARDUINO_LIGHTFX_SYSINFO_H
 #define ARDUINO_LIGHTFX_SYSINFO_H
 
-#include "log.h"
 #include <WiFiNINA.h>
 #include "fixed_queue.h"
+#include "log.h"
 #include "config.h"
-#ifndef DISABLE_LOGGING
-#include <rtx_lib.h>
-#endif
 
 #define MAX_WATCHDOG_REBOOT_TIMESTAMPS  10      // max number of watchdog reboots to keep in the list
 typedef FixedQueue<time_t, MAX_WATCHDOG_REBOOT_TIMESTAMPS> WatchdogQueue;
@@ -25,11 +22,6 @@ void logSystemInfo();
 void logCPUStats();
 void readSysInfo();
 void saveSysInfo();
-
-// self-calibration functions
-void readCalibrationInfo();
-void saveCalibrationInfo();
-// end self-calibration functions
 
 /**
  * Overall System information, covers both static (board/chip IDs) and dynamic (free memory, WiFi, status)

@@ -82,7 +82,8 @@ extern CalibrationMeasurement calibTempMeasurements;
 extern CalibrationParams calibCpuTemp;
 
 bool calibrate();
-
+void readCalibrationInfo();
+void saveCalibrationInfo();
 // end self-calibration support
 
 extern volatile MeasurementRange imuTempRange;

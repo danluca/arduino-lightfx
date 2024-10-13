@@ -188,7 +188,7 @@ void printSuccessfulWifiStatus() {
 #endif
 
     // print where to go in a browser:
-    Log.infoln(F("To see this page in action, open a browser to http://%s"), sysInfo->getIpAddress().c_str());
+    Log.infoln(F("Home page available at http://%s"), sysInfo->getIpAddress().c_str());
 }
 
 void checkFirmwareVersion() {

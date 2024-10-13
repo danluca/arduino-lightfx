@@ -8,7 +8,6 @@
 #include <WiFiNINA.h>
 #include <NTPClient.h>
 #include <TimeLib.h>
-#include "circular_buffer.h"
 #include "fixed_queue.h"
 
 #define CST_OFFSET_SECONDS (-21600)   //Central Standard Time - America/Chicago
@@ -43,7 +42,6 @@ int getTotalDrift();
 int getDrift(const TimeSync &from, const TimeSync &to);
 
 extern FixedQueue<TimeSync, 8> timeSyncs;
-extern CircularBuffer<short> *audioData;
 
 
 #endif //ARDUINO_LIGHTFX_TIMEUTIL_H

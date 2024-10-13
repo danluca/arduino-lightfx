@@ -1,13 +1,13 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
 
-#include "diag.h"
 #include <LittleFSWrapper.h>
 #include <ArduinoJson.h>
 #include "rtos.h"
+#include "FastLED.h"
+#include "diag.h"
 #include "util.h"
 #include "sysinfo.h"
-#include "FastLED.h"
 
 const uint maxAdc = 1 << ADC_RESOLUTION;
 const char calibFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/calibration.json";
@@ -134,6 +134,7 @@ bool calibrate() {
             calibCpuTemp.refTemp = calibTempMeasurements.ref.value;
             calibCpuTemp.vtref = (float)calibTempMeasurements.ref.adcRaw * (float)calibCpuTemp.ref33 / maxAdc;
             calibCpuTemp.slope = adcRange * (float)calibCpuTemp.ref33 / maxAdc / tempRange;
+            calibCpuTemp.refDelta = range;
             changes = calibCpuTemp.valid = true;
         }
     }
@@ -145,6 +146,7 @@ bool calibrate() {
  * @return measurement object with temperature of the IMU chip or IMU_TEMPERATURE_NOT_AVAILABLE along with current time and Celsius unit
  */
 Measurement boardTemperature() {
+    rtos::ScopedMutexLock busLock(i2cMutex);
     if (IMU.temperatureAvailable()) {
         float tempC = 0.0f;
         IMU.readTemperatureFloat(tempC);
@@ -188,11 +190,14 @@ MeasurementPair chipTemperature() {
 #endif
     uint adcRaw = valSum/avgSize;
     auto tV = (float)(valSum*MV3_3/avgSize/maxAdc);   //voltage in mV
-    //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
-    //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
-    float temp = 27.0f - (tV - CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27)/CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE;
     MeasurementPair result;
-    result.value = temp;
+    if (calibCpuTemp.valid) {
+        //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
+        //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
+        //float temp = 27.0f - (tV - CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27) / CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE;
+        result.value = calibCpuTemp.refTemp - (tV - calibCpuTemp.vtref) / calibCpuTemp.slope;
+    } else
+        result.value = IMU_TEMPERATURE_NOT_AVAILABLE;
     result.time = now();
     result.adcRaw = adcRaw;
     return result;

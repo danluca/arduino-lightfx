@@ -16,8 +16,8 @@ const char stateFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/state.json";
 const char sysFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/sys.json";
 
 FixedQueue<TimeSync, 8> timeSyncs;
-
 LittleFSWrapper *fsPtr;
+rtos::Mutex i2cMutex;
 
 /**
  * Adapted from article https://rheingoldheavy.com/better-arduino-random-values/
@@ -261,6 +261,7 @@ uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
  * @return a high quality random number in the range specified
  */
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
+    rtos::ScopedMutexLock busLock(i2cMutex);
     long low = (long)minLim;
     long high = maxLim > 0 ? (long)maxLim : INT32_MAX;
     return sysInfo->isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);

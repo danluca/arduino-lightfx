@@ -398,6 +398,15 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     cpuTempCal["vtRef"] = calibCpuTemp.vtref;
     cpuTempCal["slope"] = calibCpuTemp.slope;
     cpuTempCal["refDelta"] = calibCpuTemp.refDelta;
+    cpuTempCal["minTempVal"] = calibTempMeasurements.min.value;
+    cpuTempCal["minTempADC"] = calibTempMeasurements.min.adcRaw;
+    cpuTempCal["minTempTime"] = calibTempMeasurements.min.time;
+    cpuTempCal["maxTempVal"] = calibTempMeasurements.max.value;
+    cpuTempCal["maxTempADC"] = calibTempMeasurements.max.adcRaw;
+    cpuTempCal["maxTempTime"] = calibTempMeasurements.max.time;
+    cpuTempCal["refTempVal"] = calibTempMeasurements.ref.value;
+    cpuTempCal["refTempADC"] = calibTempMeasurements.ref.adcRaw;
+    cpuTempCal["refTempTime"] = calibTempMeasurements.ref.time;
 
     //send it out
     sz += serializeJson(doc, *client);
