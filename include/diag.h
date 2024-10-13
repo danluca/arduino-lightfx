@@ -75,8 +75,9 @@ struct CalibrationParams {
     float vtref;    //ADC voltage reading at refTemp temperature - in milliVolts
     float slope;    //voltage slope - in mV/C
     float refDelta; //the amount of temperature variation that was used for last calibration; meaningful only if valid is true
-    bool valid;     //whether this params set is valid
-    CalibrationParams(): refTemp(0.0f), vtref(0.0f), slope(0.0f), refDelta(0.0f), valid(false) {};
+    time_t time;    //last calibration time; also used to determine whether this params set is valid
+    CalibrationParams(): refTemp(0.0f), vtref(0.0f), slope(0.0f), refDelta(0.0f), time(0) {};
+    inline bool isValid() const { return time > 0; }
 };
 extern CalibrationMeasurement calibTempMeasurements;
 extern CalibrationParams calibCpuTemp;

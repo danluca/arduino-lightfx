@@ -393,11 +393,12 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     snprintf(timeBuf, 15, "%2dD %2dH %2dm", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     doc["upTime"] = timeBuf;
     JsonObject cpuTempCal = doc["cpuTempCal"].to<JsonObject>();
-    cpuTempCal["valid"] = calibCpuTemp.valid;
+    cpuTempCal["valid"] = calibCpuTemp.isValid();
     cpuTempCal["refTemp"] = calibCpuTemp.refTemp;
     cpuTempCal["vtRef"] = calibCpuTemp.vtref;
     cpuTempCal["slope"] = calibCpuTemp.slope;
     cpuTempCal["refDelta"] = calibCpuTemp.refDelta;
+    cpuTempCal["refTime"] = calibCpuTemp.time;
     cpuTempCal["minTempVal"] = calibTempMeasurements.min.value;
     cpuTempCal["minTempADC"] = calibTempMeasurements.min.adcRaw;
     cpuTempCal["minTempTime"] = calibTempMeasurements.min.time;

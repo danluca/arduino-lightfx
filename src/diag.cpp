@@ -117,12 +117,14 @@ bool calibrate() {
     float range = fabs(tempRange);
     bool changes = false;
 
-    if (calibCpuTemp.valid) {
+    if (calibCpuTemp.isValid()) {
         //recalibration, when the temp range is significantly larger than last calibration
         if(range > (calibCpuTemp.refDelta + 5.0f)) {
             //re-calibrate - update only the slope
             calibCpuTemp.refTemp = calibTempMeasurements.ref.value;
             calibCpuTemp.slope = adcRange * (float)calibCpuTemp.ref33 / maxAdc / tempRange;
+            calibCpuTemp.refDelta = range;
+            calibCpuTemp.time = calibTempMeasurements.ref.time;
             changes = true;
         }
     } else {
@@ -135,7 +137,8 @@ bool calibrate() {
             calibCpuTemp.vtref = (float)calibTempMeasurements.ref.adcRaw * (float)calibCpuTemp.ref33 / maxAdc;
             calibCpuTemp.slope = adcRange * (float)calibCpuTemp.ref33 / maxAdc / tempRange;
             calibCpuTemp.refDelta = range;
-            changes = calibCpuTemp.valid = true;
+            calibCpuTemp.time = calibTempMeasurements.ref.time;
+            changes = true;
         }
     }
     return changes;
@@ -191,7 +194,7 @@ MeasurementPair chipTemperature() {
     uint adcRaw = valSum/avgSize;
     auto tV = (float)(valSum*MV3_3/avgSize/maxAdc);   //voltage in mV
     MeasurementPair result;
-    if (calibCpuTemp.valid) {
+    if (calibCpuTemp.isValid()) {
         //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
         //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
         //float temp = 27.0f - (tV - CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27) / CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE;
@@ -237,7 +240,7 @@ static void serializeCalibrationParams(CalibrationParams& obj, JsonObject& json)
     json["vtref"] = obj.vtref;
     json["slope"] = obj.slope;
     json["refDelta"] = obj.refDelta;
-    json["valid"] = obj.valid;
+    json["time"] = obj.time;
 }
 static void deserializeCalibrationParams(CalibrationParams& obj, JsonObject& json) {
     //obj.ref33 = json["ref33"];
@@ -245,7 +248,7 @@ static void deserializeCalibrationParams(CalibrationParams& obj, JsonObject& jso
     obj.vtref = json["vtref"];
     obj.slope = json["slope"];
     obj.refDelta = json["refDelta"];
-    obj.valid = json["valid"];
+    obj.time = json["time"];
 }
 
 void readCalibrationInfo() {
@@ -265,9 +268,9 @@ void readCalibrationInfo() {
         JsonObject cbparams = doc["calibParams"].as<JsonObject>();
         deserializeCalibrationParams(calibCpuTemp, cbparams);
 
-        Log.infoln(F("CPU temp calibration Information restored from %s [%d bytes]: min %F 'C, max %F 'C; params: tempRange=%F, refTemp=%F, VTref=%F, slope=%F, valid=%T"),
+        Log.infoln(F("CPU temp calibration Information restored from %s [%d bytes]: min %F 'C, max %F 'C; params: tempRange=%F, refTemp=%F, VTref=%F, slope=%F, time=%y"),
                    calibFileName, calibSize, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
-                   calibCpuTemp.slope, calibCpuTemp.valid);
+                   calibCpuTemp.slope, calibCpuTemp.time);
     }
     delete json;
 }
@@ -295,7 +298,7 @@ void diag_run() {
         Measurement msmt = boardTemperature();
         if (fabs(msmt.value - IMU_TEMPERATURE_NOT_AVAILABLE) > TEMP_NA_COMPARE_EPSILON) {
             imuTempRange.setMeasurement(msmt);
-            if (calibCpuTemp.valid)
+            if (calibCpuTemp.isValid())
                 cpuTempRange.setMeasurement(chipTemp);
             chipTemp.value = msmt.value;
             chipTemp.time = msmt.time;
