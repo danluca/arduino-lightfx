@@ -90,5 +90,4 @@ void mic_run() {
         // Clear the read count
         samplesRead = 0;
     }
-    yield();
 }

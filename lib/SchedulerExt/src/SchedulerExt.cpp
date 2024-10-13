@@ -31,6 +31,7 @@ SchedulerClassExt Scheduler;
         args->setup();
     while (true) {
         args->loop();
+        yield();
     }
 }
 
@@ -41,6 +42,7 @@ SchedulerClassExt Scheduler;
 [[noreturn]] static void loopHelper(SchedulerTask loopTask) {
     while (true) {
         loopTask();
+        yield();
     }
 }
 

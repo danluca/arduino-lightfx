@@ -44,11 +44,11 @@ void adc_setup() {
 }
 
 void diag_setup() {
+    readCalibrationInfo();
+
     adc_setup();
 
     imu_setup();
-
-    readCalibrationInfo();
 
     sysInfo->setSysStatus(SYS_STATUS_DIAG);
 }
@@ -315,5 +315,4 @@ void diag_run() {
 #endif
     }
 
-    yield();
 }

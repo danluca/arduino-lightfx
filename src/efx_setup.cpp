@@ -1098,7 +1098,6 @@ void fx_run() {
 
     fxRegistry.loop();
     watchdogPing();
-    yield();
 }
 
 // FxSchedule functions

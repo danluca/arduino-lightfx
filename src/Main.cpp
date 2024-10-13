@@ -12,8 +12,8 @@
 #include "diag.h"
 
 ThreadTasks fxTasks {fx_setup, fx_run, 3072, "Fx"};
-ThreadTasks micTasks {mic_setup, mic_run, 768, "Mic"};
-ThreadTasks diagTasks {diag_setup, diag_run, 1280, "Diag"};
+ThreadTasks micTasks {mic_setup, mic_run, 896, "Mic"};
+ThreadTasks diagTasks {diag_setup, diag_run, 1792, "Diag"};
 
 /**
  * Setup LED strip and global data structures - executed once
@@ -29,16 +29,18 @@ void setup() {
     fsInit();
 
     readSysInfo();
+    sysInfo->resetSysStatus(0xFF);
     secElement_setup();
 
     Scheduler.startTask(&fxTasks);
     Scheduler.startTask(&micTasks);
-    Scheduler.startTask(&diagTasks);
 
     stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
 	bool bSetupOk = wifi_setup();
     bSetupOk = bSetupOk && time_setup();
     stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
+
+    Scheduler.startTask(&diagTasks);
 
     setupAlarmSchedule();
 
