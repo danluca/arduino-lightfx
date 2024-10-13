@@ -5,6 +5,7 @@
 #include <flash.h>
 #include <ArduinoJson.h>
 #include "util.h"
+#include "diag.h"
 #include "version.h"
 
 #define BUF_ID_SIZE  20

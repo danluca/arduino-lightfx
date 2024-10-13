@@ -12,8 +12,8 @@
 #include "diag.h"
 
 ThreadTasks fxTasks {fx_setup, fx_run, 3072, "Fx"};
-ThreadTasks micTasks {mic_setup, mic_run, 1024, "Mic"};
-ThreadTasks diagTasks {diag_setup, diag_run, 1024, "Diag"};
+ThreadTasks micTasks {mic_setup, mic_run, 768, "Mic"};
+ThreadTasks diagTasks {diag_setup, diag_run, 1280, "Diag"};
 
 /**
  * Setup LED strip and global data structures - executed once

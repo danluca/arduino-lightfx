@@ -48,6 +48,8 @@ void diag_setup() {
 
     imu_setup();
 
+    readCalibrationInfo();
+
     sysInfo->setSysStatus(SYS_STATUS_DIAG);
 }
 
@@ -313,4 +315,5 @@ void diag_run() {
 #endif
     }
 
+    yield();
 }
