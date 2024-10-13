@@ -312,8 +312,10 @@ void diag_run() {
         // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
         // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
         Log.infoln(F("CPU internal temperature %D 'C (%D 'F)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value));
-        Log.infoln(F("CPU temperature calibration parameters valid=%T, refTemp=%F, vtRef=%F, slope=%F, refDelta=%F"), calibCpuTemp.valid, calibCpuTemp.refTemp, calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta);
-        Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), imuTempRange.current.value, toFahrenheit(imuTempRange.current.value), imuTempRange.min.value, imuTempRange.max.value);
+        Log.infoln(F("CPU temperature calibration parameters valid=%T, refTemp=%F, vtRef=%F, slope=%F, refDelta=%F, time=%y"), calibCpuTemp.isValid(), calibCpuTemp.refTemp,
+                   calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta, calibCpuTemp.time);
+        Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), imuTempRange.current.value, toFahrenheit(imuTempRange.current.value), imuTempRange.min.value,
+                   imuTempRange.max.value);
         //Log.infoln(F("Current time: %y"), now());
         //log RAM metrics
         logAllThreadInfo();
