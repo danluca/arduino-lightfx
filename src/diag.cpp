@@ -23,7 +23,6 @@ bool imu_setup() {
     if (!IMU.begin()) {
         Log.errorln(F("Failed to initialize IMU!"));
         Log.errorln(F("IMU NOT AVAILABLE - TERMINATING THIS THREAD"));
-        //updateStateLED((uint32_t )CLR_SETUP_ERROR);
         osThreadExit();
         //while (true) yield();
     }
@@ -282,7 +281,7 @@ void saveCalibrationInfo() {
     JsonObject cbparams = doc["calibParams"].to<JsonObject>();
     serializeCalibrationParams(calibCpuTemp, cbparams);
     auto str = new String();    //larger temporary string, put it on the heap
-    str->reserve(256);
+    str->reserve(measureJson(doc));
     size_t sz = serializeJson(doc, *str);
     if (writeTextFile(calibFileName, str))
         Log.infoln(F("Successfully saved CPU temp calibration information file %s [%d bytes]"), calibFileName, sz);

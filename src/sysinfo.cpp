@@ -371,7 +371,7 @@ void saveSysInfo() {
         reboots.add(t);
 
     auto str = new String();    //larger temporary string, put it on the heap
-    str->reserve(512);
+    str->reserve(measureJson(doc));
     serializeJson(doc, *str);
     if (!writeTextFile(sysFileName, str))
         Log.errorln(F("Failed to create/write the system information file %s"), sysFileName);

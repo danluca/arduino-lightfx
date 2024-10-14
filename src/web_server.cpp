@@ -137,6 +137,24 @@ size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
 }
 
 /**
+ * Performance optimized JSON document serialized into WiFi client
+ * Note: ArduinoJson's serializeJson using WiFi client (a Print instance) is very inefficient - writes one byte at a time, which in turn
+ * become one network frame. This implementation buffers the content into a String and then writes the entire String
+ * @param source the JSON document to serialize
+ * @param client WiFi client to write into
+ * @return number of bytes written
+ */
+size_t web::transmitJsonDocument(JsonVariantConst source, WiFiClient *client) {
+    size_t sz = measureJson(source);
+    auto buf = new String();
+    buf->reserve(sz);
+    serializeJson(source, *buf);
+    sz = client->print(*buf);
+    delete buf;
+    return sz;
+}
+
+/**
  * Handles <code>GET /config.json</code> - responds with JSON document containing effects configuration details
  * <p>Must comply with the <code>reqHandler</code> function pointer signature</p>
  * @param client the web client to respond to
@@ -186,7 +204,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     JsonArray fxArray = doc["fx"].to<JsonArray>();
     fxRegistry.describeConfig(fxArray);
     //send it out
-    sz += serializeJson(doc, *client);
+    sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
 #ifndef DISABLE_LOGGING
@@ -410,12 +428,13 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     cpuTempCal["refTempTime"] = calibTempMeasurements.ref.time;
 
     //send it out
-    sz += serializeJson(doc, *client);
+    sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
 #ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handleGetStatus invoked for %s"), uri->c_str());
 #endif
+    delete buf;
     return sz;
 }
 
@@ -486,7 +505,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     sz += client->println(hdConClose);
     sz += client->println();    //done with headers
 
-    sz += serializeJson(resp, *client);
+    sz += transmitJsonDocument(resp, client);
     sz += client->println();
 
 #ifndef DISABLE_LOGGING
@@ -517,7 +536,7 @@ size_t web::handleInternalError(WiFiClient *client, String *uri, const char *mes
     doc["errorCode"] = 500;
     doc["errorMessage"] = message;
     //send it out
-    sz += serializeJson(doc, *client);
+    sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
 #ifndef DISABLE_LOGGING
@@ -548,7 +567,7 @@ size_t web::handleNotFoundError(WiFiClient *client, String *uri, const char *mes
     doc["errorCode"] = 404;
     doc["errorMessage"] = message;
     //send it out
-    sz += serializeJson(doc, *client);
+    sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
 #ifndef DISABLE_LOGGING

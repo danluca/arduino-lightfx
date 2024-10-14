@@ -30,6 +30,7 @@ namespace web {
 
     size_t handleInternalError(WiFiClient *client, String *uri, const char * message);
     size_t handleNotFoundError(WiFiClient *client, String *uri, const char *message);
+    size_t transmitJsonDocument(JsonVariantConst source, WiFiClient *client);
 
     void dispatch();
 }
