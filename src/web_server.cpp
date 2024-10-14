@@ -434,7 +434,6 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
 #ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handleGetStatus invoked for %s"), uri->c_str());
 #endif
-    delete buf;
     return sz;
 }
 
