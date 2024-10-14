@@ -74,13 +74,13 @@ void stateLED(CRGB color) {
     updateStateLED(color.r, color.g, color.b);
 }
 
-void readState() {
-    String json;
-    json.reserve(256);  // approximation - currently at 150 bytes
-    size_t stateSize = readTextFile(stateFileName, &json);
+void readFxState() {
+    auto json = new String();
+    json->reserve(256);  // approximation - currently at 150 bytes
+    size_t stateSize = readTextFile(stateFileName, json);
     if (stateSize > 0) {
         JsonDocument doc;
-        deserializeJson(doc, json);
+        deserializeJson(doc, *json);
 
         bool autoAdvance = doc[csAutoFxRoll].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
@@ -110,9 +110,10 @@ void readState() {
         Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T), sleepEnabled=%T"),
                    stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), paletteFactory.isAuto(), fxRegistry.isSleepEnabled());
     }
+    delete json;
 }
 
-void saveState() {
+void saveFxState() {
     JsonDocument doc;
     doc[csRandomSeed] = random16_get_seed();
     doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
@@ -122,10 +123,12 @@ void saveState() {
     doc[csColorTheme] = holidayToString(paletteFactory.getHoliday());
     doc[csAutoColorAdjust] = paletteFactory.isAuto();
     doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
-    String str;
-    serializeJson(doc, str);
-    if (!writeTextFile(stateFileName, &str))
+    auto str = new String();
+    str->reserve(measureJson(doc));
+    serializeJson(doc, *str);
+    if (!writeTextFile(stateFileName, str))
         Log.errorln(F("Failed to create/write the status file %s"), stateFileName);
+    delete str;
 }
 
 //~ General Utilities ---------------------------------------------------------
@@ -1068,7 +1071,7 @@ void fx_setup() {
     //instantiate effect categories
     for (auto x : categorySetup)
         x();
-    readState();
+    readFxState();
     transEffect.setup();
 
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
@@ -1092,8 +1095,7 @@ void fx_run() {
         random16_add_entropy(secRandom16());        //this may or may not help
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
         stripBrightness = adjustStripBrightness();
-        saveState();
-        saveSysInfo();
+        saveFxState();
     }
 
     fxRegistry.loop();

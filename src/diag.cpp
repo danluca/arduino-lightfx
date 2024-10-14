@@ -322,6 +322,7 @@ void diag_run() {
         //logSystemInfo();
         //logCPUStats();
 #endif
+        saveSysInfo();
     }
 
 }

@@ -149,7 +149,10 @@ size_t web::transmitJsonDocument(JsonVariantConst source, WiFiClient *client) {
     auto buf = new String();
     buf->reserve(sz);
     serializeJson(source, *buf);
-    sz = client->print(*buf);
+    if (sz > WEB_BUFFER_SIZE)
+        sz = writeLargeP(client, buf->c_str(), buf->length());
+    else
+        sz = client->print(*buf);
     delete buf;
     return sz;
 }

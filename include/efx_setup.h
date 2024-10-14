@@ -88,8 +88,8 @@ void blendScreen(CRGB &blendRGB, const CRGB &topRGB);
 void blendOverlay(CRGBSet &blendLayer, const CRGBSet &topLayer);
 void blendOverlay(CRGB &blendRGB, const CRGB &topRGB);
 CRGB adjustBrightness(CRGB color, uint8_t bright);
-void saveState();
-void readState();
+void saveFxState();
+void readFxState();
 
 namespace FxA {
     void fxRegister();
