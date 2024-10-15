@@ -123,22 +123,28 @@ size_t writeContentLengthHeader(WiFiClient *client, uint32_t szContent) {
  * @return number of bytes written to the client
  */
 size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
-    WriteBufferingStream bufferingStream(*client, WEB_BUFFER_SIZE);
-    size_t sz = bufferingStream.write(src, srcSize);
-    bufferingStream.flush();
-
-//    char buf[WEB_BUFFER_SIZE+1];    //room for null terminated string
-//    size_t pos = 0, sz = 0;
-//    const char *srcPos = src;
-//    while ((srcSize-pos) > 0) {
-//        size_t szRead = srcSize > (pos+WEB_BUFFER_SIZE) ? WEB_BUFFER_SIZE : qsuba(srcSize, pos);
-//        memcpy_P(buf, srcPos, szRead);
-//        buf[szRead+1] = 0;  //ensure we have a null terminating character
-//        sz += client->write(buf, szRead);
-//        srcPos += szRead;
-//        pos += szRead;
+    // buffering stream implementation, generic for regular char arrays
+//    WriteBufferingStream bufferingStream(*client, WEB_BUFFER_SIZE);
+//    size_t res = 0;
+//    while (srcSize > 0) {
+//        size_t sz = bufferingStream.write(src, min(srcSize, WEB_BUFFER_SIZE));
+//        src += sz;
+//        srcSize -= sz;
+//        res += sz;
 //    }
-    return sz;
+//    bufferingStream.flush();
+
+    char buf[WEB_BUFFER_SIZE];    //room for null terminated string
+    size_t res = 0;
+    while (srcSize > 0) {
+        size_t sz = min(srcSize, WEB_BUFFER_SIZE);
+        memcpy_P(buf, src, sz);     //for RP2040 this is the same as regular memory copy
+        sz = client->write(buf, sz);
+        src += sz;
+        srcSize -= sz;
+        res += sz;
+    }
+    return res;
 }
 
 /**
@@ -154,6 +160,7 @@ size_t web::transmitJsonDocument(JsonVariantConst source, WiFiClient *client) {
     size_t sz = serializeJson(source, bufferingStream);
     bufferingStream.flush();
 
+    // custom implementation with String buffer on the heap
 //    size_t sz = measureJson(source);
 //    auto buf = new String();
 //    buf->reserve(sz);
