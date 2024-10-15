@@ -6,6 +6,7 @@
 #include "timeutil.h"
 #include "sysinfo.h"
 #include "diag.h"
+#include "StreamUtils.h"
 
 static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
 static const char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
@@ -122,17 +123,21 @@ size_t writeContentLengthHeader(WiFiClient *client, uint32_t szContent) {
  * @return number of bytes written to the client
  */
 size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
-    char buf[WEB_BUFFER_SIZE+1];    //room for null terminated string
-    size_t pos = 0, sz = 0;
-    const char *srcPos = src;
-    while ((srcSize-pos) > 0) {
-        size_t szRead = srcSize > (pos+WEB_BUFFER_SIZE) ? WEB_BUFFER_SIZE : qsuba(srcSize, pos);
-        memcpy_P(buf, srcPos, szRead);
-        buf[szRead+1] = 0;  //ensure we have a null terminating character
-        sz += client->write(buf, szRead);
-        srcPos += szRead;
-        pos += szRead;
-    }
+    WriteBufferingStream bufferingStream(*client, WEB_BUFFER_SIZE);
+    size_t sz = bufferingStream.write(src, srcSize);
+    bufferingStream.flush();
+
+//    char buf[WEB_BUFFER_SIZE+1];    //room for null terminated string
+//    size_t pos = 0, sz = 0;
+//    const char *srcPos = src;
+//    while ((srcSize-pos) > 0) {
+//        size_t szRead = srcSize > (pos+WEB_BUFFER_SIZE) ? WEB_BUFFER_SIZE : qsuba(srcSize, pos);
+//        memcpy_P(buf, srcPos, szRead);
+//        buf[szRead+1] = 0;  //ensure we have a null terminating character
+//        sz += client->write(buf, szRead);
+//        srcPos += szRead;
+//        pos += szRead;
+//    }
     return sz;
 }
 
@@ -145,15 +150,20 @@ size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
  * @return number of bytes written
  */
 size_t web::transmitJsonDocument(JsonVariantConst source, WiFiClient *client) {
-    size_t sz = measureJson(source);
-    auto buf = new String();
-    buf->reserve(sz);
-    serializeJson(source, *buf);
-    if (sz > WEB_BUFFER_SIZE)
-        sz = writeLargeP(client, buf->c_str(), buf->length());
-    else
-        sz = client->print(*buf);
-    delete buf;
+    WriteBufferingStream bufferingStream(*client, WEB_BUFFER_SIZE);
+    size_t sz = serializeJson(source, bufferingStream);
+    bufferingStream.flush();
+
+//    size_t sz = measureJson(source);
+//    auto buf = new String();
+//    buf->reserve(sz);
+//
+//    serializeJson(source, *buf);
+//    if (sz > WEB_BUFFER_SIZE)
+//        sz = writeLargeP(client, buf->c_str(), buf->length());
+//    else
+//        sz = client->print(*buf);
+//    delete buf;
     return sz;
 }
 

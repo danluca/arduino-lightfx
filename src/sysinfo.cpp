@@ -337,10 +337,11 @@ void readSysInfo() {
         sysInfo->freeHeap = doc[csFreeHeap];
         sysInfo->stackSize = doc[csStackSize];
         sysInfo->freeStack = doc[csFreeStack];
-        sysInfo->status = doc[csStatus];
+        //do not override current status (in progress of populating) with last run status
+        uint8_t lastStatus = doc[csStatus];
 
-        Log.infoln(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%X, IP=%s, Gateway=%s"),
-                   sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status,
+        Log.infoln(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%X (last %X), IP=%s, Gateway=%s"),
+                   sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status, lastStatus,
                    sysInfo->ipAddress.c_str(), sysInfo->gatewayIpAddress.c_str());
     }
     delete json;

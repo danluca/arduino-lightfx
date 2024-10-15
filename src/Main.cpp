@@ -29,7 +29,6 @@ void setup() {
     fsInit();
 
     readSysInfo();
-    sysInfo->resetSysStatus(0xFF);
     secElement_setup();
 
     Scheduler.startTask(&fxTasks);
