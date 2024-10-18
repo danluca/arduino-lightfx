@@ -196,7 +196,10 @@ ThreadWrapper::ThreadWrapper(const char *thName, uint32_t stackSize) {
  * Frees up the resources allocated on the heap - name and thread. Ensures the thread has been terminated
  */
 ThreadWrapper::~ThreadWrapper() {
-    thread->terminate();
+    if (thread->get_state() == rtos::Thread::State::Running) {
+        thread->terminate();
+        thread->join();
+    }
     delete thread;
     delete name;
 }

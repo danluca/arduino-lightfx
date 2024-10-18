@@ -56,7 +56,7 @@ void setup() {
 void loop() {
     wifi_loop();
     alarm_loop();
-    watchdogPing();
+//    watchdogPing();   //the main functionality is in Fx thread, we can afford not having web server available
     yield();
 }
 

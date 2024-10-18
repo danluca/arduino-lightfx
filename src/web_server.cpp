@@ -117,31 +117,33 @@ size_t writeContentLengthHeader(WiFiClient *client, uint32_t szContent) {
 /**
  * Utility to write large text contents (stored in PROGMEM) using buffering. It has been noted the WiFiClient chokes for strings larger than 4k
  * @param client the web client to write to
- * @param src source textual content to write
+ * @param src source textual content to write (can also be stored in PROGMEM flash)
  * @param srcSize number of bytes to write - this is arguably same as <code>strLen(src)</code> (where src is a null-terminated string). However,
  * saving the trouble of traversing the char array one more time for determining the length. It is needed before-hand to write the content length header.
  * @return number of bytes written to the client
  */
 size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
     // buffering stream implementation, generic for regular char arrays
+    // note these buffers expect to write (repeatedly) chunks of data less than their size/capacity, and this is when buffering is engaged; the implementation does not chunk on its own
+    // if attempting to write a data chunk that is larger than buffer capacity, it will go straight to the client delegate skipping the buffer
 //    WriteBufferingStream bufferingStream(*client, WEB_BUFFER_SIZE);
 //    size_t res = 0;
 //    while (srcSize > 0) {
-//        size_t sz = bufferingStream.write(src, min(srcSize, WEB_BUFFER_SIZE));
+//        size_t sz = bufferingStream.write(src, min(srcSize, WEB_BUFFER_SIZE-2));  //engage the buffer
 //        src += sz;
 //        srcSize -= sz;
 //        res += sz;
 //    }
 //    bufferingStream.flush();
 
-    char buf[WEB_BUFFER_SIZE];    //room for null terminated string
+    char buf[WEB_BUFFER_SIZE];
     size_t res = 0;
     while (srcSize > 0) {
         size_t sz = min(srcSize, WEB_BUFFER_SIZE);
-        memcpy_P(buf, src, sz);     //for RP2040 this is the same as regular memory copy
+        memcpy_P(buf, src, sz);     //for RP2040 this is the same as regular memory copy, no difference for copying from flash (and we could have written to WiFi client straight from source, could have saved a local buffer)
         sz = client->write(buf, sz);
         src += sz;
-        srcSize -= sz;
+        srcSize -= sz;  //because sz is min between srcSize and buffer size, when srcSize lowers below buffer size, sz = srcSize and this statement brings srcSize to 0
         res += sz;
     }
     return res;
@@ -154,6 +156,7 @@ size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
  * @param source the JSON document to serialize
  * @param client WiFi client to write into
  * @return number of bytes written
+ * @see https://github.com/bblanchon/ArduinoStreamUtils
  */
 size_t web::transmitJsonDocument(JsonVariantConst source, WiFiClient *client) {
     WriteBufferingStream bufferingStream(*client, WEB_BUFFER_SIZE);
@@ -203,7 +206,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     doc["buildTime"] = sysInfo->getBuildTime();
     doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
     doc["cleanBoot"] = sysInfo->isCleanBoot();
-    if (!sysInfo->isCleanBoot()) {
+    if (!sysInfo->watchdogReboots().empty()) {
         formatDateTime(buf, sysInfo->watchdogReboots().back());
         doc["lastWatchdogReboot"] = buf;
     }

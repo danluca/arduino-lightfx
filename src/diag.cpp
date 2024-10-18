@@ -291,6 +291,7 @@ void saveCalibrationInfo() {
 }
 
 void diag_run() {
+    //Note: see also https://os.mbed.com/docs/mbed-os/v6.16/apis/eventqueue.html for how to schedule events using native mbed event queues
     EVERY_N_SECONDS(30) {
         lineVoltage.setMeasurement(controllerVoltage());
         MeasurementPair chipTemp = chipTemperature();
