@@ -169,8 +169,11 @@ bool calibrate() {
     bool changes = false;
 
     if (calibCpuTemp.isValid()) {
-        //recalibration, when the temp range is significantly larger than last calibration
-        if(range > (calibCpuTemp.refDelta + 5.0f)) {
+        //recalibration, when the temp range is significantly larger than last calibration or cpu/imu measurements differ significantly
+        bool bRecalRange = range > (calibCpuTemp.refDelta + 5.0f);
+        bool bRecalDeviation = fabs(cpuTempRange.current.value-imuTempRange.current.value) > 5.0f && range > 3.0f;
+
+        if(bRecalRange || bRecalDeviation) {
             //re-calibrate - update only the slope
             calibCpuTemp.refTemp = calibTempMeasurements.ref.value;
             calibCpuTemp.slope = adcRange * (float)calibCpuTemp.ref33 / maxAdc / tempRange;
@@ -200,7 +203,6 @@ bool calibrate() {
  * @return measurement object with temperature of the IMU chip or IMU_TEMPERATURE_NOT_AVAILABLE along with current time and Celsius unit
  */
 Measurement boardTemperature() {
-    rtos::ScopedMutexLock busLock(i2cMutex);
     if (IMU.temperatureAvailable()) {
         float tempC = 0.0f;
         IMU.readTemperatureFloat(tempC);
@@ -361,11 +363,13 @@ void updateSystemTemp() {
         if (calibrate())
             saveCalibrationInfo();
     }
-    Log.infoln(F("CPU internal temperature %D 'C (%D 'F)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value));
+#ifndef DISABLE_LOGGING
+    Log.infoln(F("CPU internal temperature %D 'C (%D 'F) (ADC %u)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value), chipTemp.adcRaw);
     Log.infoln(F("CPU temperature calibration parameters valid=%T, refTemp=%F, vtRef=%F, slope=%F, refDelta=%F, time=%y"), calibCpuTemp.isValid(), calibCpuTemp.refTemp,
                calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta, calibCpuTemp.time);
     Log.infoln(F("Board temperature %D (last %D) 'C (%D 'F); range [%D - %D] 'C"), msmt.value, imuTempRange.current.value, toFahrenheit(imuTempRange.current.value),
                imuTempRange.min.value, imuTempRange.max.value);
+#endif
 }
 
 void updateSecEntropy() {
@@ -384,38 +388,38 @@ void logDiagInfo() {
 
 void diag_run() {
     //Note: see also https://os.mbed.com/docs/mbed-os/v6.16/apis/eventqueue.html for how to schedule events using native mbed event queues
-    EVERY_N_SECONDS(30) {
-        lineVoltage.setMeasurement(controllerVoltage());
-        MeasurementPair chipTemp = chipTemperature();
-        Measurement msmt = boardTemperature();
-        if (fabs(msmt.value - IMU_TEMPERATURE_NOT_AVAILABLE) > TEMP_NA_COMPARE_EPSILON) {
-            imuTempRange.setMeasurement(msmt);
-            if (calibCpuTemp.isValid())
-                cpuTempRange.setMeasurement(chipTemp);
-            chipTemp.value = msmt.value;
-            chipTemp.time = msmt.time;
-            calibTempMeasurements.setMeasurement(chipTemp);
-
-            if (calibrate())
-                saveCalibrationInfo();
-        }
-#ifndef DISABLE_LOGGING
-        Log.infoln(F("Board Vcc voltage %D V"), lineVoltage.current.value);
-        // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
-        // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
-        Log.infoln(F("CPU internal temperature %D 'C (%D 'F)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value));
-        Log.infoln(F("CPU temperature calibration parameters valid=%T, refTemp=%F, vtRef=%F, slope=%F, refDelta=%F, time=%y"), calibCpuTemp.isValid(), calibCpuTemp.refTemp,
-                   calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta, calibCpuTemp.time);
-        Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), imuTempRange.current.value, toFahrenheit(imuTempRange.current.value), imuTempRange.min.value,
-                   imuTempRange.max.value);
-        //Log.infoln(F("Current time: %y"), now());
-        //log RAM metrics
-        logAllThreadInfo();
-        logHeapAndStackInfo();
-        //logSystemInfo();
-        //logCPUStats();
-#endif
-        saveSysInfo();
-    }
+//    EVERY_N_SECONDS(30) {
+//        lineVoltage.setMeasurement(controllerVoltage());
+//        MeasurementPair chipTemp = chipTemperature();
+//        Measurement msmt = boardTemperature();
+//        if (fabs(msmt.value - IMU_TEMPERATURE_NOT_AVAILABLE) > TEMP_NA_COMPARE_EPSILON) {
+//            imuTempRange.setMeasurement(msmt);
+//            if (calibCpuTemp.isValid())
+//                cpuTempRange.setMeasurement(chipTemp);
+//            chipTemp.value = msmt.value;
+//            chipTemp.time = msmt.time;
+//            calibTempMeasurements.setMeasurement(chipTemp);
+//
+//            if (calibrate())
+//                saveCalibrationInfo();
+//        }
+//#ifndef DISABLE_LOGGING
+//        Log.infoln(F("Board Vcc voltage %D V"), lineVoltage.current.value);
+//        // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
+//        // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
+//        Log.infoln(F("CPU internal temperature %D 'C (%D 'F)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value));
+//        Log.infoln(F("CPU temperature calibration parameters valid=%T, refTemp=%F, vtRef=%F, slope=%F, refDelta=%F, time=%y"), calibCpuTemp.isValid(), calibCpuTemp.refTemp,
+//                   calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta, calibCpuTemp.time);
+//        Log.infoln(F("Board temperature %D 'C (%D 'F); range [%D - %D] 'C"), imuTempRange.current.value, toFahrenheit(imuTempRange.current.value), imuTempRange.min.value,
+//                   imuTempRange.max.value);
+//        //Log.infoln(F("Current time: %y"), now());
+//        //log RAM metrics
+//        logAllThreadInfo();
+//        logHeapAndStackInfo();
+//        //logSystemInfo();
+//        //logCPUStats();
+//#endif
+//        saveSysInfo();
+//    }
 
 }

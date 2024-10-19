@@ -6,7 +6,7 @@
 #define ARDUINO_LIGHTFX_UTIL_H
 
 #include <ArduinoECCX08.h>
-#include "Mutex.h"
+//#include "Mutex.h"
 #include "config.h"
 #include "log.h"
 
@@ -20,7 +20,6 @@
 
 extern const char stateFileName[];
 extern const char sysFileName[];
-extern rtos::Mutex i2cMutex;
 
 ulong adcRandom();
 void setupStateLED();
