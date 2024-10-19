@@ -512,6 +512,15 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         upd[csSleepEnabled] = sleepEnabled;
         upd["asleep"] = fxRegistry.isAsleep();
     }
+    if (!doc["resetTempCal"].isNull()) {
+        bool resetCal = doc["resetTempCal"].as<bool>();
+        if (resetCal) {
+            calibTempMeasurements.reset();
+            calibCpuTemp.reset();
+            cpuTempRange.reset();
+            upd["resetTempCal"] = resetCal;
+        }
+    }
 #ifndef DISABLE_LOGGING
     Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),
                fxRegistry.curEffectPos(), fxRegistry.isAutoRoll(), holidayToString(paletteFactory.getHoliday()),

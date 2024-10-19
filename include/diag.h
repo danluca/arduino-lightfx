@@ -46,6 +46,10 @@ struct Measurement {
             return value > other.value;
         return false;
     }
+    virtual inline void reset() volatile {
+        value = 0.0f;
+        time = 0;
+    }
 };
 
 // Triplet of min, max and current measurements
@@ -55,6 +59,11 @@ struct MeasurementRange {
     Measurement current;
     void setMeasurement(const Measurement& msmt) volatile;
     explicit MeasurementRange(Unit unit);
+    inline void reset() volatile {
+        min.reset();
+        max.reset();
+        current.reset();
+    }
 };
 
 // self-calibration supporting structures for RP2040 CPU temp sensor
@@ -63,6 +72,10 @@ struct MeasurementPair : Measurement {
 
     MeasurementPair() : Measurement(Deg_C), adcRaw(0) {};
     void copy(const MeasurementPair& msmt);
+    inline void reset() volatile override {
+        Measurement::reset();
+        adcRaw = 0;
+    }
 };
 
 struct CalibrationMeasurement {
@@ -72,6 +85,11 @@ struct CalibrationMeasurement {
 
     CalibrationMeasurement() : min(), max(), ref() {};
     void setMeasurement(const MeasurementPair& msmt);
+    inline void reset() {
+        min.reset();
+        max.reset();
+        ref.reset();
+    }
 };
 
 struct CalibrationParams {
@@ -83,6 +101,13 @@ struct CalibrationParams {
     time_t time;    //last calibration time; also used to determine whether this params set is valid
     CalibrationParams(): refTemp(0.0f), vtref(0.0f), slope(0.0f), refDelta(0.0f), time(0) {};
     inline bool isValid() const { return time > 0; }
+    inline void reset() {
+        refTemp = 0.0f;
+        vtref = 0.0f;
+        slope = 0.0f;
+        refDelta = 0.0f;
+        time = 0;
+    }
 };
 extern CalibrationMeasurement calibTempMeasurements;
 extern CalibrationParams calibCpuTemp;
