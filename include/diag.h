@@ -13,9 +13,14 @@
 
 extern const char calibFileName[];
 
+void diag_events_setup();
 void diag_setup();
 bool imu_setup();
 void diag_run();
+void updateLineVoltage();
+void updateSystemTemp();
+void updateSecEntropy();
+void logDiagInfo();
 
 
 enum Unit:uint8_t {Volts, Deg_F, Deg_C};

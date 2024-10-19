@@ -1091,7 +1091,6 @@ void fx_run() {
     }
     EVERY_N_MINUTES(7) {
         Log.infoln(F("Switching effect to a new random one"));
-        random16_add_entropy(secRandom16());        //this may or may not help
         fxRegistry.nextRandomEffectPos();
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
         stripBrightness = adjustStripBrightness();

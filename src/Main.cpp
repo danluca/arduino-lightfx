@@ -13,7 +13,7 @@
 
 ThreadTasks fxTasks {fx_setup, fx_run, 3072, "Fx"};
 ThreadTasks micTasks {mic_setup, mic_run, 896, "Mic"};
-ThreadTasks diagTasks {diag_setup, diag_run, 1792, "Diag"};
+//ThreadTasks diagTasks {diag_setup, diag_run, 1792, "Diag"};
 
 /**
  * Setup LED strip and global data structures - executed once
@@ -39,9 +39,9 @@ void setup() {
     bSetupOk = bSetupOk && time_setup();
     stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
 
-    Scheduler.startTask(&diagTasks);
-
     setupAlarmSchedule();
+
+    diag_events_setup();
 
     sysInfo->fillBoardId();
     Log.infoln(F("System status: %X"), sysInfo->getSysStatus());

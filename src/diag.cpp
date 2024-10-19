@@ -9,6 +9,7 @@
 #include "util.h"
 #include "sysinfo.h"
 
+using namespace std::chrono;
 const uint maxAdc = 1 << ADC_RESOLUTION;
 const char calibFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/calibration.json";
 
@@ -50,6 +51,56 @@ void diag_setup() {
     imu_setup();
 
     sysInfo->setSysStatus(SYS_STATUS_DIAG);
+
+    Log.infoln(F("Diagnostic devices initialized - system status: %X"), sysInfo->getSysStatus());
+}
+
+events::EventQueue diagQueue;
+events::Event<void(void)> evDiagSetup(&diagQueue, diag_setup);
+events::Event<void(void)> evRndEntropy(&diagQueue, updateSecEntropy);
+events::Event<void(void)> evSysTemp(&diagQueue, updateSystemTemp);
+events::Event<void(void)> evSysVoltage(&diagQueue, updateLineVoltage);
+events::Event<void(void)> evDiagInfo(&diagQueue, logDiagInfo);
+events::Event<void(void)> evSaveSysInfo(&diagQueue, saveSysInfo);
+rtos::Thread *diagThread;
+
+/**
+ * Called from main thread - sets up a higher priority thread for handling the events dispatched by the diagQueue
+ */
+void diag_events_setup() {
+    //setup event
+    evDiagSetup.delay(2s);
+    evDiagSetup.period(events::non_periodic);
+    evDiagSetup.post();
+
+    //add secure strength entropy event to pseudo-random number generator
+    evRndEntropy.delay(1s);
+    evRndEntropy.period(7min);
+    evRndEntropy.post();
+
+    //read system temperature event - both the IMU chip as well as the CPU internal ADC based temp sensor
+    evSysTemp.delay(2s);
+    evSysTemp.period(32s);
+    evSysTemp.post();
+
+    //read the system's line voltage event - uses ADC
+    evSysVoltage.delay(3s);
+    evSysVoltage.period(34s);
+    evSysVoltage.post();
+
+    //log the thread, memory and diagnostic measurements info event - no-op if logging is disabled
+    evDiagInfo.delay(1s);
+    evDiagInfo.period(20s);
+    evDiagInfo.post();
+
+    //save the current system info event to filesystem
+    evSaveSysInfo.delay(10s);
+    evSaveSysInfo.period(90s);
+    evSaveSysInfo.post();
+
+    //setup the diagnostic thread
+    diagThread = new rtos::Thread(osPriorityAboveNormal, 1792, nullptr, "Diag");
+    diagThread->start(callback(&diagQueue, &events::EventQueue::dispatch_forever));
 }
 
 /**
@@ -288,6 +339,46 @@ void saveCalibrationInfo() {
     else
         Log.errorln(F("Failed to create/write the CPU temp calibration information file %s"), calibFileName);
     delete str;
+}
+
+void updateLineVoltage() {
+    lineVoltage.setMeasurement(controllerVoltage());
+    Log.infoln(F("Board Vcc voltage %D V"), lineVoltage.current.value);
+}
+
+void updateSystemTemp() {
+    MeasurementPair chipTemp = chipTemperature();
+    Measurement msmt = boardTemperature();
+    if (fabs(msmt.value - IMU_TEMPERATURE_NOT_AVAILABLE) > TEMP_NA_COMPARE_EPSILON) {
+        imuTempRange.setMeasurement(msmt);
+        if (calibCpuTemp.isValid())
+            cpuTempRange.setMeasurement(chipTemp);
+        chipTemp.value = msmt.value;
+        chipTemp.time = msmt.time;
+        calibTempMeasurements.setMeasurement(chipTemp);
+
+        if (calibrate())
+            saveCalibrationInfo();
+    }
+    Log.infoln(F("CPU internal temperature %D 'C (%D 'F)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value));
+    Log.infoln(F("CPU temperature calibration parameters valid=%T, refTemp=%F, vtRef=%F, slope=%F, refDelta=%F, time=%y"), calibCpuTemp.isValid(), calibCpuTemp.refTemp,
+               calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta, calibCpuTemp.time);
+    Log.infoln(F("Board temperature %D (last %D) 'C (%D 'F); range [%D - %D] 'C"), msmt.value, imuTempRange.current.value, toFahrenheit(imuTempRange.current.value),
+               imuTempRange.min.value, imuTempRange.max.value);
+}
+
+void updateSecEntropy() {
+    uint16_t rnd = secRandom16();
+    random16_add_entropy(rnd);
+    Log.infoln(F("Secure random value %i added as entropy to pseudo random number generator"), rnd);
+}
+
+void logDiagInfo() {
+    //log RAM metrics
+    logAllThreadInfo();
+    logHeapAndStackInfo();
+    //logSystemInfo();
+    //logCPUStats();
 }
 
 void diag_run() {
