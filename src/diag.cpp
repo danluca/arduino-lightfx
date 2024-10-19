@@ -74,33 +74,34 @@ void diag_events_setup() {
     evDiagSetup.post();
 
     //add secure strength entropy event to pseudo-random number generator
-    evRndEntropy.delay(1s);
+    evRndEntropy.delay(7s);
     evRndEntropy.period(7min);
     evRndEntropy.post();
 
     //read system temperature event - both the IMU chip as well as the CPU internal ADC based temp sensor
-    evSysTemp.delay(2s);
+    evSysTemp.delay(11s);
     evSysTemp.period(32s);
     evSysTemp.post();
 
     //read the system's line voltage event - uses ADC
-    evSysVoltage.delay(3s);
+    evSysVoltage.delay(15s);
     evSysVoltage.period(34s);
     evSysVoltage.post();
 
     //log the thread, memory and diagnostic measurements info event - no-op if logging is disabled
-    evDiagInfo.delay(1s);
-    evDiagInfo.period(20s);
+    evDiagInfo.delay(19s);
+    evDiagInfo.period(27s);
     evDiagInfo.post();
 
     //save the current system info event to filesystem
-    evSaveSysInfo.delay(10s);
+    evSaveSysInfo.delay(23s);
     evSaveSysInfo.period(90s);
     evSaveSysInfo.post();
 
-    //setup the diagnostic thread
+    //setup the diagnostic thread, higher priority to avoid interruption during I2C communication
     diagThread = new rtos::Thread(osPriorityAboveNormal, 1792, nullptr, "Diag");
     diagThread->start(callback(&diagQueue, &events::EventQueue::dispatch_forever));
+    Log.infoln(F("Diagnostic thread [%s] - priority above normal - has been setup id %X. Events are dispatching."), diagThread->get_name(), diagThread->get_id());
 }
 
 /**
