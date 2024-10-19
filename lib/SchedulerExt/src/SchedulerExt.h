@@ -67,6 +67,7 @@ public:
     rtos::Thread* start(SchedulerParametricTask task, void *data, uint32_t stackSize = 1024);
 
     osStatus waitToEnd(rtos::Thread *pt);
+    osStatus terminate(rtos::Thread *pt);
 
     uint availableThreads() const;
 

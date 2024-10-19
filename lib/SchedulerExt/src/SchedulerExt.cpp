@@ -134,6 +134,29 @@ osStatus SchedulerClassExt::waitToEnd(rtos::Thread *pt) {
 }
 
 /**
+ * Terminate thread then disposes it and frees its slot in the local thread array
+ * If the thread is not one tracked in the local thread array, it returns osErrorParameter
+ * @param pt pointer to the thread to terminate
+ * @return result of executing Thread::join for the given thread
+ */
+osStatus SchedulerClassExt::terminate(rtos::Thread *pt) {
+    osStatus tStat = osErrorParameter;
+    for (auto & thread : threads) {
+        if (thread->getThread() == pt) {
+            //terminates thread
+            tStat = thread->getThread()->terminate();
+            thread->getThread()->join();
+            //delete wrapper
+            delete thread;
+            //free-up the thread array spot for it
+            thread = nullptr;
+            break;
+        }
+    }
+    return tStat;
+}
+
+/**
  * Finds the index for the next thread.
  * If the local thread array is full, it returns osThreadSpaceExhausted
  * @return either the index where next thread can be stored in the local thread array, or osThreadSpaceExhausted (0xF0F0)
@@ -196,10 +219,6 @@ ThreadWrapper::ThreadWrapper(const char *thName, uint32_t stackSize) {
  * Frees up the resources allocated on the heap - name and thread. Ensures the thread has been terminated
  */
 ThreadWrapper::~ThreadWrapper() {
-    if (thread->get_state() == rtos::Thread::State::Running) {
-        thread->terminate();
-        thread->join();
-    }
     delete thread;
     delete name;
 }

@@ -14,8 +14,8 @@
 #define BUF_ID_SIZE  20
 
 static const char unknown[] PROGMEM = "N/A";
-static const char threadInfoFmt[] PROGMEM = "Thread[%u]:: name='%s' priority=%i id=%X stack size=%u free=%u\n";
-static const char threadInfoVerboseFmt[] PROGMEM = "Thread[%u]:: name='%s' priority=%i id=%X entry=%X\n  Stack[0x%U - 0x%U] size=%u free=%u\n";
+static const char threadInfoFmt[] PROGMEM = "Thread[%u]:: name='%s' priority=%i state=%u id=%X stack size=%u free=%u\n";
+static const char threadInfoVerboseFmt[] PROGMEM = "Thread[%u]:: name='%s' priority=%i state=%u id=%X entry=%X\n  Stack[0x%U - 0x%U] size=%u free=%u\n";
 static const char heapInfoFmt[] PROGMEM = "Heap:: size=%u free=%u\n";
 static const char heapInfoVerboseFmt[] PROGMEM = "Heap:: start=%X end=%X size=%u used=%u free=%u\n  maxUsed=%u totalAllocated=%u overhead=%u\n  allocated ok=%u err=%u\n";
 //static const char stackInfoFmt[] PROGMEM = "Stack:: size=%u free=%u";
@@ -101,9 +101,9 @@ void logAllThreadInfo() {
         const char* thrdName = osThreadGetName(threadId) ? osThreadGetName(threadId) : unknown;
 
         if (LOG_LEVEL_TRACE > Log.getLevel())
-            Log.info(threadInfoFmt, i, thrdName, tcb->priority, (int)threadId, stackSize, stackFree);
+            Log.info(threadInfoFmt, i, thrdName, tcb->priority, tcb->state, (int)threadId, stackSize, stackFree);
         else
-            Log.trace(threadInfoVerboseFmt, i, thrdName, tcb->priority, (int)threadId, tcb->thread_addr, tcb->stack_mem, (uint8_t *)tcb->stack_mem+stackSize, stackSize, stackFree);
+            Log.trace(threadInfoVerboseFmt, i, thrdName, tcb->priority, tcb->state, (int)threadId, tcb->thread_addr, tcb->stack_mem, (uint8_t *)tcb->stack_mem+stackSize, stackSize, stackFree);
     }
     Log.endContinuation();
 #endif
