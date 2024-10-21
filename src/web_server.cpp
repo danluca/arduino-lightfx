@@ -518,6 +518,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
             calibTempMeasurements.reset();
             calibCpuTemp.reset();
             cpuTempRange.reset();
+            removeFile(calibFileName);
             upd["resetTempCal"] = resetCal;
         }
     }

@@ -185,8 +185,6 @@ void logSystemInfo() {
 
     Log.infoln(sysInfoFmt, statsSys.cpu_id, statsSys.os_version, statsSys.compiler_id, statsSys.compiler_version, sysInfo->getBoardId().c_str(),
                BOARD_NAME, BOARD_VENDORID, BOARD_PRODUCTID, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->get_flash_capacity());
-    lineVoltage.setMeasurement(controllerVoltage());
-    Log.infoln(F("Board Vcc voltage %D V"), lineVoltage.current.value);
 
 #endif
 }

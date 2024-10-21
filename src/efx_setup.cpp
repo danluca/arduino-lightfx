@@ -103,9 +103,9 @@ void readFxState() {
         //we need the sleep mode flag setup first to properly advance to next effect
         const uint16_t sleepFxIndex = fxRegistry.findEffect(FX_SLEEPLIGHT_ID)->getRegistryIndex();
         if (fx == sleepFxIndex && !fxRegistry.isAsleep())
-            fxRegistry.nextRandomEffectPos();
+            fxRegistry.lastEffectRun = fxRegistry.currentEffect = random16(fxRegistry.effectsCount);
         else
-            fxRegistry.nextEffectPos(fx);
+            fxRegistry.lastEffectRun = fxRegistry.currentEffect = fx;
 
         Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T), sleepEnabled=%T"),
                    stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), paletteFactory.isAuto(), fxRegistry.isSleepEnabled());

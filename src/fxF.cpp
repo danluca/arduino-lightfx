@@ -429,7 +429,7 @@ void FxF4::offsetBounce(const CRGB &feed) const {
 
 FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(frame(0, (tpl.size() + wiggleRoom)/ 2 - 1)), set2(frame(tpl.size() + wiggleRoom - 1, (tpl.size() + wiggleRoom)/2)) {
     ofs = wiggleRoom/2;
-    for (short x = 0; x < upLim; x++)
+    for (uint16_t x = 0; x < upLim; x++)
         bouncyCurve[x] = easeOutBounce(x, upLim - 1);
 
 }
@@ -449,6 +449,8 @@ FxF5::FxF5() : LedEffect(fxf5Desc) {}
 void FxF5::run() {
     EVERY_N_MILLIS_I(fxf5Timer, 1000) {
         flare();
+
+        watchdogPing();
 
         explode();
 
