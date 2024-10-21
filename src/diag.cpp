@@ -41,6 +41,7 @@ void adc_setup() {
     adc_init();
     adc_set_temp_sensor_enabled(true);
     analogReadResolution(ADC_RESOLUTION);   //get us the higher resolution of the ADC
+    Log.infoln("ADC OK %d bit resolution", ADC_RESOLUTION);
 }
 
 void diag_setup() {

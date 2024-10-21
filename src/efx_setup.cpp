@@ -1077,6 +1077,8 @@ void fx_setup() {
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     //ensure the current effect is moved to setup state
     fxRegistry.getCurrentEffect()->desiredState(Setup);
+    Log.infoln("Fx Setup done - current effect %s (%u) set desired state to Setup (%d)", fxRegistry.getCurrentEffect()->name(),
+               fxRegistry.getCurrentEffect()->getRegistryIndex(), Setup);
 }
 
 //Run currently selected effect -------
