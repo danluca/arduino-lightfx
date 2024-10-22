@@ -450,8 +450,6 @@ void FxF5::run() {
     EVERY_N_MILLIS_I(fxf5Timer, 1000) {
         flare();
 
-        watchdogPing();
-
         explode();
 
         fxf5Timer.setPeriod(random16(1000, 4000));
@@ -504,6 +502,7 @@ void FxF5::flare() {
         flBrightness *= .985;
 
         FastLED.show(stripBrightness);
+        watchdogPing();
     }
 }
 
@@ -566,6 +565,7 @@ void FxF5::explode() const {
         dying_gravity *= 0.985; // as sparks burn out they fall slower
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
+        watchdogPing();
     }
     tpl = BKG;
     replicateSet(tpl, others);
