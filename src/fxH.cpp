@@ -619,7 +619,7 @@ FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSiz
 
 void FxH6::setup() {
     LedEffect::setup();
-    random16_add_entropy(secRandom16());
+    random16_add_entropy(millis() & 0xFFFF);
     //pick a random number of active sparks to start with
     stage = DefinedPattern;
     activateSparks(random8(1, sparks.size()-3), 192);

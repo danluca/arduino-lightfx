@@ -10,6 +10,7 @@
 #include <LittleFSWrapper.h>
 #include "hardware/watchdog.h"
 #include "sysinfo.h"
+#include "FastLED.h"
 
 #define FILE_BUF_SIZE   256
 const char stateFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/state.json";
@@ -287,6 +288,10 @@ bool secElement_setup() {
     }
     Log.infoln(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
     sysInfo->setSysStatus(SYS_STATUS_ECC);
+    //update entropy - the timing of this call allows us to interact with I2C without other contenders
+    uint16_t rnd = secRandom16();
+    random16_add_entropy(rnd);
+    Log.infoln(F("Secure random value %i added as entropy to pseudo random number generator"), rnd);
     return true;
 }
 

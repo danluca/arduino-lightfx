@@ -76,7 +76,7 @@ void diag_events_setup() {
 
     //add secure strength entropy event to pseudo-random number generator
     evRndEntropy.delay(7s);
-    evRndEntropy.period(7min);
+    evRndEntropy.period(6min);
     evRndEntropy.post();
 
     //read system temperature event - both the IMU chip as well as the CPU internal ADC based temp sensor

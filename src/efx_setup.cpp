@@ -939,18 +939,33 @@ void LedEffect::windDownPrep() {
  */
 void LedEffect::loop() {
     switch (state) {
-        case Setup: setup(); nextState(); break;    //one blocking step, non repeat
+        case Setup:
+            setup();
+            Log.infoln(F("Effect %s [%d] completed setup, moving to running state"), name(), getRegistryIndex());
+            nextState();
+            break;    //one blocking step, non repeat
         case Running: run(); break;                 //repeat, called multiple times to achieve the light effects designed
-        case WindDownPrep: windDownPrep(); nextState(); break;
+        case WindDownPrep:
+            windDownPrep();
+            Log.infoln(F("Effect %s [%d] completed WindDown Prep"), name(), getRegistryIndex());
+            nextState();
+            break;
         case WindDown:
-            if (windDown())
+            if (windDown()) {
+                Log.infoln(F("Effect %s [%d] completed WindDown"), name(), getRegistryIndex());
                 nextState();
+            }
             break;           //repeat, called multiple times to achieve the fade out for the current light effect
         case TransitionBreakPrep:
-            transitionBreakPrep(); nextState(); break;
+            transitionBreakPrep();
+            Log.infoln(F("Effect %s [%d] completed TransitionBreak Prep"), name(), getRegistryIndex());
+            nextState();
+            break;
         case TransitionBreak:
-            if (transitionBreak())
+            if (transitionBreak()) {
+                Log.infoln(F("Effect %s [%d] completed TransitionBreak"), name(), getRegistryIndex());
                 nextState();
+            }
             break; //repeat, called multiple times to achieve the transition off for the current light effect
         case Idle: break;                           //no-op
     }
@@ -1064,20 +1079,17 @@ uint16_t Viewport::size() const {
 //Setup all effects -------------------
 void fx_setup() {
     ledStripInit();
-    //if engaging stdlib's random() - we'd need to initialize that as well (randomSeed()), separate implementation. The random8/16 are FastLED specific
-    random16_set_seed(secRandom16());
-    //strip brightness adjustment needs the time, that's why it is done in fxRun periodically. At the beginning we'll use the value from saved state
-
     //instantiate effect categories
     for (auto x : categorySetup)
         x();
+    //strip brightness adjustment needs the time, that's why it is done in fxRun periodically. At the beginning we'll use the value from saved state
     readFxState();
     transEffect.setup();
 
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     //ensure the current effect is moved to setup state
     fxRegistry.getCurrentEffect()->desiredState(Setup);
-    Log.infoln("Fx Setup done - current effect %s (%u) set desired state to Setup (%d)", fxRegistry.getCurrentEffect()->name(),
+    Log.infoln("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)", fxRegistry.getCurrentEffect()->name(),
                fxRegistry.getCurrentEffect()->getRegistryIndex(), Setup);
 }
 
@@ -1090,12 +1102,15 @@ void fx_run() {
             fxBump = false;
             totalAudioBumps++;
         }
+        uint8_t oldBrightness = stripBrightness;
+        stripBrightness = adjustStripBrightness();
+        if (oldBrightness != stripBrightness)
+            Log.infoln(F("Strip brightness updated from %d to %d"), oldBrightness, stripBrightness);
     }
     EVERY_N_MINUTES(7) {
         Log.infoln(F("Switching effect to a new random one"));
         fxRegistry.nextRandomEffectPos();
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-        stripBrightness = adjustStripBrightness();
         saveFxState();
     }
 
