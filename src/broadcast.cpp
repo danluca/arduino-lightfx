@@ -25,8 +25,6 @@ events::EventQueue broadcastQueue;
 events::Event<void(void)> evBroadcast(&broadcastQueue, fxBroadcast);
 rtos::Thread *syncThread;
 
-volatile bool fxEventChange = false;
-
 WiFiClient wiFiClient;
 
 void broadcastSetup() {
@@ -39,8 +37,7 @@ void broadcastSetup() {
     for (auto &ipLSB : syncClientsLSB) {
         auto clientAddr = new IPAddress();
         clientAddr->fromString(sysAddr);
-        clientAddr[3] = ipLSB;
-        Log.infoln("Client Address: %p", clientAddr);
+        clientAddr->operator[](3) = ipLSB;
         fxBroadcastRecipients.push(clientAddr);
     }
 
@@ -86,8 +83,6 @@ void fxBroadcast() {
         Log.warningln(F("No WiFi - Cannot broadcast Fx changes"));
         return;
     }
-//    if (!fxEventChange)
-//        return;
 
     for (auto &client : fxBroadcastRecipients)
         clientUpdate(client);
