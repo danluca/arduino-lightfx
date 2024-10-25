@@ -78,6 +78,7 @@ extern volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT];
 extern uint16_t totalAudioBumps;
 
 extern volatile bool fxBump;
+extern volatile bool fxEventChange;
 extern volatile uint16_t speed;
 extern volatile uint16_t curPos;
 

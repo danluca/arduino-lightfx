@@ -10,6 +10,7 @@
 #include "log.h"
 #include "sysinfo.h"
 #include "diag.h"
+#include "broadcast.h"
 
 ThreadTasks fxTasks {fx_setup, fx_run, 3072, "Fx"};
 ThreadTasks micTasks {mic_setup, mic_run, 896, "Mic"};
@@ -44,10 +45,13 @@ void setup() {
     diag_events_setup();
 
     sysInfo->fillBoardId();
-    Log.infoln(F("System status: %X"), sysInfo->getSysStatus());
-    logSystemInfo();
 
     watchdogSetup();
+
+    broadcastSetup();
+
+    Log.infoln(F("Main Setup completed. System status: %X"), sysInfo->getSysStatus());
+    logSystemInfo();
 }
 
 /**

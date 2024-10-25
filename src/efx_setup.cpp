@@ -4,6 +4,7 @@
 #include "efx_setup.h"
 #include "log.h"
 #include "sysinfo.h"
+#include "broadcast.h"
 
 //~ Global variables definition
 #define STATE_JSON_DOC_SIZE   512
@@ -813,6 +814,7 @@ void EffectRegistry::loop() {
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         lastEffectRun = currentEffect;
         lastEffects.push(lastEffectRun);
+        evBroadcast.post();
     }
     effects[lastEffectRun]->loop();
 }

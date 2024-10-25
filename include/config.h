@@ -25,7 +25,7 @@
 // MODE 1 = Access point mode
 // #define MODE 0
 
-// Board 1 is the dev board. We have 2 boards.
+// Board 1 is the dev board, board 2 is the house lighting controller.
 #define BOARD_ID    1
 
 // Board specific configurations
@@ -42,6 +42,8 @@
 #define VCC_DIV_R4  21950
 #define VCC_DIV_R5  3304
 #define DEVICE_NAME  "Dev"
+#define BROADCAST_MASTER  true          //whether this board will push Fx changes to other boards
+#define BROADCAST_CLIENTS     11        //this is a CSV of last byte of slave IP addresses
 
 #endif
 
@@ -59,6 +61,8 @@
 #define VCC_DIV_R4  21800
 #define VCC_DIV_R5  3305
 #define DEVICE_NAME  "FX01"
+#define BROADCAST_MASTER  false           //whether this board will push Fx changes to other boards
+#define BROADCAST_CLIENTS   0             //0 is for NA
 
 #endif
 

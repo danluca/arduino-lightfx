@@ -29,6 +29,8 @@ Now our equations become:
 2. a2*x - y = (R - f2)*z
 3. a3*x - y = (R - f3)*z
 
+//NOTE: THIS IS INCORRECT, HALLUCINATION?
+
 ## Step 4: Solve the system of equations
 
 We now have a system of three linear equations with three unknowns (x, y, and z). We can solve this system using various methods such as:

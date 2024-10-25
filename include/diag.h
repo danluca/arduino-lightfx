@@ -1,6 +1,7 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
 
+#pragma once
 #ifndef ARDUINO_LIGHTFX_DIAG_H
 #define ARDUINO_LIGHTFX_DIAG_H
 
@@ -16,7 +17,6 @@ extern const char calibFileName[];
 void diag_events_setup();
 void diag_setup();
 bool imu_setup();
-void diag_run();
 void updateLineVoltage();
 void updateSystemTemp();
 void updateSecEntropy();

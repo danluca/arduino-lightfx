@@ -512,14 +512,15 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         upd[csSleepEnabled] = sleepEnabled;
         upd["asleep"] = fxRegistry.isAsleep();
     }
-    if (!doc["resetTempCal"].isNull()) {
-        bool resetCal = doc["resetTempCal"].as<bool>();
+    const char csResetCal[] = "resetTempCal";
+    if (!doc[csResetCal].isNull()) {
+        bool resetCal = doc[csResetCal].as<bool>();
         if (resetCal) {
             calibTempMeasurements.reset();
             calibCpuTemp.reset();
             cpuTempRange.reset();
             removeFile(calibFileName);
-            upd["resetTempCal"] = resetCal;
+            upd[csResetCal] = resetCal;
         }
     }
 #ifndef DISABLE_LOGGING
