@@ -18,7 +18,7 @@ static const uint8_t syncClientsLSB[] PROGMEM = {BROADCAST_CLIENTS};     //last 
 static const char hdContentJson[] PROGMEM = "Content-Type: application/json";
 static const char hdUserAgent[] PROGMEM = "User-Agent: rp2040-lightfx-master/1.0.0";
 static const char hdKeepAlive[] PROGMEM = "Connection: keep-alive";
-static const char fmtFxChange[] PROGMEM = "{\"effect\":%d}";
+static const char fmtFxChange[] PROGMEM = R"===({"effect":%d,"auto":false})===";
 
 FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
 events::EventQueue broadcastQueue;
@@ -39,6 +39,7 @@ void broadcastSetup() {
         clientAddr->fromString(sysAddr);
         clientAddr->operator[](3) = ipLSB;
         fxBroadcastRecipients.push(clientAddr);
+        Log.infoln(F("FX Broadcast recipient %p has been registered"), clientAddr);
     }
 
     evBroadcast.delay(500ms);
@@ -54,6 +55,7 @@ void clientUpdate(const IPAddress *ip) {
     HttpClient client(wiFiClient, *ip, 80);
     client.setTimeout(5000);
     client.setHttpResponseTimeout(10000);
+    client.connectionKeepAlive();
 
     size_t sz = sprintf(nullptr, fmtFxChange, fxRegistry.curEffectPos());
     char buf[sz+1];
@@ -73,9 +75,9 @@ void clientUpdate(const IPAddress *ip) {
     int statusCode = client.responseStatusCode();
     String response = client.responseBody();
     if (statusCode/100 == 2)
-        Log.infoln(F("Successful FX sync with client %p: response status %d, body %s"), ip, statusCode, response.c_str());
+        Log.infoln(F("Successful FX sync with client %p: %d response status\nBody: %s"), ip, statusCode, response.c_str());
     else
-        Log.errorln(F("Failed to FX sync client %p: response status code %d"), ip, statusCode);
+        Log.errorln(F("Failed to FX sync client %p: %d response status"), ip, statusCode);
 }
 
 void fxBroadcast() {
@@ -83,11 +85,11 @@ void fxBroadcast() {
         Log.warningln(F("No WiFi - Cannot broadcast Fx changes"));
         return;
     }
+    LedEffect *fx = fxRegistry.getCurrentEffect();
+    Log.infoln(F("Fx change event - start broadcasting %s[%d] to %d recipients"), fx->name(), fx->getRegistryIndex(), fxBroadcastRecipients.size());
 
     for (auto &client : fxBroadcastRecipients)
         clientUpdate(client);
-    //broadcast complete - reset the event change flag
-    fxEventChange = false;
     Log.infoln(F("Completed broadcast to %d recipients"), fxBroadcastRecipients.size());
 }
 
