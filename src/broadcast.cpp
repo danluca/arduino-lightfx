@@ -9,6 +9,7 @@
 #include "util.h"
 #include "sysinfo.h"
 
+#if BROADCAST_MASTER
 using namespace std::chrono;
 
 //we'll broadcast to board 2 - 192.168.0.11 static address
@@ -29,7 +30,6 @@ volatile bool fxEventChange = false;
 WiFiClient wiFiClient;
 
 void broadcastSetup() {
-#ifdef BROADCAST_MASTER
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         Log.errorln(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot setup broadcasting. System status: %X"), sysInfo->getSysStatus());
         return;
@@ -40,6 +40,7 @@ void broadcastSetup() {
         auto clientAddr = new IPAddress();
         clientAddr->fromString(sysAddr);
         clientAddr[3] = ipLSB;
+        Log.infoln("Client Address: %p", clientAddr);
         fxBroadcastRecipients.push(clientAddr);
     }
 
@@ -50,11 +51,9 @@ void broadcastSetup() {
     syncThread->start(callback(&broadcastQueue, &events::EventQueue::dispatch_forever));
     Log.infoln(F("FX Broadcast Sync thread [%s], priority %d - has been setup id %X. Events are dispatching to %d clients"), syncThread->get_name(), syncThread->get_priority(),
                syncThread->get_id(), fxBroadcastRecipients.size());
-#endif
 }
 
 void clientUpdate(const IPAddress *ip) {
-#ifdef BROADCAST_MASTER
     HttpClient client(wiFiClient, *ip, 80);
     client.setTimeout(5000);
     client.setHttpResponseTimeout(10000);
@@ -80,11 +79,9 @@ void clientUpdate(const IPAddress *ip) {
         Log.infoln(F("Successful FX sync with client %p: response status %d, body %s"), ip, statusCode, response.c_str());
     else
         Log.errorln(F("Failed to FX sync client %p: response status code %d"), ip, statusCode);
-#endif
 }
 
 void fxBroadcast() {
-#ifdef BROADCAST_MASTER
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         Log.warningln(F("No WiFi - Cannot broadcast Fx changes"));
         return;
@@ -97,5 +94,16 @@ void fxBroadcast() {
     //broadcast complete - reset the event change flag
     fxEventChange = false;
     Log.infoln(F("Completed broadcast to %d recipients"), fxBroadcastRecipients.size());
-#endif
 }
+
+void postFxChangeEvent() {
+    evBroadcast.post();
+}
+
+#else
+
+void postFxChangeEvent(){
+    //no-op
+}
+
+#endif

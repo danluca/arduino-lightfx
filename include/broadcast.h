@@ -5,17 +5,16 @@
 #ifndef ARDUINO_LIGHTFX_BROADCAST_H
 #define ARDUINO_LIGHTFX_BROADCAST_H
 
-#include "Arduino.h"
-#include "Event.h"
 #include "config.h"
 #include "fixed_queue.h"
 #include "log.h"
 
-extern FixedQueue<IPAddress*, 10> fxBroadcastRecipients;
-extern events::Event<void(void)> evBroadcast;
-
+#if BROADCAST_MASTER
 void broadcastSetup();
 void fxBroadcast();
 
+#endif
+
+void postFxChangeEvent();
 
 #endif //ARDUINO_LIGHTFX_BROADCAST_H

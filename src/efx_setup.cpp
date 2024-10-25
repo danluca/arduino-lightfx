@@ -814,7 +814,7 @@ void EffectRegistry::loop() {
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         lastEffectRun = currentEffect;
         lastEffects.push(lastEffectRun);
-        evBroadcast.post();
+        postFxChangeEvent();
     }
     effects[lastEffectRun]->loop();
 }
