@@ -383,6 +383,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
+    fx[csBroadcast] = fxBroadcastEnabled;
     JsonArray lastFx = fx["pastEffects"].to<JsonArray>();
     fxRegistry.pastEffectsRun(lastFx);                   //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness;
@@ -522,6 +523,9 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
             removeFile(calibFileName);
             upd[csResetCal] = resetCal;
         }
+    }
+    if (!doc[csBroadcast].isNull()) {
+        fxBroadcastEnabled = doc[csBroadcast].as<bool>();
     }
 #ifndef DISABLE_LOGGING
     Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),

@@ -54,6 +54,10 @@ const char index_html[] PROGMEM = R"~~~(
                     <input type="checkbox" id="sleepEnabled" onchange="updateSleep()"/>
                     <label for="sleepEnabled" id="sleepEnabledLabel">Sleep schedule enabled</label>
                 </div>
+                <div id="fxBroadcastEnabledArea">
+                    <input type="checkbox" id="broadcastEnabled" onchange="updateBroadcast()"/>
+                    <label for="broadcastEnabled" id="broadcastEnabledLabel">Effect change broadcast enabled</label>
+                </div>
             </div>
             <div id="curEffectArea">
                 <span id="curEffectLabel">Current effect: </span> <span id="curEffect"></span> (<span id="curEffectId"></span>)

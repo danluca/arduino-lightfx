@@ -38,6 +38,7 @@ extern const char csBrightnessLocked[];
 extern const char csAuto[];
 extern const char csHoliday[];
 extern const char strNR[];
+extern const char csBroadcast[];
 
 extern const uint8_t dimmed;
 //extern const uint16_t FRAME_SIZE;
@@ -78,6 +79,7 @@ extern volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT];
 extern uint16_t totalAudioBumps;
 
 extern volatile bool fxBump;
+extern volatile bool fxBroadcastEnabled;
 extern volatile uint16_t speed;
 extern volatile uint16_t curPos;
 

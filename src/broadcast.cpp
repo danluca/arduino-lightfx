@@ -9,7 +9,8 @@
 #include "util.h"
 #include "sysinfo.h"
 
-#if BROADCAST_MASTER
+volatile bool fxBroadcastEnabled = false;
+
 using namespace std::chrono;
 
 //we'll broadcast to board 2 - 192.168.0.11 static address
@@ -18,11 +19,11 @@ static const uint8_t syncClientsLSB[] PROGMEM = {BROADCAST_CLIENTS};     //last 
 static const char hdContentJson[] PROGMEM = "Content-Type: application/json";
 static const char hdUserAgent[] PROGMEM = "User-Agent: rp2040-lightfx-master/1.0.0";
 static const char hdKeepAlive[] PROGMEM = "Connection: keep-alive";
-static const char fmtFxChange[] PROGMEM = R"===({"effect":%d,"auto":false})===";
+static const char fmtFxChange[] PROGMEM = R"===({"effect":%d,"auto":false,"broadcast":false})===";
 
 FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
 events::EventQueue broadcastQueue;
-events::Event<void(void)> evBroadcast(&broadcastQueue, fxBroadcast);
+events::Event<void(uint16_t)> evBroadcast(&broadcastQueue, fxBroadcast);
 rtos::Thread *syncThread;
 
 WiFiClient wiFiClient;
@@ -37,6 +38,10 @@ void broadcastSetup() {
     for (auto &ipLSB : syncClientsLSB) {
         auto clientAddr = new IPAddress();
         clientAddr->fromString(sysAddr);
+        if (clientAddr->operator[](3) == ipLSB) {
+            delete clientAddr;
+            continue;
+        }
         clientAddr->operator[](3) = ipLSB;
         fxBroadcastRecipients.push(clientAddr);
         Log.infoln(F("FX Broadcast recipient %p has been registered"), clientAddr);
@@ -53,8 +58,8 @@ void broadcastSetup() {
 
 void clientUpdate(const IPAddress *ip) {
     HttpClient client(wiFiClient, *ip, 80);
-    client.setTimeout(5000);
-    client.setHttpResponseTimeout(10000);
+    client.setTimeout(2000);
+    client.setHttpResponseTimeout(5000);
     client.connectionKeepAlive();
 
     size_t sz = sprintf(nullptr, fmtFxChange, fxRegistry.curEffectPos());
@@ -78,29 +83,28 @@ void clientUpdate(const IPAddress *ip) {
         Log.infoln(F("Successful FX sync with client %p: %d response status\nBody: %s"), ip, statusCode, response.c_str());
     else
         Log.errorln(F("Failed to FX sync client %p: %d response status"), ip, statusCode);
+    client.stop();
 }
 
-void fxBroadcast() {
+void fxBroadcast(const uint16_t index) {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         Log.warningln(F("No WiFi - Cannot broadcast Fx changes"));
         return;
     }
-    LedEffect *fx = fxRegistry.getCurrentEffect();
-    Log.infoln(F("Fx change event - start broadcasting %s[%d] to %d recipients"), fx->name(), fx->getRegistryIndex(), fxBroadcastRecipients.size());
 
+    LedEffect *fx = fxRegistry.getEffect(index);
+    if (!fxBroadcastEnabled) {
+        Log.warningln(F("This board is not a master (FX Broadcast disabled) - will not push effect %s[%d] to others"), fx->name(), fx->getRegistryIndex());
+        return;
+    }
+
+    Log.infoln(F("Fx change event - start broadcasting %s[%d] to %d recipients"), fx->name(), fx->getRegistryIndex(), fxBroadcastRecipients.size());
     for (auto &client : fxBroadcastRecipients)
         clientUpdate(client);
     Log.infoln(F("Completed broadcast to %d recipients"), fxBroadcastRecipients.size());
 }
 
-void postFxChangeEvent() {
-    evBroadcast.post();
+void postFxChangeEvent(const uint16_t index) {
+    evBroadcast.post(index);
 }
 
-#else
-
-void postFxChangeEvent(){
-    //no-op
-}
-
-#endif

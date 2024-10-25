@@ -7,7 +7,6 @@
 #include "broadcast.h"
 
 //~ Global variables definition
-#define STATE_JSON_DOC_SIZE   512
 const uint8_t dimmed = 20;
 const char csAutoFxRoll[] PROGMEM = "autoFxRoll";
 const char csStripBrightness[] PROGMEM = "stripBrightness";
@@ -22,6 +21,7 @@ const char csBrightnessLocked[] PROGMEM = "brightnessLocked";
 const char csAuto[] PROGMEM = "auto";
 const char csHoliday[] PROGMEM = "holiday";
 const char strNR[] PROGMEM = "N/R";
+const char csBroadcast[] PROGMEM = "broadcast";
 const setupFunc categorySetup[] = {FxA::fxRegister, FxB::fxRegister, FxC::fxRegister, FxD::fxRegister, FxE::fxRegister, FxF::fxRegister, FxH::fxRegister, FxI::fxRegister, FxJ::fxRegister, FxK::fxRegister};
 
 //const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
@@ -107,6 +107,8 @@ void readFxState() {
             fxRegistry.lastEffectRun = fxRegistry.currentEffect = random16(fxRegistry.effectsCount);
         else
             fxRegistry.lastEffectRun = fxRegistry.currentEffect = fx;
+        if (doc[csBroadcast].is<bool>())
+            fxBroadcastEnabled = doc[csBroadcast].as<bool>();
 
         Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T), sleepEnabled=%T"),
                    stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), paletteFactory.isAuto(), fxRegistry.isSleepEnabled());
@@ -124,6 +126,7 @@ void saveFxState() {
     doc[csColorTheme] = holidayToString(paletteFactory.getHoliday());
     doc[csAutoColorAdjust] = paletteFactory.isAuto();
     doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
+    doc[csBroadcast] = fxBroadcastEnabled;
     auto str = new String();
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
@@ -814,7 +817,7 @@ void EffectRegistry::loop() {
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         lastEffectRun = currentEffect;
         lastEffects.push(lastEffectRun);
-        postFxChangeEvent();
+        postFxChangeEvent(lastEffectRun);
     }
     effects[lastEffectRun]->loop();
 }

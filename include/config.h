@@ -17,9 +17,10 @@
 #define BRIGHTNESS 255
 
 // These are lists and need to be commas instead of dots eg. for IP address 192.168.0.1 use 192,168,0,1 instead
-#define IP_DNS 8,8,8,8          // Google DNS
-#define IP_GW 192,168,0,1       // default gateway (router)
-#define IP_SUBNET 255,255,255,0 
+#define IP_DNS 8,8,8,8              // Google DNS
+#define IP_GW 192,168,0,1           // default gateway (router)
+#define IP_SUBNET 255,255,255,0     // usual subnet mask
+#define BROADCAST_CLIENTS     10, 11        //this is a CSV of last byte of board IP addresses
 
 // MODE 0 = connect to wifi
 // MODE 1 = Access point mode
@@ -42,8 +43,6 @@
 #define VCC_DIV_R4  21950
 #define VCC_DIV_R5  3304
 #define DEVICE_NAME  "Dev"
-#define BROADCAST_MASTER  true          //whether this board will push Fx changes to other boards
-#define BROADCAST_CLIENTS     11        //this is a CSV of last byte of slave IP addresses
 
 #endif
 
@@ -61,8 +60,6 @@
 #define VCC_DIV_R4  21800
 #define VCC_DIV_R5  3305
 #define DEVICE_NAME  "FX01"
-#define BROADCAST_MASTER  false           //whether this board will push Fx changes to other boards
-#define BROADCAST_CLIENTS   0             //0 is for NA
 
 #endif
 

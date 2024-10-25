@@ -54,7 +54,7 @@ footer {
     padding: 5px 0;
 }
 
-#fxChangeArea #fxAutoChangeArea, #fxSleepEnabledArea, #fxChangeArea #fxBrightChangeArea, #curHolidayLabel, #holidayListLabel {
+#fxChangeArea #fxAutoChangeArea, #fxSleepEnabledArea, #fxBroadcastEnabledArea, #fxChangeArea #fxBrightChangeArea, #curHolidayLabel, #holidayListLabel {
     color: #7f7f7f;
     padding-left: 1em;
     padding-right: 2em;

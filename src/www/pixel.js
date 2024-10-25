@@ -120,6 +120,7 @@ function getStatus() {
             $('#curEffect').html(`${desc}`);
             $('#autoFxChange').prop("checked", data.fx.auto);
             $('#sleepEnabled').prop("checked", data.fx.sleepEnabled);
+            $('#broadcastEnabled').prop("checked", data.fx.broadcast);
             let fxlst = $('#fxlist');
             fxlst.val(data.fx.index);
             fxlst.attr("currentFxIndex", data.fx.index);
@@ -210,6 +211,28 @@ function updateSleep() {
         error: function (request, status, error) {
             $('#updateStatus').html(`Sleep schedule update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
             $('#sleepEnabled').prop("checked", !selectedSleep);
+            scheduleClearStatus();
+        }
+    });
+}
+
+function updateBroadcast() {
+    let selBroadcastMode = $('#broadcastEnabled').prop("checked");
+    let request = {};
+    request["broadcast"] = selBroadcastMode;
+    $.ajax({
+        type: "PUT",
+        url: "/fx",
+        contentType: "application/json",
+        dataType: "json",
+        data: JSON.stringify(request),
+        success: function (response) {
+            $('#updateStatus').html(`Broadcast mode has been ${selBroadcastMode ? 'enabled' : 'disabled'} successfully`).removeClass().addClass("status-ok");
+            scheduleClearStatus();
+        },
+        error: function (request, status, error) {
+            $('#updateStatus').html(`Broadcast mode update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
+            $('#broadcastEnabled').prop("checked", !selBroadcastMode);
             scheduleClearStatus();
         }
     });

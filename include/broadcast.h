@@ -9,12 +9,9 @@
 #include "fixed_queue.h"
 #include "log.h"
 
-#if BROADCAST_MASTER
 void broadcastSetup();
-void fxBroadcast();
+void fxBroadcast(const uint16_t index);
 
-#endif
-
-void postFxChangeEvent();
+void postFxChangeEvent(const uint16_t index);
 
 #endif //ARDUINO_LIGHTFX_BROADCAST_H
