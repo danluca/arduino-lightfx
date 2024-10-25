@@ -89,8 +89,8 @@ void fxBroadcast() {
         Log.warningln(F("No WiFi - Cannot broadcast Fx changes"));
         return;
     }
-    if (!fxEventChange)
-        return;
+//    if (!fxEventChange)
+//        return;
 
     for (auto &client : fxBroadcastRecipients)
         clientUpdate(client);
