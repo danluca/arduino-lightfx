@@ -32,8 +32,6 @@ events::Event<void(uint16_t)> evBroadcast(&broadcastQueue, fxBroadcast);
 events::Event<void(void)> evSetup(&broadcastQueue, broadcastSetup);
 rtos::Thread *syncThread;
 
-WiFiClient wiFiClient;  //wifi client - does not need explicit pointer for underlying WiFi class/driver
-
 /**
  * Preparations for broadcast effect changes - setup the recipient clients (others than self), the event posting attributes
  */
@@ -55,7 +53,7 @@ void broadcastSetup() {
         fxBroadcastRecipients.push(clientAddr);
         Log.infoln(F("FX Broadcast recipient %p has been registered"), clientAddr);
     }
-
+    Log.infoln(F("FX Broadcast setup completed - %d clients registered"), fxBroadcastRecipients.size());
     broadcastState = Configured;
 }
 
@@ -65,6 +63,7 @@ void broadcastSetup() {
  */
 void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     ScopedMutexLock lock(wifiMutex);
+    WiFiClient wiFiClient;  //wifi client - does not need explicit pointer for underlying WiFi class/driver
     HttpClient client(wiFiClient, *ip, 80);
     client.setTimeout(2000);
     client.setHttpResponseTimeout(2000);
@@ -134,8 +133,8 @@ void startSyncThread() {
     //setup the client sync thread - below normal priority
     syncThread = new rtos::Thread(osPriorityNormal, 1280, nullptr, "Sync");
     syncThread->start(callback(&broadcastQueue, &events::EventQueue::dispatch_forever));
-    Log.infoln(F("FX Broadcast Sync thread [%s], priority %d - has been setup id %X. Events are dispatching to %d clients"), syncThread->get_name(), syncThread->get_priority(),
-               syncThread->get_id(), fxBroadcastRecipients.size());
+    Log.infoln(F("FX Broadcast Sync thread [%s], priority %d - has been setup id %X. Events broadcasting enabled=%T"), syncThread->get_name(), syncThread->get_priority(),
+               syncThread->get_id(), fxBroadcastEnabled);
 }
 
 /**

@@ -6,6 +6,7 @@
 #include "timeutil.h"
 #include "sysinfo.h"
 #include "diag.h"
+#include "broadcast.h"
 #include "StreamUtils.h"
 
 static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
@@ -527,7 +528,11 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         }
     }
     if (!doc[csBroadcast].isNull()) {
-        fxBroadcastEnabled = doc[csBroadcast].as<bool>();
+        bool syncMode = doc[csBroadcast].as<bool>();
+        bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
+        fxBroadcastEnabled = syncMode;  //we need this enabled before we post the event, if we're doing that
+        if (masterEnabled)
+            postFxChangeEvent(fxRegistry.curEffectPos());   //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
     }
 #ifndef DISABLE_LOGGING
     Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),
