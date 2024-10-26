@@ -132,7 +132,7 @@ void startSyncThread() {
     eventSetup();
 
     //setup the client sync thread - below normal priority
-    syncThread = new rtos::Thread(osPriorityBelowNormal, 1280, nullptr, "Sync");
+    syncThread = new rtos::Thread(osPriorityNormal, 1280, nullptr, "Sync");
     syncThread->start(callback(&broadcastQueue, &events::EventQueue::dispatch_forever));
     Log.infoln(F("FX Broadcast Sync thread [%s], priority %d - has been setup id %X. Events are dispatching to %d clients"), syncThread->get_name(), syncThread->get_priority(),
                syncThread->get_id(), fxBroadcastRecipients.size());
