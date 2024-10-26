@@ -5,6 +5,7 @@
 #include "config.h"
 #include "sysinfo.h"
 #include "timeutil.h"
+#include "broadcast.h"
 #include "log.h"
 
 using namespace colTheme;
@@ -126,8 +127,10 @@ void wifi_reconnect() {
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     delay(2000);    //let disconnect state settle
-    if (wifi_connect())
-        updateStateLED((uint32_t)CLR_ALL_OK);
+    if (wifi_connect()) {
+        updateStateLED((uint32_t) CLR_ALL_OK);
+        postWiFiSetupEvent();
+    }
     //NVIC_SystemReset();
 }
 

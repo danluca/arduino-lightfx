@@ -48,7 +48,7 @@ void setup() {
 
     watchdogSetup();
 
-    broadcastSetup();
+    postWiFiSetupEvent();
 
     Log.infoln(F("Main Setup completed. System status: %X"), sysInfo->getSysStatus());
     logSystemInfo();

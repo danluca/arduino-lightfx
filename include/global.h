@@ -47,7 +47,7 @@ extern const uint8_t maxChanges;
 extern const uint16_t dailyBedTime;
 extern const uint16_t dailyWakeupTime;
 enum OpMode { TurnOff, Chase };
-enum EffectState {Setup, Running, WindDownPrep, WindDown, TransitionBreakPrep, TransitionBreak, Idle};
+enum EffectState:uint8_t {Setup, Running, WindDownPrep, WindDown, TransitionBreakPrep, TransitionBreak, Idle};
 extern CRGB leds[NUM_PIXELS];
 extern CRGBArray<NUM_PIXELS> frame;
 extern CRGBSet tpl;

@@ -56,6 +56,7 @@ static const std::map<std::string, reqHandler> webMappings PROGMEM = {
         {"^PUT /fx$",             handlePutConfig}
 };
 
+rtos::Mutex wifiMutex;
 // global server object - through WiFi module
 WiFiServer server(80);
 //size of the buffer for buffering the response
@@ -72,6 +73,7 @@ void server_setup() {
  * Dispatch incoming requests to their handlers
  */
 void webserver() {
+    ScopedMutexLock lock(wifiMutex);
     web::dispatch();
 }
 

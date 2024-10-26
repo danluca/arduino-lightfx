@@ -9,9 +9,9 @@
 #include "fixed_queue.h"
 #include "log.h"
 
-void broadcastSetup();
-void fxBroadcast(const uint16_t index);
+enum BroadcastState:uint8_t {Uninitialized, Configured, Broadcasting, Waiting};
 
-void postFxChangeEvent(const uint16_t index);
+void postFxChangeEvent(uint16_t index);
+void postWiFiSetupEvent();
 
 #endif //ARDUINO_LIGHTFX_BROADCAST_H
