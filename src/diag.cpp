@@ -156,6 +156,19 @@ void CalibrationMeasurement::setMeasurement(const MeasurementPair &msmt) {
 }
 
 /**
+ * Build the calibration parameters, leveraging the pre-calculated range arguments passed in
+ */
+void buildCalParams() {
+    float adcRange = (float)calibTempMeasurements.max.adcRaw - (float)calibTempMeasurements.min.adcRaw;
+    float tempRange = calibTempMeasurements.min.value - calibTempMeasurements.max.value;
+    calibCpuTemp.refTemp = calibTempMeasurements.ref.value;
+    calibCpuTemp.vtref = (float)calibTempMeasurements.ref.adcRaw * (float)calibCpuTemp.ref33 / maxAdc;
+    calibCpuTemp.slope = adcRange * (float)calibCpuTemp.ref33 / maxAdc / tempRange;
+    calibCpuTemp.refDelta = fabs(tempRange);
+    calibCpuTemp.time = calibTempMeasurements.ref.time;
+}
+
+/**
  * If the reference points are enough apart, extract the calibration parameters
  * @return true if calibration changes were made; false otherwise
  */
@@ -164,9 +177,7 @@ bool calibrate() {
     if (calibTempMeasurements.min.time == 0 || calibTempMeasurements.max.time == 0)
         return false;
 
-    float adcRange = (float)calibTempMeasurements.max.adcRaw - (float)calibTempMeasurements.min.adcRaw;
-    float tempRange = calibTempMeasurements.min.value - calibTempMeasurements.max.value;
-    float range = fabs(tempRange);
+    float range = fabs(calibTempMeasurements.min.value - calibTempMeasurements.max.value);
     bool changes = false;
 
     if (calibCpuTemp.isValid()) {
@@ -175,11 +186,8 @@ bool calibrate() {
         bool bRecalDeviation = fabs(cpuTempRange.current.value-imuTempRange.current.value) > 5.0f && range > 3.0f;
 
         if(bRecalRange || bRecalDeviation) {
-            //re-calibrate - update only the slope
-            calibCpuTemp.refTemp = calibTempMeasurements.ref.value;
-            calibCpuTemp.slope = adcRange * (float)calibCpuTemp.ref33 / maxAdc / tempRange;
-            calibCpuTemp.refDelta = range;
-            calibCpuTemp.time = calibTempMeasurements.ref.time;
+            //re-calibrate
+            buildCalParams();
             changes = true;
         }
     } else {
@@ -188,11 +196,7 @@ bool calibrate() {
         float gapHigh = fabs(calibTempMeasurements.max.value - calibTempMeasurements.ref.value);
         if (range > 5.0f && gapLow >= 1.0f && gapHigh >= 1.0f) {
             //proceed to calibrate
-            calibCpuTemp.refTemp = calibTempMeasurements.ref.value;
-            calibCpuTemp.vtref = (float)calibTempMeasurements.ref.adcRaw * (float)calibCpuTemp.ref33 / maxAdc;
-            calibCpuTemp.slope = adcRange * (float)calibCpuTemp.ref33 / maxAdc / tempRange;
-            calibCpuTemp.refDelta = range;
-            calibCpuTemp.time = calibTempMeasurements.ref.time;
+            buildCalParams();
             changes = true;
         }
     }

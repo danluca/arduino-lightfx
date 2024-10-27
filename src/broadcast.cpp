@@ -87,9 +87,9 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     int statusCode = client.responseStatusCode();
     String response = client.responseBody();
     if (statusCode/100 == 2)
-        Log.infoln(F("Successful FX sync %d with client %p: %d response status\nBody: %s"), fxIndex, ip, statusCode, response.c_str());
+        Log.infoln(F("Successful sync FX %d with client %p: %d response status\nBody: %s"), fxIndex, ip, statusCode, response.c_str());
     else
-        Log.errorln(F("Failed to FX sync %d to client %p: %d response status"), fxIndex,  ip, statusCode);
+        Log.errorln(F("Failed to sync FX %d to client %p: %d response status"), fxIndex,  ip, statusCode);
     client.stop();
 }
 
@@ -133,7 +133,7 @@ void startSyncThread() {
     //setup the client sync thread - below normal priority
     syncThread = new rtos::Thread(osPriorityNormal, 1280, nullptr, "Sync");
     syncThread->start(callback(&broadcastQueue, &events::EventQueue::dispatch_forever));
-    Log.infoln(F("FX Broadcast Sync thread [%s], priority %d - has been setup id %X. Events broadcasting enabled=%T"), syncThread->get_name(), syncThread->get_priority(),
+    Log.infoln(F("FX Broadcast Sync thread [%s], priority %d - has been started with id %X. Events broadcasting enabled=%T"), syncThread->get_name(), syncThread->get_priority(),
                syncThread->get_id(), fxBroadcastEnabled);
 }
 
