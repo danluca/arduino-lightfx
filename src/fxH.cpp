@@ -101,7 +101,11 @@ void FxH1::setup() {
 void FxH1::run() {
     EVERY_N_MILLIS(1000 / FRAMES_PER_SECOND) {
         // Add entropy to random number generator; we use a lot of it.
+        // random() is a stdlib function that seems to leverage TRNG setup from mbed, unclear how is that achieved in RP2040 environment that does not
+        // have native support for TRNG (however, the NanoRP2040 Connect board has a security chip ECC608B that does have a TRNG)
+        // there were some watchdog resets when using WiFiClient and a set of effects, for which the first correlation seems to be stdlib's random function (could totally be off)
         //random16_add_entropy(random());
+        random16_add_entropy(millis() & 0xFFF);
 
         // Fourth, the most sophisticated: this one sets up a new palette every
         // time through the loop, based on a hue that changes every time.
@@ -671,7 +675,7 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
 }
 
 void FxH6::run() {
-    EVERY_N_MILLISECONDS(25) {
+    EVERY_N_MILLISECONDS(35) {
         uint8_t x = random8();
         for (auto it = activeSparks.begin(); it != activeSparks.end();)
             //if spark becomes idle, remove from list
