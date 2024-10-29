@@ -63,16 +63,13 @@ void broadcastSetup() {
  */
 void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     ScopedMutexLock lock(wifiMutex);
+    Log.infoln(F("Attempting to connect to client %p"), ip);
     WiFiClient wiFiClient;  //wifi client - does not need explicit pointer for underlying WiFi class/driver
-    if (!wiFiClient.connect(*ip, HttpClient::kHttpPort)) {
-        Log.warningln(F("Cannot establish connection with client %p - skipping. FX %d not synced"), ip, fxIndex);
-        wiFiClient.stop();
-        return;
-    }
     HttpClient client(wiFiClient, *ip, HttpClient::kHttpPort);
     client.setTimeout(2000);
     client.setHttpResponseTimeout(2000);
     client.connectionKeepAlive();
+    client.noDefaultRequestHeaders();
 
     size_t sz = sprintf(nullptr, fmtFxChange, fxIndex);
     char buf[sz+1];
@@ -80,7 +77,7 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     buf[sz] = 0;    //null terminated string
 
     client.beginRequest();
-    client.put("/fx");
+    client.put("/fx");  //this is where connection is established
     client.sendHeader(hdContentJson);
     client.sendHeader(hdUserAgent);
     client.sendHeader("Content-Length", sz);
@@ -117,7 +114,7 @@ void fxBroadcast(const uint16_t index) {
     Log.infoln(F("Fx change event - start broadcasting %s[%d] to %d recipients"), fx->name(), fx->getRegistryIndex(), fxBroadcastRecipients.size());
     for (auto &client : fxBroadcastRecipients)
         clientUpdate(client, fx->getRegistryIndex());
-    Log.infoln(F("Completed broadcast to %d recipients"), fxBroadcastRecipients.size());
+    Log.infoln(F("Finished broadcasting to %d recipients - check individual log statements for status of each recipient"), fxBroadcastRecipients.size());
     broadcastState = Waiting;
 }
 
