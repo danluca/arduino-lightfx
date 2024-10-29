@@ -64,7 +64,12 @@ void broadcastSetup() {
 void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     ScopedMutexLock lock(wifiMutex);
     WiFiClient wiFiClient;  //wifi client - does not need explicit pointer for underlying WiFi class/driver
-    HttpClient client(wiFiClient, *ip, 80);
+    if (!wiFiClient.connect(*ip, HttpClient::kHttpPort)) {
+        Log.warningln(F("Cannot establish connection with client %p - skipping. FX %d not synced"), ip, fxIndex);
+        wiFiClient.stop();
+        return;
+    }
+    HttpClient client(wiFiClient, *ip, HttpClient::kHttpPort);
     client.setTimeout(2000);
     client.setHttpResponseTimeout(2000);
     client.connectionKeepAlive();
@@ -131,7 +136,7 @@ void startSyncThread() {
     eventSetup();
 
     //setup the client sync thread - below normal priority
-    syncThread = new rtos::Thread(osPriorityNormal, 1280, nullptr, "Sync");
+    syncThread = new rtos::Thread(osPriorityNormal, 1536, nullptr, "Sync");
     syncThread->start(callback(&broadcastQueue, &events::EventQueue::dispatch_forever));
     Log.infoln(F("FX Broadcast Sync thread [%s], priority %d - has been started with id %X. Events broadcasting enabled=%T"), syncThread->get_name(), syncThread->get_priority(),
                syncThread->get_id(), fxBroadcastEnabled);
