@@ -66,7 +66,7 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     Log.infoln(F("Attempting to connect to client %p for FX %d"), ip, fxIndex);
     WiFiClient wiFiClient;  //wifi client - does not need explicit pointer for underlying WiFi class/driver
     HttpClient client(wiFiClient, *ip, HttpClient::kHttpPort);
-    client.setTimeout(2000);
+    client.setTimeout(1000);
     client.setHttpResponseTimeout(2000);
     client.connectionKeepAlive();
     client.noDefaultRequestHeaders();
