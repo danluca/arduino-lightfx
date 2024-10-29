@@ -427,7 +427,7 @@ void SleepLight::setup() {
     hue = colorBuf.hue = excludeActiveColors(0);
     colorBuf.sat = 160;
     colorBuf.val = stripBrightness;
-    Log.infoln(F("SleepLight setup: colorBuf=%r, hue=%d, sat=%d, val=%d"), (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val);
+//    Log.infoln(F("SleepLight setup: colorBuf=%r, hue=%d, sat=%d, val=%d"), (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val);
 }
 
 /**
@@ -448,14 +448,14 @@ void SleepLight::run() {
         EVERY_N_SECONDS(5) {
             colorBuf.val = flrSub(colorBuf.val, 3, minBrightness);
             state = colorBuf.val > minBrightness ? FadeColorTransition : SleepTransition;
-            Log.infoln(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
+//            Log.infoln(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
         }
         EVERY_N_SECONDS(3) {
             hue += random8(2, 19);
             colorBuf.hue = excludeActiveColors(hue);
             colorBuf.sat = map(colorBuf.val, minBrightness, brightness, 24, 160);
             state = colorBuf.val > minBrightness ? FadeColorTransition : SleepTransition;
-            Log.infoln(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
+//            Log.infoln(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
         }
     }
     EVERY_N_MILLIS(125) {
@@ -486,8 +486,8 @@ SleepLight::SleepLightState SleepLight::step() {
         default:
             break;
     }
-    if (oldState != state)
-        Log.infoln(F("SleepLight state changed from %d to %d, colorBuf=%r, refPixel=%r"), oldState, state, (CRGB)colorBuf, *refPixel);
+//    if (oldState != state)
+//        Log.infoln(F("SleepLight state changed from %d to %d, colorBuf=%r, refPixel=%r"), oldState, state, (CRGB)colorBuf, *refPixel);
     return oldState;
 }
 
