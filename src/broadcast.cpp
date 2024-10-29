@@ -63,7 +63,7 @@ void broadcastSetup() {
  */
 void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     ScopedMutexLock lock(wifiMutex);
-    Log.infoln(F("Attempting to connect to client %p"), ip);
+    Log.infoln(F("Attempting to connect to client %p for FX %d"), ip, fxIndex);
     WiFiClient wiFiClient;  //wifi client - does not need explicit pointer for underlying WiFi class/driver
     HttpClient client(wiFiClient, *ip, HttpClient::kHttpPort);
     client.setTimeout(2000);
@@ -77,21 +77,24 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     buf[sz] = 0;    //null terminated string
 
     client.beginRequest();
-    client.put("/fx");  //this is where connection is established
-    client.sendHeader(hdContentJson);
-    client.sendHeader(hdUserAgent);
-    client.sendHeader("Content-Length", sz);
-    client.sendHeader(hdKeepAlive);
-    client.beginBody();
-    client.print(buf);
-    client.endRequest();
+    //client.put is where connection is established
+    if (HTTP_SUCCESS == client.put("/fx")) {
+        client.sendHeader(hdContentJson);
+        client.sendHeader(hdUserAgent);
+        client.sendHeader("Content-Length", sz);
+        client.sendHeader(hdKeepAlive);
+        client.beginBody();
+        client.print(buf);
+        client.endRequest();
 
-    int statusCode = client.responseStatusCode();
-    String response = client.responseBody();
-    if (statusCode/100 == 2)
-        Log.infoln(F("Successful sync FX %d with client %p: %d response status\nBody: %s"), fxIndex, ip, statusCode, response.c_str());
-    else
-        Log.errorln(F("Failed to sync FX %d to client %p: %d response status"), fxIndex,  ip, statusCode);
+        int statusCode = client.responseStatusCode();
+        String response = client.responseBody();
+        if (statusCode / 100 == 2)
+            Log.infoln(F("Successful sync FX %d with client %p: %d response status\nBody: %s"), fxIndex, ip, statusCode, response.c_str());
+        else
+            Log.errorln(F("Failed to sync FX %d to client %p: %d response status"), fxIndex, ip, statusCode);
+    } else
+        Log.errorln(F("Failed to connect to client %p, FX %d not synced"), ip, fxIndex);
     client.stop();
 }
 
