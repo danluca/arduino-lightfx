@@ -185,7 +185,6 @@ void logSystemInfo() {
 
     Log.infoln(sysInfoFmt, statsSys.cpu_id, statsSys.os_version, statsSys.compiler_id, statsSys.compiler_version, sysInfo->getBoardId().c_str(),
                BOARD_NAME, BOARD_VENDORID, BOARD_PRODUCTID, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->get_flash_capacity());
-
 #endif
 }
 
@@ -231,7 +230,7 @@ SysInfo::SysInfo() : boardName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildT
  * Capture Flash UID as board unique identifier in HEX string format
  */
 void SysInfo::fillBoardId() {
-    // Flash UID
+    // Flash UID - could also use getUniqueSerialNumber (output in hex) with a buffer twice the size of FLASH_UNIQUE_ID_SIZE_BYTES
     uint8_t fuid[FLASH_UNIQUE_ID_SIZE_BYTES];
     flash_get_unique_id(fuid);
     int i = 0;

@@ -101,7 +101,7 @@ void FxH1::setup() {
 void FxH1::run() {
     EVERY_N_MILLIS(1000 / FRAMES_PER_SECOND) {
         // Add entropy to random number generator; we use a lot of it.
-        random16_add_entropy(random());
+        //random16_add_entropy(random());
 
         // Fourth, the most sophisticated: this one sets up a new palette every
         // time through the loop, based on a hue that changes every time.
@@ -516,8 +516,7 @@ void FxH5::run() {
             case Sparkle: small[pixelPos] = BKG; break;
             case Glitter: small[pixelPos] = prevClr; break;
         }
-
-        pixelPos = random(small.size());
+        pixelPos = random16(small.size());
         prevClr = small[pixelPos];
         CRGB clr(red, green, blue);
 
