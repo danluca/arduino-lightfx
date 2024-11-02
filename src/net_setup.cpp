@@ -38,6 +38,10 @@ uint8_t barSignalLevel(int32_t rssi) {
     return (uint8_t) ((float) (rssi - minRSSI) * outRange / inRange);
 }
 
+void stateLed(const CRGB& clr) {
+    updateStateLED(clr.as_uint32_t());
+}
+
 bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
     WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
@@ -48,7 +52,7 @@ bool wifi_connect() {
     uint8_t wifiStatus = WiFi.status();
     while (wifiStatus != WL_CONNECTED) {
         if (attCount > 60)
-            updateStateLED((uint32_t)CLR_SETUP_ERROR);
+            stateLed(CLR_SETUP_ERROR);
         Log.infoln(F("Attempting to connect..."));
 
         // Connect to WPA/WPA2 network
@@ -119,7 +123,7 @@ bool wifi_check() {
  */
 void wifi_reconnect() {
     sysInfo->resetSysStatus(SYS_STATUS_WIFI);
-    updateStateLED((uint32_t)CLR_SETUP_IN_PROGRESS);
+    stateLed(CLR_SETUP_IN_PROGRESS);
     server.clearWriteError();
     WiFiClient client = server.available();
     if (client) client.stop();
@@ -128,7 +132,7 @@ void wifi_reconnect() {
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     delay(2000);    //let disconnect state settle
     if (wifi_connect()) {
-        updateStateLED((uint32_t) CLR_ALL_OK);
+        stateLed(CLR_ALL_OK);
         postWiFiSetupEvent();
     }
     //NVIC_SystemReset();
@@ -137,16 +141,16 @@ void wifi_reconnect() {
 void wifi_loop() {
     EVERY_N_MINUTES(7) {
         if (!wifi_check()) {
-            updateStateLED((uint32_t)CLR_SETUP_ERROR);
+            stateLed(CLR_SETUP_ERROR);
             Log.warningln(F("WiFi connection unusable/lost - reconnecting..."));
             wifi_reconnect();
         }
 
         if (!timeClient.isTimeSet()) {
             if (time_setup())
-                updateStateLED((uint32_t)CLR_ALL_OK);
+                stateLed(CLR_ALL_OK);
             else
-                updateStateLED((uint32_t)CLR_SETUP_ERROR);
+                stateLed(CLR_SETUP_ERROR);
         }
         Log.infoln(F("System status: %X"), sysInfo->getSysStatus());
     }
