@@ -20,7 +20,7 @@ const char fxb5Desc[] PROGMEM = "FXB5: juggle short segments";
 const char fxb6Desc[] PROGMEM = "FXB6: bpm";
 const char fxb7Desc[] PROGMEM = "FXB7: ease";
 const char fxb8Desc[] PROGMEM = "FXB8: fadein";
-const char fxb9Desc[] PROGMEM = "FxB9: juggle long segments";
+const char fxb9Desc[] PROGMEM = "FXB9: juggle long segments";
 
 void FxB::fxRegister() {
     static FxB1 fxb1;

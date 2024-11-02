@@ -28,10 +28,11 @@ LIABILITY, WHETHER IN AN ACTION OF  CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-
 #include "ArduinoLog.h"
 
 #ifndef DISABLE_LOGGING
+/** One character for each LOG_LEVEL_* definition  */
+const char* Logging::levels PROGMEM = "FEWITV";
 rtos::Mutex serial_mtx;
 #endif
 
@@ -301,5 +302,5 @@ void Logging::printFormat(const char format, va_list *args) {
     }
 #endif
 }
- 
+
 Logging Log = Logging();

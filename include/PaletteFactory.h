@@ -4,8 +4,9 @@
 #ifndef ARDUINO_LIGHTFX_PALETTEFACTORY_H
 #define ARDUINO_LIGHTFX_PALETTEFACTORY_H
 
-#include "util.h"
 #include <FastLED.h>
+#include "util.h"
+#include "timeutil.h"
 
 namespace colTheme {
     class PaletteFactory {
@@ -29,6 +30,15 @@ namespace colTheme {
         void setAuto(bool autoMode = true);
 
         static CRGBPalette16 randomPalette(uint8_t ofsHue = 0, time_t time = 0);
+
+        static CRGBPalette16 selectRandomPalette();
+
+        static CRGBPalette16 selectNextPalette();
+
+        static void toHSVPalette(CHSVPalette16 &hsvPalette, const CRGBPalette16 &rgbPalette);
+
+    private:
+        static uint8_t activePaletteIndex;
     };
 }
 

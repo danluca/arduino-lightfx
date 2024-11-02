@@ -1,67 +1,24 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
 //
 
 #include "util.h"
 #include "utility/ECCX08DefaultTLSConfig.h"
+#include "timeutil.h"
 // increase the amount of space for file system to 128kB (default 64kB)
 #define RP2040_FS_SIZE_KB   (128)
 #include <LittleFSWrapper.h>
+#include "hardware/watchdog.h"
+#include "sysinfo.h"
+#include "FastLED.h"
 
 #define FILE_BUF_SIZE   256
-const uint maxAdc = 1 << ADC_RESOLUTION;
-const char stateFileName[] = LITTLEFS_FILE_PREFIX "/state.json";
+const char stateFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/state.json";
+const char sysFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/sys.json";
 
-static uint8_t sysStatus = 0x00;    //system status bit array
-
+FixedQueue<TimeSync, 8> timeSyncs;
 LittleFSWrapper *fsPtr;
-
-inline static float toFahrenheit(float celsius) {
-    return celsius * 9.0f / 5 + 32;
-}
-
-float boardTemperature(bool bFahrenheit) {
-    if (IMU.temperatureAvailable()) {
-        float tempC = 0.0f;
-        IMU.readTemperatureFloat(tempC);
-#ifndef DISABLE_LOGGING
-        // Serial console doesn't seem to work well with UTF-8 chars, hence not using ° symbol for degree.
-        // Can also try using wchar_t type. Unsure ArduinoLog library supports it well. All in all, not worth digging much into it - only used for troubleshooting
-        Log.infoln(F("Board temperature %D 'C (%D 'F)"), tempC, toFahrenheit(tempC));
-#endif
-        return bFahrenheit ? toFahrenheit(tempC) : tempC;
-    }
-    return IMU_TEMPERATURE_NOT_AVAILABLE;
-}
-
-float controllerVoltage() {
-    const uint avgSize = 8;  //we'll average 8 readings back to back
-    uint valSum = 0;
-    for (uint x = 0; x < avgSize; x++)
-        valSum += analogRead(A0);
-    Log.traceln(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
-    valSum = valSum*MV3_3/avgSize;
-    valSum = valSum/VCC_DIV_R5*(VCC_DIV_R5+VCC_DIV_R4)/maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
-    return (float)valSum/1000.0f;
-}
-
-float chipTemperature(bool bFahrenheit) {
-    uint curAdc = adc_get_selected_input();
-    const uint avgSize = 8;   //we'll average 8 readings back to back
-
-    adc_select_input(4);    //internal temperature sensor is on ADC channel 4
-    uint valSum = 0;
-    for (uint x = 0; x < avgSize; x++)
-        valSum += adc_read();
-    adc_select_input(curAdc);   //restore the ADC input selection
-    Log.traceln(F("Internal Temperature %d average reading: %d"), avgSize, valSum/avgSize);
-
-    auto tV = (float)(valSum*MV3_3/avgSize/maxAdc);   //voltage in mV
-    //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
-    //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
-    float temp = 27.0f - (tV - CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27)/CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE;
-    return bFahrenheit ? toFahrenheit(temp) : temp;
-}
+//rtos::Mutex i2cMutex;
 
 /**
  * Adapted from article https://rheingoldheavy.com/better-arduino-random-values/
@@ -126,7 +83,7 @@ void fsInit() {
 
     fsPtr = new LittleFSWrapper();
     if (fsPtr->init()) {
-        setSysStatus(SYS_STATUS_FILESYSTEM);
+        sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
         Log.infoln("Filesystem OK");
     }
 
@@ -158,10 +115,8 @@ size_t readTextFile(const char *fname, String *s) {
             fsize += cread;
         }
         fclose(f);
-#ifndef DISABLE_LOGGING
         Log.infoln(F("Read %d bytes from %s file"), fsize, fname);
-        Log.traceln(F("File %s content [%d]: %s"), fname, fsize, s->c_str());
-#endif
+        Log.traceln(F("Read file %s content [%d]: %s"), fname, fsize, s->c_str());
     } else
         Log.errorln(F("Text file %s was not found/could not read"), fname);
     return fsize;
@@ -180,6 +135,7 @@ size_t writeTextFile(const char *fname, String *s) {
         fsize = fwrite(s->c_str(), sizeof(s->charAt(0)), s->length(), f);
         fclose(f);
         Log.infoln(F("File %s has been saved, size %d bytes"), fname, s->length());
+        Log.traceln(F("Saved file %s content [%d]: %s"), fname, fsize, s->c_str());
     } else
         Log.errorln(F("Failed to create file %s for writing"), fname);
     return fsize;
@@ -189,9 +145,15 @@ bool removeFile(const char *fname) {
     FILE *f = fopen(fname, "r");
     if (f) {
         fclose(f);
-        return lfs.remove(fname) == 0;
+        int retCode = remove(fname);        //lfs.remove(fname) can be an option, likely if fname is relative to lfs root
+        if (retCode == 0)
+            Log.infoln(F("File %s successfully removed"), fname);
+        else
+            Log.errorln(F("File %s can NOT be removed; error code: %d"), fname, retCode);
+        return retCode == 0;
     }
     //file does not exist - return true to the caller, the intent is already fulfilled
+    Log.infoln(F("File %s does not exist, no need to remove"), fname);
     return true;
 }
 
@@ -238,29 +200,34 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
     return 255-bmul8(255-a, 255-b)*2;
 }
 
-const uint8_t setSysStatus(uint8_t bitMask) {
-    sysStatus |= bitMask;
-    return sysStatus;
-}
-
-const uint8_t resetSysStatus(uint8_t bitMask) {
-    sysStatus &= (~bitMask);
-    return sysStatus;
-}
-
-bool isSysStatus(uint8_t bitMask) {
-    return (sysStatus & bitMask);
-}
-
-const uint8_t getSysStatus() {
-    return sysStatus;
-}
-
+/**
+ * Are we in DST (Daylight Savings Time) at this time?
+ * @param time
+ * @return
+ */
 bool isDST(const time_t time) {
-    const uint16_t md = encodeMonthDay(time);
+//    const uint16_t md = encodeMonthDay(time);
     // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
     // to the transition, such that we don't need to implement complex Sunday counting rules
-    return md > 0x030C && md < 0x0B05;
+//    return md > 0x030C && md < 0x0B05;
+    int mo = month(time);
+    int dy = day(time);
+    int hr = hour(time);
+    int dow = weekday(time);
+    // DST runs from second Sunday of March to first Sunday of November
+    // Never in January, February or December
+    if (mo < 3 || mo > 11)
+        return false;
+    // Always in April to October
+    if (mo > 3 && mo < 11)
+        return true;
+    // In March, DST if previous Sunday was on or after the 8th.
+    // Begins at 2am on second Sunday in March
+    int previousSunday = dy - dow;
+    if (mo == 3)
+        return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
+    // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
+    return (previousSunday < 7 && dow == 1) ? (hr < 2) : (previousSunday < 0);
 }
 
 /**
@@ -297,7 +264,7 @@ uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
     long low = (long)minLim;
     long high = maxLim > 0 ? (long)maxLim : INT32_MAX;
-    return isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
+    return sysInfo->isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
 }
 
 bool secElement_setup() {
@@ -305,7 +272,8 @@ bool secElement_setup() {
         Log.errorln(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
         return false;
     }
-    const char* eccSerial = ECCX08.serialNumber().c_str();
+    sysInfo->setSecureElementId(ECCX08.serialNumber());
+    const char* eccSerial = sysInfo->getSecureElementId().c_str();
     if (!ECCX08.locked()) {
         Log.warningln(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
         if (!ECCX08.writeConfiguration(ECCX08_DEFAULT_TLS_CONFIG)) {
@@ -319,8 +287,33 @@ bool secElement_setup() {
         Log.infoln(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
     }
     Log.infoln(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
-    setSysStatus(SYS_STATUS_ECC);
+    sysInfo->setSysStatus(SYS_STATUS_ECC);
+    //update entropy - the timing of this call allows us to interact with I2C without other contenders
+    uint16_t rnd = secRandom16();
+    random16_add_entropy(rnd);
+    Log.infoln(F("Secure random value %i added as entropy to pseudo random number generator"), rnd);
     return true;
 }
 
+/**
+ * Setup the watchdog to 10 seconds - this is run once in the setup step at the program start
+ * Take the opportunity and log if this program start is the result of a watchdog reboot
+ */
+void watchdogSetup() {
+    if (watchdog_caused_reboot()) {
+        time_t rebootTime = now();
+        Log.warningln(F("A watchdog caused reboot has occurred at %y"), rebootTime);
+        sysInfo->watchdogReboots().push(rebootTime);
+        sysInfo->markDirtyBoot();
+    }
+    //if no ping in 3 seconds, reboot
+    watchdog_enable(3000, true);
+}
+
+/**
+ * Reset the watchdog
+ */
+void watchdogPing() {
+    watchdog_update();
+}
 

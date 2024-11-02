@@ -17,6 +17,7 @@ const char fxa2Desc[] PROGMEM = "FXA2: Randomly sized and spaced segments moving
 const char fxa3Desc[] PROGMEM = "FXA3: Moving variable dot size back and forth";
 const char fxa4Desc[] PROGMEM = "FXA4: pixel segments moving opposite directions";
 const char fxa5Desc[] PROGMEM = "FXA5: Moving a color swath on top of another";
+const char fxa6Desc[] PROGMEM = "FXA6: Sleep Light";
 
 void FxA::fxRegister() {
     static FxA1 fxA1;
@@ -24,6 +25,7 @@ void FxA::fxRegister() {
     static FxA3 fxA3;
     static FxA4 fxA4;
     static FxA5 fxA5;
+    static SleepLight fxA6;
 }
 
 void FxA::resetStack() {
@@ -401,4 +403,98 @@ JsonObject & FxA5::describeConfig(JsonArray &json) const {
 
 uint8_t FxA5::selectionWeight() const {
     return 20;
+}
+
+// SleepLight
+SleepLight::SleepLight() : LedEffect(fxa6Desc), state(Fade), refPixel(&ledSet[0]) {
+    for (int x = 5; x < ledSet.size(); x += 10) {
+        slOffSegs.push_front(ledSet(x, x+4));
+    }
+}
+
+uint8_t excludeActiveColors(uint8_t hue) {
+    const uint8_t min = HUE_ORANGE-8;     //24       (~33°)
+    const uint8_t max = HUE_AQUA;         //128      (180°)
+    return scale8(sin8(hue), (max-min)) + min;
+}
+
+void SleepLight::setup() {
+    LedEffect::setup();
+    FastLED.setTemperature(ColorTemperature::Tungsten40W);
+    fill_solid(leds, NUM_PIXELS, colorBuf);
+    timer=0;
+    state = FadeColorTransition;
+    hue = colorBuf.hue = excludeActiveColors(0);
+    colorBuf.sat = 160;
+    colorBuf.val = stripBrightness;
+//    Log.infoln(F("SleepLight setup: colorBuf=%r, hue=%d, sat=%d, val=%d"), (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val);
+}
+
+/**
+ * Subtracts one number from another, preventing the number from dropping below a certain floor value.
+ * The sanity check is accomplished via the qsub8 function.
+ * @param val value to subtract from
+ * @param sub value to subtract
+ * @param floor min value not to go under
+ * @return val-sub if greater than floor, floor otherwise
+ */
+uint8_t flrSub(uint8_t val, uint8_t sub, uint8_t floor) {
+    uint8_t res = qsub8(val, sub);
+    return res < floor ? floor : res;
+}
+
+void SleepLight::run() {
+    if (state == Fade) {
+        EVERY_N_SECONDS(5) {
+            colorBuf.val = flrSub(colorBuf.val, 3, minBrightness);
+            state = colorBuf.val > minBrightness ? FadeColorTransition : SleepTransition;
+//            Log.infoln(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
+        }
+        EVERY_N_SECONDS(3) {
+            hue += random8(2, 19);
+            colorBuf.hue = excludeActiveColors(hue);
+            colorBuf.sat = map(colorBuf.val, minBrightness, brightness, 24, 160);
+            state = colorBuf.val > minBrightness ? FadeColorTransition : SleepTransition;
+//            Log.infoln(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
+        }
+    }
+    EVERY_N_MILLIS(125) {
+        SleepLightState oldState = step();
+        if (!(oldState == state && state == Sleep))
+            FastLED.show(); //overall brightness is managed through color's value of HSV structure, which stabilizes at minBrightness, hence no need to scale with stripBrightness here
+    }
+
+}
+
+SleepLight::SleepLightState SleepLight::step() {
+    SleepLightState oldState = state;
+    switch (state) {
+        case FadeColorTransition:
+            if (rblend(*refPixel, (CRGB) colorBuf, 7))
+                state = Fade;
+            ledSet = *refPixel;
+            break;
+        case SleepTransition:
+            timer = ++timer%12;
+            if (timer == 0) {
+                for (auto &seg : slOffSegs)
+                    seg.fadeToBlackBy(1);
+                if (slOffSegs.front()[0] == CRGB::Black)
+                    state = Sleep;
+            }
+            break;
+        default:
+            break;
+    }
+//    if (oldState != state)
+//        Log.infoln(F("SleepLight state changed from %d to %d, colorBuf=%r, refPixel=%r"), oldState, state, (CRGB)colorBuf, *refPixel);
+    return oldState;
+}
+
+uint8_t SleepLight::selectionWeight() const {
+    return 0;   //we don't want this effect part of the random selection of entertaining light effects
+}
+
+void SleepLight::windDownPrep() {
+    transEffect.prepare(SELECTOR_FADE);
 }

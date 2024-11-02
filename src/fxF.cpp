@@ -13,11 +13,11 @@ using namespace FxF;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxf1Desc[] PROGMEM = "FxF1: beat wave";
-const char fxf2Desc[] PROGMEM = "FxF2: Halloween breathe with various color blends";
-const char fxf3Desc[] PROGMEM = "FxF3: Eye Blink";
-const char fxf4Desc[] PROGMEM = "FxF4: Bouncy segments";
-const char fxf5Desc[] PROGMEM = "FxF5: Fireworks";
+const char fxf1Desc[] PROGMEM = "FXF1: beat wave";
+const char fxf2Desc[] PROGMEM = "FXF2: Halloween breathe with various color blends";
+const char fxf3Desc[] PROGMEM = "FXF3: Eye Blink";
+const char fxf4Desc[] PROGMEM = "FXF4: Bouncy segments";
+const char fxf5Desc[] PROGMEM = "FXF5: Fireworks";
 
 void FxF::fxRegister() {
     static FxF1 fxF1;
@@ -429,7 +429,7 @@ void FxF4::offsetBounce(const CRGB &feed) const {
 
 FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(frame(0, (tpl.size() + wiggleRoom)/ 2 - 1)), set2(frame(tpl.size() + wiggleRoom - 1, (tpl.size() + wiggleRoom)/2)) {
     ofs = wiggleRoom/2;
-    for (short x = 0; x < upLim; x++)
+    for (uint16_t x = 0; x < upLim; x++)
         bouncyCurve[x] = easeOutBounce(x, upLim - 1);
 
 }
@@ -502,6 +502,7 @@ void FxF5::flare() {
         flBrightness *= .985;
 
         FastLED.show(stripBrightness);
+        watchdogPing();
     }
 }
 
@@ -564,6 +565,7 @@ void FxF5::explode() const {
         dying_gravity *= 0.985; // as sparks burn out they fall slower
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
+        watchdogPing();
     }
     tpl = BKG;
     replicateSet(tpl, others);

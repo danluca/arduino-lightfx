@@ -1,25 +1,32 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 
 #include "mic.h"
 #include "log.h"
 #include "efx_setup.h"
+#include "circular_buffer.h"
+#include "sysinfo.h"
 
 #define MIC_SAMPLE_SIZE 512
 // one channel - mono mode for Nano RP2040 microphone, MP34DT06JTR
 #define MIC_CHANNELS    1
-// default PCM output frequency - 20kHz for Nano RP2040
-#define PCM_SAMPLE_FREQ 20000
-// the audio signal level beyond which entropy is added and an effect change is triggered
-//#define AUDIO_LEVEL_EFFECT_BUMP 2000
+// default PCM output frequency - 20kHz for Nano RP2040. Max is ~24kHz.
+#define PCM_SAMPLE_FREQ 24000
 // Buffer to read samples into, each sample is 16-bits
 short sampleBuffer[MIC_SAMPLE_SIZE];
-// Number of audio samples read
-volatile size_t samplesRead;
 
-volatile uint16_t maxAudio[10] {};
-volatile uint16_t audioBumpThreshold = 2000;
+volatile size_t samplesRead;                    // Number of audio samples read
+volatile uint16_t maxAudio[10] {};              // audio max levels histogram
+volatile uint16_t audioBumpThreshold = 2000;    // the audio signal level beyond which entropy is added and an effect change is triggered
+
+CircularBuffer<short> *audioData = new CircularBuffer<short>(1024);
+
+
+void clearLevelHistory() {
+    for (auto &l : maxAudio)
+        l = 0;
+}
 
 /**
   * Callback function to process the data from the PDM microphone.
@@ -47,13 +54,15 @@ void mic_setup() {
         while (true) yield();
     }
     delay(1000);
-    setSysStatus(SYS_STATUS_MIC);
+    sysInfo->setSysStatus(SYS_STATUS_MIC);
     Log.infoln(F("PDM - microphone - setup ok"));
 }
 
 void mic_run() {
     // Wait for samples to be read
     if (samplesRead) {
+        audioData->push_back(sampleBuffer, samplesRead);
+        //Log.infoln(F("Audio data - added %d samples to circular buffer, size updated to %d items"), samplesRead, audioData->size());
         short maxSample = INT16_MIN;
         for (uint i = 0; i < samplesRead; i++) {
             if (sampleBuffer[i] > maxSample)
@@ -81,5 +90,4 @@ void mic_run() {
         // Clear the read count
         samplesRead = 0;
     }
-    yield();
 }

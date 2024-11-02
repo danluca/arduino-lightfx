@@ -1,8 +1,25 @@
 
 // Only one sequence can be selected
 let config = {};
+//canvasjs column chart options
+let histOptions = {
+    theme: "light2",
+    backgroundColor: "#F4F4FD",
+    title: {
+        text: "Audio Levels",
+        fontSize: 18
+    },
+    data: [
+        {
+            type: "column",
+            dataPoints: [
+            ]
+        }
+    ]
+};
 
 $(() => {
+    $('#curYear').html(`-${new Date().getFullYear()}`);
 
     $.getJSON( "config.json")
     .done(function( data ) {
@@ -22,6 +39,7 @@ $(() => {
         $('#curEffect').html(`${data.curEffectName} - ${data.fx[data.curEffect].description}`);
         $('#curEffectId').html(`Index: ${data.curEffect}`);
         $('#autoFxChange').prop("checked", data.auto);
+        $('#sleepEnabled').prop("checked", data.fx.sleepEnabled);
         $('#curHolidayValue').html(data.holiday);
         $.each(data.holidayList, function(i, hld) {
             if (hld == "None") {
@@ -32,9 +50,15 @@ $(() => {
         });
         $('#holidayList').val(data.holiday);
         $('#boardName').html(data.boardName);
+        $('#deviceName').html(data.boardName);
+        $('#boardUid').html(data.boardUid);
         $('#buildVersion').html(data.fwVersion);
         $('#buildBranch').html(data.fwBranch);
         $('#buildTime').html(data.buildTime);
+        $('#macAddress').html(data.MAC);
+        $('#cleanBoot').html(`${data.cleanBoot}`);
+        let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
+        $('#wdReboots').html(wdr);
     });
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status
@@ -45,9 +69,9 @@ function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
             $('#status h1').removeClass('red');
-            $('#boardTemp').html(`${data.boardTemp.toFixed(2)} °C (${(data.boardTemp*9/5+32).toFixed(2)} °F)`);
-            $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(2)} - ${data.boardMaxTemp.toFixed(2)}] °C (chip ${data.chipTemp.toFixed(2)} °C)`);
-            $('#boardVcc').html(data.vcc.toFixed(2));
+            $('#boardTemp').html(`${data.boardTemp.toFixed(1)} °C (${(data.boardTemp*9/5+32).toFixed(1)} °F)`);
+            $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(1)} - ${data.boardMaxTemp.toFixed(1)}] °C (chip ${data.chipTemp.toFixed(1)} °C)`);
+            $('#boardVcc').html(`${data.vcc.toFixed(2)} V`);
             $('#rangeVcc').html(`[${data.minVcc.toFixed(2)} - ${data.maxVcc.toFixed(2)}] V`);
             $('#mbedVersion').html(`${data.mbedVersion}`);
             $('#audioThreshold').html(`${data.fx.audioThreshold}`);
@@ -61,23 +85,42 @@ function getStatus() {
                 $('#wfVersion').html(`WiFi NINA v${data.wifi.curVersion} (latest)`);
             }
             $('#fxCount').html(`${data.fx.count} effects`);
-            $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
+            if (data.fx.asleep) {
+                $('#fxCurEffect').html(`${data.fx.name} - asleep [${data.fx.index}]`);
+            } else {
+                $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
+            }
             $('#pastEffects').html(`${data.fx.pastEffects.reverse().join(', ')}`);
-            $('#fxCurHoliday').html(`${data.fx.holiday}`);
             $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
-            let strHistogram = data.fx.audioHist.map((elem, ix)=>
-                `${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500}${ix===(data.fx.audioHist.length-1)?'+':''} : ${elem}`)
-                .join('<br/>');
-            $('#audioLevelHistogram').html(`${strHistogram}`);
+            let lblHistogram = data.fx.audioHist.map((elem, ix)=>
+                `${ix===(data.fx.audioHist.length-1)?'>':''}${data.fx.audioThreshold+ix*500}`);
+                // `${(data.fx.audioThreshold+ix*500)/1000} - ${(data.fx.audioThreshold+(ix+1)*500)/1000}k${ix===(data.fx.audioHist.length-1)?'+':''}`);
+                // `${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500}${ix===(data.fx.audioHist.length-1)?'+':''} : ${elem}`);
+            //$('#audioLevelHistogram').html(`${lblHistogram.join('<br/>')}`);
+            histOptions.data[0].dataPoints = data.fx.audioHist.map((elem, ix) => {
+                return { label: lblHistogram[ix], y: elem };
+            });
+            $("#audioHistogram").CanvasJSChart(histOptions);
             $('#timeNtp').html(`${data.time.ntpSync == 2}`);
             $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
             $('#timeHoliday').html(`${data.time.holiday}`);
+            $('#lastDrift').html(`${data.time.lastDrift} ms`);
+            $('#avgDrift').html(`${data.time.averageDrift} ms/hr`);
+            $('#totalDrift').html(`${data.time.totalDrift} ms (${data.time.syncSize} sync points @ 17 hrs)`);
+
+            let strAlarms = "";
+            data.time.alarms.sort((a, b) => a.timeLong - b.timeLong);
+            data.time.alarms.forEach(al =>  strAlarms += `<li>${al.timeFmt} (${al.type})</li>`);
+            let strAlarmsEnabled = data.fx.sleepEnabled ? "" : "<i>(alarms disabled)</i>"
+            $('#schAlarms').html(`${strAlarmsEnabled}${strAlarms.length > 0 ? "<br/><ul>"+strAlarms+"</ul>" : ": None"}`);
 
             //update the current effect tiles as well
-            $('#curEffectId').html(`Index: ${data.fx.index}`);
-            let desc = config.fx.find(x=> x.registryIndex === data.fx.index)?.description ?? "N/A";
-            $('#curEffect').html(`${data.fx.name} - ${desc}`);
+            $('#curEffectId').html(`index: ${data.fx.index}`);
+            let desc = config?.fx?.find(x=> x.registryIndex === data.fx.index)?.description ?? "N/A";
+            $('#curEffect').html(`${desc}`);
             $('#autoFxChange').prop("checked", data.fx.auto);
+            $('#sleepEnabled').prop("checked", data.fx.sleepEnabled);
+            $('#broadcastEnabled').prop("checked", data.fx.broadcast);
             let fxlst = $('#fxlist');
             fxlst.val(data.fx.index);
             fxlst.attr("currentFxIndex", data.fx.index);
@@ -91,6 +134,7 @@ function getStatus() {
             let brList = $('#brightList');
             brList.val(brPerc);
             brList.attr("currentBrightness", brPerc);
+
         })
         .fail(function (req, textStatus, error){
             console.log(`status.json call failed ${textStatus} - ${error}`);
@@ -145,6 +189,50 @@ function updateAuto() {
         error: function (request, status, error) {
             $('#updateStatus').html(`Automatic effects loop update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
             $('#autoFxChange').prop("checked", !selectedAuto);
+            scheduleClearStatus();
+        }
+    });
+}
+
+function updateSleep() {
+    let selectedSleep = $('#sleepEnabled').prop("checked");
+    let request = {};
+    request["sleepEnabled"] = selectedSleep;
+    $.ajax({
+        type: "PUT",
+        url: "/fx",
+        contentType: "application/json",
+        dataType: "json",
+        data: JSON.stringify(request),
+        success: function (response) {
+            $('#updateStatus').html(`Sleep schedule ${selectedSleep ? 'enabled' : 'disabled'} successfully`).removeClass().addClass("status-ok");
+            scheduleClearStatus();
+        },
+        error: function (request, status, error) {
+            $('#updateStatus').html(`Sleep schedule update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
+            $('#sleepEnabled').prop("checked", !selectedSleep);
+            scheduleClearStatus();
+        }
+    });
+}
+
+function updateBroadcast() {
+    let selBroadcastMode = $('#broadcastEnabled').prop("checked");
+    let request = {};
+    request["broadcast"] = selBroadcastMode;
+    $.ajax({
+        type: "PUT",
+        url: "/fx",
+        contentType: "application/json",
+        dataType: "json",
+        data: JSON.stringify(request),
+        success: function (response) {
+            $('#updateStatus').html(`Broadcast mode has been ${selBroadcastMode ? 'enabled' : 'disabled'} successfully`).removeClass().addClass("status-ok");
+            scheduleClearStatus();
+        },
+        error: function (request, status, error) {
+            $('#updateStatus').html(`Broadcast mode update has failed: ${status} - ${error}`).removeClass().addClass("status-error");
+            $('#broadcastEnabled').prop("checked", !selBroadcastMode);
             scheduleClearStatus();
         }
     });

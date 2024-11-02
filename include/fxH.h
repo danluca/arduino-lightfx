@@ -98,6 +98,124 @@ namespace FxH {
 
         uint8_t selectionWeight() const override;
     };
+
+    class FxH4 : public LedEffect {
+    public:
+        FxH4();
+
+        void setup() override;
+
+        void run() override;
+
+        void windDownPrep() override;
+
+        JsonObject &describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
+    private:
+        static const uint8_t twinkleDensity = 5;
+        static const uint8_t twinkleSpeed = 4;
+        static const uint8_t secondsPerPalette = 40;
+
+        static void drawTwinkles(CRGBSet& set);
+        static CRGB computeOneTwinkle(uint32_t ms, uint32_t salt);
+        static uint8_t attackDecayWave8( uint8_t i);
+        static void coolLikeIncandescent( CRGB& c, uint8_t phase);
+    };
+
+    class FxH5 : public LedEffect {
+    public:
+        FxH5();
+
+        void setup() override;
+
+        void run() override;
+
+        bool windDown() override;
+
+        void windDownPrep() override;
+
+        JsonObject &describeConfig(JsonArray &json) const override;
+
+        uint8_t selectionWeight() const override;
+    private:
+        int red {0};
+        int green {0};
+        int blue {255};
+
+        int colorStep {0};
+        int pixelPos {0};
+
+        CRGB prevClr {};
+        CRGBSet small, rest;
+        uint8_t timer {0};
+        enum FxState {Sparkle, RampUp, Glitter, RampDown} fxState {Sparkle};
+
+        void electromagneticSpectrum(int transitionSpeed);
+    };
+
+    union Cycle {
+        uint32_t compact;
+        struct {
+            uint8_t phase;
+            uint8_t onTime;
+            uint8_t offTime;
+            uint8_t _reserved;
+        };
+        inline Cycle(uint32_t compact) : compact(compact) { _reserved = 0; };
+    };
+
+    class Spark {
+    public:
+        explicit Spark(CRGB& ref);
+        enum State:uint8_t {Idle, On, Off, WaitOn};
+        State step(uint8_t dice);
+        void on();
+        void off();
+        void reset();
+        void activate(CRGB clr, Cycle cycle = 0);
+        void setColor(CRGB clr);
+    protected:
+        State state;
+        CRGB& pixel;
+        CRGB fgClr, bgClr;
+        bool dimBkg = false, loop = false;
+        Cycle pattern, curCycle;
+
+        friend class FxH6;  //intended to work closely with FxH6 effect
+    };
+
+    class FxH6 : public LedEffect {
+    public:
+        explicit FxH6();
+
+        void setup() override;
+
+        void run() override;
+
+        bool windDown() override;
+
+        void windDownPrep() override;
+
+        uint8_t selectionWeight() const override;
+
+        ~FxH6() override;
+
+    private:
+        static const int frameSize = 7;
+        enum Phase:uint8_t {DefinedPattern, Random} stage;
+
+        uint16_t timerCounter {};
+        std::deque<Spark*> sparks {};
+        std::deque<Spark*> activeSparks {};
+
+        CRGBSet window, rest;
+
+        void activateSparks(uint8_t howMany, uint8_t clrHint);
+        void resetActivateAllSparks(uint8_t clrHint);
+    };
+
+
 }
 
 #endif //LIGHTFX_FXH_H

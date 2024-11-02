@@ -1,0 +1,22 @@
+{
+	"name": "ArduinoFHT",
+	"keywords": "FHT",
+	"description": "The Fast Hartley Transform (FHT) is a function that converts time domain signals to the frequency domain.",
+	"version": "4.0.0",
+	"authors": {
+		"name": "OpenMusicLabs",
+		"url": "openmusiclabs.com",
+		"maintainer": true
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Evg33/ArduinoFHT.git"
+	},
+	"homepage": "https://openmusiclabs.com",
+	"frameworks": ["arduino"],
+	"platforms": "*",
+	"build": {
+		"srcDir": "src",
+		"includeDir": "src"
+	}
+}

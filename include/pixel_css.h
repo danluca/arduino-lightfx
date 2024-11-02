@@ -45,7 +45,7 @@ footer {
     box-sizing: border-box;
 }
 
-#effects #fxChangeArea, #time #timeChangeArea {
+#effects #fxChangeArea {
     float: left;
 }
 
@@ -55,11 +55,25 @@ footer {
     padding: 5px 0;
 }
 
-#fxChangeArea #fxAutoChangeArea, #fxChangeArea #fxBrightChangeArea, #curHolidayLabel, #holidayListLabel {
+#fxChangeArea #fxAutoChangeArea, #fxSleepEnabledArea, #fxBroadcastEnabledArea, #fxChangeArea #fxBrightChangeArea, #curHolidayLabel, #holidayListLabel {
     color: #7f7f7f;
     padding-left: 1em;
     padding-right: 2em;
     float: left;
+}
+#curHolidayLabel {
+    padding-left: 6em;
+}
+#holidayListLabel {
+    color: #7f7fBf;
+    padding-left: 0;
+}
+#curHolidayValue {
+    float: left;
+}
+#effects .separator {
+    float: left;
+    width: 100%;
 }
 
 #brightListLabel {
@@ -69,7 +83,7 @@ footer {
     text-overflow: ellipsis;
 }
 
-#effects #curEffectArea, #time #curHolidayArea {
+#effects #curEffectArea, #effects #timeChangeArea, #effects #curHolidayArea {
     float: left;
 }
 
@@ -85,6 +99,9 @@ footer {
 }
 #status div p span {
     color: #7f7f7f;
+}
+#schAlarms ul {
+    padding-left: 2em;
 }
 .status-ok {
     background-color: #BBFFBB;
@@ -143,5 +160,12 @@ dd span {
 .indent2 {
     padding-left: 2em;
 }
-
+#audioHistogram {
+    width: 400px;
+    height: 300px;
+    padding-left: 0 !important;
+}
+.canvasjs-chart-credit {
+    display: none;
+}
 )~~~";

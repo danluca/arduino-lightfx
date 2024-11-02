@@ -31,36 +31,49 @@ extern "C" {
 }
 
 struct ThreadTasks {
-    SchedulerTask setup;
-    SchedulerTask loop;
+    SchedulerTask setup{};          // setup function pointer (called once), may be null
+    SchedulerTask loop{};           // loop function pointer (called repeatedly indefinitely), cannot be null
+    const uint32_t stackSize {1024};      // stack size in bytes to allocate to the new thread (default 1024)
+    const char* threadName {};      // custom thread name provided optionally; if not provided thread name is built generically using "Thd N" pattern
 };
 
 extern "C" {
     typedef ThreadTasks* TasksPtr;
 }
 
+class ThreadWrapper {
+public:
+    ThreadWrapper(uint index, uint32_t stackSize);
+    ThreadWrapper(const char* thName, uint32_t stackSize);
+    inline rtos::Thread * getThread() const { return thread; }
+    ~ThreadWrapper();
+private:
+    char* name;
+    rtos::Thread* thread;
+};
+
 class SchedulerClassExt {
 protected:
     uint findNextThreadSlot() const;
-    static const char* createThreadName(uint index) ;
 public:
-    SchedulerClassExt();
+    SchedulerClassExt() = default;
 
     rtos::Thread* startLoop(SchedulerTask loopTask, uint32_t stackSize = 1024);
 
-    rtos::Thread* startLoop(TasksPtr tasks, uint32_t stackSize = 1024);
+    rtos::Thread* startTask(TasksPtr task);
 
     rtos::Thread* start(SchedulerTask task, uint32_t stackSize = 1024);
 
     rtos::Thread* start(SchedulerParametricTask task, void *data, uint32_t stackSize = 1024);
 
     osStatus waitToEnd(rtos::Thread *pt);
+    osStatus terminate(rtos::Thread *pt);
 
     uint availableThreads() const;
 
-    void yield() { ::yield(); };
+    static void yield() { ::yield(); };
 private:
-    rtos::Thread *threads[MAX_THREADS_NUMBER] = {nullptr};
+    ThreadWrapper *threads[MAX_THREADS_NUMBER] {nullptr};
 };
 
 extern SchedulerClassExt Scheduler;

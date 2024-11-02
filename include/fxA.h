@@ -116,5 +116,31 @@ namespace FxA {
 
         void makeFrame();
     };
+
+    class SleepLight : public LedEffect {
+    public:
+        SleepLight();
+
+        void setup() override;
+
+        void run() override;
+
+        void windDownPrep() override;
+
+        uint8_t selectionWeight() const override;
+
+        ~SleepLight() override = default;
+
+    protected:
+        static const uint8_t minBrightness = 24;
+        enum SleepLightState:uint8_t {Fade, FadeColorTransition, SleepTransition, Sleep} state;
+        CHSV colorBuf{};
+        uint8_t timer{};
+        CRGB* const refPixel;   //reference pixel - a pixel guaranteed to be lit/on at all times for this effect
+        std::deque<CRGBSet> slOffSegs;
+
+        SleepLightState step();
+    };
+
 }
 #endif //LIGHTFX_FXA_H
