@@ -61,8 +61,10 @@ events::Event<void(void)> evDiagSetup(&diagQueue, diag_setup);
 events::Event<void(void)> evRndEntropy(&diagQueue, updateSecEntropy);
 events::Event<void(void)> evSysTemp(&diagQueue, updateSystemTemp);
 events::Event<void(void)> evSysVoltage(&diagQueue, updateLineVoltage);
-events::Event<void(void)> evDiagInfo(&diagQueue, logDiagInfo);
 events::Event<void(void)> evSaveSysInfo(&diagQueue, saveSysInfo);
+#ifndef DISABLE_LOGGING
+events::Event<void(void)> evDiagInfo(&diagQueue, logDiagInfo);
+#endif
 rtos::Thread *diagThread;
 
 /**
@@ -88,12 +90,12 @@ void diag_events_setup() {
     evSysVoltage.delay(15s);
     evSysVoltage.period(34s);
     evSysVoltage.post();
-
+#ifndef DISABLE_LOGGING
     //log the thread, memory and diagnostic measurements info event - no-op if logging is disabled
     evDiagInfo.delay(19s);
     evDiagInfo.period(27s);
     evDiagInfo.post();
-
+#endif
     //save the current system info event to filesystem
     evSaveSysInfo.delay(23s);
     evSaveSysInfo.period(90s);
@@ -325,10 +327,11 @@ void readCalibrationInfo() {
         deserializeCalibrationMeasurement(calibTempMeasurements, msmt);
         JsonObject cbparams = doc["calibParams"].as<JsonObject>();
         deserializeCalibrationParams(calibCpuTemp, cbparams);
-
+#ifndef DISABLE_LOGGING
         Log.infoln(F("CPU temp calibration Information restored from %s [%d bytes]: min %F 'C, max %F 'C; params: tempRange=%F, refTemp=%F, VTref=%F, slope=%F, time=%y"),
                    calibFileName, calibSize, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
                    calibCpuTemp.slope, calibCpuTemp.time);
+#endif
     }
     delete json;
 }
@@ -384,10 +387,12 @@ void updateSecEntropy() {
 }
 
 void logDiagInfo() {
+#ifndef DISABLE_LOGGING
     //log RAM metrics
     logAllThreadInfo();
     logHeapAndStackInfo();
     //logSystemInfo();
     //logCPUStats();
+#endif
 }
 
