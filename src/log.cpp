@@ -79,7 +79,7 @@ void logPrefix(Print *_logOutput, int logLevel) {
 
 #ifndef DISABLE_LOGGING
 void printRGB(Print* const out, const CRGB rgb) {
-    uint32_t numClr = (uint32_t)rgb & 0xFFFFFF; //conversion to uint32 uses 0xFF for the alpha channel - we're not interested in the alpha channel
+    uint32_t numClr = rgb.as_uint32_t() & 0xFFFFFF; //conversion to uint32 uses 0xFF for the alpha channel - we're not interested in the alpha channel
     out->print("0x");
     int8_t padding = 5 - Logging::countSignificantNibbles(numClr); //3 bytes, 6 digits 0 padded, accounting for at least one digit being printed
     while (padding-- > 0)
