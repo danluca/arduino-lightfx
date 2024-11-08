@@ -12,9 +12,20 @@
 #include "diag.h"
 #include "broadcast.h"
 
+FxTasks fxTasks {fx_setup, fx_run};
+FxTasks micTasks {mic_setup, mic_run};
 ThreadTasks fxTasks {fx_setup, fx_run, 3072, "Fx"};
 ThreadTasks micTasks {mic_setup, mic_run, 896, "Mic"};
 //ThreadTasks diagTasks {diag_setup, diag_run, 1792, "Diag"};
+
+void adc_setup() {
+    //disable ADC
+    //hw_clear_bits(&adc_hw->cs, ADC_CS_EN_BITS);
+    //enable ADC, including temp sensor
+    adc_init();
+    adc_set_temp_sensor_enabled(true);
+    analogReadResolution(ADC_RESOLUTION);   //get us the higher resolution of the ADC
+}
 
 /**
  * Setup LED strip and global data structures - executed once
@@ -52,6 +63,10 @@ void setup() {
 
     Log.infoln(F("Main Setup completed. System status: %X"), sysInfo->getSysStatus());
     logSystemInfo();
+    //Scheduler.startTask(&micTasks, 1024);
+    auto *micTask = new TaskJob("MIC", mic_run, mic_setup, 1024);
+    micTask->setCoreAffinity(CORE_0);
+    Scheduler.startTask(micTask);
 }
 
 /**
@@ -64,3 +79,11 @@ void loop() {
     yield();
 }
 
+//Second core tasks
+//void setup1() {
+//
+//}
+//
+//void loop1() {
+//
+//}

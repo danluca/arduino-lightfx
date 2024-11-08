@@ -4,6 +4,7 @@
 #ifndef ARDUINO_LIGHTFX_PALETTEFACTORY_H
 #define ARDUINO_LIGHTFX_PALETTEFACTORY_H
 
+#include "util.h"
 #include <FastLED.h>
 #include "util.h"
 #include "timeutil.h"

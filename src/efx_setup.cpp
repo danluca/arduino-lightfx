@@ -7,6 +7,8 @@
 #include "broadcast.h"
 
 //~ Global variables definition
+#define JSON_DOC_SIZE   512
+const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 const uint8_t dimmed = 20;
 const char csAutoFxRoll[] PROGMEM = "autoFxRoll";
 const char csStripBrightness[] PROGMEM = "stripBrightness";

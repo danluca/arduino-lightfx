@@ -15,23 +15,21 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+#pragma once
 
 #ifndef _PDM_H_INCLUDED
 #define _PDM_H_INCLUDED
 
 #include <Arduino.h>
-#include <pinDefinitions.h>
-
 #include "utility/PDMDoubleBuffer.h"
 
-class PDMClass
-{
+class PDMClass {
 public:
   PDMClass(int dinPin, int clkPin, int pwrPin);
   virtual ~PDMClass();
 
   int begin(int channels, int sampleRate);
-  void end() const;
+  void end();
 
   virtual size_t available();
   virtual size_t read(void* buffer, size_t size);
@@ -60,6 +58,12 @@ private:
   int _init;
 
   int _cutSamples;
+
+    // Hardware peripherals used
+    uint _dmaChannel;
+    PIO _pio;
+    int _smIdx;
+    int _pgmOffset;
 
   PDMDoubleBuffer _doubleBuffer;
 

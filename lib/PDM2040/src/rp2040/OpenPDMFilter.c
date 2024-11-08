@@ -48,8 +48,7 @@ int32_t lut[256][DECIMATION_MAX / 8][SINCN];
 /* Functions -----------------------------------------------------------------*/
 
 #ifdef USE_LUT
-int32_t filter_table_mono_64(uint8_t *data, uint8_t sincn)
-{
+int32_t filter_table_mono_64(uint8_t *data, uint8_t sincn) {
   return (int32_t)
     lut[data[0]][0][sincn] +
     lut[data[1]][1][sincn] +
@@ -60,8 +59,7 @@ int32_t filter_table_mono_64(uint8_t *data, uint8_t sincn)
     lut[data[6]][6][sincn] +
     lut[data[7]][7][sincn];
 }
-int32_t filter_table_stereo_64(uint8_t *data, uint8_t sincn)
-{
+int32_t filter_table_stereo_64(uint8_t *data, uint8_t sincn) {
   return (int32_t)
     lut[data[0]][0][sincn] +
     lut[data[2]][1][sincn] +
@@ -72,8 +70,7 @@ int32_t filter_table_stereo_64(uint8_t *data, uint8_t sincn)
     lut[data[12]][6][sincn] +
     lut[data[14]][7][sincn];
 }
-int32_t filter_table_mono_128(uint8_t *data, uint8_t sincn)
-{
+int32_t filter_table_mono_128(uint8_t *data, uint8_t sincn) {
   return (int32_t)
     lut[data[0]][0][sincn] +
     lut[data[1]][1][sincn] +
@@ -92,8 +89,7 @@ int32_t filter_table_mono_128(uint8_t *data, uint8_t sincn)
     lut[data[14]][14][sincn] +
     lut[data[15]][15][sincn];
 }
-int32_t filter_table_stereo_128(uint8_t *data, uint8_t sincn)
-{
+int32_t filter_table_stereo_128(uint8_t *data, uint8_t sincn) {
   return (int32_t)
     lut[data[0]][0][sincn] +
     lut[data[2]][1][sincn] +
@@ -142,12 +138,10 @@ int32_t filter_table(uint8_t *data, uint8_t sincn, TPDMFilter_InitStruct *param)
 
 void convolve(uint32_t Signal[/* SignalLen */], unsigned short SignalLen,
               uint32_t Kernel[/* KernelLen */], unsigned short KernelLen,
-              uint32_t Result[/* SignalLen + KernelLen - 1 */])
-{
+              uint32_t Result[/* SignalLen + KernelLen - 1 */]) {
   uint16_t n;
 
-  for (n = 0; n < SignalLen + KernelLen - 1; n++)
-  {
+    for (n = 0; n < SignalLen + KernelLen - 1; n++) {
     unsigned short kmin, kmax, k;
     
     Result[n] = 0;
@@ -161,8 +155,7 @@ void convolve(uint32_t Signal[/* SignalLen */], unsigned short SignalLen,
   }
 }
 
-void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param)
-{
+void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param) {
   uint16_t i, j;
   int64_t sum = 0;
 

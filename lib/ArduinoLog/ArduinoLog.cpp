@@ -33,12 +33,13 @@ SOFTWARE.
 #ifndef DISABLE_LOGGING
 /** One character for each LOG_LEVEL_* definition  */
 const char* Logging::levels PROGMEM = "FEWITV";
-rtos::Mutex serial_mtx;
+mutex_t serial_mtx;
 #endif
 
 void Logging::begin(int level, Print* logOutput, bool showLevel)
 {
 #ifndef DISABLE_LOGGING
+    mutex_init(&serial_mtx);
 	setLevel(level);
 	setShowLevel(showLevel);
 	_logOutput = logOutput;

@@ -93,6 +93,47 @@ bool wifi_setup() {
 }
 
 /**
+ * Formats the time component of the timestamp, using a standard pattern - @see #fmtTime
+ * @param buf buffer to write to. If not null, it must have space for 9 characters
+ * @param time the time to format, if not specified defaults to @see now()
+ * @return number of characters written to the buffer for given time value
+ */
+uint8_t formatTime(char *buf, time_t time) {
+    if (time == 0)
+        time = now();
+    if (buf == nullptr)
+        return snprintf(buf, 0, fmtTime, hour(time), minute(time), second(time));
+    return snprintf(buf, 9, fmtTime, hour(time), minute(time), second(time));   //8 chars + null terminating
+}
+
+/**
+ * Formats the date component of the timestamp, using a standard pattern - @see #fmtDate
+ * @param buf buffer to write to. If not null, it must have space for 11 characters
+ * @param time the time to format, if not specified defaults to @see now()
+ * @return number of characters written to the buffer for given time value
+ */
+uint8_t formatDate(char *buf, time_t time) {
+    if (time == 0)
+        time = now();
+    if (buf == nullptr)
+        return snprintf(buf, 0, fmtDate, year(time), month(time), day(time));
+    return snprintf(buf, 11, fmtDate, year(time), month(time), day(time));   //10 chars + null terminating
+}
+
+uint8_t formatDateTime(char *buf, time_t time) {
+    if (time == 0)
+        time = now();
+    uint8_t sz = formatDate(buf, time);
+    if (buf == nullptr)
+        sz += formatTime(buf, time);
+    else {
+        *(buf + sz) = ' ';  //date - time separation character
+        sz += formatTime( buf+sz+1, time);
+    }
+    return sz;
+}
+
+/**
  * WiFi connection check
  * @return true if all is ok, false if connection unusable
  */

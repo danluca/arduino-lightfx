@@ -98,11 +98,11 @@ and supplies PWM 5V signal to the LEDs control pin.
 The electronic schematic and PCB designs can be found as [EasyEDA project](https://pro.easyeda.com/editor#id=9c50130b250b4c23b522b4ac978d99bf). 
 
 ## C++ standard
-The current Arduino libraries are leveraging the **C++ 14** standard, hence the code can be written with this standard 
+The current Arduino libraries are leveraging the **C++ 17** standard, hence the code can be written with this standard 
 level in mind and IDE support can be configured accordingly (if needed).
 
 The confirmation of which C++ standard is currently in use comes from a verbose build with PlatformIO - `pio run -v` after a clean.
-Inspect the compiler `-std=xyz` argument. For instance, `-std=gnu++14` indicates C++ 14 standard is used.
+Inspect the compiler `-std=xyz` argument. For instance, `-std=gnu++17` indicates C++ 17 standard is used.
 
 Please see [C++ 14 reference](https://en.cppreference.com/w/cpp/14) for standard details.
 

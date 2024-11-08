@@ -12,35 +12,19 @@ Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 
 */
 #pragma once
-
 #include <cinttypes>
 #include <cstdarg>
-#include <mbed.h>
-#include <Mutex.h>
-
-// Non standard: Arduino.h also chosen if ARDUINO is not defined. To facilitate use in non-Arduino test environments
-#if ARDUINO < 100
-#include "WProgram.h"
-#else
-
+#include <pico/mutex.h>
 #include "Arduino.h"
 
-#endif
-
-// PGM stubs to facilitate use in non-Arduino test environments
-#ifndef PGM_P
-#define PGM_P  const char *
-#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
-#define PSTR(str) (str)
-#define F(string_literal) (reinterpret_cast<const __FlashStringHelper *>(PSTR(string_literal)))
-#endif
+typedef void (*printfunction)(Print*, int);
 
 typedef void (*printfunction)(Print *, int);
 
 typedef void (*printFmtFunc)(Print *, const char, va_list *);
 
 #ifndef DISABLE_LOGGING
-extern rtos::Mutex serial_mtx;
+extern mutex_t serial_mtx;
 #endif
 
 // *************************************************************************
@@ -383,7 +367,7 @@ private:
             return;
         }
 
-        mbed::ScopedLock<rtos::Mutex> lock(serial_mtx);
+        mutex_enter_blocking(&serial_mtx);
 
         if (level < LOG_LEVEL_SILENT) {
             level = LOG_LEVEL_SILENT;
@@ -412,7 +396,7 @@ private:
             _continuation = false;
         } else
             _continuation = true;
-        //serial_mtx.unlock();
+        mutex_exit(&serial_mtx);
 #endif
     }
 
