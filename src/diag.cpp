@@ -1,17 +1,18 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
 
-#include <LittleFSWrapper.h>
+#include <LittleFS.h>
 #include <ArduinoJson.h>
-#include "rtos.h"
-#include "FastLED.h"
+#include <FreeRTOS.h>
+#include <chrono>
+#include <hardware/adc.h>
 #include "diag.h"
 #include "util.h"
 #include "sysinfo.h"
 
 using namespace std::chrono;
 const uint maxAdc = 1 << ADC_RESOLUTION;
-const char calibFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/calibration.json";
+const char calibFileName[] PROGMEM = "/status/calibration.json";
 
 volatile MeasurementRange imuTempRange(Unit::Deg_C);
 volatile MeasurementRange cpuTempRange(Unit::Deg_C);
@@ -24,8 +25,7 @@ bool imu_setup() {
     if (!IMU.begin()) {
         Log.errorln(F("Failed to initialize IMU!"));
         Log.errorln(F("IMU NOT AVAILABLE - TERMINATING THIS THREAD"));
-        osThreadExit();
-        //while (true) yield();
+        while (true) yield();
     }
     Log.infoln(F("IMU sensor OK"));
     // print the board temperature

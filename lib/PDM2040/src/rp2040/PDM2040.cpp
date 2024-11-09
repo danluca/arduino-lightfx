@@ -1,6 +1,5 @@
 #if defined(ARDUINO_ARCH_RP2040)
 
-#include "Arduino.h"
 #include "PDM2040.h"
 #include "OpenPDMFilter.h"
 
@@ -10,6 +9,7 @@ extern "C" {
 #include <hardware/clocks.h>
 }
 #include <hardware/sync.h>
+#include <RP2040.h>
 #include "pdm.pio.h"
 
 // Hardware peripherals used
@@ -42,7 +42,6 @@ __attribute__((__used__)) void dmaHandler(void) {
     PDM.IrqHandler(true);
 }
 }
-
 
 PDMClass::PDMClass(int dinPin, int clkPin, int pwrPin) :
         _dinPin(dinPin),

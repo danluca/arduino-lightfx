@@ -6,10 +6,7 @@
 #define ARDUINO_LIGHTFX_CIRCULAR_BUFFER_H
 
 #include <vector>
-#include <rtos.h>
-//#include <mutex>
-
-using namespace rtos;
+#include <mutex>
 
 /**
  * @class CircularBuffer
@@ -23,10 +20,11 @@ using namespace rtos;
  */
 template<typename T> class CircularBuffer {
 public:
-    explicit CircularBuffer(size_t size) : buffer_(size), head_(0), tail_(0), full_(false), mutex_() {}
+    explicit CircularBuffer(size_t size) : buffer_(size), head_(0), tail_(0), full_(false), mutex_() {
+    }
 
     void push_back(T value) {
-        ScopedMutexLock lock(mutex_);
+        std::lock_guard<mutex> lck(mutex_);
         buffer_[head_] = value;
         if(full_)
             tail_ = (tail_ + 1) % buffer_.size();
@@ -35,7 +33,7 @@ public:
     }
 
     void push_back(T value[], size_t sz) {
-        ScopedMutexLock lock(mutex_);
+        std::lock_guard<mutex> lck(mutex_);
         for (size_t i = 0; i < sz; i++) {
             buffer_[head_] = value[i];
             if(full_)
@@ -46,7 +44,7 @@ public:
     }
 
     T pop_front() {
-        ScopedMutexLock lock(mutex_);
+        std::lock_guard<mutex> lck(mutex_);
         if(empty())
             return T();
 
@@ -58,7 +56,7 @@ public:
     }
 
     size_t pop_front(T dest[], size_t sz) {
-        ScopedMutexLock lock(mutex_);
+        std::lock_guard<mutex> lck(mutex_);
         if (empty())
             return 0;
         size_t avail = min(sz, size());
@@ -132,7 +130,7 @@ private:
     size_t head_;
     size_t tail_;
     bool full_;
-    Mutex mutex_;
+    mutex mutex_;
 };
 
 #endif //ARDUINO_LIGHTFX_CIRCULAR_BUFFER_H

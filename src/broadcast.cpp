@@ -4,7 +4,7 @@
 #include "broadcast.h"
 #include "ArduinoHttpClient.h"
 #include "WiFiClient.h"
-#include "rtos.h"
+#include <FreeRTOS.h>
 #include "efx_setup.h"
 #include "net_setup.h"
 #include "sysinfo.h"

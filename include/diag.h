@@ -16,6 +16,7 @@ extern const char calibFileName[];
 
 void diag_events_setup();
 void diag_setup();
+
 bool imu_setup();
 void updateLineVoltage();
 void updateSystemTemp();

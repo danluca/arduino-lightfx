@@ -104,7 +104,7 @@ level in mind and IDE support can be configured accordingly (if needed).
 The confirmation of which C++ standard is currently in use comes from a verbose build with PlatformIO - `pio run -v` after a clean.
 Inspect the compiler `-std=xyz` argument. For instance, `-std=gnu++17` indicates C++ 17 standard is used.
 
-Please see [C++ 14 reference](https://en.cppreference.com/w/cpp/14) for standard details.
+Please see [C++ 17 reference](https://en.cppreference.com/w/cpp/17) for standard details.
 
 ## Debug
 ### Overview
