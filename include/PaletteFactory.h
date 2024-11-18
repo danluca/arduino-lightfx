@@ -6,7 +6,6 @@
 
 #include "util.h"
 #include <FastLED.h>
-#include "util.h"
 #include "timeutil.h"
 
 namespace colTheme {

@@ -25,80 +25,75 @@
 
 extern "C" {
     typedef void (*NoArgTask)();
+    typedef void (*VoidArgTask)(void *);
 }
 
-struct ThreadTasks {
-    SchedulerTask setup{};          // setup function pointer (called once), may be null
-    SchedulerTask loop{};           // loop function pointer (called repeatedly indefinitely), cannot be null
-    const uint32_t stackSize {1024};      // stack size in bytes to allocate to the new thread (default 1024)
-    const char* threadName {};      // custom thread name provided optionally; if not provided thread name is built generically using "Thd N" pattern
-struct FxTasks {
-    NoArgTask setup;
-    NoArgTask loop;
-};
-
-extern "C" {
-    typedef FxTasks* FxTasksPtr;
-}
-
-class ThreadWrapper {
-public:
-    ThreadWrapper(uint index, uint32_t stackSize);
-    ThreadWrapper(const char* thName, uint32_t stackSize);
-    inline rtos::Thread * getThread() const { return thread; }
-    ~ThreadWrapper();
-private:
-    char* name;
-    rtos::Thread* thread;
-};
-
-enum CoreAffinity {
+enum CoreAffinity:uint8_t {
     CORE_0 = 0x01,
     CORE_1 = 0x02,
     CORE_ALL = 0x03
 };
 
+struct TaskDef {
+    NoArgTask setup{};                  // setup function pointer (called once), may be null
+    NoArgTask loop{};                   // loop function pointer (called repeatedly indefinitely), cannot be null
+    const uint32_t stackSize {1024};    // stack size in bytes to allocate to the new thread (default 1024)
+    const char* threadName {};          // custom thread name provided optionally; if not provided thread name is built generically using "Thd N" pattern
+    uint8_t priority {1};               //the task priority - must be between 1 and configMAX_PRIORITIES-1; the IDLE task has priority 0
+    CoreAffinity core {CORE_0};         // which core to run on - default to main core (0)
+};
+
+extern "C" {
+    typedef const TaskDef* TaskDefPtr;
+}
+
 class Runnable {
 public:
     virtual void run() = 0;
-    virtual void finish() = 0;
+    virtual void terminate() = 0;
+    enum State:uint8_t {NEW, EXECUTING, TERMINATED};
 };
 
-class TaskJob : Runnable {
+class TaskWrapper : Runnable {
 public:
-    explicit TaskJob(const char* pAbr, NoArgTask run, NoArgTask pre = nullptr, uint32_t szStack = 1024);
+    explicit TaskWrapper(TaskDefPtr taskDef, int16_t x);
 
-    virtual ~TaskJob() {
+    virtual ~TaskWrapper() {
         delete [] id;
     }
 
-    [[noreturn]] void run () override;
-
     [[nodiscard]] inline const char *getName() const {
-        return pcTaskGetName(handle);
+        return state == NEW ? id : pcTaskGetName(handle);
     }
-
-    inline void finish() override {
-        bIsFinished = true;
-    }
-
-    inline void setCoreAffinity(CoreAffinity ca) {
-        coreAffinity = ca;
+    [[nodiscard]] inline uint getIndex() const {
+        return index;
     }
 
     [[nodiscard]] inline CoreAffinity getCoreAffinity() const {
         return coreAffinity;
     }
 
-protected:
-    NoArgTask fnSetup, fnLoop;
-    TaskHandle_t handle{};
-    uint32_t stackSize;
-    CoreAffinity coreAffinity;
-    const char *id;
-    bool bRun = true;
-    bool bIsFinished = false;
+    [[nodiscard]] inline TaskHandle_t getTaskHandle() const {
+        return handle;
+    }
 
+    [[nodiscard]] inline uint32_t getStackSize() const {
+        return stackSize;
+    }
+
+protected:
+    [[noreturn]] void run () override;
+    bool waitToEnd(uint16_t msTimeOut=1000);    //defaults to waiting 1s for task to finish
+    void terminate() override;
+
+    const NoArgTask fnSetup, fnLoop;
+    TaskHandle_t handle{};
+    const uint32_t stackSize;
+    const CoreAffinity coreAffinity;
+    const BaseType_t priority;
+    char *id;
+    const int16_t index;
+    volatile Runnable::State state {NEW};
     friend class SchedulerClassExt;
 };
 
@@ -108,25 +103,18 @@ protected:
 public:
     SchedulerClassExt() = default;
 
-    bool startTask(NoArgTask loop, NoArgTask setup = nullptr, uint32_t stackSize = 1024);
+    TaskWrapper* startTask(TaskDefPtr taskDef);
 
-    bool startTask(FxTasksPtr taskDef, uint32_t stackSize = 1024);
-
-    bool startTask(TaskJob *pTask);
-
-    bool stopTask(TaskJob *pt);
-
+    bool stopTask(TaskWrapper *pt);
+    [[nodiscard]] TaskWrapper* getTask(uint index) const;
+    [[nodiscard]] TaskWrapper* getTask(const char* name) const;
+    [[nodiscard]] TaskWrapper* getTask(UBaseType_t uid) const;
     [[nodiscard]] uint16_t availableThreads() const;
-    osStatus waitToEnd(rtos::Thread *pt);
-    osStatus terminate(rtos::Thread *pt);
-
-    uint availableThreads() const;
 
     static void yield() { ::yield(); };
 private:
-    ThreadWrapper *threads[MAX_THREADS_NUMBER] {nullptr};
-    TaskJob *tasks[MAX_THREADS_NUMBER] = {};
-    static bool scheduleTask(TaskJob *taskJob, uint16_t tPos);
+    TaskWrapper *tasks[MAX_THREADS_NUMBER] = {};
+    static bool scheduleTask(TaskWrapper *taskJob);
 };
 
 extern SchedulerClassExt Scheduler;

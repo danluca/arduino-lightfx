@@ -5,8 +5,6 @@
 #ifndef ARDUINO_LIGHTFX_UTIL_H
 #define ARDUINO_LIGHTFX_UTIL_H
 
-#include <ArduinoECCX08.h>
-//#include "Mutex.h"
 #include "config.h"
 #include "log.h"
 
@@ -30,12 +28,6 @@ uint8_t bmul8(uint8_t a, uint8_t b);
 uint8_t bscr8(uint8_t a, uint8_t b);
 uint8_t bovl8(uint8_t a, uint8_t b);
 bool rblend8(uint8_t &a, uint8_t b, uint8_t amt=22) ;
-
-void fsInit();
-
-size_t readTextFile(const char *fname, String *s);
-size_t writeTextFile(const char *fname, String *s);
-bool removeFile(const char *fname);
 
 uint8_t secRandom8(uint8_t minLim = 0, uint8_t maxLim = 0);
 uint16_t secRandom16(uint16_t minLim = 0, uint16_t maxLim = 0);

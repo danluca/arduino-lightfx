@@ -33,7 +33,7 @@ struct TimeSync {
     time_t unixSeconds{};
 };
 
-bool time_setup();
+bool timeSetup();
 time_t curUnixTime();
 bool ntp_sync();
 int getAverageTimeDrift();

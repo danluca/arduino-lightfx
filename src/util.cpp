@@ -2,23 +2,18 @@
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
 //
 
-#include "util.h"
+#include <ArduinoECCX08.h>
 #include "utility/ECCX08DefaultTLSConfig.h"
+#include "util.h"
 #include "timeutil.h"
-// increase the amount of space for file system to 128kB (default 64kB)
-#define RP2040_FS_SIZE_KB   (128)
-#include <LittleFSWrapper.h>
 #include "hardware/watchdog.h"
 #include "sysinfo.h"
 #include "FastLED.h"
 
-#define FILE_BUF_SIZE   256
-const char stateFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/state.json";
-const char sysFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/sys.json";
+const char stateFileName[] PROGMEM = "/state.json";
+const char sysFileName[] PROGMEM = "/sys.json";
 
 FixedQueue<TimeSync, 8> timeSyncs;
-LittleFSWrapper *fsPtr;
-//rtos::Mutex i2cMutex;
 
 /**
  * Adapted from article https://rheingoldheavy.com/better-arduino-random-values/
@@ -72,91 +67,6 @@ void updateStateLED(uint8_t red, uint8_t green, uint8_t blue) {
     analogWrite(LEDB, 255 - blue);
 }
 
-void fsInit() {
-#ifndef DISABLE_LOGGING
-    mbed::BlockDevice *bd = mbed::BlockDevice::get_default_instance();
-    bd->init();
-    Log.infoln(F("Default BlockDevice type %s, size %u B, read size %u B, program size %u B, erase size %u B"),
-               bd->get_type(), bd->size(), bd->get_read_size(), bd->get_program_size(), bd->get_erase_size());
-    bd->deinit();
-#endif
-
-    fsPtr = new LittleFSWrapper();
-    if (fsPtr->init()) {
-        sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
-        Log.infoln("Filesystem OK");
-    }
-
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Root FS %s contents:"), LittleFSWrapper::getRoot());
-    DIR *d = opendir(LittleFSWrapper::getRoot());
-    struct dirent *e = nullptr;
-    while (e = readdir(d))
-        Log.infoln(F("  %s [%d]"), e->d_name, e->d_type);
-    Log.infoln(F("Dir complete."));
-#endif
-}
-
-/**
- * Reads a text file - if it exists - into a string object
- * @param fname name of the file to read
- * @param s string to store contents into
- * @return number of characters in the file; 0 if file is empty or doesn't exist
- */
-size_t readTextFile(const char *fname, String *s) {
-    FILE *f = fopen(fname, "r");
-    size_t fsize = 0;
-    if (f) {
-        char buf[FILE_BUF_SIZE];
-        memset(buf, 0, FILE_BUF_SIZE);
-        size_t cread = 1;
-        while (cread = fread(buf, 1, FILE_BUF_SIZE, f)) {
-            s->concat(buf, cread);
-            fsize += cread;
-        }
-        fclose(f);
-        Log.infoln(F("Read %d bytes from %s file"), fsize, fname);
-        Log.traceln(F("Read file %s content [%d]: %s"), fname, fsize, s->c_str());
-    } else
-        Log.errorln(F("Text file %s was not found/could not read"), fname);
-    return fsize;
-}
-
-/**
- * Writes (overrides if already exists) a file using the string content
- * @param fname file name to write
- * @param s contents to write
- * @return number of bytes written
- */
-size_t writeTextFile(const char *fname, String *s) {
-    size_t fsize = 0;
-    FILE *f = fopen(fname, "w");
-    if (f) {
-        fsize = fwrite(s->c_str(), sizeof(s->charAt(0)), s->length(), f);
-        fclose(f);
-        Log.infoln(F("File %s has been saved, size %d bytes"), fname, s->length());
-        Log.traceln(F("Saved file %s content [%d]: %s"), fname, fsize, s->c_str());
-    } else
-        Log.errorln(F("Failed to create file %s for writing"), fname);
-    return fsize;
-}
-
-bool removeFile(const char *fname) {
-    FILE *f = fopen(fname, "r");
-    if (f) {
-        fclose(f);
-        int retCode = remove(fname);        //lfs.remove(fname) can be an option, likely if fname is relative to lfs root
-        if (retCode == 0)
-            Log.infoln(F("File %s successfully removed"), fname);
-        else
-            Log.errorln(F("File %s can NOT be removed; error code: %d"), fname, retCode);
-        return retCode == 0;
-    }
-    //file does not exist - return true to the caller, the intent is already fulfilled
-    Log.infoln(F("File %s does not exist, no need to remove"), fname);
-    return true;
-}
-
 /**
  * Multiply function for color blending purposes - assumes the operands are fractional (n/256) and the result
  * of multiplying 2 fractional numbers is less than both numbers (e.g. 0.2 x 0.3 = 0.06). Special handling for operand values of 255 (i.e. 1.0)
@@ -198,36 +108,6 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
     if (a < 128)
         return bmul8(a, b)*2;
     return 255-bmul8(255-a, 255-b)*2;
-}
-
-/**
- * Are we in DST (Daylight Savings Time) at this time?
- * @param time
- * @return
- */
-bool isDST(const time_t time) {
-//    const uint16_t md = encodeMonthDay(time);
-    // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
-    // to the transition, such that we don't need to implement complex Sunday counting rules
-//    return md > 0x030C && md < 0x0B05;
-    int mo = month(time);
-    int dy = day(time);
-    int hr = hour(time);
-    int dow = weekday(time);
-    // DST runs from second Sunday of March to first Sunday of November
-    // Never in January, February or December
-    if (mo < 3 || mo > 11)
-        return false;
-    // Always in April to October
-    if (mo > 3 && mo < 11)
-        return true;
-    // In March, DST if previous Sunday was on or after the 8th.
-    // Begins at 2am on second Sunday in March
-    int previousSunday = dy - dow;
-    if (mo == 3)
-        return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
-    // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
-    return (previousSunday < 7 && dow == 1) ? (hr < 2) : (previousSunday < 0);
 }
 
 /**

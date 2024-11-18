@@ -5,6 +5,7 @@
 #ifndef DISABLE_LOGGING
 #include <FreeRTOS.h>
 #include <task.h>
+#include <FastLED.h>
 
 time_t logTimeOffset = 0;
 #endif

@@ -6,12 +6,12 @@
 #define ARDUINO_LIGHTFX_BROADCAST_H
 
 #include "config.h"
-#include "fixed_queue.h"
 #include "log.h"
 
 enum BroadcastState:uint8_t {Uninitialized, Configured, Broadcasting, Waiting};
 
+void broadcastSetup();
 void postFxChangeEvent(uint16_t index);
-void postWiFiSetupEvent();
+void postTimeSetupCheck();
 
 #endif //ARDUINO_LIGHTFX_BROADCAST_H

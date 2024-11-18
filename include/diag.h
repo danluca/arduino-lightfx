@@ -6,7 +6,6 @@
 #define ARDUINO_LIGHTFX_DIAG_H
 
 #include "config.h"
-#include <Arduino_LSM6DSOX.h>
 #include "log.h"
 
 #define IMU_TEMPERATURE_NOT_AVAILABLE   0.001f
@@ -14,15 +13,7 @@
 
 extern const char calibFileName[];
 
-void diag_events_setup();
-void diag_setup();
-
-bool imu_setup();
-void updateLineVoltage();
-void updateSystemTemp();
-void updateSecEntropy();
-void logDiagInfo();
-
+void diagSetup();
 
 enum Unit:uint8_t {Volts, Deg_F, Deg_C};
 
@@ -113,7 +104,6 @@ struct CalibrationParams {
 extern CalibrationMeasurement calibTempMeasurements;
 extern CalibrationParams calibCpuTemp;
 
-bool calibrate();
 void readCalibrationInfo();
 void saveCalibrationInfo();
 // end self-calibration support
@@ -130,9 +120,5 @@ inline static float toFahrenheit(const float celsius) {
 inline static Measurement toFahrenheit(const Measurement &msmt) {
     return Measurement {toFahrenheit(msmt.value), msmt.time, Deg_F};
 }
-
-Measurement boardTemperature();
-MeasurementPair chipTemperature();
-Measurement controllerVoltage();
 
 #endif //ARDUINO_LIGHTFX_DIAG_H
