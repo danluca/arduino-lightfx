@@ -17,8 +17,6 @@ const CRGB CLR_ALL_OK = CRGB::Indigo;
 const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;
 const CRGB CLR_SETUP_ERROR = CRGB::Red;
 
-WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
-
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from {@code WiFi.RSSI()}
  * <p>This Android article has been used for reference - https://android.stackexchange.com/questions/176320/rssi-range-for-wifi-icons </p>
