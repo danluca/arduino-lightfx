@@ -94,27 +94,27 @@ void fsInit() {
  * The task scheduler executes this function in a loop, no need to account for that here
  */
 void fsExecute() {
-    fsTaskMessage msg{};
+    fsTaskMessage *msg = nullptr;
     //block indefinitely for a message to be received
     if (pdFALSE == xQueueReceive(fsQueue, &msg, portMAX_DELAY))
         return;
     //the reception was successful, hence the msg is not null anymore
     size_t sz = 0;
-    switch (msg.event) {
+    switch (msg->event) {
         case fsTaskMessage::READ_FILE:
-            sz = prvReadTextFile(msg.data->name, msg.data->content);
-            xTaskNotify(msg.task, sz, eSetValueWithOverwrite);
+            sz = prvReadTextFile(msg->data->name, msg->data->content);
+            xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::WRITE_FILE:
-            sz = prvWriteTextFile(msg.data->name, msg.data->content);
-            xTaskNotify(msg.task, sz, eSetValueWithOverwrite);
+            sz = prvWriteTextFile(msg->data->name, msg->data->content);
+            xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::DELETE_FILE:
-            sz = prvRemoveFile(msg.data->name);
-            xTaskNotify(msg.task, sz, eSetValueWithOverwrite);
+            sz = prvRemoveFile(msg->data->name);
+            xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
             break;
         default:
-            Log.errorln(F("Event type %d not supported"), msg.event);
+            Log.errorln(F("Event type %d not supported"), msg->event);
             break;
     }
 }
@@ -186,8 +186,8 @@ bool prvRemoveFile(const char *fname) {
  * @return number of bytes read - 0 if file does not exist or cannot be read for some reason (e.g. timeout)
  */
 size_t readTextFile(const char *fname, String *s) {
-    fsOperationData args {fname, s};
-    fsTaskMessage msg {fsTaskMessage::READ_FILE, xTaskGetCurrentTaskHandle(), &args};
+    auto *args = new fsOperationData {fname, s};
+    auto *msg = new fsTaskMessage {fsTaskMessage::READ_FILE, xTaskGetCurrentTaskHandle(), args};
 
     BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     size_t sz = 0;
@@ -197,6 +197,8 @@ size_t readTextFile(const char *fname, String *s) {
     } else
         Log.errorln(F("Error sending READ_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
+    delete msg;
+    delete args;
     return sz;
 }
 
@@ -207,8 +209,8 @@ size_t readTextFile(const char *fname, String *s) {
  * @return number of bytes written - 0 if there was an error (e.g. timeout)
  */
 size_t writeTextFile(const char *fname, String *s) {
-    fsOperationData args {fname, s};
-    fsTaskMessage msg {fsTaskMessage::WRITE_FILE, xTaskGetCurrentTaskHandle(), &args};
+    auto *args = new fsOperationData {fname, s};
+    auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE, xTaskGetCurrentTaskHandle(), args};
 
     BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     size_t sz = 0;
@@ -218,6 +220,8 @@ size_t writeTextFile(const char *fname, String *s) {
     } else
         Log.errorln(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
+    delete msg;
+    delete args;
     return sz;
 }
 
@@ -227,8 +231,8 @@ size_t writeTextFile(const char *fname, String *s) {
  * @return true if successfully deleted, false otherwise
  */
 bool removeFile(const char *fname) {
-    fsOperationData args{fname, nullptr};
-    fsTaskMessage msg{fsTaskMessage::DELETE_FILE, xTaskGetCurrentTaskHandle(), &args};
+    auto *args = new fsOperationData {fname, nullptr};
+    auto *msg = new fsTaskMessage{fsTaskMessage::DELETE_FILE, xTaskGetCurrentTaskHandle(), args};
 
     BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     size_t sz = 0;
@@ -236,6 +240,9 @@ bool removeFile(const char *fname) {
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
         Log.errorln(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+
+    delete msg;
+    delete args;
     return sz;
 }
 

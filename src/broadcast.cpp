@@ -81,20 +81,21 @@ void broadcastInit() {
  * Receives events from the broadcast queue and executes appropriate handlers.
  */
 void broadcastExecute() {
-    bcTaskMessage msg{};
+    bcTaskMessage *msg = nullptr;
     //block indefinitely for a message to be received
     if (pdFALSE == xQueueReceive(bcQueue, &msg, portMAX_DELAY))
         return;
     //the reception was successful, hence the msg is not null anymore
-    switch (msg.event) {
+    switch (msg->event) {
         case bcTaskMessage::TIME_SETUP: timeSetupCheck(); break;
         case bcTaskMessage::TIME_UPDATE: timeUpdate(); break;
         case bcTaskMessage::HOLIDAY_UPDATE: holidayUpdate(); break;
-        case bcTaskMessage::FX_SYNC:fxBroadcast(msg.data); break;
+        case bcTaskMessage::FX_SYNC:fxBroadcast(msg->data); break;
         default:
-            Log.errorln(F("Event type %d not supported"), msg);
+            Log.errorln(F("Event type %d not supported"), msg->event);
             break;
     }
+    delete msg;
 }
 
 /**
@@ -103,7 +104,7 @@ void broadcastExecute() {
  */
 void enqueueHoliday(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage {bcTaskMessage::HOLIDAY_UPDATE, 0};   //gets deleted in execute upon message receipt
-    BaseType_t qResult = xQueueSend(bcQueue, msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT));
+    BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT));
     if (qResult == pdFALSE)
         Log.errorln(F("Error sending HOLIDAY_UPDATE message to broadcast task for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
     else
@@ -116,7 +117,7 @@ void enqueueHoliday(TimerHandle_t xTimer) {
  */
 void enqueueTimeUpdate(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{bcTaskMessage::TIME_UPDATE, 0};   //gets deleted in execute upon message receipt
-    BaseType_t qResult = xQueueSend(bcQueue, msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT));
+    BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT));
     if (qResult == pdFALSE)
         Log.errorln(F("Error sending TIME_UPDATE message to broadcast task for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
     else
@@ -128,7 +129,7 @@ void enqueueTimeUpdate(TimerHandle_t xTimer) {
  */
 void enqueueFxUpdate(const uint16_t index) {
     auto *msg = new bcTaskMessage{bcTaskMessage::FX_SYNC, index};
-    BaseType_t qResult = xQueueSend(bcQueue, msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT));
+    BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT));
     if (qResult == pdFALSE)
         Log.errorln(F("Error sending FX_SYNC message to broadcast task for FX %d - error %d"), index, qResult);
     else
@@ -141,7 +142,7 @@ void enqueueFxUpdate(const uint16_t index) {
  */
 void enqueueTimeSetup(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{bcTaskMessage::TIME_SETUP, 0};
-    BaseType_t qResult = xQueueSend(bcQueue, msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT));
+    BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT));
     if (qResult == pdFALSE)
         Log.errorln(F("Error sending TIME_SETUP message to broadcast task for timer %s - error %d"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer), qResult);
     else
