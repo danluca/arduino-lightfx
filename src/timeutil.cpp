@@ -3,6 +3,7 @@
 //
 
 #include "global.h"
+#include "util.h"
 #include "timeutil.h"
 #include "PaletteFactory.h"
 #include "sysinfo.h"
@@ -56,6 +57,7 @@ bool timeSetup() {
 #endif
     } else {
         sysInfo->resetSysStatus(SYS_STATUS_NTP);
+        paletteFactory.setHoliday(Party);  //setting it explicitly to avoid defaulting to none when there is no wifi altogether
         hday = paletteFactory.adjustHoliday();    //update the holiday for new time
         bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
         if (bDST)
@@ -120,11 +122,13 @@ time_t curUnixTime() {
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time telling purpose
         //determine what offset to use
-        time_t wifiTime = WiFi.getTime() + CST_OFFSET_SECONDS;
-        if (isDST(wifiTime))
-            wifiTime = WiFi.getTime() + CDT_OFFSET_SECONDS;
-        return wifiTime;
+        time_t wifiTime = WiFi.getTime();
+        time_t localTime = wifiTime + CST_OFFSET_SECONDS;
+        if (isDST(localTime))
+            localTime = wifiTime + CDT_OFFSET_SECONDS;
+        return localTime;
     }
+//    return millis();
     return 0;
 }
 

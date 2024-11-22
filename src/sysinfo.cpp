@@ -1,10 +1,12 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
 
-#include "sysinfo.h"
 #include <ArduinoJson.h>
 #include "filesystem.h"
 #include "util.h"
+#include "sysinfo.h"
+
+#include "config.h"
 #include "version.h"
 #ifndef DISABLE_LOGGING
 #include <SchedulerExt.h>
@@ -13,11 +15,13 @@
 #define BUF_ID_SIZE  20
 
 static const char unknown[] PROGMEM = "N/A";
+#ifndef DISABLE_LOGGING
 static const char threadInfoFmt[] PROGMEM = "Thread[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X stackSize=%u free=%u\n";
-static const char threadInfoVerboseFmt[] PROGMEM = "Thread[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X \n  stackBase=%X size=%u free=%u coreAffinity=%X\n";
+static const char threadInfoVerboseFmt[] PROGMEM = "Thread[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X \n  basePriority=%i stackBase=%X size=%u free=%u coreAffinity=%X\n";
 static const char heapStackInfoFmt[] PROGMEM = "Total Stack:: size=%u free=%u; Heap:: size=%u free=%u\n";
 static const char heapStackVerboseFmt[] PROGMEM = "Total Stack:: size=%u free=%u taskCount=%u; Heap:: size=%u used=%u free=%u\n  lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
-static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %s ROM %d [%f MHz]\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
+static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %d ROM %d [%D MHz]\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
+#endif
 static const char *const csBuildVersion PROGMEM = "buildVersion";
 static const char *const csBoardName PROGMEM = "boardName";
 static const char *const csBuildTime PROGMEM = "buildTime";
@@ -78,7 +82,7 @@ void logTaskStats() {
                              stackSize, ts.usStackHighWaterMark * 4);
                 else
                     Log.trace(threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber,
-                              ts.pxStackBase, stackSize, ts.usStackHighWaterMark * 4, ts.uxCoreAffinityMask);
+                              ts.uxBasePriority, ts.pxStackBase, stackSize, ts.usStackHighWaterMark * 4, ts.uxCoreAffinityMask);
                 ulTotalStack += stackSize;
                 ulFreeStack += ts.usStackHighWaterMark * 4;
             }
@@ -165,9 +169,9 @@ uint8_t SysInfo::getSysStatus() const {
     return status;
 }
 
-void SysInfo::setWiFiInfo(WiFiClass &wifi) {
+void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
     ssid = wifi.SSID();
-    wifiFwVersion = WiFiClass::firmwareVersion();
+    wifiFwVersion = ::WiFiClass::firmwareVersion();
     ipAddress = wifi.localIP().toString();
     gatewayIpAddress = wifi.gatewayIP().toString();
 

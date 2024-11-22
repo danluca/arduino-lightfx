@@ -1,30 +1,31 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
 
-#include "broadcast.h"
 #include <FreeRTOS.h>
 #include <queue.h>
 #include <timers.h>
-#include "ArduinoHttpClient.h"
-#include "WiFiClient.h"
+#include <HTTPClient.h>
 #include "SchedulerExt.h"
+#include "broadcast.h"
 #include "efx_setup.h"
 #include "net_setup.h"
 #include "sysinfo.h"
+#include "ledstate.h"
 
 #define BCAST_QUEUE_TIMEOUT  1000     //enqueuing timeout - 1 second
 
 volatile bool fxBroadcastEnabled = false;
 BroadcastState broadcastState = Uninitialized;
 
-using namespace std::chrono;
-
 //broadcast client list, using last byte of IP addresses - e.g. 192.168.0.10, 192.168.0.11
 static const uint8_t syncClientsLSB[] PROGMEM = {BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
 
-static const char hdContentJson[] PROGMEM = "Content-Type: application/json";
-static const char hdUserAgent[] PROGMEM = "User-Agent: rp2040-lightfx-master/1.0.0";
-static const char hdKeepAlive[] PROGMEM = "Connection: keep-alive";
+static const char hdContentTypeName[] PROGMEM = "Content-Type";
+static const char hdContentTypeJson[] PROGMEM = "application/json";
+static const char hdUserAgentName[] PROGMEM = "User-Agent";
+static const char hdUserAgentValue[] PROGMEM = "rp2040-lightfx-master/1.0.0";
+static const char hdConnectionName[] PROGMEM = "Connection";
+static const char hdConnectionKeepAlive[] PROGMEM = "keep-alive";
 static const char fmtFxChange[] PROGMEM = R"===({"effect":%d,"auto":false,"broadcast":false})===";
 
 QueueHandle_t bcQueue;
@@ -90,7 +91,7 @@ void broadcastExecute() {
         case bcTaskMessage::TIME_SETUP: timeSetupCheck(); break;
         case bcTaskMessage::TIME_UPDATE: timeUpdate(); break;
         case bcTaskMessage::HOLIDAY_UPDATE: holidayUpdate(); break;
-        case bcTaskMessage::FX_SYNC:fxBroadcast(msg->data); break;
+        case bcTaskMessage::FX_SYNC: fxBroadcast(msg->data); break;
         default:
             Log.errorln(F("Event type %d not supported"), msg->event);
             break;
@@ -156,38 +157,38 @@ void enqueueTimeSetup(TimerHandle_t xTimer) {
 void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     CoreMutex lock(&wifiMutex);
     Log.infoln(F("Attempting to connect to client %p for FX %d"), ip, fxIndex);
-    WiFiClient wiFiClient;  //wifi client - does not need explicit pointer for underlying WiFi class/driver
-    HttpClient client(wiFiClient, *ip, HttpClient::kHttpPort);
-    client.setTimeout(1000);
-    client.setHttpResponseTimeout(2000);
-    client.connectionKeepAlive();
-    client.noDefaultRequestHeaders();
+    HTTPClient client;
+    client.setTimeout(2500);
+    client.setReuse(true);      //keep alive
+    client.setUserAgent(hdUserAgentValue);
 
     size_t sz = sprintf(nullptr, fmtFxChange, fxIndex);
-    char buf[sz+1];
-    sprintf(buf, fmtFxChange, fxIndex);
-    buf[sz] = 0;    //null terminated string
+    String buf;
+    buf.reserve(sz);
+    sprintf(buf.begin(), fmtFxChange, fxIndex);
+    //buf[sz] = 0;    //null terminated string
 
-    client.beginRequest();
-    //client.put is where connection is established
-    if (HTTP_SUCCESS == client.put("/fx")) {
-        client.sendHeader(hdContentJson);
-        client.sendHeader(hdUserAgent);
-        client.sendHeader("Content-Length", sz);
-        client.sendHeader(hdKeepAlive);
-        client.beginBody();
-        client.print(buf);
-        client.endRequest();
+    String url;
+    url.reserve(30);    //sufficient for a http://192.168.0.11/fx type URL
+    url.concat(F("http://"));
+    url.concat(ip->toString());
+    url.concat(F("/fx"));
 
-        int statusCode = client.responseStatusCode();
-        String response = client.responseBody();
-        if (statusCode / 100 == 2)
-            Log.infoln(F("Successful sync FX %d with client %p: %d response status\nBody: %s"), fxIndex, ip, statusCode, response.c_str());
-        else
-            Log.errorln(F("Failed to sync FX %d to client %p: %d response status"), fxIndex, ip, statusCode);
-    } else
-        Log.errorln(F("Failed to connect to client %p, FX %d not synced"), ip, fxIndex);
-    client.stop();
+    if (client.begin(url)) {
+        client.addHeader(hdContentTypeName, hdContentTypeJson);
+        client.addHeader("Content-Length", String(sz));
+        if (const int httpCode = client.PUT(buf); httpCode > 0) {
+            const String response = client.getString();
+            if (httpCode / 100 == 2)
+                Log.infoln(F("Successful sync FX %d with client %p: %d response status\nBody: %s"), fxIndex, ip, httpCode, response.c_str());
+            else
+                Log.errorln(F("Failed to sync FX %d to client %p: %d response status"), fxIndex, ip, httpCode);
+        } else
+            Log.errorln(F("Failed to connect to client %p, FX %d not synced; %d response status"), ip, fxIndex, httpCode);
+        client.end();
+    } else {
+        Log.errorln(F("Failed to initialize HTTP client for %p; FX %d not synced"), ip, fxIndex);
+    }
 }
 
 /**

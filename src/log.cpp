@@ -66,7 +66,7 @@ void printThread(Print *_logOutput, int logLevel) {
 #ifndef DISABLE_LOGGING
     TaskStatus_t taskStatus;
     vTaskGetInfo(nullptr, &taskStatus, pdFALSE, eRunning);
-    _logOutput->printf("[%s-%u]", taskStatus.pcTaskName, taskStatus.xTaskNumber);
+    _logOutput->printf("[%s-%u]", taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
 #endif
 }
 

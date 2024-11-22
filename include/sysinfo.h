@@ -4,12 +4,10 @@
 #ifndef ARDUINO_LIGHTFX_SYSINFO_H
 #define ARDUINO_LIGHTFX_SYSINFO_H
 
-#include <WiFiNINA.h>
-#include <FreeRTOS.h>
-#include <task.h>
+#include <Arduino.h>
+#include <WiFi.h>
 #include "fixed_queue.h"
 #include "log.h"
-#include "config.h"
 
 #define MAX_WATCHDOG_REBOOT_TIMESTAMPS  10      // max number of watchdog reboots to keep in the list
 typedef FixedQueue<time_t, MAX_WATCHDOG_REBOOT_TIMESTAMPS> WatchdogQueue;

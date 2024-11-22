@@ -4,6 +4,7 @@
 
 #include "PaletteFactory.h"
 #include "sysinfo.h"
+#include "util.h"
 
 using namespace colTheme;
 

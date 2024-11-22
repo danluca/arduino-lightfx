@@ -5,7 +5,8 @@
 #ifndef ARDUINO_LIGHTFX_TIMEUTIL_H
 #define ARDUINO_LIGHTFX_TIMEUTIL_H
 
-#include <WiFiNINA.h>
+// #include <Arduino.h>
+#include <WiFi.h>
 #include <NTPClient.h>
 #include <TimeLib.h>
 #include "fixed_queue.h"

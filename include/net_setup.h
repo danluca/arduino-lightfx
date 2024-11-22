@@ -4,11 +4,11 @@
 #ifndef LIGHTFX_NET_SETUP_H
 #define LIGHTFX_NET_SETUP_H
 
-#include <WiFiNINA.h>
-#include <mutex>
+#include <WiFi.h>
 #include "PaletteFactory.h"
 #include "util.h"
 #include "secrets.h"
+// #include <mutex>
 
 extern mutex wifiMutex;
 extern WiFiServer server;

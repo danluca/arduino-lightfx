@@ -10,11 +10,7 @@
 #include "fixed_queue.h"
 #include "config.h"
 #include "global.h"
-#include "util.h"
-#include "mic.h"
 #include "PaletteFactory.h"
-#include "transition.h"
-#include "FxSchedule.h"
 
 typedef void (*setupFunc)();
 

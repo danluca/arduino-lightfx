@@ -4,11 +4,11 @@
 
 #include <ArduinoECCX08.h>
 #include "utility/ECCX08DefaultTLSConfig.h"
-#include "util.h"
 #include "timeutil.h"
 #include "hardware/watchdog.h"
-#include "sysinfo.h"
 #include "FastLED.h"
+#include "sysinfo.h"
+#include "util.h"
 
 const char stateFileName[] PROGMEM = "/state.json";
 const char sysFileName[] PROGMEM = "/sys.json";
@@ -39,32 +39,6 @@ ulong adcRandom() {
         seedByteValue = 0;                                                // Clear out the previous stack value
     }
     return (seedWordValue);
-}
-
-/**
- * Setup the on-board status LED
- */
-void setupStateLED() {
-    pinMode(LEDR, OUTPUT);
-    pinMode(LEDG, OUTPUT);
-    pinMode(LEDB, OUTPUT);
-    updateStateLED(0, 0, 0);    //black, turned off
-}
-/**
- * Controls the on-board status LED
- * @param color
- */
-void updateStateLED(uint32_t colorCode) {
-    uint8_t r = (colorCode >> 16) & 0xFF;
-    uint8_t g = (colorCode >>  8) & 0xFF;
-    uint8_t b = (colorCode >>  0) & 0xFF;
-    updateStateLED(r, g, b);
-}
-
-void updateStateLED(uint8_t red, uint8_t green, uint8_t blue) {
-    analogWrite(LEDR, 255 - red);
-    analogWrite(LEDG, 255 - green);
-    analogWrite(LEDB, 255 - blue);
 }
 
 /**

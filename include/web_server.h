@@ -4,17 +4,9 @@
 #ifndef LIGHTFX_WEB_SERVER_H
 #define LIGHTFX_WEB_SERVER_H
 
-#include <Arduino.h>
+#include <WiFi.h>
 #include <ArduinoJson.h>
 #include <regex>
-#include "net_setup.h"
-#include "efx_setup.h"
-#include "FxSchedule.h"
-
-#include "index_html.h"
-//#include "jquery_min_js.h"
-#include "pixel_css.h"
-#include "pixel_js.h"
 
 namespace web {
 

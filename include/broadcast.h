@@ -5,7 +5,6 @@
 #ifndef ARDUINO_LIGHTFX_BROADCAST_H
 #define ARDUINO_LIGHTFX_BROADCAST_H
 
-#include "config.h"
 #include "log.h"
 
 enum BroadcastState:uint8_t {Uninitialized, Configured, Broadcasting, Waiting};

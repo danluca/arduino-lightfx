@@ -6,6 +6,7 @@
 #include "sysinfo.h"
 #include "timeutil.h"
 #include "broadcast.h"
+#include "ledstate.h"
 #include "log.h"
 
 using namespace colTheme;
@@ -85,7 +86,7 @@ bool wifi_setup() {
     checkFirmwareVersion();
 
     //enable low power mode - web server is not the primary function of this module
-    WiFi.lowPowerMode();
+    //WiFi.lowPowerMode();
 
     return wifi_connect();
 }
@@ -122,9 +123,9 @@ bool wifi_check() {
 void wifi_reconnect() {
     sysInfo->resetSysStatus(SYS_STATUS_WIFI);
     stateLed(CLR_SETUP_IN_PROGRESS);
-    server.clearWriteError();
-    WiFiClient client = server.available();
-    if (client) client.stop();
+    if (WiFiClient client = server.available())
+        client.stop();
+    server.stop();
     Udp.stop();
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
@@ -172,7 +173,7 @@ void printSuccessfulWifiStatus() {
 }
 
 void checkFirmwareVersion() {
-    String fv = WiFiClass::firmwareVersion();
+    const String fv = ::WiFiClass::firmwareVersion();
     Log.infoln(F("WiFi firmware version %s"), fv.c_str());
     if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
         Log.warningln(F("Please upgrade the WiFi firmware to %s"), WIFI_FIRMWARE_LATEST_VERSION);

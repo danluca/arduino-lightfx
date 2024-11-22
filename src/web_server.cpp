@@ -1,6 +1,8 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
+#include <FreeRTOS.h>
+#include <task.h>
 #include "StreamUtils.h"
 #include "web_server.h"
 #include "filesystem.h"
@@ -8,7 +10,17 @@
 #include "sysinfo.h"
 #include "diag.h"
 #include "broadcast.h"
+#include "net_setup.h"
+#include "efx_setup.h"
+#include "FxSchedule.h"
+#include "mic.h"
 #include "log.h"
+
+#include "index_html.h"
+//#include "jquery_min_js.h"
+#include "pixel_css.h"
+#include "pixel_js.h"
+
 
 static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
 static const char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";

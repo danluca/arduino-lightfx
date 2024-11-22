@@ -7,6 +7,8 @@
  */
 #include "fxE.h"
 
+#include "transition.h"
+
 using namespace FxE;
 using namespace colTheme;
 
