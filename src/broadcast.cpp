@@ -4,7 +4,7 @@
 #include <FreeRTOS.h>
 #include <queue.h>
 #include <timers.h>
-#include <HTTPClient.h>
+#include <ArduinoHttpClient.h>
 #include "SchedulerExt.h"
 #include "broadcast.h"
 #include "efx_setup.h"
