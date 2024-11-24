@@ -4,26 +4,6 @@
 #include "ledstate.h"
 
 /**
- * Implementation of the analogWrite as when using WiFi in the project, the linker doesn't find the implementation of
- * this function defined in {@code ~\.platformio\packages\framework-arduinopico\variants\arduino_nano_connect\nina_pins.h}
- * @param pin the pin to write to, as the NinaPin wrapper object
- * @param value the value to PWM write to the pin (with
- */
-void analogWrite(NinaPin pin, const int value) {
-    analogWrite(pin.get(), value);
-}
-
-/**
- * Implementation of the pinMode as when using WiFi in the project, the linker doesn't find the implementation of
- * this function defined in {@code ~\.platformio\packages\framework-arduinopico\variants\arduino_nano_connect\nina_pins.h}
- * @param pin the pin to change mode for, as NinaPin wrapper object
- * @param mode the mode of the pin
- */
-void pinMode(NinaPin pin, PinMode mode) {
-    pinMode(pin.get(), mode);
-}
-
-/**
  * Setup the on-board status LED
  */
 void setupStateLED() {

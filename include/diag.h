@@ -19,6 +19,8 @@ enum Unit:uint8_t {Volts, Deg_F, Deg_C};
 
 // Measurement data structure - value, unit, time (unit is fixed once instantiated)
 struct Measurement {
+    virtual ~Measurement() = default;
+
     float value;
     time_t time;
     const Unit unit;

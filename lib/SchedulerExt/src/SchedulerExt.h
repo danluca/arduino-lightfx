@@ -39,7 +39,7 @@ struct TaskDef {
     NoArgTask loop{};                   // loop function pointer (called repeatedly indefinitely), cannot be null
     const uint32_t stackSize {1024};    // stack size in bytes to allocate to the new thread (default 1024)
     const char* threadName {};          // custom thread name provided optionally; if not provided thread name is built generically using "Thd N" pattern
-    uint8_t priority {1};               //the task priority - must be between 1 and configMAX_PRIORITIES-1; the IDLE task has priority 0
+    mutable uint8_t priority {1};       // the task priority - must be between 1 and configMAX_PRIORITIES-1; the IDLE task has priority 0; mutable as the actual priority may be determined in relation with launching task
     CoreAffinity core {CORE_0};         // which core to run on - default to main core (0)
 };
 

@@ -14,11 +14,11 @@
 
 static const char unknown[] PROGMEM = "N/A";
 #ifndef DISABLE_LOGGING
-static const char threadInfoFmt[] PROGMEM = "Thread[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X stackSize=%u free=%u\n";
-static const char threadInfoVerboseFmt[] PROGMEM = "Thread[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X \n  basePriority=%i stackBase=%X size=%u free=%u coreAffinity=%X\n";
-static const char heapStackInfoFmt[] PROGMEM = "Total Stack:: size=%u free=%u; Heap:: size=%u free=%u\n";
-static const char heapStackVerboseFmt[] PROGMEM = "Total Stack:: size=%u free=%u taskCount=%u; Heap:: size=%u used=%u free=%u\n  lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
-static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %d ROM %d [%D MHz]\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
+static const char threadInfoFmt[] PROGMEM = "THREADS/TASKS INFO\nTask[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X stackSize=%u free=%u\n";
+static const char threadInfoVerboseFmt[] PROGMEM = "THREADS/TASKS INFO\nTask[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X \n  basePriority=%i stackBase=%X size=%u free=%u coreAffinity=%X\n";
+static const char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free=%u; Heap:: size=%u free=%u\n";
+static const char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free=%u taskCount=%u; Heap:: size=%u used=%u free=%u\n  lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
+static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%D MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 #endif
 static const char *const csBuildVersion PROGMEM = "buildVersion";
 static const char *const csBoardName PROGMEM = "boardName";
@@ -46,43 +46,40 @@ SysInfo *sysInfo;
 void logTaskStats() {
 #ifndef DISABLE_LOGGING
     // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
-
-    TaskStatus_t *pxTaskStatusArray;
-    volatile UBaseType_t uxArraySize, x;
-    unsigned long ulTotalRunTime, ulTotalStack=0, ulFreeStack=0;
+    unsigned long ulTotalRunTime=0, ulTotalStack=0, ulFreeStack=0;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
-    uxArraySize = uxTaskGetNumberOfTasks();
-
+    volatile UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
     /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time. */
-    pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t)));
-    //task stats
-    if( pxTaskStatusArray != nullptr ) {
+    if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
         /* Generate raw status information about each task. */
         uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
+        Log.infoln("Total run time: %u", ulTotalRunTime);
         ulTotalRunTime /= 100UL;    // For percentage calculations
 
         /* Avoid divide by zero errors. */
         if( ulTotalRunTime > 0 ) {
-            /* For each populated position in the pxTaskStatusArray array, format the raw data as human readable ASCII data. */
-            for( x = 0; x < uxArraySize; x++ ) {
+            /* For each populated position in the pxTaskStatusArray array, format the raw data as human-readable ASCII data. */
+            for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
                 /* What percentage of the total run time has the task used? This will always be rounded down to the nearest integer.
                    ulTotalRunTimeDiv100 has already been divided by 100. */
-                TaskStatus_t ts = pxTaskStatusArray[x];
+                const TaskStatus_t ts = pxTaskStatusArray[x];
+                Log.infoln("Task %d [%s] runTimeCounter %u", ts.xTaskNumber, ts.pcTaskName, ts.ulRunTimeCounter);
                 double fStatsAsPercentage = ts.ulRunTimeCounter / (double) ulTotalRunTime;
                 char strStat[7];
                 size_t szStat = sprintf(strStat, "%.2f", fStatsAsPercentage);
                 strStat[szStat] = 0;    //ensure null terminator
                 //is this a task we created? if so, we have extra information - like stack size
-                TaskWrapper *tw = Scheduler.getTask(ts.xTaskNumber);
+                const TaskWrapper *tw = Scheduler.getTask(ts.xTaskNumber);
+                Log.infoln("Found task %s [%d] as %u", ts.pcTaskName, ts.xTaskNumber, tw);
                 uint32_t stackSize = tw ? tw->getStackSize() : 0;
                 if (LOG_LEVEL_TRACE > Log.getLevel())
                     Log.info(threadInfoFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber,
-                             stackSize, ts.usStackHighWaterMark * 4);
+                             stackSize, ts.usStackHighWaterMark);
                 else
                     Log.trace(threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber,
-                              ts.uxBasePriority, ts.pxStackBase, stackSize, ts.usStackHighWaterMark * 4, ts.uxCoreAffinityMask);
+                              ts.uxBasePriority, ts.pxStackBase, stackSize, ts.usStackHighWaterMark, ts.uxCoreAffinityMask);
                 ulTotalStack += stackSize;
-                ulFreeStack += ts.usStackHighWaterMark * 4;
+                ulFreeStack += ts.usStackHighWaterMark;
             }
             Log.endContinuation();
         }
@@ -92,10 +89,9 @@ void logTaskStats() {
     //memory stats - NOTE: vPortGetHeapStats is not implemented in the RP2040 port with the heap memory strategy adopted (seemingly heap3)
 //    HeapStats_t heapStats;
 //    vPortGetHeapStats(&heapStats);
-    Log.info(F("HEAP & STACK INFO\n"));
     if (LOG_LEVEL_TRACE > Log.getLevel()) {
         //Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes);
-        Log.info(heapStackInfoFmt, ulTotalStack, rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap());
+        Log.info(heapStackInfoFmt, ulTotalStack, rp2040.getStackPointer(), rp2040.getTotalHeap(), rp2040.getFreeHeap());
     } else {
 //        Log.trace(heapStackVerboseFmt, ulTotalStack, ulFreeStack, uxArraySize, configTOTAL_HEAP_SIZE, rp2040.getUsedHeap(),
 //                  heapStats.xAvailableHeapSpaceInBytes, heapStats.xMinimumEverFreeBytesRemaining, heapStats.xNumberOfFreeBlocks, heapStats.xSizeOfSmallestFreeBlockInBytes,
@@ -109,7 +105,7 @@ void logTaskStats() {
 
 void logSystemInfo() {
 #ifndef DISABLE_LOGGING
-    Log.infoln(sysInfoFmt, RP2040::cpuid(), rp2040_rom_version(), RP2040::f_cpu()/1000000.0, tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
+    Log.infoln(sysInfoFmt, rp2040_rom_version(), RP2040::f_cpu()/1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
                sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->get_flash_capacity());
     Log.infoln(F("System reset reason %d"), rp2040.getResetReason());
 #endif

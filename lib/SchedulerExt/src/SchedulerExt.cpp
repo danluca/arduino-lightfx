@@ -16,7 +16,7 @@
 
 #include "SchedulerExt.h"
 
-static const char fmtTaskName[] PROGMEM = "Thd %d";
+static constexpr char fmtTaskName[] PROGMEM = "Tsk %d";
 
 SchedulerClassExt Scheduler;
 
@@ -33,9 +33,12 @@ void taskJobExecutor(void *params) {
  * @return pointer to TaskWrapper created for this task
  */
 TaskWrapper *SchedulerClassExt::startTask(TaskDefPtr taskDef) {
-    int16_t tPos = findNextThreadSlot();
+    const int16_t tPos = findNextThreadSlot();
     if (tPos < 0)
         return nullptr;
+    //if priority is not provided (above the range), use the default priority of the calling task
+    if (taskDef->priority >= configMAX_PRIORITIES)
+        taskDef->priority = uxTaskPriorityGet(nullptr);
     auto *job = new TaskWrapper(taskDef, tPos);
     tasks[tPos] = job;
     return scheduleTask(job) ? job : nullptr;
@@ -47,7 +50,7 @@ TaskWrapper *SchedulerClassExt::startTask(TaskDefPtr taskDef) {
  */
 uint16_t SchedulerClassExt::availableThreads() const {
     uint16_t res = 0;
-    for (auto task : tasks) {
+    for (const auto task : tasks) {
         if (task == nullptr)
             res++;
     }
@@ -61,7 +64,7 @@ uint16_t SchedulerClassExt::availableThreads() const {
  * @return true if scheduling was successful
  */
 bool SchedulerClassExt::scheduleTask(TaskWrapper *taskJob) {
-    BaseType_t result = xTaskCreateAffinitySet(taskJobExecutor, taskJob->id, taskJob->stackSize, taskJob,
+    const BaseType_t result = xTaskCreateAffinitySet(taskJobExecutor, taskJob->id, taskJob->stackSize, taskJob,
                                                taskJob->priority, taskJob->coreAffinity, &(taskJob->handle));
     return result == pdPASS;
 }
@@ -130,8 +133,12 @@ TaskWrapper *SchedulerClassExt::getTask(uint index) const {
  */
 TaskWrapper *SchedulerClassExt::getTask(UBaseType_t uid) const {
     for (auto &task : tasks) {
-        if (task != nullptr && uxTaskGetTaskNumber(task->handle) == uid)
-            return task;
+        if (task != nullptr) {
+            UBaseType_t tskNumber = uxTaskGetTaskNumber(task->handle);
+            Serial.printf("Task %d has uid %d, looking for uid %d\n", task->getIndex(), tskNumber, uid);
+            if (tskNumber == uid)
+                return task;
+        }
     }
     return nullptr;
 }

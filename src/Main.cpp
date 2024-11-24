@@ -15,9 +15,9 @@
 #include "ledstate.h"
 #include "log.h"
 #include "mic.h"
-
-TaskDef fxTasks {fx_setup, fx_run, 3072, "Fx", 1, CORE_0};
-TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 1, CORE_0};
+//task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
+constexpr TaskDef fxTasks {fx_setup, fx_run, 3072, "Fx", 255, CORE_0};
+constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 255, CORE_0};
 //ThreadTasks diagTasks {diag_setup, diag_run, 1792, "Diag"};
 
 /**
@@ -65,7 +65,6 @@ void loop() {
     wifi_loop();
     alarm_loop();
 //    watchdogPing();   //the main functionality is in Fx thread, we can afford not having web server available
-    yield();
 }
 
 //Second core tasks
