@@ -1,13 +1,11 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category F of light effects
- *
- */
 #include "fxF.h"
 #include <vector>
 #include <algorithm>
+#include "transition.h"
+#include "util.h"
 
 using namespace FxF;
 using namespace colTheme;

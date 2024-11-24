@@ -54,8 +54,9 @@ void fsSetup() {
     //mirror the priority of the calling task - the filesystem task is intended to have the same priority
     fsDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle());
     fsTask = Scheduler.startTask(&fsDef);
-    Log.infoln(F("Filesystem task [%s] - priority %d - has been setup id %X. Events are dispatching."), fsTask->getName(),
-               uxTaskPriorityGet(fsTask->getTaskHandle()), uxTaskGetTaskNumber(fsTask->getTaskHandle()));
+    TaskStatus_t tStat;
+    vTaskGetTaskInfo(fsTask->getTaskHandle(), &tStat, pdFALSE, eReady);
+    Log.infoln(F("Filesystem task [%s] - priority %d - has been setup id %X. Events are dispatching."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
 }
 
 /**

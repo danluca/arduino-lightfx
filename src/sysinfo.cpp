@@ -1,10 +1,10 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
-
-#include "sysinfo.h"
 #include <ArduinoJson.h>
 #include "filesystem.h"
 #include "util.h"
+#include "sysinfo.h"
+#include "config.h"
 #include "version.h"
 #ifndef DISABLE_LOGGING
 #include <SchedulerExt.h>
@@ -13,11 +13,13 @@
 #define BUF_ID_SIZE  20
 
 static const char unknown[] PROGMEM = "N/A";
+#ifndef DISABLE_LOGGING
 static const char threadInfoFmt[] PROGMEM = "Thread[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X stackSize=%u free=%u\n";
-static const char threadInfoVerboseFmt[] PROGMEM = "Thread[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X \n  stackBase=%X size=%u free=%u coreAffinity=%X\n";
+static const char threadInfoVerboseFmt[] PROGMEM = "Thread[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X \n  basePriority=%i stackBase=%X size=%u free=%u coreAffinity=%X\n";
 static const char heapStackInfoFmt[] PROGMEM = "Total Stack:: size=%u free=%u; Heap:: size=%u free=%u\n";
 static const char heapStackVerboseFmt[] PROGMEM = "Total Stack:: size=%u free=%u taskCount=%u; Heap:: size=%u used=%u free=%u\n  lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
-static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %s ROM %d [%f MHz]\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
+static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ID %d ROM %d [%D MHz]\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
+#endif
 static const char *const csBuildVersion PROGMEM = "buildVersion";
 static const char *const csBoardName PROGMEM = "boardName";
 static const char *const csBuildTime PROGMEM = "buildTime";
@@ -47,7 +49,7 @@ void logTaskStats() {
 
     TaskStatus_t *pxTaskStatusArray;
     volatile UBaseType_t uxArraySize, x;
-    unsigned long ulTotalRunTime, ulTotalStack, ulFreeStack;
+    unsigned long ulTotalRunTime, ulTotalStack=0, ulFreeStack=0;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
     uxArraySize = uxTaskGetNumberOfTasks();
 
@@ -78,7 +80,7 @@ void logTaskStats() {
                              stackSize, ts.usStackHighWaterMark * 4);
                 else
                     Log.trace(threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber,
-                              ts.pxStackBase, stackSize, ts.usStackHighWaterMark * 4, ts.uxCoreAffinityMask);
+                              ts.uxBasePriority, ts.pxStackBase, stackSize, ts.usStackHighWaterMark * 4, ts.uxCoreAffinityMask);
                 ulTotalStack += stackSize;
                 ulFreeStack += ts.usStackHighWaterMark * 4;
             }
@@ -114,11 +116,12 @@ void logSystemInfo() {
 }
 
 // SysInfo
-SysInfo::SysInfo() : boardName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildTime(BUILD_TIME), scmBranch(GIT_BRANCH) {
+SysInfo::SysInfo() : boardName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildTime(BUILD_TIME), scmBranch(GIT_BRANCH),
+    ipAddress({IP_ADDR}), ipGateway({IP_GW}) {
     boardId.reserve(BUF_ID_SIZE);       // flash unique ID in hex, \0 terminator
     secElemId.reserve(BUF_ID_SIZE);     // 18 from ECCX08Class::serialNumber() implementation
     macAddress.reserve(BUF_ID_SIZE);    // 6 (WL_MAC_ADDR_LENGTH) groups of 2 hex digits and ':' separator, includes \0 terminator
-    ipAddress.reserve(BUF_ID_SIZE);     // 4 groups of 3 digits, 3 '.' separators, \0 terminator
+    strIpAddress.reserve(BUF_ID_SIZE);     // 4 groups of 3 digits, 3 '.' separators, \0 terminator
     wifiFwVersion.reserve(BUF_ID_SIZE); // typical semantic version e.g. v1.5.0, 3 groups of 2 digits, '.' separator, \0 terminator
     ssid.reserve(BUF_ID_SIZE);          // initial space, most networks are short names
     status = 0;
@@ -165,11 +168,13 @@ uint8_t SysInfo::getSysStatus() const {
     return status;
 }
 
-void SysInfo::setWiFiInfo(WiFiClass &wifi) {
+void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
     ssid = wifi.SSID();
-    wifiFwVersion = WiFiClass::firmwareVersion();
-    ipAddress = wifi.localIP().toString();
-    gatewayIpAddress = wifi.gatewayIP().toString();
+    wifiFwVersion = ::WiFiClass::firmwareVersion();
+    // strIpAddress = wifi.localIP().toString();
+    // strGatewayIpAddress = wifi.gatewayIP().toString();
+    strIpAddress = ipAddress.toString();
+    strGatewayIpAddress = ipGateway.toString();
 
     //MAC address - Formats the MAC address into the character buffer provided, space for 20 chars is needed (includes nul terminator)
     uint8_t mac[WL_MAC_ADDR_LENGTH];
@@ -219,8 +224,8 @@ void readSysInfo() {
         sysInfo->secElemId = doc[csSecElemId].as<String>();
         sysInfo->macAddress = doc[csMacAddress].as<String>();
         sysInfo->wifiFwVersion = doc[csWifiFwVersion].as<String>();
-        sysInfo->ipAddress = doc[csIpAddress].as<String>();
-        sysInfo->gatewayIpAddress = doc[csGatewayAddress].as<String>();
+        sysInfo->strIpAddress = doc[csIpAddress].as<String>();
+        sysInfo->strGatewayIpAddress = doc[csGatewayAddress].as<String>();
         sysInfo->heapSize = doc[csHeapSize];
         sysInfo->freeHeap = doc[csFreeHeap];
         sysInfo->stackSize = doc[csStackSize];
@@ -230,7 +235,7 @@ void readSysInfo() {
 #ifndef DISABLE_LOGGING
         Log.infoln(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%X (last %X), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status, lastStatus,
-                   sysInfo->ipAddress.c_str(), sysInfo->gatewayIpAddress.c_str());
+                   sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
 #endif
     }
     delete json;
@@ -249,8 +254,8 @@ void saveSysInfo() {
     doc[csSecElemId] = sysInfo->secElemId;
     doc[csMacAddress] = sysInfo->macAddress;
     doc[csWifiFwVersion] = sysInfo->wifiFwVersion;
-    doc[csIpAddress] = sysInfo->ipAddress;
-    doc[csGatewayAddress] = sysInfo->gatewayIpAddress;
+    doc[csIpAddress] = sysInfo->strIpAddress;
+    doc[csGatewayAddress] = sysInfo->strGatewayIpAddress;
     doc[csHeapSize] = sysInfo->heapSize;
     doc[csFreeHeap] = sysInfo->freeHeap;
     doc[csStackSize] = sysInfo->stackSize;

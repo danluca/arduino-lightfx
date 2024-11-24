@@ -1,23 +1,21 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
 
-#include "broadcast.h"
 #include <FreeRTOS.h>
 #include <queue.h>
 #include <timers.h>
-#include "ArduinoHttpClient.h"
-#include "WiFiClient.h"
+#include <HTTPClient.h>
 #include "SchedulerExt.h"
+#include "broadcast.h"
 #include "efx_setup.h"
 #include "net_setup.h"
 #include "sysinfo.h"
+#include "ledstate.h"
 
 #define BCAST_QUEUE_TIMEOUT  1000     //enqueuing timeout - 1 second
 
 volatile bool fxBroadcastEnabled = false;
 BroadcastState broadcastState = Uninitialized;
-
-using namespace std::chrono;
 
 //broadcast client list, using last byte of IP addresses - e.g. 192.168.0.10, 192.168.0.11
 static const uint8_t syncClientsLSB[] PROGMEM = {BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
@@ -90,7 +88,7 @@ void broadcastExecute() {
         case bcTaskMessage::TIME_SETUP: timeSetupCheck(); break;
         case bcTaskMessage::TIME_UPDATE: timeUpdate(); break;
         case bcTaskMessage::HOLIDAY_UPDATE: holidayUpdate(); break;
-        case bcTaskMessage::FX_SYNC:fxBroadcast(msg->data); break;
+        case bcTaskMessage::FX_SYNC: fxBroadcast(msg->data); break;
         default:
             Log.errorln(F("Event type %d not supported"), msg->event);
             break;

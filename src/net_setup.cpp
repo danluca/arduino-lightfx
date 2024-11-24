@@ -6,6 +6,7 @@
 #include "sysinfo.h"
 #include "timeutil.h"
 #include "broadcast.h"
+#include "ledstate.h"
 #include "log.h"
 
 using namespace colTheme;
@@ -62,7 +63,7 @@ bool wifi_connect() {
     bool result = wifiStatus == WL_CONNECTED;
     if (result) {
         sysInfo->setSysStatus(SYS_STATUS_WIFI);
-        int resPing = WiFi.ping(WiFi.gatewayIP());
+        int resPing = WiFi.ping(sysInfo->refGatewayIpAddress());
         if (resPing >= 0)
             Log.infoln(F("Gateway ping successful: %d ms"), resPing);
         else
@@ -100,7 +101,7 @@ bool wifi_check() {
         Log.warningln(F("WiFi Connection lost"));
         return false;
     }
-    int gwPingTime = WiFi.ping(WiFi.gatewayIP(), 64);
+    int gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 64);
     int32_t rssi = WiFi.RSSI();
     uint8_t wifiBars = barSignalLevel(rssi);
     if ((gwPingTime < 0) || (wifiBars < 3)) {
@@ -123,8 +124,8 @@ void wifi_reconnect() {
     sysInfo->resetSysStatus(SYS_STATUS_WIFI);
     stateLed(CLR_SETUP_IN_PROGRESS);
     server.clearWriteError();
-    WiFiClient client = server.available();
-    if (client) client.stop();
+    if (WiFiClient client = server.available())
+        client.stop();
     Udp.stop();
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
@@ -172,7 +173,7 @@ void printSuccessfulWifiStatus() {
 }
 
 void checkFirmwareVersion() {
-    String fv = WiFiClass::firmwareVersion();
+    const String fv = ::WiFiClass::firmwareVersion();
     Log.infoln(F("WiFi firmware version %s"), fv.c_str());
     if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
         Log.warningln(F("Please upgrade the WiFi firmware to %s"), WIFI_FIRMWARE_LATEST_VERSION);

@@ -5,9 +5,6 @@
 #ifndef ARDUINO_LIGHTFX_UTIL_H
 #define ARDUINO_LIGHTFX_UTIL_H
 
-#include "config.h"
-#include "log.h"
-
 #define SYS_STATUS_WIFI    0x01
 #define SYS_STATUS_NTP     0x02
 #define SYS_STATUS_DST     0x04
@@ -20,9 +17,6 @@ extern const char stateFileName[];
 extern const char sysFileName[];
 
 ulong adcRandom();
-void setupStateLED();
-void updateStateLED(uint32_t colorCode);
-void updateStateLED(uint8_t red, uint8_t green, uint8_t blue);
 
 uint8_t bmul8(uint8_t a, uint8_t b);
 uint8_t bscr8(uint8_t a, uint8_t b);

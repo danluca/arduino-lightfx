@@ -1,11 +1,8 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category A of light effects
- * 
- */
 #include "fxA.h"
+#include "transition.h"
 
 //~ Global variables definition for FxA
 using namespace FxA;

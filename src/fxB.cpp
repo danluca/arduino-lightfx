@@ -1,11 +1,8 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category B of light effects
- *
- */
 #include "fxB.h"
+#include "transition.h"
 
 //~ Global variables definition for FxB
 using namespace FxB;

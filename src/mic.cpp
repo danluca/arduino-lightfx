@@ -3,10 +3,11 @@
 //
 
 #include "mic.h"
-#include "log.h"
 #include "efx_setup.h"
 #include "circular_buffer.h"
 #include "sysinfo.h"
+#include "log.h"
+#include "util.h"
 
 #define MIC_SAMPLE_SIZE 512
 // one channel - mono mode for Nano RP2040 microphone, MP34DT06JTR
@@ -47,7 +48,7 @@ void mic_setup() {
     PDM.onReceive(onPDMdata);
     PDM.setBufferSize(MIC_SAMPLE_SIZE);
     // Optionally set the gain - Defaults to 20
-    PDM.setGain(80);
+    PDM.setGain(40);
     if (!PDM.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
         //resetStatus(SYS_STATUS_MIC_MASK); //the default value of the flag is reset (0) and we can't leave the function if PDM doesn't initialize properly
         Log.errorln(F("Failed to start PDM library! (for microphone sampling)"));

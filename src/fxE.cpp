@@ -1,11 +1,8 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category E of light effects
- *
- */
 #include "fxE.h"
+#include "transition.h"
 
 using namespace FxE;
 using namespace colTheme;

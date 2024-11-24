@@ -11,7 +11,10 @@
 #include "sysinfo.h"
 #include "diag.h"
 #include "broadcast.h"
+#include "FxSchedule.h"
+#include "ledstate.h"
 #include "log.h"
+#include "mic.h"
 
 TaskDef fxTasks {fx_setup, fx_run, 3072, "Fx", 1, CORE_0};
 TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 1, CORE_0};

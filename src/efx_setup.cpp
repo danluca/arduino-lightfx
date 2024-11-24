@@ -5,7 +5,11 @@
 #include "sysinfo.h"
 #include "broadcast.h"
 #include "filesystem.h"
+#include "FxSchedule.h"
 #include "log.h"
+#include "transition.h"
+#include "util.h"
+#include "ledstate.h"
 
 //~ Global variables definition
 #define JSON_DOC_SIZE   512

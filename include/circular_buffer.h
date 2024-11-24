@@ -6,7 +6,7 @@
 #define ARDUINO_LIGHTFX_CIRCULAR_BUFFER_H
 
 #include <vector>
-#include <mutex>
+// #include <mutex>
 
 /**
  * @class CircularBuffer

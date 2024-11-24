@@ -5,7 +5,6 @@
 #define ARDUINO_LIGHTFX_TRANSITION_H
 
 #include <Arduino.h>
-#include "global.h"
 #include <deque>
 
 #define SELECTOR_SPOTS  0x0100

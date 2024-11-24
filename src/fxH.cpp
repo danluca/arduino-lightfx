@@ -1,11 +1,8 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category H of light effects
- *
- */
 #include "fxH.h"
+#include "transition.h"
 
 using namespace FxH;
 using namespace colTheme;

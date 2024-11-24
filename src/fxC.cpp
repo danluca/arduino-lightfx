@@ -1,12 +1,8 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category C of light effects
- *
- */
-
 #include "fxC.h"
+#include "transition.h"
 
 using namespace FxC;
 using namespace colTheme;
