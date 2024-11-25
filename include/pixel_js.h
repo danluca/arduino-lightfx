@@ -60,7 +60,7 @@ $(() => {
         $('#cleanBoot').html(`${data.cleanBoot}`);
         let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
         $('#wdReboots').html(wdr);
-        $('#osVersion').html(`${data.freeRTOSVersion} [FreeRTOS ${data.arduinoPicoVersion}]`);
+        $('#osVersion').html(`${data.arduinoPicoVersion} [FreeRTOS ${data.freeRTOSVersion}]`);
     });
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status
