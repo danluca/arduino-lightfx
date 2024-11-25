@@ -19,7 +19,7 @@ short sampleBuffer[MIC_SAMPLE_SIZE];
 
 volatile size_t samplesRead;                    // Number of audio samples read
 volatile uint16_t maxAudio[10] {};              // audio max levels histogram
-volatile uint16_t audioBumpThreshold = 2000;    // the audio signal level beyond which entropy is added and an effect change is triggered
+volatile uint16_t audioBumpThreshold = 5000;    // the audio signal level beyond which entropy is added and an effect change is triggered
 
 CircularBuffer<short> *audioData = new CircularBuffer<short>(1024);
 
@@ -48,7 +48,7 @@ void mic_setup() {
     PDM.onReceive(onPDMdata);
     PDM.setBufferSize(MIC_SAMPLE_SIZE);
     // Optionally set the gain - Defaults to 20
-    PDM.setGain(40);
+    PDM.setGain(5);
     if (!PDM.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
         //resetStatus(SYS_STATUS_MIC_MASK); //the default value of the flag is reset (0) and we can't leave the function if PDM doesn't initialize properly
         Log.errorln(F("Failed to start PDM library! (for microphone sampling)"));

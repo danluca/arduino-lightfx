@@ -60,6 +60,12 @@ $(() => {
         let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
         $('#wdReboots').html(wdr);
         $('#osVersion').html(`${data.arduinoPicoVersion} [FreeRTOS ${data.freeRTOSVersion}]`);
+        if (data.wifiCurVersion !== data.wifiLatestVersion) {
+            $('#wfVersion').html(`WiFi NINA v${data.wifiCurVersion} [could upgrade to ${data.wifiLatestVersion}]`);
+        } else {
+            $('#wfVersion').html(`WiFi NINA v${data.wifiCurVersion} (latest)`);
+        }
+
     });
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status
@@ -79,11 +85,6 @@ function getStatus() {
             $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
             $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
-            if (data.wifi.curVersion !== data.wifi.latestVersion) {
-                $('#wfVersion').html(`WiFi NINA v${data.wifi.curVersion} [could upgrade to ${data.wifi.latestVersion}]`);
-            } else {
-                $('#wfVersion').html(`WiFi NINA v${data.wifi.curVersion} (latest)`);
-            }
             $('#fxCount').html(`${data.fx.count} effects`);
             if (data.fx.asleep) {
                 $('#fxCurEffect').html(`${data.fx.name} - asleep [${data.fx.index}]`);

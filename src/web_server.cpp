@@ -8,6 +8,7 @@
 #include "filesystem.h"
 #include "timeutil.h"
 #include "sysinfo.h"
+#include "util.h"
 #include "diag.h"
 #include "broadcast.h"
 #include "net_setup.h"
@@ -69,17 +70,15 @@ static const std::map<std::string, reqHandler> webMappings PROGMEM = {
         {"^PUT /fx$",             handlePutConfig}
 };
 
-mutex wifiMutex;
 // global server object - through WiFi module
 WiFiServer server(80);
 //size of the buffer for buffering the response
-static const uint16_t WEB_BUFFER_SIZE = 1024;
+static constexpr uint16_t WEB_BUFFER_SIZE = 1024;
 
 /**
  * Start the server
  */
 void server_setup() {
-    auto_init_mutex(wifiMutex);
     server.begin();
 }
 
@@ -218,6 +217,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     doc["freeRTOSVersion"] = tskKERNEL_VERSION_NUMBER;
     doc["boardName"] = sysInfo->getBoardName();
     doc["boardUid"] = sysInfo->getBoardId();
+    doc["secElemId"] = sysInfo->getSecureElementId();
     doc["fwVersion"] = sysInfo->getBuildVersion();
     doc["fwBranch"] = sysInfo->getScmBranch();
     doc["buildTime"] = sysInfo->getBuildTime();
@@ -227,6 +227,8 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
         formatDateTime(buf, sysInfo->watchdogReboots().back());
         doc["lastWatchdogReboot"] = buf;
     }
+    doc["wifiCurVersion"] = sysInfo->getWiFiFwVersion();
+    doc["wifiLatestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
     doc["curEffect"] = String(fxRegistry.curEffectPos());
     doc["auto"] = fxRegistry.isAutoRoll();
     doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
@@ -254,10 +256,10 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
 }
 
 /**
- * Handles <code>GET /*.css</code> - responds with the sole CSS stylesheet, pixel.css
+ * Handles \code GET / *.css \endcode - responds with the sole CSS stylesheet, pixel.css
  * <p>Must comply with the <code>reqHandler</code> function pointer signature</p>
  * @param client the web client to respond to
- * @param uri URI invoked
+ * @param uri the URI invoked
  * @param hd request headers
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
@@ -283,10 +285,10 @@ size_t web::handleGetCss(WiFiClient *client, String *uri, String *hd, String *bd
 }
 
 /**
- * Handles <code>GET /*.js</code> - responds with JS files - one of three options: jquery, jquery-ui, pixel.js (last one is default)
+ * Handles <code>GET / *.js</code> - responds with JS files - one of three options: jquery, jquery-ui, pixel.js (last one is default)
  * <p>Must comply with the <code>reqHandler</code> function pointer signature</p>
  * @param client the web client to respond to
- * @param uri URI invoked
+ * @param uri the URI invoked
  * @param hd request headers
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
@@ -388,8 +390,6 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     int32_t rssi = WiFi.RSSI();
     wifi["bars"] = barSignalLevel(rssi);  //Wi-Fi signal level
     wifi["rssi"] = rssi;
-    wifi["curVersion"] = sysInfo->getWiFiFwVersion();
-    wifi["latestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
     // Fx
     auto fx = doc["fx"].to<JsonObject>();
     fx["count"] = fxRegistry.size();
@@ -493,45 +493,43 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
         return handleInternalError(client, uri, error.c_str());
 
     JsonDocument resp;
-    const char strEffect[] = "effect";
-    JsonObject upd = resp["updates"].to<JsonObject>();
-    if (doc.containsKey(csAuto)) {
-        bool autoAdvance = doc[csAuto].as<bool>();
+    constexpr char strEffect[] = "effect";
+    auto upd = resp["updates"].to<JsonObject>();
+    if (doc[csAuto].is<bool>()) {
+        const bool autoAdvance = doc[csAuto].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
         upd[csAuto] = autoAdvance;
     }
-    if (doc.containsKey(strEffect)) {
-        auto nextFx = doc[strEffect].as<uint16_t >();
+    if (doc[strEffect].is<uint16_t>()) {
+        const auto nextFx = doc[strEffect].as<uint16_t >();
         fxRegistry.nextEffectPos(nextFx);
         upd[strEffect] = nextFx;
     }
-    if (doc.containsKey(csHoliday)) {
-        String userHoliday = doc[csHoliday].as<String>();
+    if (doc[csHoliday].is<String>()) {
+        const auto userHoliday = doc[csHoliday].as<String>();
         paletteFactory.setHoliday(parseHoliday(&userHoliday));
         upd[csHoliday] = paletteFactory.adjustHoliday();
     }
-    if (doc.containsKey(csBrightness)) {
-        auto br = doc[csBrightness].as<uint8_t>();
+    if (doc[csBrightness].is<uint8_t>()) {
+        const auto br = doc[csBrightness].as<uint8_t>();
         stripBrightnessLocked = br > 0;
         stripBrightness = stripBrightnessLocked ? br : adjustStripBrightness();
         upd[csBrightness] = stripBrightness;
         upd[csBrightnessLocked] = stripBrightnessLocked;
     }
-    if (doc.containsKey(csAudioThreshold)) {
+    if (doc[csAudioThreshold].is<uint16_t>()) {
         audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
         upd[csAudioThreshold] = audioBumpThreshold;
         clearLevelHistory();
     }
-    if (doc.containsKey(csSleepEnabled)) {
-        bool sleepEnabled = doc[csSleepEnabled].as<bool>();
+    if (doc[csSleepEnabled].is<bool>()) {
+        const bool sleepEnabled = doc[csSleepEnabled].as<bool>();
         fxRegistry.enableSleep(sleepEnabled);
         upd[csSleepEnabled] = sleepEnabled;
         upd["asleep"] = fxRegistry.isAsleep();
     }
-    const char csResetCal[] = "resetTempCal";
-    if (!doc[csResetCal].isNull()) {
-        bool resetCal = doc[csResetCal].as<bool>();
-        if (resetCal) {
+    if (constexpr char csResetCal[] = "resetTempCal"; doc[csResetCal].is<bool>()) {
+        if (const bool resetCal = doc[csResetCal].as<bool>()) {
             calibTempMeasurements.reset();
             calibCpuTemp.reset();
             cpuTempRange.reset();
@@ -539,9 +537,9 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
             upd[csResetCal] = resetCal;
         }
     }
-    if (!doc[csBroadcast].isNull()) {
-        bool syncMode = doc[csBroadcast].as<bool>();
-        bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
+    if (doc[csBroadcast].is<bool>()) {
+        const bool syncMode = doc[csBroadcast].as<bool>();
+        const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
         fxBroadcastEnabled = syncMode;  //we need this enabled before we post the event, if we're doing that
         if (masterEnabled)
             postFxChangeEvent(fxRegistry.curEffectPos());   //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards

@@ -15,6 +15,7 @@
 #include "filesystem.h"
 #include "sysinfo.h"
 
+
 #define DIAG_QUEUE_TIMEOUT  5000     //enqueuing timeout - 5 seconds
 
 static const uint maxAdc = 1 << ADC_RESOLUTION;
@@ -207,6 +208,7 @@ void diagExecute() {
     //block indefinitely for a message to be received
     if (pdFALSE == xQueueReceive(diagQueue, &msg, portMAX_DELAY))
         return;
+    CoreMutex lock(&wifiMutex);     //could this be causing a deadlock? (the other tasks interested in this mutex have lower priority)
     //the reception was successful, hence the msg is not null anymore
     switch (msg) {
         case RND_ENTROPY: updateSecEntropy(); break;

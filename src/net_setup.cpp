@@ -7,6 +7,7 @@
 #include "timeutil.h"
 #include "broadcast.h"
 #include "ledstate.h"
+#include "util.h"
 #include "log.h"
 
 using namespace colTheme;
@@ -18,6 +19,8 @@ const CRGB CLR_ALL_OK = CRGB::Indigo;
 const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;
 const CRGB CLR_SETUP_ERROR = CRGB::Red;
 
+mutex wifiMutex;
+
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from {@code WiFi.RSSI()}
  * <p>This Android article has been used for reference - https://android.stackexchange.com/questions/176320/rssi-range-for-wifi-icons </p>
@@ -25,12 +28,12 @@ const CRGB CLR_SETUP_ERROR = CRGB::Red;
  * @return number of bars as signal level - between 0 (no signal, connection likely lost) through 4 bars (strong signal)
  */
 uint8_t barSignalLevel(int32_t rssi) {
-    const static uint8_t numLevels = 5;
-    const static int16_t minRSSI = -100;
-    const static int16_t maxRSSI = -55;
+    static constexpr uint8_t numLevels = 5;
+    static constexpr int16_t minRSSI = -100;
+    static constexpr int16_t maxRSSI = -55;
     if (rssi <= minRSSI)
         return 0;
-    else if (rssi >= maxRSSI)
+    if (rssi >= maxRSSI)
         return numLevels - 1;
     float inRange = maxRSSI - minRSSI;
     float outRange = numLevels - 1;
@@ -84,6 +87,8 @@ bool wifi_setup() {
         while (true) yield();
     }
     checkFirmwareVersion();
+
+    auto_init_mutex(wifiMutex);
 
     //enable low power mode - web server is not the primary function of this module
     WiFi.lowPowerMode();

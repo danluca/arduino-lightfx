@@ -6,11 +6,10 @@
 
 #include <WiFiNINA.h>
 #include "PaletteFactory.h"
-#include "util.h"
 #include "secrets.h"
+//#include "util.h"
 //#include <mutex>
 
-extern mutex wifiMutex;
 extern WiFiServer server;
 extern const CRGB CLR_ALL_OK;
 extern const CRGB CLR_SETUP_IN_PROGRESS;

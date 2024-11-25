@@ -15,6 +15,7 @@
 
 extern const char stateFileName[];
 extern const char sysFileName[];
+extern mutex wifiMutex;
 
 ulong adcRandom();
 

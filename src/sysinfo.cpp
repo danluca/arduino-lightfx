@@ -68,7 +68,7 @@ void logTaskStats() {
             ulTotalRunTime /= 100UL;    // For percentage calculations
             coresTotalRunTime[0] /= 100UL;
             coresTotalRunTime[1] /= 100UL;
-            Log.info(F("THREADS/TASKS INFO\n"));
+            Log.info(F("THREADS/TASKS INFO - state 0=running, 1=ready, 2=blocked, 3=suspended, 4=deleted; max priority %d\n"), configMAX_PRIORITIES-1);
             /* For each populated position in the pxTaskStatusArray array, format the raw data as human-readable ASCII data. */
             for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
                 const TaskStatus_t ts = pxTaskStatusArray[x];
@@ -114,7 +114,7 @@ void logSystemInfo() {
 #ifndef DISABLE_LOGGING
     Log.infoln(sysInfoFmt, rp2040_rom_version(), RP2040::f_cpu()/1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
                sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->get_flash_capacity());
-    Log.infoln(F("System reset reason %d"), rp2040.getResetReason());
+    Log.infoln(F("System reset reason %d (0=unknown, 1=power on, 2=pin reset, 3=soft, 4=watchdog, 5=debug, 6=glitch, 7=brownout)"), rp2040.getResetReason());
 #endif
 }
 
@@ -216,9 +216,9 @@ void readSysInfo() {
         String bldVersion = doc[csBuildVersion];
         String brdName = doc[csBoardName];
         String bldTime = doc[csBuildTime];
-        String gitBranch = doc[csScmBranch].as<String>();
+        auto gitBranch = doc[csScmBranch].as<String>();
         if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {
-            JsonArray wdReboots = doc[csWdReboots].as<JsonArray>();
+            auto wdReboots = doc[csWdReboots].as<JsonArray>();
             for (JsonVariant i: wdReboots)
                 sysInfo->wdReboots.push(i.as<time_t>());
         } else
@@ -264,7 +264,7 @@ void saveSysInfo() {
     doc[csStackSize] = sysInfo->stackSize;
     doc[csFreeStack] = sysInfo->freeStack;
     doc[csStatus] = sysInfo->status;
-    JsonArray reboots = doc[csWdReboots].to<JsonArray>();
+    auto reboots = doc[csWdReboots].to<JsonArray>();
     for (auto & t : sysInfo->wdReboots)
         reboots.add(t);
 

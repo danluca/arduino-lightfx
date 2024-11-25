@@ -10,7 +10,6 @@
 #include "fixed_queue.h"
 #include "config.h"
 #include "global.h"
-#include "mic.h"
 #include "PaletteFactory.h"
 
 typedef void (*setupFunc)();

@@ -11,6 +11,7 @@
 #include "net_setup.h"
 #include "sysinfo.h"
 #include "ledstate.h"
+#include "util.h"
 
 #define BCAST_QUEUE_TIMEOUT  1000     //enqueuing timeout - 1 second
 
