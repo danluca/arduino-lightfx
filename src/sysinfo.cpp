@@ -16,8 +16,8 @@ static const char unknown[] PROGMEM = "N/A";
 #ifndef DISABLE_LOGGING
 static const char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%i id=%i coreAffinity=%i stackSize=%u free=%u\n";
 static const char threadInfoVerboseFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%i id=%y \n  basePriority=%i stackBase=%X size=%u free=%u coreAffinity=%i\n";
-static const char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%u free=%u;\n  Total Heap:: size=%u free=%u\n";
-static const char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free=%u taskCount=%u;\n  Total Heap:: size=%u used=%u free=%u lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
+static const char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%u free: tasks=%u, system=%i;\n  Total Heap:: size=%u free=%u\n";
+static const char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free: tasks=%u, system=%i taskCount=%u;\n  Total Heap:: size=%u used=%u free=%u lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
 static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%D MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 #endif
 static const char *const csBuildVersion PROGMEM = "buildVersion";
@@ -101,9 +101,9 @@ void logTaskStats() {
 //    vPortGetHeapStats(&heapStats);
     if (LOG_LEVEL_TRACE > Log.getLevel()) {
         //Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes);
-        Log.info(heapStackInfoFmt, ulTotalStack, rp2040.getStackPointer(), rp2040.getTotalHeap(), rp2040.getFreeHeap());
+        Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap());
     } else {
-        Log.trace(heapStackVerboseFmt, ulTotalStack, ulFreeStack, uxArraySize, rp2040.getTotalHeap(), rp2040.getUsedHeap(),
+        Log.trace(heapStackVerboseFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), uxArraySize, rp2040.getTotalHeap(), rp2040.getUsedHeap(),
                   rp2040.getFreeHeap(), rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getUsedPSRAMHeap(), rp2040.getFreePSRAMHeap(), 0, 0);
     }
     Log.endContinuation();
