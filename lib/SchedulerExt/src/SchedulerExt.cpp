@@ -131,12 +131,12 @@ TaskWrapper *SchedulerClassExt::getTask(uint index) const {
  * @param uid task unique number to lookup
  * @return the task wrapper that matches a task with the uid provided, nullptr is none found
  */
-TaskWrapper *SchedulerClassExt::getTask(UBaseType_t uid) const {
+TaskWrapper *SchedulerClassExt::getTask(const UBaseType_t uid) const {
     for (auto &task : tasks) {
         if (task != nullptr) {
-            UBaseType_t tskNumber = uxTaskGetTaskNumber(task->handle);
-            Serial.printf("Task %d has uid %d, looking for uid %d\n", task->getIndex(), tskNumber, uid);
-            if (tskNumber == uid)
+            TaskStatus_t taskStatus;
+            vTaskGetInfo(task->handle, &taskStatus, pdFALSE, eRunning);
+            if (taskStatus.xTaskNumber == uid)
                 return task;
         }
     }

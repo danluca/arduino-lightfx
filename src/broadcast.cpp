@@ -194,7 +194,8 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
  */
 void fxBroadcast(const uint16_t index) {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        Log.warningln(F("No WiFi - Cannot broadcast Fx changes"));
+        Log.warningln(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform FX  update for %d. System status: %X"),
+            index, sysInfo->getSysStatus());
         return;
     }
 
@@ -229,6 +230,10 @@ void holidayUpdate() {
  * Update time with NTP, assert offset (DST or not) and track drift
  */
 void timeUpdate() {
+    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+        Log.errorln(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform time update. System status: %X"), sysInfo->getSysStatus());
+        return;
+    }
     bool result = ntp_sync();
     Log.infoln(F("Time NTP sync performed; success = %T"), result);
     //if result is false, do not reset the NTP status, we may have had an older NTP sync
@@ -246,6 +251,10 @@ void timeUpdate() {
  * Time setup re-attempt, in case we weren't successful during system bootstrap
  */
 void timeSetupCheck() {
+    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+        Log.errorln(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform time setup check. System status: %X"), sysInfo->getSysStatus());
+        return;
+    }
     if (!timeClient.isTimeSet()) {
         bool result = ntp_sync();
         result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);

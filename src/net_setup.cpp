@@ -130,10 +130,8 @@ void wifi_reconnect() {
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     delay(2000);    //let disconnect state settle
-    if (wifi_connect()) {
+    if (wifi_connect())
         stateLed(CLR_ALL_OK);
-        broadcastSetup();
-    }
     //NVIC_SystemReset();
 }
 

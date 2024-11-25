@@ -14,10 +14,10 @@
 
 static const char unknown[] PROGMEM = "N/A";
 #ifndef DISABLE_LOGGING
-static const char threadInfoFmt[] PROGMEM = "THREADS/TASKS INFO\nTask[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X stackSize=%u free=%u\n";
-static const char threadInfoVerboseFmt[] PROGMEM = "THREADS/TASKS INFO\nTask[%u]:: name='%s' time=%s%% priority=%i state=%i id=%X \n  basePriority=%i stackBase=%X size=%u free=%u coreAffinity=%X\n";
-static const char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free=%u; Heap:: size=%u free=%u\n";
-static const char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free=%u taskCount=%u; Heap:: size=%u used=%u free=%u\n  lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
+static const char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%i id=%i coreAffinity=%y stackSize=%u free=%u\n";
+static const char threadInfoVerboseFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%i id=%y \n  basePriority=%i stackBase=%X size=%u free=%u coreAffinity=%d\n";
+static const char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%u free=%u;\n  Total Heap:: size=%u free=%u\n";
+static const char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free=%u taskCount=%u;\n  Total Heap:: size=%u used=%u free=%u lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
 static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%D MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 #endif
 static const char *const csBuildVersion PROGMEM = "buildVersion";
@@ -53,31 +53,41 @@ void logTaskStats() {
     if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
         /* Generate raw status information about each task. */
         uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
-        Log.infoln("Total run time: %u", ulTotalRunTime);
-        ulTotalRunTime /= 100UL;    // For percentage calculations
+        Log.infoln("Total run time reported by system: %u", ulTotalRunTime);
 
         /* Avoid divide by zero errors. */
-        if( ulTotalRunTime > 0 ) {
+        if( ulTotalRunTime > 100 ) {
+            // need to figure out task run time per core - raw results show that the total runtime above does not equal with all tasks runtime counter added up
+            uint32_t coresTotalRunTime[2]{};
+            for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
+                if (const TaskStatus_t ts = pxTaskStatusArray[x]; ts.uxCoreAffinityMask & CORE_0)
+                    coresTotalRunTime[0] += ts.ulRunTimeCounter;
+                else if (ts.uxCoreAffinityMask & CORE_1)
+                    coresTotalRunTime[1] += ts.ulRunTimeCounter;
+            }
+            Log.infoln("Total run time reported by individual tasks per core: CORE 0=%u; CORE 1=%u", coresTotalRunTime[0], coresTotalRunTime[1]);
+            ulTotalRunTime /= 100UL;    // For percentage calculations
+            coresTotalRunTime[0] /= 100UL;
+            coresTotalRunTime[1] /= 100UL;
+            Log.info(F("THREADS/TASKS INFO\n"));
             /* For each populated position in the pxTaskStatusArray array, format the raw data as human-readable ASCII data. */
             for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
-                /* What percentage of the total run time has the task used? This will always be rounded down to the nearest integer.
-                   ulTotalRunTimeDiv100 has already been divided by 100. */
                 const TaskStatus_t ts = pxTaskStatusArray[x];
-                Log.infoln("Task %d [%s] runTimeCounter %u", ts.xTaskNumber, ts.pcTaskName, ts.ulRunTimeCounter);
-                double fStatsAsPercentage = ts.ulRunTimeCounter / (double) ulTotalRunTime;
+                /* What percentage of the total run time has the task used? ulTotalRunTimeDiv100 has already been divided by 100. */
+                uint32_t ref = ts.uxCoreAffinityMask & CORE_0 ? coresTotalRunTime[0] : 0 + ts.uxCoreAffinityMask & CORE_1 ? coresTotalRunTime[1] : 0;
+                double fStatsAsPercentage = ts.ulRunTimeCounter / (double) ref;
                 char strStat[7];
                 size_t szStat = sprintf(strStat, "%.2f", fStatsAsPercentage);
                 strStat[szStat] = 0;    //ensure null terminator
                 //is this a task we created? if so, we have extra information - like stack size
                 const TaskWrapper *tw = Scheduler.getTask(ts.xTaskNumber);
-                Log.infoln("Found task %s [%d] as %u", ts.pcTaskName, ts.xTaskNumber, tw);
                 uint32_t stackSize = tw ? tw->getStackSize() : 0;
                 if (LOG_LEVEL_TRACE > Log.getLevel())
-                    Log.info(threadInfoFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber,
-                             stackSize, ts.usStackHighWaterMark);
+                    Log.info(threadInfoFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber, ts.uxCoreAffinityMask,
+                        stackSize, ts.usStackHighWaterMark);
                 else
-                    Log.trace(threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber,
-                              ts.uxBasePriority, ts.pxStackBase, stackSize, ts.usStackHighWaterMark, ts.uxCoreAffinityMask);
+                    Log.trace(threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber, ts.uxBasePriority,
+                        ts.pxStackBase, stackSize, ts.usStackHighWaterMark, ts.uxCoreAffinityMask);
                 ulTotalStack += stackSize;
                 ulFreeStack += ts.usStackHighWaterMark;
             }
@@ -93,9 +103,6 @@ void logTaskStats() {
         //Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes);
         Log.info(heapStackInfoFmt, ulTotalStack, rp2040.getStackPointer(), rp2040.getTotalHeap(), rp2040.getFreeHeap());
     } else {
-//        Log.trace(heapStackVerboseFmt, ulTotalStack, ulFreeStack, uxArraySize, configTOTAL_HEAP_SIZE, rp2040.getUsedHeap(),
-//                  heapStats.xAvailableHeapSpaceInBytes, heapStats.xMinimumEverFreeBytesRemaining, heapStats.xNumberOfFreeBlocks, heapStats.xSizeOfSmallestFreeBlockInBytes,
-//                  heapStats.xSizeOfLargestFreeBlockInBytes, heapStats.xNumberOfSuccessfulAllocations, heapStats.xNumberOfSuccessfulFrees);
         Log.trace(heapStackVerboseFmt, ulTotalStack, ulFreeStack, uxArraySize, rp2040.getTotalHeap(), rp2040.getUsedHeap(),
                   rp2040.getFreeHeap(), rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getUsedPSRAMHeap(), rp2040.getFreePSRAMHeap(), 0, 0);
     }
