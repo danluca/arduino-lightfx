@@ -145,8 +145,8 @@ void enqueueRndEntropy(TimerHandle_t xTimer) {
     BaseType_t qResult = xQueueSend(diagQueue, &diagEvents[RND_ENTROPY], pdMS_TO_TICKS(DIAG_QUEUE_TIMEOUT));
     if (qResult == pdFALSE)
         Log.errorln(F("Error sending RND_ENTROPY message to diagnostic task for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
-    else
-        Log.infoln(F("Sent RND_ENTROPY event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    // else
+    //     Log.infoln(F("Sent RND_ENTROPY event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -157,8 +157,8 @@ void enqueueSysTemp(TimerHandle_t xTimer) {
     BaseType_t qResult = xQueueSend(diagQueue, &diagEvents[SYS_TEMP], pdMS_TO_TICKS(DIAG_QUEUE_TIMEOUT));
     if (qResult == pdFALSE)
         Log.errorln(F("Error sending SYS_TEMP message to diagnostic task for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
-    else
-        Log.infoln(F("Sent SYS_TEMP event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    // else
+    //     Log.infoln(F("Sent SYS_TEMP event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -169,8 +169,8 @@ void enqueueSysVoltage(TimerHandle_t xTimer) {
     BaseType_t qResult = xQueueSend(diagQueue, &diagEvents[SYS_VOLTAGE], pdMS_TO_TICKS(DIAG_QUEUE_TIMEOUT));
     if (qResult == pdFALSE)
         Log.errorln(F("Error sending SYS_VOLTAGE message to diagnostic task for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
-    else
-        Log.infoln(F("Sent SYS_VOLTAGE event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    // else
+    //     Log.infoln(F("Sent SYS_VOLTAGE event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -181,8 +181,8 @@ void enqueueSaveSysInfo(TimerHandle_t xTimer) {
     BaseType_t qResult = xQueueSend(diagQueue, &diagEvents[SAVE_SYS_INFO], pdMS_TO_TICKS(DIAG_QUEUE_TIMEOUT));
     if (qResult == pdFALSE)
         Log.errorln(F("Error sending SAVE_SYS_INFO message to diagnostic task for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
-    else
-        Log.infoln(F("Sent SAVE_SYS_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    // else
+    //     Log.infoln(F("Sent SAVE_SYS_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -194,8 +194,8 @@ void enqueueDiagInfo(TimerHandle_t xTimer) {
     BaseType_t qResult = xQueueSend(diagQueue, &diagEvents[DIAG_INFO], pdMS_TO_TICKS(DIAG_QUEUE_TIMEOUT));
     if (qResult == pdFALSE)
         Log.errorln(F("Error sending DIAG_INFO message to diagnostic task for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
-    else
-        Log.infoln(F("Sent DIAG_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    // else
+    //     Log.infoln(F("Sent DIAG_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**

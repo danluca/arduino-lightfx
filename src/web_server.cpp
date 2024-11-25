@@ -214,7 +214,8 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     // response body
     JsonDocument doc;
     char buf[20];
-
+    doc["arduinoPicoVersion"] = ARDUINO_PICO_VERSION_STR;
+    doc["freeRTOSVersion"] = tskKERNEL_VERSION_NUMBER;
     doc["boardName"] = sysInfo->getBoardName();
     doc["boardUid"] = sysInfo->getBoardId();
     doc["fwVersion"] = sysInfo->getBuildVersion();
@@ -231,7 +232,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
     doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
     doc["holiday"] = holidayToString(paletteFactory.getHoliday());
-    JsonArray hldList = doc["holidayList"].to<JsonArray>();
+    auto hldList = doc["holidayList"].to<JsonArray>();
     for (uint8_t hi = None; hi <= NewYear; hi++)
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
     formatDateTime(buf, now());
@@ -240,7 +241,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
     doc["dst"] = bDST;
     doc["MAC"] = sysInfo->getMacAddress();
-    JsonArray fxArray = doc["fx"].to<JsonArray>();
+    auto fxArray = doc["fx"].to<JsonArray>();
     fxRegistry.describeConfig(fxArray);
     //send it out
     sz += transmitJsonDocument(doc, client);
@@ -382,7 +383,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     // response body
     JsonDocument doc;
     // WiFi
-    JsonObject wifi = doc["wifi"].to<JsonObject>();
+    auto wifi = doc["wifi"].to<JsonObject>();
     wifi["IP"] = sysInfo->getIpAddress();         //IP Address
     int32_t rssi = WiFi.RSSI();
     wifi["bars"] = barSignalLevel(rssi);  //Wi-Fi signal level
@@ -390,7 +391,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     wifi["curVersion"] = sysInfo->getWiFiFwVersion();
     wifi["latestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
     // Fx
-    JsonObject fx = doc["fx"].to<JsonObject>();
+    auto fx = doc["fx"].to<JsonObject>();
     fx["count"] = fxRegistry.size();
     fx[csAuto] = fxRegistry.isAutoRoll();
     fx[csSleepEnabled] = fxRegistry.isSleepEnabled();
@@ -400,17 +401,17 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
     fx[csBroadcast] = fxBroadcastEnabled;
-    JsonArray lastFx = fx["pastEffects"].to<JsonArray>();
+    auto lastFx = fx["pastEffects"].to<JsonArray>();
     fxRegistry.pastEffectsRun(lastFx);                   //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness;
     fx[csBrightnessLocked] = stripBrightnessLocked;
     fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold
     fx["totalAudioBumps"] = totalAudioBumps;                //how many times (in total) have we bumped the effect due to audio level
-    JsonArray audioHist = fx["audioHist"].to<JsonArray>();
+    auto audioHist = fx["audioHist"].to<JsonArray>();
     for (uint16_t x : maxAudio)
         audioHist.add(x);
     // Time
-    JsonObject time = doc["time"].to<JsonObject>();
+    auto time = doc["time"].to<JsonObject>();
     time["ntpSync"] = timeStatus();
     time["millis"] = millis();           //current time in ms
     char timeBuf[21];
@@ -425,9 +426,9 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     time["averageDrift"] = getAverageTimeDrift();
     time["lastDrift"] = getLastTimeDrift();
     time["totalDrift"] = getTotalDrift();
-    JsonArray alarms = time["alarms"].to<JsonArray>();
+    auto alarms = time["alarms"].to<JsonArray>();
     for (const auto &al : scheduledAlarms) {
-        JsonObject jal = alarms.add<JsonObject>();
+        auto jal = alarms.add<JsonObject>();
         jal["timeLong"] = al->value;
         formatDateTime(timeBuf, al->value);
         jal["timeFmt"] = timeBuf;
@@ -435,7 +436,6 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
 //        jal["taskPtr"] = (long)al->onEventHandler;
     }
     //System
-    doc["freeRTOSVersion"] = tskKERNEL_VERSION_NUMBER;
     doc["boardTemp"] = imuTempRange.current.value;
     doc["chipTemp"] = cpuTempRange.current.value;
     doc["vcc"] = lineVoltage.current.value;
@@ -449,7 +449,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     //human readable format
     snprintf(timeBuf, 15, "%2dD %2dH %2dm", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     doc["upTime"] = timeBuf;
-    JsonObject cpuTempCal = doc["cpuTempCal"].to<JsonObject>();
+    auto cpuTempCal = doc["cpuTempCal"].to<JsonObject>();
     cpuTempCal["valid"] = calibCpuTemp.isValid();
     cpuTempCal["refTemp"] = calibCpuTemp.refTemp;
     cpuTempCal["vtRef"] = calibCpuTemp.vtref;

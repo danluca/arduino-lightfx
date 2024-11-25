@@ -60,6 +60,7 @@ $(() => {
         $('#cleanBoot').html(`${data.cleanBoot}`);
         let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
         $('#wdReboots').html(wdr);
+        $('#osVersion').html(`${data.freeRTOSVersion} [FreeRTOS ${data.arduinoPicoVersion}]`);
     });
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status
@@ -74,7 +75,6 @@ function getStatus() {
             $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(1)} - ${data.boardMaxTemp.toFixed(1)}] °C (chip ${data.chipTemp.toFixed(1)} °C)`);
             $('#boardVcc').html(`${data.vcc.toFixed(2)} V`);
             $('#rangeVcc').html(`[${data.minVcc.toFixed(2)} - ${data.maxVcc.toFixed(2)}] V`);
-            $('#mbedVersion').html(`${data.mbedVersion}`);
             $('#audioThreshold').html(`${data.fx.audioThreshold}`);
             $('#upTime').html(`${data.upTime}`);
             $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
