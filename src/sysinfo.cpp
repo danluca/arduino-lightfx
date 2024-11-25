@@ -58,7 +58,7 @@ void logTaskStats() {
         /* Avoid divide by zero errors. */
         if( ulTotalRunTime > 100 ) {
             // need to figure out task run time per core - raw results show that the total runtime above does not equal with all tasks runtime counter added up
-            uint32_t coresTotalRunTime[2]{};
+            uint64_t coresTotalRunTime[2]{};    //using 64 bit longs, summing up all the runtime counters for tasks overflows the 32 bit numbers
             for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
                 const TaskStatus_t ts = pxTaskStatusArray[x];
                 coresTotalRunTime[0] += (ts.uxCoreAffinityMask & CORE_0 ? ts.ulRunTimeCounter : 0);
@@ -72,9 +72,10 @@ void logTaskStats() {
             /* For each populated position in the pxTaskStatusArray array, format the raw data as human-readable ASCII data. */
             for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
                 const TaskStatus_t ts = pxTaskStatusArray[x];
-                /* What percentage of the total run time has the task used? ulTotalRunTimeDiv100 has already been divided by 100. */
-                uint32_t ref = (ts.uxCoreAffinityMask & CORE_0 ? coresTotalRunTime[0] : 0) + (ts.uxCoreAffinityMask & CORE_1 ? coresTotalRunTime[1] : 0);
-                double fStatsAsPercentage = ts.ulRunTimeCounter / (double) ref;
+                // What percentage of the total run time has the task used? ulTotalRunTimeDiv100 has already been divided by 100.
+                // these are huge numbers (ticks?) - we'll divide both by 256 to have more reasonable values
+                uint64_t ref = ((ts.uxCoreAffinityMask & CORE_0 ? coresTotalRunTime[0] : 0) + (ts.uxCoreAffinityMask & CORE_1 ? coresTotalRunTime[1] : 0)) >> 8;
+                double fStatsAsPercentage = (ts.ulRunTimeCounter >> 8) / (double) ref;
                 char strStat[7];
                 size_t szStat = sprintf(strStat, "%.2f", fStatsAsPercentage);
                 strStat[szStat] = 0;    //ensure null terminator
