@@ -56,7 +56,7 @@ uint16_t countPixelsBrighter(CRGBSet *set, CRGB backg = BKG);
 
 bool isAnyLedOn(CRGBSet *set, CRGB backg = BKG);
 
-bool isAnyLedOn(CRGB *arr, uint16_t szArray, CRGB backg = BKG);
+bool isAnyLedOn(const CRGB *arr, uint16_t szArray, CRGB backg = BKG);
 
 void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs = 0);
 
@@ -208,15 +208,15 @@ public:
 
     uint16_t registerEffect(LedEffect *effect);
 
-    LedEffect* findEffect(const char* id);
+    LedEffect* findEffect(const char* id) const;
 
     uint16_t size() const;
 
-    void setup();
+    void setup() const;
 
     void loop();
 
-    void describeConfig(JsonArray &json);
+    void describeConfig(JsonArray &json) const;
 
     void pastEffectsRun(JsonArray &json);
 

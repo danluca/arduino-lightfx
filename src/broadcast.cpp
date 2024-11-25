@@ -30,7 +30,6 @@ QueueHandle_t bcQueue;
 TaskWrapper* bcTask;
 static uint16_t tmrHolidayUpdateId = 20;
 static uint16_t tmrTimeUpdateId = 21;
-static uint16_t tmrTimeSetupId = 22;
 
 //function declarations ahead
 void broadcastInit();
@@ -221,9 +220,9 @@ void holidayUpdate() {
     Holiday hDay = paletteFactory.adjustHoliday();
 #ifndef DISABLE_LOGGING
     if (oldHday == hDay)
-            Log.infoln(F("Current holiday remains %s"), holidayToString(hDay));
-        else
-            Log.infoln(F("Current holiday adjusted from %s to %s"), holidayToString(oldHday), holidayToString(hDay));
+        Log.infoln(F("Current holiday remains %s"), holidayToString(hDay));
+    else
+        Log.infoln(F("Current holiday adjusted from %s to %s"), holidayToString(oldHday), holidayToString(hDay));
 #endif
 }
 

@@ -11,18 +11,18 @@
 #include "log.h"
 
 using namespace colTheme;
-const char ssid[] PROGMEM = WF_SSID;
-const char pass[] PROGMEM = WF_PSW;
-const char hostname[] PROGMEM = "Arduino-RP2040-" DEVICE_NAME;
+constexpr char ssid[] PROGMEM = WF_SSID;
+constexpr char pass[] PROGMEM = WF_PSW;
+constexpr char hostname[] PROGMEM = "Arduino-RP2040-" DEVICE_NAME;
 
 const CRGB CLR_ALL_OK = CRGB::Indigo;
 const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;
 const CRGB CLR_SETUP_ERROR = CRGB::Red;
 
-mutex wifiMutex;
+mutex_t wifiMutex;
 
 /**
- * Convenience to translate into number of bars the WiFi signal strength received from {@code WiFi.RSSI()}
+ * Convenience to translate into number of bars the WiFi signal strength received from \code WiFi.RSSI() \endcode
  * <p>This Android article has been used for reference - https://android.stackexchange.com/questions/176320/rssi-range-for-wifi-icons </p>
  * @param rssi the RSSI value from WiFi system
  * @return number of bars as signal level - between 0 (no signal, connection likely lost) through 4 bars (strong signal)
@@ -83,12 +83,10 @@ bool wifi_setup() {
     if (WiFi.status() == WL_NO_MODULE) {
         Log.warningln(F("Communication with WiFi module failed!"));
         // don't continue - terminate thread?
-        //rtos::ThisThread::terminate();
+        //vTaskSuspend();
         while (true) yield();
     }
     checkFirmwareVersion();
-
-    auto_init_mutex(wifiMutex);
 
     //enable low power mode - web server is not the primary function of this module
     WiFi.lowPowerMode();

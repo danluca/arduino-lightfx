@@ -21,7 +21,6 @@
 template<typename T> class CircularBuffer {
 public:
     explicit CircularBuffer(size_t size) : buffer_(size), head_(0), tail_(0), full_(false), mutex_() {
-        auto_init_mutex(mutex_);
     }
     void push_back(T value) {
         CoreMutex coreMutex(&mutex_);
@@ -68,19 +67,19 @@ public:
         return avail;
     }
 
-    bool empty() const {
+    [[nodiscard]] bool empty() const {
         return (!full_ && (head_ == tail_));
     }
 
-    bool full() const {
+    [[nodiscard]] bool full() const {
         return full_;
     }
 
-    size_t capacity() const {
+    [[nodiscard]] size_t capacity() const {
         return buffer_.size();
     }
 
-    size_t size() const {
+    [[nodiscard]] size_t size() const {
         return full_ ? buffer_.size() : (head_ >= tail_ ? head_ - tail_ : buffer_.size() + head_ - tail_);
     }
 

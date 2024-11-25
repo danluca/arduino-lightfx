@@ -18,7 +18,7 @@
 
 #define DIAG_QUEUE_TIMEOUT  5000     //enqueuing timeout - 5 seconds
 
-static const uint maxAdc = 1 << ADC_RESOLUTION;
+static constexpr uint maxAdc = 1 << ADC_RESOLUTION;
 const char calibFileName[] PROGMEM = "/status/calibration.json";
 
 volatile MeasurementRange imuTempRange(Unit::Deg_C);
@@ -256,7 +256,7 @@ void MeasurementRange::setMeasurement(const Measurement &msmt) volatile {
  * Initializes the unit of all measurements in the range
  * @param unit the unit
  */
-MeasurementRange::MeasurementRange(const Unit unit) : min(unit), current(unit), max(unit) {
+MeasurementRange::MeasurementRange(const Unit unit) : min(unit), max(unit), current(unit) {
 }
 
 void MeasurementPair::copy(const MeasurementPair &msmt) {
@@ -339,7 +339,7 @@ Measurement boardTemperature() {
  * @return measurement object with line voltage, current time and Volts unit
  */
 Measurement controllerVoltage() {
-    const uint avgSize = 8;  //we'll average 8 readings back to back
+    constexpr uint avgSize = 8;  //we'll average 8 readings back to back
     uint valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += analogRead(A0);
@@ -356,7 +356,7 @@ Measurement controllerVoltage() {
  */
 MeasurementPair chipTemperature() {
     uint curAdc = adc_get_selected_input();
-    const uint avgSize = 8;   //we'll average 8 readings back to back
+    constexpr uint avgSize = 8;   //we'll average 8 readings back to back
 
     adc_select_input(4);    //internal temperature sensor is on ADC channel 4
     uint valSum = 0;
@@ -367,7 +367,7 @@ MeasurementPair chipTemperature() {
     Log.traceln(F("Internal temperature value: %d; average reading: %d"), avgSize, valSum/avgSize);
 #endif
     uint adcRaw = valSum/avgSize;
-    auto tV = (float)(valSum*MV3_3/avgSize/maxAdc);   //voltage in mV
+    auto tV = (float)valSum*MV3_3/avgSize/maxAdc;   //voltage in mV
     MeasurementPair result;
     if (calibCpuTemp.isValid()) {
         //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
@@ -382,7 +382,7 @@ MeasurementPair chipTemperature() {
 }
 
 
-static void serializeMeasurementPair(MeasurementPair& obj, JsonObject& json) {
+static void serializeMeasurementPair(const MeasurementPair& obj, JsonObject& json) {
     json["value"] = obj.value;
     json["time"] = obj.time;
     json["adc"] = obj.adcRaw;
@@ -402,14 +402,14 @@ static void serializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonObj
     serializeMeasurementPair(obj.ref, jsRef);
 }
 static void deserializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonObject& json) {
-    JsonObject jsMin = json["min"].as<JsonObject>();
+    auto jsMin = json["min"].as<JsonObject>();
     deserializeMeasurementPair(obj.min, jsMin);
-    JsonObject jsMax = json["max"].as<JsonObject>();
+    auto jsMax = json["max"].as<JsonObject>();
     deserializeMeasurementPair(obj.max, jsMax);
-    JsonObject jsRef = json["ref"].as<JsonObject>();
+    auto jsRef = json["ref"].as<JsonObject>();
     deserializeMeasurementPair(obj.ref, jsRef);
 }
-static void serializeCalibrationParams(CalibrationParams& obj, JsonObject& json) {
+static void serializeCalibrationParams(const CalibrationParams& obj, JsonObject& json) {
     json["ref33"] = obj.ref33;
     json["refTemp"] = obj.refTemp;
     json["vtref"] = obj.vtref;
@@ -438,9 +438,9 @@ void readCalibrationInfo() {
             delete json;
             return;
         }
-        JsonObject msmt = doc["measurements"].as<JsonObject>();
+        auto msmt = doc["measurements"].as<JsonObject>();
         deserializeCalibrationMeasurement(calibTempMeasurements, msmt);
-        JsonObject cbparams = doc["calibParams"].as<JsonObject>();
+        auto cbparams = doc["calibParams"].as<JsonObject>();
         deserializeCalibrationParams(calibCpuTemp, cbparams);
 #ifndef DISABLE_LOGGING
         Log.infoln(F("CPU temp calibration Information restored from %s [%d bytes]: min %F 'C, max %F 'C; params: tempRange=%F, refTemp=%F, VTref=%F, slope=%F, time=%y"),

@@ -17,7 +17,7 @@
 void fsExecute();
 void fsInit();
 size_t prvReadTextFile(const char *fname, String *s);
-size_t prvWriteTextFile(const char *fname, String *s);
+size_t prvWriteTextFile(const char *fname, const String *s);
 bool prvRemoveFile(const char *fname);
 
 // filesystem task definition - priority is overwritten during setup, see fsSetup
@@ -134,8 +134,7 @@ size_t prvReadTextFile(const char *fname, String *s) {
     File f = LittleFS.open(fname, "r");
     size_t fSize = 0;
     char buf[FILE_BUF_SIZE]{};
-    size_t charsRead = 1;
-    while (charsRead = f.readBytes(buf, FILE_BUF_SIZE)) {
+    while (const size_t charsRead = f.readBytes(buf, FILE_BUF_SIZE)) {
         s->concat(buf, charsRead);
         fSize += charsRead;
     }
@@ -151,7 +150,7 @@ size_t prvReadTextFile(const char *fname, String *s) {
  * @param s contents to write
  * @return number of bytes written
  */
-size_t prvWriteTextFile(const char *fname, String *s) {
+size_t prvWriteTextFile(const char *fname, const String *s) {
     size_t fSize = 0;
     File f = LittleFS.open(fname, "w");
     fSize = f.write(s->c_str());

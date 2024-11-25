@@ -66,7 +66,7 @@ void setup() {
 void loop() {
     wifi_loop();
     alarm_loop();
-//    watchdogPing();   //the main functionality is in Fx thread, we can afford not having web server available
+//    watchdogPing();   //the main functionality is in Fx thread, we can afford web server not being available
 }
 
 //Second core tasks

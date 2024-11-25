@@ -22,37 +22,37 @@
 #include "pixel_css.h"
 #include "pixel_js.h"
 
-static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
-static const char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
-static const char http404Status[] PROGMEM = "HTTP/1.1 404 Not Found";
-static const char http500Status[] PROGMEM = "HTTP/1.1 500 Internal Server Error";
+static constexpr char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
+static constexpr char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
+static constexpr char http404Status[] PROGMEM = "HTTP/1.1 404 Not Found";
+static constexpr char http500Status[] PROGMEM = "HTTP/1.1 500 Internal Server Error";
 
-static const char hdHtml[] PROGMEM = R"===(Content-type: text/html
+static constexpr char hdHtml[] PROGMEM = R"===(Content-type: text/html
 Server: rp2040-luca/1.0.0)===";
 
-static const char hdCss[] PROGMEM = R"===(Content-type: text/css
+static constexpr char hdCss[] PROGMEM = R"===(Content-type: text/css
 Server: rp2040-luca/1.0.0
 Cache-Control: public, max-age=2592000, immutable)===";
 
-static const char hdJavascript[] PROGMEM = R"===(Content-type: text/javascript
+static constexpr char hdJavascript[] PROGMEM = R"===(Content-type: text/javascript
 Server: rp2040-luca/1.0.0
 Cache-Control: public, max-age=2592000, immutable)===";
 
-static const char hdJson[] PROGMEM = R"===(Content-type: application/json
+static constexpr char hdJson[] PROGMEM = R"===(Content-type: application/json
 Server: rp2040-luca/1.0.0
 Cache-Control: no-cache, no-store)===";
 
 using namespace web;
 using namespace colTheme;
 
-static const char hdRootLocation[] PROGMEM = "Location: /";
-static const char hdConClose[] PROGMEM = "Connection: close";
-static const char hdFmtContentLength[] PROGMEM = "Content-Length: %d";
-static const char hdFmtDate[] PROGMEM = "Date: %4d-%02d-%02d %02d:%02d:%02d CST";
-static const char hdFmtContentDisposition[] PROGMEM = "Content-Disposition: inline; filename=\"%s\"";
-static const char msgRequestNotMapped[] PROGMEM = "URI not mapped to a handler on this server";
-static const char configJsonFilename[] PROGMEM = "config.json";
-static const char statusJsonFilename[] PROGMEM = "status.json";
+static constexpr char hdRootLocation[] PROGMEM = "Location: /";
+static constexpr char hdConClose[] PROGMEM = "Connection: close";
+static constexpr char hdFmtContentLength[] PROGMEM = "Content-Length: %d";
+static constexpr char hdFmtDate[] PROGMEM = "Date: %4d-%02d-%02d %02d:%02d:%02d CST";
+static constexpr char hdFmtContentDisposition[] PROGMEM = "Content-Disposition: inline; filename=\"%s\"";
+static constexpr char msgRequestNotMapped[] PROGMEM = "URI not mapped to a handler on this server";
+static constexpr char configJsonFilename[] PROGMEM = "config.json";
+static constexpr char statusJsonFilename[] PROGMEM = "status.json";
 
 /**
  * Web handler mappings - static in nature and stored in flash
@@ -201,7 +201,7 @@ size_t web::transmitJsonDocument(JsonVariantConst source, WiFiClient *client) {
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetConfig(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdJson);
@@ -264,7 +264,7 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetCss(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetCss(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdCss);
@@ -293,7 +293,7 @@ size_t web::handleGetCss(WiFiClient *client, String *uri, String *hd, String *bd
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetJs(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdJavascript);
@@ -328,7 +328,7 @@ size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetHtml(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetHtml(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdHtml);
@@ -360,7 +360,7 @@ size_t web::handleGetHtml(WiFiClient *client, String *uri, String *hd, String *b
  * @return number of bytes sent to the client
  * @see web::handleGetHtml
  */
-size_t web::handleGetRoot(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetRoot(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     return handleGetHtml(client, uri, hd, bdy);
 }
 
@@ -373,7 +373,7 @@ size_t web::handleGetRoot(WiFiClient *client, String *uri, String *hd, String *b
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetStatus(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdJson);
@@ -485,7 +485,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
  * @param bdy request body - JSON of the update request
  * @return number of bytes sent to the client
  */
-size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handlePutConfig(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //process the body - parse JSON body and react to inputs
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, *bdy);
@@ -575,7 +575,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
  * @param message error message
  * @return number of bytes sent to the client
  */
-size_t web::handleInternalError(WiFiClient *client, String *uri, const char *message) {
+size_t web::handleInternalError(WiFiClient *client, const String *uri, const char *message) {
     //main status and headers
     size_t sz = client->println(http500Status);
     sz += client->println(hdJson);
@@ -606,7 +606,7 @@ size_t web::handleInternalError(WiFiClient *client, String *uri, const char *mes
  * @param message error message - included in a small html page in the response body (along with calling URI)
  * @return number of bytes sent to the client
  */
-size_t web::handleNotFoundError(WiFiClient *client, String *uri, const char *message) {
+size_t web::handleNotFoundError(WiFiClient *client, const String *uri, const char *message) {
     //main status and headers
     size_t sz = client->println(http404Status);
     sz += client->println(hdJson);

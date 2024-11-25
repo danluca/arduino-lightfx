@@ -108,7 +108,7 @@ void logExtraFormats(Print *_logOutput, const char fmt, va_list *args) {
 #ifndef DISABLE_LOGGING
     switch (fmt) {
         case 'r': {
-            CRGB clr = va_arg(*args, CRGB);
+            const CRGB clr = va_arg(*args, CRGB);
             printRGB(_logOutput, clr);
             break;
         }
@@ -126,14 +126,14 @@ void logExtraFormats(Print *_logOutput, const char fmt, va_list *args) {
             break;
         }
         case 'y': {
-            time_t time = va_arg(*args, time_t);
+            const time_t time = va_arg(*args, time_t);
             char timeStr[20];
             strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", localtime(&time));
             _logOutput->print(timeStr);
             break;
         }
         case 'v': {
-            uint64_t value = va_arg(*args, uint64_t);
+            const uint64_t value = va_arg(*args, uint64_t);
             _logOutput->print(value, DEC);
             break;
         }

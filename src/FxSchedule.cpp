@@ -9,8 +9,8 @@
 
 const uint16_t dailyBedTime = 30*SECS_PER_MIN;          //12:30am bedtime
 const uint16_t dailyWakeupTime = 6*SECS_PER_HOUR;       //6:00am wakeup time
-const char strWakeup[] PROGMEM = "Wake-Up";
-const char strBedtime[] PROGMEM = "Bed-time";
+constexpr char strWakeup[] PROGMEM = "Wake-Up";
+constexpr char strBedtime[] PROGMEM = "Bed-time";
 
 uint16_t currentDay = 0;
 

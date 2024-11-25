@@ -7,18 +7,18 @@
 #include "PaletteFactory.h"
 #include "sysinfo.h"
 
-const char fmtDate[] PROGMEM = "%4d-%02d-%02d";
-const char fmtTime[] PROGMEM = "%02d:%02d:%02d";
-const char strNone[] PROGMEM = "None";
-const char strParty[] PROGMEM = "Party";
-const char strValentine[] PROGMEM = "ValentineDay";
-const char strStPatrick[] PROGMEM = "StPatrick";
-const char strMemorialDay[] PROGMEM = "MemorialDay";
-const char strIndependenceDay[] PROGMEM = "IndependenceDay";
-const char strHalloween[] PROGMEM = "Halloween";
-const char strThanksgiving[] PROGMEM = "Thanksgiving";
-const char strChristmas[] PROGMEM = "Christmas";
-const char strNewYear[] PROGMEM = "NewYear";
+constexpr char fmtDate[] PROGMEM = "%4d-%02d-%02d";
+constexpr char fmtTime[] PROGMEM = "%02d:%02d:%02d";
+constexpr char strNone[] PROGMEM = "None";
+constexpr char strParty[] PROGMEM = "Party";
+constexpr char strValentine[] PROGMEM = "ValentineDay";
+constexpr char strStPatrick[] PROGMEM = "StPatrick";
+constexpr char strMemorialDay[] PROGMEM = "MemorialDay";
+constexpr char strIndependenceDay[] PROGMEM = "IndependenceDay";
+constexpr char strHalloween[] PROGMEM = "Halloween";
+constexpr char strThanksgiving[] PROGMEM = "Thanksgiving";
+constexpr char strChristmas[] PROGMEM = "Christmas";
+constexpr char strNewYear[] PROGMEM = "NewYear";
 
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST

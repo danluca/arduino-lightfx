@@ -100,10 +100,10 @@ void readFxState() {
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
 
         audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
-        String savedHoliday = doc[csColorTheme].as<String>();
+        auto savedHoliday = doc[csColorTheme].as<String>();
         paletteFactory.setHoliday(parseHoliday(&savedHoliday));
         paletteFactory.setAuto(doc[csAutoColorAdjust].as<bool>());
-        if (doc.containsKey(csSleepEnabled))
+        if (doc[csSleepEnabled].is<bool>())
             fxRegistry.enableSleep(doc[csSleepEnabled].as<bool>());
         else
             fxRegistry.enableSleep(false);      //this doesn't invoke effect changing because sleep state is initialized with false
@@ -189,8 +189,8 @@ void resetGlobals() {
  * @see https://easings.net/#easeOutBounce
  */
 uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
-    static const float d1 = 2.75f;
-    static const float n1 = 7.5625f;
+    static constexpr float d1 = 2.75f;
+    static constexpr float n1 = 7.5625f;
 
     float xf = ((float)x)/(float)lim;
     float res = 0;
@@ -459,7 +459,7 @@ uint16_t countPixelsBrighter(CRGBSet *set, CRGB backg) {
     return ledsOn;
 }
 
-bool isAnyLedOn(CRGB *arr, uint16_t szArray, CRGB backg) {
+bool isAnyLedOn(const CRGB *arr, uint16_t szArray, CRGB backg) {
     uint8_t bkgLuma = backg.getLuma();
     for (uint x = 0; x < szArray; x++) {
         if (arr[x].getLuma() > bkgLuma)
@@ -773,7 +773,7 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     return fxIndex;
 }
 
-LedEffect *EffectRegistry::findEffect(const char *id) {
+LedEffect *EffectRegistry::findEffect(const char *id) const {
     for (auto &fx : effects) {
         if (strcmp(id, fx->name()) == 0)
             return fx;
@@ -810,7 +810,7 @@ void EffectRegistry::enableSleep(bool bSleep) {
 /**
  * Sets the desired state for all effects to setup. It will essentially make each effect ready to run if invoked - the state machine will ensure the setup() is called first
  */
-void EffectRegistry::setup() {
+void EffectRegistry::setup() const {
     for (auto &fx : effects)
         fx->desiredState(Setup);
     transEffect.setup();
@@ -828,7 +828,7 @@ void EffectRegistry::loop() {
     effects[lastEffectRun]->loop();
 }
 
-void EffectRegistry::describeConfig(JsonArray &json) {
+void EffectRegistry::describeConfig(JsonArray &json) const {
     for (auto & effect : effects)
         effect->describeConfig(json);
 }
