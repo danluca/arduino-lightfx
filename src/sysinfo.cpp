@@ -60,10 +60,9 @@ void logTaskStats() {
             // need to figure out task run time per core - raw results show that the total runtime above does not equal with all tasks runtime counter added up
             uint32_t coresTotalRunTime[2]{};
             for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
-                if (const TaskStatus_t ts = pxTaskStatusArray[x]; ts.uxCoreAffinityMask & CORE_0)
-                    coresTotalRunTime[0] += ts.ulRunTimeCounter;
-                else if (ts.uxCoreAffinityMask & CORE_1)
-                    coresTotalRunTime[1] += ts.ulRunTimeCounter;
+                const TaskStatus_t ts = pxTaskStatusArray[x];
+                coresTotalRunTime[0] += (ts.uxCoreAffinityMask & CORE_0 ? ts.ulRunTimeCounter : 0);
+                coresTotalRunTime[1] += (ts.uxCoreAffinityMask & CORE_1 ? ts.ulRunTimeCounter : 0);
             }
             Log.infoln("Total run time reported by individual tasks per core: CORE 0=%u; CORE 1=%u", coresTotalRunTime[0], coresTotalRunTime[1]);
             ulTotalRunTime /= 100UL;    // For percentage calculations
