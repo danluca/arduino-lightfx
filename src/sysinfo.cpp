@@ -64,7 +64,7 @@ void logTaskStats() {
                 coresTotalRunTime[0] += (ts.uxCoreAffinityMask & CORE_0 ? ts.ulRunTimeCounter : 0);
                 coresTotalRunTime[1] += (ts.uxCoreAffinityMask & CORE_1 ? ts.ulRunTimeCounter : 0);
             }
-            Log.infoln("Total run time reported by individual tasks per core: CORE 0=%u; CORE 1=%u", coresTotalRunTime[0], coresTotalRunTime[1]);
+            Log.infoln("Total run time reported by individual tasks per core: CORE 0=%v; CORE 1=%v", coresTotalRunTime[0], coresTotalRunTime[1]);
             ulTotalRunTime /= 100UL;    // For percentage calculations
             coresTotalRunTime[0] /= 100UL;
             coresTotalRunTime[1] /= 100UL;
