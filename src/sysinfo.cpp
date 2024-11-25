@@ -14,8 +14,8 @@
 
 static const char unknown[] PROGMEM = "N/A";
 #ifndef DISABLE_LOGGING
-static const char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%i id=%i coreAffinity=%i stackSize=%u free=%u\n";
-static const char threadInfoVerboseFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%i id=%y \n  basePriority=%i stackBase=%X size=%u free=%u coreAffinity=%i\n";
+static const char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%%[%u] priority=%i state=%i id=%i core=%i stackSize=%u free=%u\n";
+static const char threadInfoVerboseFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%i id=%y \n  basePriority=%i stackBase=%X size=%u free=%u core=%i\n";
 static const char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%u free: tasks=%u, system=%i;\n  Total Heap:: size=%u free=%u\n";
 static const char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free: tasks=%u, system=%i taskCount=%u;\n  Total Heap:: size=%u used=%u free=%u lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
 static const char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%D MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
@@ -74,7 +74,7 @@ void logTaskStats() {
             for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
                 const TaskStatus_t ts = pxTaskStatusArray[x];
                 /* What percentage of the total run time has the task used? ulTotalRunTimeDiv100 has already been divided by 100. */
-                uint32_t ref = ts.uxCoreAffinityMask & CORE_0 ? coresTotalRunTime[0] : 0 + ts.uxCoreAffinityMask & CORE_1 ? coresTotalRunTime[1] : 0;
+                uint32_t ref = (ts.uxCoreAffinityMask & CORE_0 ? coresTotalRunTime[0] : 0) + (ts.uxCoreAffinityMask & CORE_1 ? coresTotalRunTime[1] : 0);
                 double fStatsAsPercentage = ts.ulRunTimeCounter / (double) ref;
                 char strStat[7];
                 size_t szStat = sprintf(strStat, "%.2f", fStatsAsPercentage);
@@ -83,7 +83,7 @@ void logTaskStats() {
                 const TaskWrapper *tw = Scheduler.getTask(ts.xTaskNumber);
                 uint32_t stackSize = tw ? tw->getStackSize() : 0;
                 if (LOG_LEVEL_TRACE > Log.getLevel())
-                    Log.info(threadInfoFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber, ts.uxCoreAffinityMask,
+                    Log.info(threadInfoFmt, x, ts.pcTaskName, strStat, ts.ulRunTimeCounter, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber, ts.uxCoreAffinityMask,
                         stackSize, ts.usStackHighWaterMark);
                 else
                     Log.trace(threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber, ts.uxBasePriority,
