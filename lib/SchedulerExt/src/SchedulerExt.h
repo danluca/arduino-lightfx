@@ -54,7 +54,7 @@ public:
     enum State:uint8_t {NEW, EXECUTING, TERMINATED};
 };
 
-class TaskWrapper : Runnable {
+class TaskWrapper final : Runnable {
 public:
     explicit TaskWrapper(TaskDefPtr taskDef, int16_t x);
 
@@ -93,6 +93,7 @@ protected:
     const BaseType_t priority;
     char *id;
     const int16_t index;
+    UBaseType_t uid{};
     volatile Runnable::State state {NEW};
     friend class SchedulerClassExt;
 };

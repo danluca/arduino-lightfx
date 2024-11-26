@@ -176,9 +176,9 @@ uint8_t SysInfo::getSysStatus() const {
 void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
     ssid = wifi.SSID();
     wifiFwVersion = ::WiFiClass::firmwareVersion();
-    // strIpAddress = wifi.localIP().toString();
+    strIpAddress = wifi.localIP().toString();
     // strGatewayIpAddress = wifi.gatewayIP().toString();
-    strIpAddress = ipAddress.toString();
+    // strIpAddress = ipAddress.toString();
     strGatewayIpAddress = ipGateway.toString();
 
     //MAC address - Formats the MAC address into the character buffer provided, space for 20 chars is needed (includes nul terminator)

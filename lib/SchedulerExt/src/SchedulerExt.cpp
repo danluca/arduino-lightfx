@@ -66,6 +66,11 @@ uint16_t SchedulerClassExt::availableThreads() const {
 bool SchedulerClassExt::scheduleTask(TaskWrapper *taskJob) {
     const BaseType_t result = xTaskCreateAffinitySet(taskJobExecutor, taskJob->id, taskJob->stackSize, taskJob,
                                                taskJob->priority, taskJob->coreAffinity, &(taskJob->handle));
+    if (result == pdPASS) {
+        TaskStatus_t taskStatus;
+        vTaskGetInfo(taskJob->handle, &taskStatus, pdFALSE, eReady);
+        taskJob->uid = taskStatus.xTaskNumber;
+    }
     return result == pdPASS;
 }
 
@@ -133,12 +138,8 @@ TaskWrapper *SchedulerClassExt::getTask(uint index) const {
  */
 TaskWrapper *SchedulerClassExt::getTask(const UBaseType_t uid) const {
     for (auto &task : tasks) {
-        if (task != nullptr) {
-            TaskStatus_t taskStatus;
-            vTaskGetInfo(task->handle, &taskStatus, pdFALSE, eRunning);
-            if (taskStatus.xTaskNumber == uid)
-                return task;
-        }
+        if (task != nullptr && task->uid == uid)
+            return task;
     }
     return nullptr;
 }
@@ -149,8 +150,8 @@ TaskWrapper *SchedulerClassExt::getTask(const UBaseType_t uid) const {
  * @param taskDef definitions
  * @param x index in the Scheduler tasks array that this task will take
  */
-TaskWrapper::TaskWrapper(TaskDefPtr taskDef, int16_t x) : fnSetup(taskDef->setup), fnLoop(taskDef->loop), stackSize(taskDef->stackSize), coreAffinity(taskDef->core),
-                                                          priority(taskDef->priority), index(x), state(NEW) {
+TaskWrapper::TaskWrapper(const TaskDefPtr taskDef, int16_t x) : fnSetup(taskDef->setup), fnLoop(taskDef->loop), stackSize(taskDef->stackSize), coreAffinity(taskDef->core),
+                                                          priority(taskDef->priority), index(x) {
     if (taskDef->threadName) {
         size_t sz = strlen(taskDef->threadName);
         id = new char[sz + 1]();   //zero initialized array
