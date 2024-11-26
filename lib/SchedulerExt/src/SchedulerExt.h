@@ -68,17 +68,23 @@ public:
     [[nodiscard]] inline uint getIndex() const {
         return index;
     }
-
     [[nodiscard]] inline CoreAffinity getCoreAffinity() const {
         return coreAffinity;
     }
-
     [[nodiscard]] inline TaskHandle_t getTaskHandle() const {
         return handle;
     }
-
     [[nodiscard]] inline uint32_t getStackSize() const {
         return stackSize;
+    }
+    [[nodiscard]] inline BaseType_t getPriority() const {
+        return priority;
+    }
+    [[nodiscard]] inline UBaseType_t getUID() const {
+        return uid;
+    }
+    [[nodiscard]] inline State getState() const {
+        return state;
     }
 
 protected:

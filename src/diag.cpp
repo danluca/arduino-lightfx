@@ -135,7 +135,7 @@ void diagSetup() {
     diagDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle()) + 1;
     diagTask = Scheduler.startTask(&diagDef);
     Log.infoln(F("Diagnostic thread [%s] - priority %d - has been setup id %X. Events are dispatching."), diagTask->getName(),
-               uxTaskPriorityGet(diagTask->getTaskHandle()), diagTask->getTaskHandle().xtasn);
+               uxTaskPriorityGet(diagTask->getTaskHandle()), diagTask->getUID());
 }
 
 /**
