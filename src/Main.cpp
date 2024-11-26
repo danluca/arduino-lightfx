@@ -20,7 +20,6 @@
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
 constexpr TaskDef fxTasks {fx_setup, fx_run, 3072, "Fx", 255, CORE_0};
 constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 255, CORE_0};
-//ThreadTasks diagTasks {diag_setup, diag_run, 1792, "Diag"};
 
 /**
  * Setup LED strip and global data structures - executed once
@@ -42,7 +41,8 @@ void setup() {
     Scheduler.startTask(&micTasks);
 
     stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
-	bool bSetupOk = wifi_setup();
+	//bool bSetupOk = wifi_setup();
+    bool bSetupOk = true;
     bSetupOk = bSetupOk && timeSetup();
     stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
 
@@ -64,7 +64,7 @@ void setup() {
  * Main loop - runs the WebServer
  */
 void loop() {
-    wifi_loop();
+    //wifi_loop();
     alarm_loop();
 //    watchdogPing();   //the main functionality is in Fx thread, we can afford web server not being available
 }

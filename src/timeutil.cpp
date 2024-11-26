@@ -127,14 +127,18 @@ time_t curUnixTime() {
             localTime = wifiTime + CDT_OFFSET_SECONDS;
         return localTime;
     }
-    return 0;
+    return millis();
 }
 
 bool ntp_sync() {
+    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+        Log.warningln(F("NTP sync failed. No WiFi connection available."));
+        return false;
+    }
     timeClient.begin();
     timeClient.update();
     timeClient.end();
-    bool result = timeClient.isTimeSet();
+    const bool result = timeClient.isTimeSet();
     if (result) {
         TimeSync tsync {.localMillis = millis(), .unixSeconds=now()};
         timeSyncs.push(tsync);

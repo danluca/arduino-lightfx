@@ -14,7 +14,9 @@ void log_setup() {
 #ifndef DISABLE_LOGGING
     if (!Serial) {
         Serial.begin(115200); // initialize serial communication - note the rate parameter is likely ignored, HW negotiates with the host PC the proper rate
-        while (!Serial) { }
+        while (!Serial) {
+            delay(100);     //wait for the serial connection to be initiated by the PC
+        }
         Log.begin(LOG_LEVEL_INFO, &Serial, true);
         delay(500);
         Log.infoln("========================================");
