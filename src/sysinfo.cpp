@@ -107,7 +107,8 @@ void logTaskStats() {
                   rp2040.getFreeHeap(), rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getUsedPSRAMHeap(), rp2040.getFreePSRAMHeap(), 0, 0);
     }
     Log.endContinuation();
-    Log.infoln(F("Current watchdog remaining value %u ms"), watchdog_get_time_remaining_ms());
+    uint32_t wdv = watchdog_hw->load;
+    Log.infoln(F("Current watchdog remaining value %u [%u] us"), watchdog_get_time_remaining_ms(), wdv);
 #endif
 }
 

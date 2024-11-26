@@ -41,8 +41,8 @@ void setup() {
     Scheduler.startTask(&micTasks);
 
     stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
-	//bool bSetupOk = wifi_setup();
-    bool bSetupOk = true;
+	bool bSetupOk = wifi_setup();
+    // bool bSetupOk = true;
     bSetupOk = bSetupOk && timeSetup();
     stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
 
@@ -64,7 +64,7 @@ void setup() {
  * Main loop - runs the WebServer
  */
 void loop() {
-    //wifi_loop();
+    wifi_loop();
     alarm_loop();
 //    watchdogPing();   //the main functionality is in Fx thread, we can afford web server not being available
 }

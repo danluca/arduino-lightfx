@@ -160,7 +160,7 @@ void watchdogSetup() {
         sysInfo->markDirtyBoot();
     }
     //if no ping in 3 seconds, reboot
-    watchdog_enable(3000, true);
+    //watchdog_enable(3000, true);
     //rp2040.wdt_begin(3000);
 }
 
@@ -168,7 +168,7 @@ void watchdogSetup() {
  * Reset the watchdog
  */
 void watchdogPing() {
-    watchdog_update();
+    //watchdog_update();
     //rp2040.wdt_reset();
 }
 
