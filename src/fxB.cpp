@@ -7,6 +7,8 @@
  */
 #include "fxB.h"
 
+#include "transition.h"
+
 //~ Global variables definition for FxB
 using namespace FxB;
 using namespace colTheme;

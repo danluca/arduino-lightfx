@@ -5,15 +5,19 @@
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #include <SchedulerExt.h>
+#include "filesystem.h"
 #include "net_setup.h"
 #include "efx_setup.h"
-#include "log.h"
 #include "sysinfo.h"
 #include "diag.h"
 #include "broadcast.h"
+#include "FxSchedule.h"
+#include "ledstate.h"
+#include "log.h"
+#include "mic.h"
 
-ThreadTasks fxTasks {fx_setup, fx_run, 3072, "Fx"};
-ThreadTasks micTasks {mic_setup, mic_run, 896, "Mic"};
+TaskDef fxTasks {fx_setup, fx_run, 3072, "Fx", 4, CORE_0};
+TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 4, CORE_0};
 //ThreadTasks diagTasks {diag_setup, diag_run, 1792, "Diag"};
 
 /**
@@ -27,7 +31,7 @@ void setup() {
     stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
 
     sysInfo = new SysInfo();    //system information object built once per run
-    fsInit();
+    fsSetup();
 
     readSysInfo();
     secElement_setup();
@@ -37,18 +41,18 @@ void setup() {
 
     stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
 	bool bSetupOk = wifi_setup();
-    bSetupOk = bSetupOk && time_setup();
+    bSetupOk = bSetupOk && timeSetup();
     stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
 
     setupAlarmSchedule();
 
-    diag_events_setup();
+    diagSetup();
 
     sysInfo->fillBoardId();
 
     watchdogSetup();
 
-    postWiFiSetupEvent();
+    broadcastSetup();
 
     Log.infoln(F("Main Setup completed. System status: %X"), sysInfo->getSysStatus());
     logSystemInfo();
@@ -64,3 +68,11 @@ void loop() {
     yield();
 }
 
+//Second core tasks
+//void setup1() {
+//
+//}
+//
+//void loop1() {
+//
+//}

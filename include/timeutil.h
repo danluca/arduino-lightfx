@@ -5,7 +5,8 @@
 #ifndef ARDUINO_LIGHTFX_TIMEUTIL_H
 #define ARDUINO_LIGHTFX_TIMEUTIL_H
 
-#include <WiFiNINA.h>
+// #include <Arduino.h>
+#include <WiFi.h>
 #include <NTPClient.h>
 #include <TimeLib.h>
 #include "fixed_queue.h"
@@ -33,7 +34,7 @@ struct TimeSync {
     time_t unixSeconds{};
 };
 
-bool time_setup();
+bool timeSetup();
 time_t curUnixTime();
 bool ntp_sync();
 int getAverageTimeDrift();

@@ -4,13 +4,13 @@
 #ifndef LIGHTFX_NET_SETUP_H
 #define LIGHTFX_NET_SETUP_H
 
-#include <WiFiNINA.h>
-#include "Mutex.h"
+#include <WiFi.h>
 #include "PaletteFactory.h"
 #include "util.h"
 #include "secrets.h"
+// #include <mutex>
 
-extern rtos::Mutex wifiMutex;
+extern mutex wifiMutex;
 extern WiFiServer server;
 extern const CRGB CLR_ALL_OK;
 extern const CRGB CLR_SETUP_IN_PROGRESS;

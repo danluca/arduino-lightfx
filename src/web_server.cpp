@@ -1,13 +1,26 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
+#include <FreeRTOS.h>
+#include <task.h>
+#include "StreamUtils.h"
 #include "web_server.h"
-#include "log.h"
+#include "filesystem.h"
 #include "timeutil.h"
 #include "sysinfo.h"
 #include "diag.h"
 #include "broadcast.h"
-#include "StreamUtils.h"
+#include "net_setup.h"
+#include "efx_setup.h"
+#include "FxSchedule.h"
+#include "mic.h"
+#include "log.h"
+
+#include "index_html.h"
+//#include "jquery_min_js.h"
+#include "pixel_css.h"
+#include "pixel_js.h"
+
 
 static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
 static const char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
@@ -57,7 +70,7 @@ static const std::map<std::string, reqHandler> webMappings PROGMEM = {
         {"^PUT /fx$",             handlePutConfig}
 };
 
-rtos::Mutex wifiMutex;
+mutex wifiMutex;
 // global server object - through WiFi module
 WiFiServer server(80);
 //size of the buffer for buffering the response
@@ -67,6 +80,7 @@ static const uint16_t WEB_BUFFER_SIZE = 1024;
  * Start the server
  */
 void server_setup() {
+    auto_init_mutex(wifiMutex);
     server.begin();
 }
 
@@ -74,7 +88,7 @@ void server_setup() {
  * Dispatch incoming requests to their handlers
  */
 void webserver() {
-    ScopedMutexLock lock(wifiMutex);
+    CoreMutex lock(&wifiMutex);
     web::dispatch();
 }
 
@@ -422,8 +436,7 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
 //        jal["taskPtr"] = (long)al->onEventHandler;
     }
     //System
-    snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
-    doc["mbedVersion"] = timeBuf;
+    doc["freeRTOSVersion"] = tskKERNEL_VERSION_NUMBER;
     doc["boardTemp"] = imuTempRange.current.value;
     doc["chipTemp"] = cpuTempRange.current.value;
     doc["vcc"] = lineVoltage.current.value;
@@ -575,7 +588,7 @@ size_t web::handleInternalError(WiFiClient *client, String *uri, const char *mes
 
     //response body
     JsonDocument doc;
-    doc["serverIP"] = WiFi.localIP();
+    doc["serverIP"] = sysInfo->getIpAddress();
     doc["uri"] = uri->c_str();
     doc["errorCode"] = 500;
     doc["errorMessage"] = message;
@@ -606,7 +619,7 @@ size_t web::handleNotFoundError(WiFiClient *client, String *uri, const char *mes
 
     //response body
     JsonDocument doc;
-    doc["serverIP"] = WiFi.localIP();
+    doc["serverIP"] = sysInfo->getIpAddress();
     doc["uri"] = uri->c_str();
     doc["errorCode"] = 404;
     doc["errorMessage"] = message;
@@ -634,7 +647,7 @@ void web::dispatch() {
     if (client) {
         unsigned long start = millis();
         IPAddress clientIp = client.remoteIP();
-        Log.infoln(F("Request: inbound from %p"), clientIp);
+        Log.infoln(F("Request: inbound from %p"), &clientIp);
         size_t szResp = 0;
         while (client.connected()) {
             if (client.available()) {

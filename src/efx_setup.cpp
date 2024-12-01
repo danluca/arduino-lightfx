@@ -2,11 +2,17 @@
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #include "efx_setup.h"
-#include "log.h"
 #include "sysinfo.h"
 #include "broadcast.h"
+#include "filesystem.h"
+#include "FxSchedule.h"
+#include "log.h"
+#include "transition.h"
+#include "util.h"
+#include "ledstate.h"
 
 //~ Global variables definition
+#define JSON_DOC_SIZE   512
 const uint8_t dimmed = 20;
 const char csAutoFxRoll[] PROGMEM = "autoFxRoll";
 const char csStripBrightness[] PROGMEM = "stripBrightness";

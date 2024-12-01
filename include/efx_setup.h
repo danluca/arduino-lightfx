@@ -6,15 +6,11 @@
 #define LIGHTFX_EFX_SETUP_H
 
 #include <Arduino.h>
-#include "mic.h"
-#include "PaletteFactory.h"
 #include <ArduinoJson.h>
-#include "global.h"
-#include "util.h"
-#include "transition.h"
-#include "FxSchedule.h"
-#include "config.h"
 #include "fixed_queue.h"
+#include "config.h"
+#include "global.h"
+#include "PaletteFactory.h"
 
 typedef void (*setupFunc)();
 

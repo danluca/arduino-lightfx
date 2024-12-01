@@ -3,6 +3,7 @@
 //
 
 #include "global.h"
+#include "util.h"
 #include "timeutil.h"
 #include "PaletteFactory.h"
 #include "sysinfo.h"
@@ -20,9 +21,10 @@ const char strThanksgiving[] PROGMEM = "Thanksgiving";
 const char strChristmas[] PROGMEM = "Christmas";
 const char strNewYear[] PROGMEM = "NewYear";
 
+WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
 
-bool time_setup() {
+bool timeSetup() {
     //read the time
     setSyncProvider(curUnixTime);
     bool ntpTimeAvailable = ntp_sync();
@@ -55,6 +57,7 @@ bool time_setup() {
 #endif
     } else {
         sysInfo->resetSysStatus(SYS_STATUS_NTP);
+        paletteFactory.setHoliday(Party);  //setting it explicitly to avoid defaulting to none when there is no wifi altogether
         hday = paletteFactory.adjustHoliday();    //update the holiday for new time
         bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
         if (bDST)
@@ -119,11 +122,13 @@ time_t curUnixTime() {
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time telling purpose
         //determine what offset to use
-        time_t wifiTime = WiFi.getTime() + CST_OFFSET_SECONDS;
-        if (isDST(wifiTime))
-            wifiTime = WiFi.getTime() + CDT_OFFSET_SECONDS;
-        return wifiTime;
+        time_t wifiTime = WiFi.getTime();
+        time_t localTime = wifiTime + CST_OFFSET_SECONDS;
+        if (isDST(localTime))
+            localTime = wifiTime + CDT_OFFSET_SECONDS;
+        return localTime;
     }
+//    return millis();
     return 0;
 }
 
@@ -137,6 +142,36 @@ bool ntp_sync() {
         timeSyncs.push(tsync);
     }
     return result;
+}
+
+/**
+ * Are we in DST (Daylight Savings Time) at this time?
+ * @param time
+ * @return
+ */
+bool isDST(const time_t time) {
+//    const uint16_t md = encodeMonthDay(time);
+    // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
+    // to the transition, such that we don't need to implement complex Sunday counting rules
+//    return md > 0x030C && md < 0x0B05;
+    int mo = month(time);
+    int dy = day(time);
+    int hr = hour(time);
+    int dow = weekday(time);
+    // DST runs from second Sunday of March to first Sunday of November
+    // Never in January, February or December
+    if (mo < 3 || mo > 11)
+        return false;
+    // Always in April to October
+    if (mo > 3 && mo < 11)
+        return true;
+    // In March, DST if previous Sunday was on or after the 8th.
+    // Begins at 2am on second Sunday in March
+    int previousSunday = dy - dow;
+    if (mo == 3)
+        return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
+    // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
+    return (previousSunday < 7 && dow == 1) ? (hr < 2) : (previousSunday < 0);
 }
 
 /**

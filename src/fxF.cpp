@@ -9,6 +9,9 @@
 #include <vector>
 #include <algorithm>
 
+#include "transition.h"
+#include "util.h"
+
 using namespace FxF;
 using namespace colTheme;
 

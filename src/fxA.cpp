@@ -7,6 +7,8 @@
  */
 #include "fxA.h"
 
+#include "transition.h"
+
 //~ Global variables definition for FxA
 using namespace FxA;
 using namespace colTheme;

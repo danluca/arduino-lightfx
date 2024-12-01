@@ -6,6 +6,7 @@
 #include "sysinfo.h"
 #include "timeutil.h"
 #include "broadcast.h"
+#include "ledstate.h"
 #include "log.h"
 
 using namespace colTheme;
@@ -16,8 +17,6 @@ const char hostname[] PROGMEM = "Arduino-RP2040-" DEVICE_NAME;
 const CRGB CLR_ALL_OK = CRGB::Indigo;
 const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;
 const CRGB CLR_SETUP_ERROR = CRGB::Red;
-
-WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from {@code WiFi.RSSI()}
@@ -87,7 +86,7 @@ bool wifi_setup() {
     checkFirmwareVersion();
 
     //enable low power mode - web server is not the primary function of this module
-    WiFi.lowPowerMode();
+    //WiFi.lowPowerMode();
 
     return wifi_connect();
 }
@@ -124,16 +123,16 @@ bool wifi_check() {
 void wifi_reconnect() {
     sysInfo->resetSysStatus(SYS_STATUS_WIFI);
     stateLed(CLR_SETUP_IN_PROGRESS);
-    server.clearWriteError();
-    WiFiClient client = server.available();
-    if (client) client.stop();
+    if (WiFiClient client = server.available())
+        client.stop();
+    server.stop();
     Udp.stop();
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     delay(2000);    //let disconnect state settle
     if (wifi_connect()) {
         stateLed(CLR_ALL_OK);
-        postWiFiSetupEvent();
+        broadcastSetup();
     }
     //NVIC_SystemReset();
 }
@@ -145,34 +144,9 @@ void wifi_loop() {
             Log.warningln(F("WiFi connection unusable/lost - reconnecting..."));
             wifi_reconnect();
         }
-
-        if (!timeClient.isTimeSet()) {
-            if (time_setup())
-                stateLed(CLR_ALL_OK);
-            else
-                stateLed(CLR_SETUP_ERROR);
-        }
+        if (sysInfo->isSysStatus(SYS_STATUS_WIFI))
+            postTimeSetupCheck();
         Log.infoln(F("System status: %X"), sysInfo->getSysStatus());
-    }
-    EVERY_N_HOURS(12) {
-        Holiday oldHday = paletteFactory.getHoliday();
-        Holiday hDay = paletteFactory.adjustHoliday();
-#ifndef DISABLE_LOGGING
-        if (oldHday == hDay)
-            Log.infoln(F("Current holiday remains %s"), holidayToString(hDay));
-        else
-            Log.infoln(F("Current holiday adjusted from %s to %s"), holidayToString(oldHday), holidayToString(hDay));
-#endif
-    }
-    EVERY_N_HOURS(17) {
-        bool result = ntp_sync();
-        Log.infoln(F("Time NTP sync performed; success = %T"), result);
-        if (result && timeSyncs.size() > 2) {
-            //log the current drift
-            time_t from = timeSyncs.end()[-2].unixSeconds;
-            time_t to = now();
-            Log.infoln(F("Current drift between %y and %y (%u s) measured as %d ms"), from, to, (long)(to-from), getLastTimeDrift());
-        }
     }
     webserver();
 }
@@ -199,7 +173,7 @@ void printSuccessfulWifiStatus() {
 }
 
 void checkFirmwareVersion() {
-    String fv = WiFiClass::firmwareVersion();
+    const String fv = ::WiFiClass::firmwareVersion();
     Log.infoln(F("WiFi firmware version %s"), fv.c_str());
     if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
         Log.warningln(F("Please upgrade the WiFi firmware to %s"), WIFI_FIRMWARE_LATEST_VERSION);

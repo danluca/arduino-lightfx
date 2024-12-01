@@ -3,7 +3,8 @@
 //
 #include "log.h"
 #ifndef DISABLE_LOGGING
-#include <mbed.h>
+#include <FreeRTOS.h>
+#include <task.h>
 #include <FastLED.h>
 
 time_t logTimeOffset = 0;
@@ -63,9 +64,9 @@ void printLogLevel(Print* _logOutput, int logLevel) {
 
 void printThread(Print *_logOutput, int logLevel) {
 #ifndef DISABLE_LOGGING
-    char buf[20];
-    snprintf(buf, 20, "[%s] ", rtos::ThisThread::get_name());
-    _logOutput->print(buf);
+    TaskStatus_t taskStatus;
+    vTaskGetInfo(nullptr, &taskStatus, pdFALSE, eRunning);
+    _logOutput->printf("[%s-%u]", taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
 #endif
 }
 

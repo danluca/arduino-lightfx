@@ -8,6 +8,8 @@
 
 #include "fxC.h"
 
+#include "transition.h"
+
 using namespace FxC;
 using namespace colTheme;
 

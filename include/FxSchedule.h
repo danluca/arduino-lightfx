@@ -4,8 +4,8 @@
 #ifndef ARDUINO_LIGHTFX_FXSCHEDULE_H
 #define ARDUINO_LIGHTFX_FXSCHEDULE_H
 
+#include <Arduino.h>
 #include <deque>
-#include "Arduino.h"
 
 void setupAlarmSchedule();
 void alarm_loop();
