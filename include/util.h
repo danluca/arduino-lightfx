@@ -15,7 +15,10 @@
 
 extern const char stateFileName[];
 extern const char sysFileName[];
+extern const char sysCfgFileName[];
 extern mutex wifiMutex;
+enum MiscAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO};
+enum CommAction:uint8_t {WIFI_ENSURE};
 
 ulong adcRandom();
 
@@ -30,6 +33,7 @@ uint32_t secRandom(uint32_t minLim = 0, uint32_t maxLim = 0);
 bool secElement_setup();
 void watchdogSetup();
 void watchdogPing();
+void taskDelay(uint32_t ms);
 
 
 #endif //ARDUINO_LIGHTFX_UTIL_H

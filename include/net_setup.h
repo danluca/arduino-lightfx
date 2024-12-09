@@ -4,6 +4,7 @@
 #ifndef LIGHTFX_NET_SETUP_H
 #define LIGHTFX_NET_SETUP_H
 
+#include <SPI.h>
 #include <WiFiNINA.h>
 #include "PaletteFactory.h"
 #include "secrets.h"
@@ -14,12 +15,13 @@ extern WiFiServer server;
 extern const CRGB CLR_ALL_OK;
 extern const CRGB CLR_SETUP_IN_PROGRESS;
 extern const CRGB CLR_SETUP_ERROR;
+extern QueueHandle_t core1Queue;
 
 bool wifi_setup();
+void wifi_ensure();
 
 void server_setup();
 void webserver();
-void wifi_loop();
 void printSuccessfulWifiStatus();
 void checkFirmwareVersion();
 uint8_t barSignalLevel(int32_t rssi);

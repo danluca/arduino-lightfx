@@ -55,7 +55,7 @@ void mic_setup() {
         //vTaskSuspend();
         while (true) yield();
     }
-    delay(1000);
+    taskDelay(1000);
     sysInfo->setSysStatus(SYS_STATUS_MIC);
     Log.infoln(F("PDM - microphone - setup ok"));
 }

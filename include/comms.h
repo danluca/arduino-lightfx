@@ -9,7 +9,8 @@
 
 enum BroadcastState:uint8_t {Uninitialized, Configured, Broadcasting, Waiting};
 
-void broadcastSetup();
+void commSetup();
+void commRun();
 void postFxChangeEvent(uint16_t index);
 void postTimeSetupCheck();
 

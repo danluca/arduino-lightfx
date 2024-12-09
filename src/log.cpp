@@ -6,6 +6,7 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <FastLED.h>
+#include "util.h"
 
 time_t logTimeOffset = 0;
 #endif
@@ -15,10 +16,10 @@ void log_setup() {
     if (!Serial) {
         Serial.begin(115200); // initialize serial communication - note the rate parameter is likely ignored, HW negotiates with the host PC the proper rate
         while (!Serial) {
-            delay(100);     //wait for the serial connection to be initiated by the PC
+            taskDelay(100);     //wait for the serial connection to be initiated by the PC
         }
         Log.begin(LOG_LEVEL_INFO, &Serial, true);
-        delay(500);
+        taskDelay(500);
         Log.infoln("========================================");
         Log.setPrefix(logPrefix);
         Log.setAdditionalFormatting(logExtraFormats);
@@ -75,7 +76,7 @@ void printThread(Print *_logOutput, int logLevel) {
 #ifndef DISABLE_LOGGING
     TaskStatus_t taskStatus;
     vTaskGetInfo(nullptr, &taskStatus, pdFALSE, eRunning);
-    _logOutput->printf("[%s-%u]", taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
+    _logOutput->printf("[%s-%u.%u]", taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
 #endif
 }
 

@@ -6,7 +6,7 @@
 #include <timers.h>
 #include <ArduinoHttpClient.h>
 #include "SchedulerExt.h"
-#include "broadcast.h"
+#include "comms.h"
 #include "efx_setup.h"
 #include "net_setup.h"
 #include "sysinfo.h"
@@ -21,19 +21,17 @@ BroadcastState broadcastState = Uninitialized;
 //broadcast client list, using last byte of IP addresses - e.g. 192.168.0.10, 192.168.0.11
 static const uint8_t syncClientsLSB[] PROGMEM = {BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
 
-static const char hdContentJson[] PROGMEM = "Content-Type: application/json";
-static const char hdUserAgent[] PROGMEM = "User-Agent: rp2040-lightfx-master/1.0.0";
-static const char hdKeepAlive[] PROGMEM = "Connection: keep-alive";
-static const char fmtFxChange[] PROGMEM = R"===({"effect":%d,"auto":false,"broadcast":false})===";
+static constexpr char hdContentJson[] PROGMEM = "Content-Type: application/json";
+static constexpr char hdUserAgent[] PROGMEM = "User-Agent: rp2040-lightfx-master/1.0.0";
+static constexpr char hdKeepAlive[] PROGMEM = "Connection: keep-alive";
+static constexpr char fmtFxChange[] PROGMEM = R"===({"effect":%d,"auto":false,"broadcast":false})===";
 
 QueueHandle_t bcQueue;
-TaskWrapper* bcTask;
 static uint16_t tmrHolidayUpdateId = 20;
 static uint16_t tmrTimeUpdateId = 21;
 
 //function declarations ahead
-void broadcastInit();
-void broadcastExecute();
+void commInit();
 void fxBroadcast(uint16_t index);
 void holidayUpdate();
 void timeUpdate();
@@ -41,8 +39,6 @@ void timeSetupCheck();
 void enqueueHoliday(TimerHandle_t xTimer);
 void enqueueTimeUpdate(TimerHandle_t xTimer);
 void enqueueTimeSetup(TimerHandle_t xTimer);
-// broadcast task definition - priority is overwritten during setup, see broadcastSetup
-TaskDef bcDef {broadcastInit, broadcastExecute, 1536, "Sync", 1, CORE_0};
 FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
 
 /**
@@ -56,7 +52,7 @@ struct bcTaskMessage {
 /**
  * Preparations for broadcast effect changes - setup the recipient clients (others than self), the event posting attributes
  */
-void broadcastInit() {
+void commInit() {
     const String& sysAddr = sysInfo->getIpAddress();
     for (auto &ipLSB : syncClientsLSB) {
         auto clientAddr = new IPAddress();
@@ -69,19 +65,19 @@ void broadcastInit() {
         fxBroadcastRecipients.push(clientAddr);
         Log.infoln(F("FX Broadcast recipient %p has been registered"), clientAddr);
     }
-    Log.infoln(F("FX Broadcast setup completed - %d clients registered"), fxBroadcastRecipients.size());
-    vTaskDelay(pdMS_TO_TICKS(5000));    //delay before starting processing events
     broadcastState = Configured;
+    Log.infoln(F("FX Broadcast setup completed - %d clients registered"), fxBroadcastRecipients.size());
+    taskDelay(5000);    //delay before starting processing events
 }
 
 /**
  * The ScheduleExt task scheduler executes this in a continuous loop - this is the main dispatching method of the broadcast task
  * Receives events from the broadcast queue and executes appropriate handlers.
  */
-void broadcastExecute() {
+void commRun() {
     bcTaskMessage *msg = nullptr;
     //block indefinitely for a message to be received
-    if (pdFALSE == xQueueReceive(bcQueue, &msg, portMAX_DELAY))
+    if (pdFALSE == xQueueReceive(bcQueue, &msg, 0))
         return;
     //the reception was successful, hence the msg is not null anymore
     switch (msg->event) {
@@ -267,7 +263,7 @@ void timeSetupCheck() {
 /**
  * Called from main thread - sets up a task and timers for handling events
  */
-void broadcastSetup() {
+void commSetup() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         Log.errorln(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot setup broadcasting. System status: %X"), sysInfo->getSysStatus());
         return;
@@ -286,13 +282,16 @@ void broadcastSetup() {
     if (xTimerStart(thSync, 0) != pdPASS)
         Log.errorln(F("Cannot start the timeUpdate timer - Ignored."));
 
-    //setup the client sync thread - below normal priority
+    commInit();
+
+    // create the broadcast queue, used by enqueue methods to send actions and execute method to receive and execute actions
     bcQueue = xQueueCreate(10, sizeof(bcTaskMessage*));
+    //setup the client sync thread - below normal priority
     //mirror the priority of the calling task - the broadcast task is intended to have the same priority
-    bcDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle());
-    bcTask = Scheduler.startTask(&bcDef);
-    Log.infoln(F("FX Broadcast Sync thread [%s], priority %d - has been started with id %X. Events broadcasting enabled=%T"), bcTask->getName(),
-               uxTaskPriorityGet(bcTask->getTaskHandle()), uxTaskGetTaskNumber(bcTask->getTaskHandle()), fxBroadcastEnabled);
+    // bcDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle());
+    // bcTask = Scheduler.startTask(&bcDef);
+    // Log.infoln(F("FX Broadcast Sync thread [%s], priority %d - has been started with id %u. Events broadcasting enabled=%T"), bcTask->getName(),
+               // uxTaskPriorityGet(bcTask->getTaskHandle()), uxTaskGetTaskNumber(bcTask->getTaskHandle()), fxBroadcastEnabled);
     postTimeSetupCheck();  //ensure we have the time NTP sync
 }
 

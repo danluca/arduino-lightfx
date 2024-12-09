@@ -68,7 +68,7 @@ static bool inverted_reset = false;
 
 bool SpiDrv::initialized = false;
 
-extern WiFiClass WiFi;
+extern nina::WiFiClass WiFi;
 
 void SpiDrv::begin()
 {

@@ -3,6 +3,8 @@
 //
 #include <ArduinoECCX08.h>
 #include "utility/ECCX08DefaultTLSConfig.h"
+#include <FreeRTOS.h>
+#include <task.h>
 #include "timeutil.h"
 #include "hardware/watchdog.h"
 #include "FastLED.h"
@@ -30,7 +32,7 @@ ulong adcRandom() {
             for (uint8_t bitSum = 0; bitSum < 8; bitSum++) {        // 8 samples of analog pin
                 seedBitValue += (analogRead(A1) & 0x03);  // Flip the coin 8 times, adding the results together
             }
-            delay(1);                                               // Delay a single millisecond to allow the pin to fluctuate
+            taskDelay(1);                                               // Delay a single millisecond to allow the pin to fluctuate
             seedByteValue |= ((seedBitValue & 0x03) << byteShift);  // Build a stack of eight flipped coins
             seedBitValue = 0;                                       // Clear out the previous coin value
         }
@@ -172,3 +174,21 @@ void watchdogPing() {
     //rp2040.wdt_reset();
 }
 
+/**
+ * Delays a task for number of ms provided by leveraging FreeRTOS task primitives. Alternate to the plain delay() function that may be implemented
+ * differently on FastLED, or collide with the RP2040 port implementation
+ * @param ms number of milliseconds to delay
+ */
+void taskDelay(uint32_t ms) {
+    vTaskDelay(pdMS_TO_TICKS(ms));
+}
+
+/**
+ * Retrieves the current runtime counter value used for task monitoring and profiling.
+ * The value is derived by converting the tick count to milliseconds.
+ *
+ * @return the runtime counter value in milliseconds, representing the time since the system start-up.
+ */
+unsigned long ulMainGetRunTimeCounterValue() {
+    return xTaskGetTickCount()/pdMS_TO_TICKS(1);
+}

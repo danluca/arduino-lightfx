@@ -21,11 +21,13 @@
 #ifndef WiFi_Drv_h
 #define WiFi_Drv_h
 
-#include <inttypes.h>
+#include <cinttypes>
 #include "utility/wifi_spi.h"
 #include "IPAddress.h"
 #include "WiFiUdp.h"
 #include "WiFiClient.h"
+#include <FreeRTOS.h>
+#include <task.h>
 
 // Key index length
 #define KEY_IDX_LEN     1

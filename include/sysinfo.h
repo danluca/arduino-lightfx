@@ -5,7 +5,9 @@
 #define ARDUINO_LIGHTFX_SYSINFO_H
 
 #include <Arduino.h>
+#include <SPI.h>
 #include <WiFiNINA.h>
+#include <ArduinoJson.h>
 #include "fixed_queue.h"
 #include "log.h"
 
@@ -72,8 +74,9 @@ public:
     uint8_t resetSysStatus(uint8_t bitMask);
     [[nodiscard]] bool isSysStatus(uint8_t bitMask) const;
     [[nodiscard]] uint8_t getSysStatus() const;
-    void setWiFiInfo(::WiFiClass & wifi);
+    void setWiFiInfo(nina::WiFiClass & wifi);
     void setSecureElementId(const String & secId);
+    static void sysConfig(JsonDocument &doc);
 
     // JSON marshalling methods
     friend void readSysInfo();

@@ -3,7 +3,7 @@
 //
 #include "efx_setup.h"
 #include "sysinfo.h"
-#include "broadcast.h"
+#include "comms.h"
 #include "filesystem.h"
 #include "FxSchedule.h"
 #include "log.h"
@@ -12,7 +12,6 @@
 #include "ledstate.h"
 
 //~ Global variables definition
-#define JSON_DOC_SIZE   512
 const uint8_t dimmed = 20;
 const char csAutoFxRoll[] PROGMEM = "autoFxRoll";
 const char csStripBrightness[] PROGMEM = "stripBrightness";
@@ -28,6 +27,7 @@ const char csAuto[] PROGMEM = "auto";
 const char csHoliday[] PROGMEM = "holiday";
 const char strNR[] PROGMEM = "N/R";
 const char csBroadcast[] PROGMEM = "broadcast";
+const char sysCfgFileName[] PROGMEM = "/status/sysconfig.json";
 const setupFunc categorySetup[] = {FxA::fxRegister, FxB::fxRegister, FxC::fxRegister, FxD::fxRegister, FxE::fxRegister, FxF::fxRegister, FxH::fxRegister, FxI::fxRegister, FxJ::fxRegister, FxK::fxRegister};
 
 //const uint16_t FRAME_SIZE = 68;     //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBSet must fit at least 3 frames
@@ -218,7 +218,7 @@ uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
  */
 uint16_t easeOutQuad(const uint16_t x, const uint16_t lim) {
     auto limf = float(lim);
-    float xf = float(x)/limf;
+    const float xf = float(x)/limf;
     return uint16_t((1 - (1-xf)*(1-xf))*limf);
 }
 
@@ -1100,6 +1100,18 @@ void fx_setup() {
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     //ensure the current effect is moved to setup state
     fxRegistry.getCurrentEffect()->desiredState(Setup);
+
+    //generate and cache the SYS/FX config data
+    JsonDocument doc;
+    SysInfo::sysConfig(doc);
+    auto fxArray = doc["fx"].to<JsonArray>();
+    fxRegistry.describeConfig(fxArray);
+    auto *str = new String();
+    str->reserve(measureJson(doc));
+    serializeJson(doc, *str);
+    if (!writeTextFile(sysCfgFileName, str))
+        Log.errorln(F("Cannot save SysConfig JSON file %s"), sysCfgFileName);
+    delete str;
     Log.infoln("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)", fxRegistry.getCurrentEffect()->name(),
                fxRegistry.getCurrentEffect()->getRegistryIndex(), Setup);
 }

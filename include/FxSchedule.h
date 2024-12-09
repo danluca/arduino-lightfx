@@ -7,13 +7,16 @@
 #include "Arduino.h"
 #include <deque>
 
+void alarm_setup();
+void alarm_check();
 void setupAlarmSchedule();
-void alarm_loop();
 
 void wakeup();
 void bedtime();
 void adjustCurrentEffect(time_t time);
 bool isAwakeTime(time_t time);
+
+extern QueueHandle_t core0Queue;
 
 typedef void (*AlarmHandlerPtr)();  // alarm callback function typedef
 

@@ -55,6 +55,7 @@ void WiFiDrv::getNetworkData(uint8_t *ip, uint8_t *mask, uint8_t *gwip)
     tParam params[PARAM_NUMS_3] = { {0, (char*)ip}, {0, (char*)mask}, {0, (char*)gwip}};
 
     WAIT_FOR_SLAVE_SELECT();
+    taskENTER_CRITICAL();
 
     // Send Command
     SpiDrv::sendCmd(GET_IPADDR_CMD, PARAM_NUMS_1);
@@ -75,6 +76,7 @@ void WiFiDrv::getNetworkData(uint8_t *ip, uint8_t *mask, uint8_t *gwip)
     SpiDrv::waitResponseParams(GET_IPADDR_CMD, PARAM_NUMS_3, params);
 
     SpiDrv::spiSlaveDeselect();
+    taskEXIT_CRITICAL();
 }
 
 void WiFiDrv::getRemoteData(uint8_t sock, uint8_t *ip, uint8_t *port)

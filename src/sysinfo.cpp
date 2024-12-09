@@ -1,10 +1,12 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
 #include <ArduinoJson.h>
+#include <FreeRTOS.h>
 #include "filesystem.h"
 #include "util.h"
 #include "sysinfo.h"
 #include "config.h"
+#include "timeutil.h"
 #include "version.h"
 #ifndef DISABLE_LOGGING
 #include <SchedulerExt.h>
@@ -107,8 +109,7 @@ void logTaskStats() {
                   rp2040.getFreeHeap(), rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getUsedPSRAMHeap(), rp2040.getFreePSRAMHeap(), 0, 0);
     }
     Log.endContinuation();
-    uint32_t wdv = watchdog_hw->load;
-    Log.infoln(F("Current watchdog remaining value %u [%u] us"), watchdog_get_time_remaining_ms(), wdv);
+    Log.infoln(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
 #endif
 }
 
@@ -173,9 +174,9 @@ uint8_t SysInfo::getSysStatus() const {
     return status;
 }
 
-void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
+void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     ssid = wifi.SSID();
-    wifiFwVersion = ::WiFiClass::firmwareVersion();
+    wifiFwVersion = nina::WiFiClass::firmwareVersion();
     // strIpAddress = wifi.localIP().toString();
     // strGatewayIpAddress = wifi.gatewayIP().toString();
     strIpAddress = ipAddress.toString();
@@ -187,7 +188,7 @@ void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
 
     char buf[BUF_ID_SIZE];
     int x = 0;
-    for (auto &b : mac)
+    for (const auto &b : mac)
         x += sprintf(buf+x, "%02X:", b);
     //last character - at index x-1 is a ':', make it null to trim the last colon character
     buf[x-1] = 0;
@@ -198,6 +199,34 @@ void SysInfo::setSecureElementId(const String &secId) {
     secElemId = secId;
 }
 
+void SysInfo::sysConfig(JsonDocument &doc) {
+    char buf[20];
+    doc["arduinoPicoVersion"] = ARDUINO_PICO_VERSION_STR;
+    doc["freeRTOSVersion"] = tskKERNEL_VERSION_NUMBER;
+    doc["boardName"] = sysInfo->getBoardName();
+    doc["boardUid"] = sysInfo->getBoardId();
+    doc["secElemId"] = sysInfo->getSecureElementId();
+    doc["fwVersion"] = sysInfo->getBuildVersion();
+    doc["fwBranch"] = sysInfo->getScmBranch();
+    doc["buildTime"] = sysInfo->getBuildTime();
+    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
+    doc["cleanBoot"] = sysInfo->isCleanBoot();
+    if (!sysInfo->watchdogReboots().empty()) {
+        formatDateTime(buf, sysInfo->watchdogReboots().back());
+        doc["lastWatchdogReboot"] = buf;
+    }
+    doc["wifiCurVersion"] = sysInfo->getWiFiFwVersion();
+    doc["wifiLatestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
+    const auto hldList = doc["holidayList"].to<JsonArray>();
+    for (uint8_t hi = None; hi <= NewYear; hi++)
+        hldList.add(holidayToString(static_cast<Holiday>(hi)));
+    formatDateTime(buf, now());
+    const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
+    doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
+    doc["dst"] = bDST;
+    doc["MAC"] = sysInfo->getMacAddress();
+}
+
 /**
  * Read the saved sys info file - no op, if there is no file
  * Note the time this is performed, the WiFi is not ready, nor other fields even populated yet
@@ -205,8 +234,7 @@ void SysInfo::setSecureElementId(const String &secId) {
 void readSysInfo() {
     auto json = new String();
     json->reserve(512);  // approximation
-    size_t sysSize = readTextFile(sysFileName, json);
-    if (sysSize > 0) {
+    if (const size_t sysSize = readTextFile(sysFileName, json); sysSize > 0) {
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, *json);
         if (error) {
@@ -266,7 +294,7 @@ void saveSysInfo() {
     doc[csStackSize] = sysInfo->stackSize;
     doc[csFreeStack] = sysInfo->freeStack;
     doc[csStatus] = sysInfo->status;
-    auto reboots = doc[csWdReboots].to<JsonArray>();
+    const auto reboots = doc[csWdReboots].to<JsonArray>();
     for (auto & t : sysInfo->wdReboots)
         reboots.add(t);
 

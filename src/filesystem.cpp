@@ -18,6 +18,7 @@ void fsExecute();
 void fsInit();
 size_t prvReadTextFile(const char *fname, String *s);
 size_t prvWriteTextFile(const char *fname, const String *s);
+size_t prvWriteTextFileAndFreeMem(const char *fname, String *s);
 bool prvRemoveFile(const char *fname);
 
 // filesystem task definition - priority is overwritten during setup, see fsSetup
@@ -40,7 +41,7 @@ struct fsOperationData {
  * Structure of the message sent to the filesystem task - internal use only
  */
 struct fsTaskMessage {
-    enum Action:uint8_t {READ_FILE, WRITE_FILE, DELETE_FILE} event;
+    enum Action:uint8_t {READ_FILE, WRITE_FILE, DELETE_FILE, WRITE_FILE_ASYNC} event;
     TaskHandle_t task;
     fsOperationData* data;
 };
@@ -52,11 +53,11 @@ struct fsTaskMessage {
 void fsSetup() {
     fsQueue = xQueueCreate(10, sizeof(fsTaskMessage*));
     //mirror the priority of the calling task - the filesystem task is intended to have the same priority
-    fsDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle());
+    fsDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle())+1;
     fsTask = Scheduler.startTask(&fsDef);
     TaskStatus_t tStat;
     vTaskGetTaskInfo(fsTask->getTaskHandle(), &tStat, pdFALSE, eReady);
-    Log.infoln(F("Filesystem task [%s] - priority %d - has been setup id %X. Events are dispatching."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
+    Log.infoln(F("Filesystem task [%s] - priority %d - has been setup id %u. Events are dispatching."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
 }
 
 /**
@@ -71,8 +72,7 @@ void fsInit() {
     }
 
 #ifndef DISABLE_LOGGING
-    FSInfo fsInfo{};
-    if (LittleFS.info(fsInfo)) {
+    if (FSInfo fsInfo{}; LittleFS.info(fsInfo)) {
         Log.infoln(F("Filesystem information (size in bytes): totalSize %u, used %u, maxOpenFiles %d, maxPathLength %s, pageSize %d, blockSize %d"),
                    fsInfo.totalBytes, fsInfo.usedBytes, fsInfo.maxOpenFiles, fsInfo.maxPathLength, fsInfo.pageSize, fsInfo.blockSize);
     } else {
@@ -109,6 +109,14 @@ void fsExecute() {
         case fsTaskMessage::WRITE_FILE:
             sz = prvWriteTextFile(msg->data->name, msg->data->content);
             xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
+            break;
+        case fsTaskMessage::WRITE_FILE_ASYNC:
+            sz = prvWriteTextFileAndFreeMem(msg->data->name, msg->data->content);
+            if (!sz)
+                Log.errorln(F("Failed to write file %s asynchronously. Data has is still available, may lead to memory leaks."), msg->data->name);
+            //dispose the messaging data
+            delete msg->data;
+            delete msg;
             break;
         case fsTaskMessage::DELETE_FILE:
             sz = prvRemoveFile(msg->data->name);
@@ -157,6 +165,13 @@ size_t prvWriteTextFile(const char *fname, const String *s) {
     f.close();
     Log.infoln(F("File %s has been saved, size %d bytes"), fname, fSize);
     Log.traceln(F("Saved file %s content [%d]: %s"), fname, fSize, s->c_str());
+    return fSize;
+}
+
+size_t prvWriteTextFileAndFreeMem(const char *fname, String *s) {
+    const size_t fSize = prvWriteTextFile(fname, s);
+    if (fSize)
+        delete s;
     return fSize;
 }
 
@@ -223,6 +238,24 @@ size_t writeTextFile(const char *fname, String *s) {
     delete msg;
     delete args;
     return sz;
+}
+
+/**
+ * Non-blocking function that writes the string content into a file with provided name. Can be called from any task.
+ * @param fname file path to delete - absolute path
+ * @return true if successfully deleted, false otherwise
+ */
+bool writeTextFileAsync(const char *fname, String *s) {
+    auto *args = new fsOperationData {fname, s};
+    auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE_ASYNC, nullptr, args};
+
+    BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    if (qResult != pdTRUE) {
+        Log.errorln(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %d"), fname, qResult);
+        delete msg;
+        delete args;
+    }
+    return qResult == pdTRUE;
 }
 
 /**

@@ -3,6 +3,9 @@
 
 #include "FxSchedule.h"
 #include "FastLED.h"
+#include <FreeRTOS.h>
+#include <queue.h>
+#include <timers.h>
 #include "global.h"
 #include "sysinfo.h"
 #include "util.h"
@@ -11,6 +14,7 @@ const uint16_t dailyBedTime = 30*SECS_PER_MIN;          //12:30am bedtime
 const uint16_t dailyWakeupTime = 6*SECS_PER_HOUR;       //6:00am wakeup time
 constexpr char strWakeup[] PROGMEM = "Wake-Up";
 constexpr char strBedtime[] PROGMEM = "Bed-time";
+static uint16_t tmrAlarmCheck = 30;
 
 uint16_t currentDay = 0;
 
@@ -22,6 +26,18 @@ const char *alarmTypeToString(AlarmType alType) {
         case BEDTIME: return strBedtime;
         default: return strNR;
     }
+}
+
+/**
+ * Finds the next alarm to trigger
+ */
+AlarmData *findNextAlarm() {
+    AlarmData *nextAlarm = nullptr;
+    for (const auto &al : scheduledAlarms) {
+        if (!nextAlarm || al->value < nextAlarm->value)
+            nextAlarm = al;
+    }
+    return nextAlarm;
 }
 
 /**
@@ -120,29 +136,66 @@ bool isAwakeTime(time_t time) {
     return (time >= wakeTime || time < bedTime);
 }
 
-void alarm_loop() {
-    EVERY_N_SECONDS(60) {
-        time_t time = now();
-        for (auto it = scheduledAlarms.begin(); it != scheduledAlarms.end();) {
-            auto al = *it;
-            if (al->value <= time) {
-                Log.infoln(F("Alarm %X type %d triggered at %y for scheduled time %y; handler %X"), (long)al, al->type, time, al->value, (long)al->onEventHandler);
-                al->onEventHandler();
-                it = scheduledAlarms.erase(it);
-                delete al;
-            } else
-                ++it;
-        }
-        //if no more alarms or a new day - attempt to schedule next alarms
-        if (scheduledAlarms.empty() || currentDay != day(time)) {
-            Log.infoln(F("Alarms queue empty or a new day - scheduling more"));
-            setupAlarmSchedule();
-        } else {
-            Log.infoln(F("Alarms remaining:"));
-            logAlarms();
-        }
+/**
+ * Enqueues an alarm check message to the core0 queue
+ * @param xTimer the timer that triggered the alarm check
+ */
+void enqueueAlarmCheck(TimerHandle_t xTimer) {
+    constexpr MiscAction action = ALARM_CHECK;
+    if (BaseType_t qResult = xQueueSend(core0Queue, &action, pdMS_TO_TICKS(2000)); qResult != pdTRUE)
+        Log.errorln(F("Error sending ALARM_CHECK message to core0 queue for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
+}
 
-//        for (size_t x = 0; x < scheduledAlarms.size(); x++) {
+void alarm_setup() {
+    setupAlarmSchedule();
+    //at this point we should have a next alarm
+    time_t nextAlarmCheck = 15*60; //default 15 minutes
+    if (const AlarmData *nextAlarm = findNextAlarm())
+        nextAlarmCheck = max((nextAlarm->value-now())/10, 60);  // set timer at minimum 1 minute or 10% of time to next alarm
+    else
+        Log.errorln(F("There are no alarms scheduled - checking alarms in 15 min, by default"));
+    const TimerHandle_t thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
+    if (thAlarmCheck == nullptr)
+        Log.errorln(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
+    else if (xTimerStart(thAlarmCheck, 0) != pdPASS)
+        Log.errorln(F("Cannot start the alarmCheck timer - Ignored."));
+
+}
+
+void alarm_check() {
+    const time_t time = now();
+    for (auto it = scheduledAlarms.begin(); it != scheduledAlarms.end();) {
+        auto al = *it;
+        if (al->value <= time) {
+            Log.infoln(F("Alarm %X type %d triggered at %y for scheduled time %y; handler %X"), (long)al, al->type, time, al->value, (long)al->onEventHandler);
+            al->onEventHandler();
+            it = scheduledAlarms.erase(it);
+            delete al;
+        } else
+            ++it;
+    }
+    //if no more alarms or a new day - attempt to schedule next alarms
+    if (scheduledAlarms.empty() || currentDay != day(time)) {
+        Log.infoln(F("Alarms queue empty or a new day - scheduling more"));
+        setupAlarmSchedule();
+    } else {
+        Log.infoln(F("Alarms remaining:"));
+        logAlarms();
+    }
+    //at this point we should have a next alarm
+    time_t nextAlarmCheck = 15*60; //default 15 minutes
+    if (const AlarmData *nextAlarm = findNextAlarm())
+        nextAlarmCheck = max((nextAlarm->value - now()) / 10, 60); // set timer at minimum 1 minute or 10% of time to next alarm
+    else
+        Log.errorln(F("There are no alarms scheduled - checking alarms in 15 min, by default"));
+    const TimerHandle_t thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
+    if (thAlarmCheck == nullptr)
+        Log.errorln(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
+    else if (xTimerStart(thAlarmCheck, 0) != pdPASS)
+        Log.errorln(F("Cannot start the alarmCheck timer - Ignored."));
+
+
+    //        for (size_t x = 0; x < scheduledAlarms.size(); x++) {
 //            AlarmData *al = scheduledAlarms.front();
 //            scheduledAlarms.pop_front();
 //            if (al->value <= time) {
@@ -152,5 +205,4 @@ void alarm_loop() {
 //            } else
 //                scheduledAlarms.push_back(al);
 //        }
-    }
 }

@@ -36,19 +36,16 @@ $(() => {
         });
         fxlst.val(curFxId);
         fxlst.attr("currentFxIndex", curFxId);
-        $('#curEffect').html(`${data.curEffectName} - ${data.fx[data.curEffect].description}`);
-        $('#curEffectId').html(`Index: ${data.curEffect}`);
-        $('#autoFxChange').prop("checked", data.auto);
-        $('#sleepEnabled').prop("checked", data.fx.sleepEnabled);
-        $('#curHolidayValue').html(data.holiday);
+        $('#fxCount').html(`${data.fx.length} effects`);
+        let hdList = $('#holidayList');
         $.each(data.holidayList, function(i, hld) {
             if (hld == "None") {
-                $('#holidayList').append(`<option class="opt-select" value="${hld}">Automatic</option>`);
+                hdList.append(`<option class="opt-select" value="${hld}">Automatic</option>`);
             } else {
-                $('#holidayList').append(`<option class="opt-select" value="${hld}">${hld}</option>`);
+                hdList.append(`<option class="opt-select" value="${hld}">${hld}</option>`);
             }
         });
-        $('#holidayList').val(data.holiday);
+        hdList.val(data.holiday);
         $('#boardName').html(data.boardName);
         $('#deviceName').html(data.boardName);
         $('#boardUid').html(data.boardUid);
@@ -85,7 +82,6 @@ function getStatus() {
             $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
             $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
-            $('#fxCount').html(`${data.fx.count} effects`);
             if (data.fx.asleep) {
                 $('#fxCurEffect').html(`${data.fx.name} - asleep [${data.fx.index}]`);
             } else {

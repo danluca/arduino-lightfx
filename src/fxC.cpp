@@ -3,17 +3,18 @@
 //
 #include "fxC.h"
 #include "transition.h"
+#include "util.h"
 
 using namespace FxC;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxc1Desc[] PROGMEM = "FXC1: blend between two concurrent animations";
-const char fxc2Desc[] PROGMEM = "FXC2: blur function";
-const char fxc3Desc[] PROGMEM = "FXC3: Perlin Noise for moving up and down the strand";
-const char fxc4Desc[] PROGMEM = "FxC4: lightnings";
-const char fxc5Desc[] PROGMEM = "FXC5: matrix";
-const char fxc6Desc[] PROGMEM = "FXC6: one sine";
+constexpr char fxc1Desc[] PROGMEM = "FXC1: blend between two concurrent animations";
+constexpr char fxc2Desc[] PROGMEM = "FXC2: blur function";
+constexpr char fxc3Desc[] PROGMEM = "FXC3: Perlin Noise for moving up and down the strand";
+constexpr char fxc4Desc[] PROGMEM = "FxC4: lightnings";
+constexpr char fxc5Desc[] PROGMEM = "FXC5: matrix";
+constexpr char fxc6Desc[] PROGMEM = "FXC6: one sine";
 
 void FxC::fxRegister() {
     static FxC1 fxC1;
@@ -206,13 +207,13 @@ void FxC4::run() {
             CRGB color = ColorFromPalette(palette, random8(), brightness / dimmer, LINEARBLEND);
             flash = color;
             FastLED.show(stripBrightness);                       // Show a section of LED's
-            delay(random8(4, 10));                                     // each flash only lasts 4-10 milliseconds
+            taskDelay(random8(4, 10));                                     // each flash only lasts 4-10 milliseconds
             flash = BKG;
             FastLED.show(stripBrightness);
 
-            if (flashCounter == 0) delay(250);                       // longer speed until next flash after the leader
+            if (flashCounter == 0) taskDelay(250);                       // longer speed until next flash after the leader
 
-            delay(50 + random8(100));                                   // shorter speed between strokes
+            taskDelay(50 + random8(100));                                   // shorter speed between strokes
         }
         fxc4Timer.setPeriod(1+random8(frequency));    // speed between strikes
     }

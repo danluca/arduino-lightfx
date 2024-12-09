@@ -5,6 +5,7 @@
 #ifndef ARDUINO_LIGHTFX_TIMEUTIL_H
 #define ARDUINO_LIGHTFX_TIMEUTIL_H
 
+#include <SPI.h>
 #include <WiFiNINA.h>
 #include <NTPClient.h>
 #include <TimeLib.h>

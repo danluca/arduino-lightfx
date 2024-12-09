@@ -4,6 +4,7 @@
 #ifndef LIGHTFX_WEB_SERVER_H
 #define LIGHTFX_WEB_SERVER_H
 
+#include <SPI.h>
 #include <WiFiNINA.h>
 #include <ArduinoJson.h>
 #include <regex>

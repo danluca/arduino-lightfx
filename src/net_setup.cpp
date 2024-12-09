@@ -5,10 +5,12 @@
 #include "config.h"
 #include "sysinfo.h"
 #include "timeutil.h"
-#include "broadcast.h"
+#include "comms.h"
 #include "ledstate.h"
 #include "util.h"
 #include "log.h"
+#include "../../../.platformio/packages/framework-arduinopico/libraries/FreeRTOS/lib/FreeRTOS-Kernel/include/queue.h"
+#include "../../../.platformio/packages/framework-arduinopico/libraries/FreeRTOS/lib/FreeRTOS-Kernel/include/timers.h"
 
 using namespace colTheme;
 constexpr char ssid[] PROGMEM = WF_SSID;
@@ -18,6 +20,7 @@ constexpr char hostname[] PROGMEM = "Arduino-RP2040-" DEVICE_NAME;
 const CRGB CLR_ALL_OK = CRGB::Indigo;
 const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;
 const CRGB CLR_SETUP_ERROR = CRGB::Red;
+static uint16_t tmrWifiEnsure = 40;
 
 mutex_t wifiMutex;
 
@@ -60,7 +63,7 @@ bool wifi_connect() {
         // Connect to WPA/WPA2 network
         wifiStatus = WiFi.begin(ssid, pass);
         // wait 10 seconds for connection to succeed:
-        delay(10000);
+        taskDelay(10000);
         attCount++;
     }
     bool result = wifiStatus == WL_CONNECTED;
@@ -78,6 +81,12 @@ bool wifi_connect() {
     return result;
 }
 
+void enqueueWifiEnsure(TimerHandle_t xTimer) {
+    constexpr CommAction action = WIFI_ENSURE;
+    if (const BaseType_t qResult = xQueueSend(core1Queue, &action, pdMS_TO_TICKS(2000)); qResult != pdTRUE)
+        Log.errorln(F("Error sending WIFI_ENSURE message to core1 queue for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
+}
+
 bool wifi_setup() {
     // check for the WiFi module:
     if (WiFi.status() == WL_NO_MODULE) {
@@ -91,7 +100,16 @@ bool wifi_setup() {
     //enable low power mode - web server is not the primary function of this module
     WiFi.lowPowerMode();
 
-    return wifi_connect();
+    bool connStatus = wifi_connect();
+
+    // create timer to re-check WiFi and ensure connectivity
+    const TimerHandle_t thWifiEnsure = xTimerCreate("wifiEnsure", pdMS_TO_TICKS(7*60*1000), pdTRUE, &tmrWifiEnsure, enqueueWifiEnsure);
+    if (thWifiEnsure == nullptr)
+        Log.errorln(F("Cannot create wifiEnsure timer - Ignored. There is NO wifi re-check scheduled"));
+    else if (xTimerStart(thWifiEnsure, 0) != pdPASS)
+        Log.errorln(F("Cannot start the wifiEnsure timer - Ignored."));
+
+    return connStatus;
 }
 
 /**
@@ -132,24 +150,21 @@ void wifi_reconnect() {
     Udp.stop();
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
-    delay(2000);    //let disconnect state settle
+    taskDelay(2000);    //let disconnect state settle
     if (wifi_connect())
         stateLed(CLR_ALL_OK);
     //NVIC_SystemReset();
 }
 
-void wifi_loop() {
-    EVERY_N_MINUTES(7) {
-        if (!wifi_check()) {
-            stateLed(CLR_SETUP_ERROR);
-            Log.warningln(F("WiFi connection unusable/lost - reconnecting..."));
-            wifi_reconnect();
-        }
-        if (sysInfo->isSysStatus(SYS_STATUS_WIFI))
-            postTimeSetupCheck();
-        Log.infoln(F("System status: %X"), sysInfo->getSysStatus());
+void wifi_ensure() {
+    if (!wifi_check()) {
+        stateLed(CLR_SETUP_ERROR);
+        Log.warningln(F("WiFi connection unusable/lost - reconnecting..."));
+        wifi_reconnect();
     }
-    webserver();
+    if (sysInfo->isSysStatus(SYS_STATUS_WIFI))
+        postTimeSetupCheck();
+    Log.infoln(F("System status: %X"), sysInfo->getSysStatus());
 }
 
 void printSuccessfulWifiStatus() {
@@ -174,7 +189,7 @@ void printSuccessfulWifiStatus() {
 }
 
 void checkFirmwareVersion() {
-    const String fv = ::WiFiClass::firmwareVersion();
+    const String fv = nina::WiFiClass::firmwareVersion();
     Log.infoln(F("WiFi firmware version %s"), fv.c_str());
     if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
         Log.warningln(F("Please upgrade the WiFi firmware to %s"), WIFI_FIRMWARE_LATEST_VERSION);

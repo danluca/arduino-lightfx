@@ -10,7 +10,7 @@
 #include "sysinfo.h"
 #include "util.h"
 #include "diag.h"
-#include "broadcast.h"
+#include "comms.h"
 #include "net_setup.h"
 #include "efx_setup.h"
 #include "FxSchedule.h"
@@ -211,43 +211,11 @@ size_t web::handleGetConfig(WiFiClient *client, const String *uri, String *hd, S
     sz += client->println();    //done with headers
 
     // response body
-    JsonDocument doc;
-    char buf[20];
-    doc["arduinoPicoVersion"] = ARDUINO_PICO_VERSION_STR;
-    doc["freeRTOSVersion"] = tskKERNEL_VERSION_NUMBER;
-    doc["boardName"] = sysInfo->getBoardName();
-    doc["boardUid"] = sysInfo->getBoardId();
-    doc["secElemId"] = sysInfo->getSecureElementId();
-    doc["fwVersion"] = sysInfo->getBuildVersion();
-    doc["fwBranch"] = sysInfo->getScmBranch();
-    doc["buildTime"] = sysInfo->getBuildTime();
-    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
-    doc["cleanBoot"] = sysInfo->isCleanBoot();
-    if (!sysInfo->watchdogReboots().empty()) {
-        formatDateTime(buf, sysInfo->watchdogReboots().back());
-        doc["lastWatchdogReboot"] = buf;
-    }
-    doc["wifiCurVersion"] = sysInfo->getWiFiFwVersion();
-    doc["wifiLatestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
-    doc["curEffect"] = String(fxRegistry.curEffectPos());
-    doc["auto"] = fxRegistry.isAutoRoll();
-    doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
-    doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
-    doc["holiday"] = holidayToString(paletteFactory.getHoliday());
-    auto hldList = doc["holidayList"].to<JsonArray>();
-    for (uint8_t hi = None; hi <= NewYear; hi++)
-        hldList.add(holidayToString(static_cast<Holiday>(hi)));
-    formatDateTime(buf, now());
-    doc["currentTime"] = buf;
-    bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
-    doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
-    doc["dst"] = bDST;
-    doc["MAC"] = sysInfo->getMacAddress();
-    auto fxArray = doc["fx"].to<JsonArray>();
-    fxRegistry.describeConfig(fxArray);
-    //send it out
-    sz += transmitJsonDocument(doc, client);
+    auto *str = new String();
+    if (readTextFile(sysCfgFileName, str))
+        sz += writeLargeP(client, str->c_str(), str->length());
     sz += client->println();
+    delete str;
 
 #ifndef DISABLE_LOGGING
     Log.infoln(F("Handler handleGetConfig invoked for %s"), uri->c_str());
@@ -392,7 +360,6 @@ size_t web::handleGetStatus(WiFiClient *client, const String *uri, String *hd, S
     wifi["rssi"] = rssi;
     // Fx
     auto fx = doc["fx"].to<JsonObject>();
-    fx["count"] = fxRegistry.size();
     fx[csAuto] = fxRegistry.isAutoRoll();
     fx[csSleepEnabled] = fxRegistry.isSleepEnabled();
     fx["asleep"] = fxRegistry.isAsleep();
@@ -545,7 +512,7 @@ size_t web::handlePutConfig(WiFiClient *client, const String *uri, String *hd, S
             postFxChangeEvent(fxRegistry.curEffectPos());   //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
     }
 #ifndef DISABLE_LOGGING
-    Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),
+    Log.infoln(F("FX: Current config updated effect %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),
                fxRegistry.curEffectPos(), fxRegistry.isAutoRoll(), holidayToString(paletteFactory.getHoliday()),
                stripBrightness, stripBrightnessLocked?"fixed":"automatic");
 #endif
