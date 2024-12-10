@@ -18,7 +18,7 @@ static const char unknown[] PROGMEM = "N/A";
 #ifndef DISABLE_LOGGING
 static constexpr char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%%[%u] priority=%i state=%i id=%i core=%i stackSize=%u free=%u\n";
 static constexpr char threadInfoVerboseFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%i id=%y \n  basePriority=%i stackBase=%X size=%u free=%u core=%i\n";
-static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%u free: tasks=%u, system=%i;\n  Total Heap:: size=%u free=%u\n";
+static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%u free: tasks=%u, system=%l;\n  Total Heap:: size=%u free=%u\n";
 static constexpr char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free: tasks=%u, system=%i taskCount=%u;\n  Total Heap:: size=%u used=%u free=%u lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
 static constexpr char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%D MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 #endif
@@ -104,7 +104,7 @@ void logTaskStats() {
     if (LOG_LEVEL_TRACE > Log.getLevel()) {
         //Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes);
         Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap());
-        Log.info("\n  Stack pointer: %u", rp2040.getStackPointer());
+        Log.info("  Stack pointer: %l\n", rp2040.getStackPointer());
     } else {
         Log.trace(heapStackVerboseFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), uxArraySize, rp2040.getTotalHeap(), rp2040.getUsedHeap(),
                   rp2040.getFreeHeap(), rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getUsedPSRAMHeap(), rp2040.getFreePSRAMHeap(), 0, 0);
