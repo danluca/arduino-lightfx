@@ -17,7 +17,7 @@
 #include "sysinfo.h"
 
 
-#define DIAG_QUEUE_TIMEOUT  5000     //enqueuing timeout - 5 seconds
+#define DIAG_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 
 static constexpr uint maxAdc = 1 << ADC_RESOLUTION;
 const char calibFileName[] PROGMEM = "/status/calibration.json";
@@ -82,6 +82,8 @@ void deviceSetup() {
     adc_setup();
 
     imu_setup();
+
+    sysInfo->fillBoardId();
 
     readCalibrationInfo();
 

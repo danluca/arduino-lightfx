@@ -142,7 +142,7 @@ bool isAwakeTime(time_t time) {
  */
 void enqueueAlarmCheck(TimerHandle_t xTimer) {
     constexpr MiscAction action = ALARM_CHECK;
-    if (BaseType_t qResult = xQueueSend(core0Queue, &action, pdMS_TO_TICKS(2000)); qResult != pdTRUE)
+    if (BaseType_t qResult = xQueueSend(core0Queue, &action, pdMS_TO_TICKS(0)); qResult != pdTRUE)
         Log.errorln(F("Error sending ALARM_CHECK message to core0 queue for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
 }
 

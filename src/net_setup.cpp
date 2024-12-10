@@ -83,7 +83,7 @@ bool wifi_connect() {
 
 void enqueueWifiEnsure(TimerHandle_t xTimer) {
     constexpr CommAction action = WIFI_ENSURE;
-    if (const BaseType_t qResult = xQueueSend(core1Queue, &action, pdMS_TO_TICKS(2000)); qResult != pdTRUE)
+    if (const BaseType_t qResult = xQueueSend(core1Queue, &action, pdMS_TO_TICKS(0)); qResult != pdTRUE)
         Log.errorln(F("Error sending WIFI_ENSURE message to core1 queue for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
 }
 
