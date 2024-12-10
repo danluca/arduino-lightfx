@@ -268,24 +268,25 @@ void commSetup() {
         Log.errorln(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot setup broadcasting. System status: %X"), sysInfo->getSysStatus());
         return;
     }
+    // create the broadcast queue, used by enqueue methods to send actions and execute method to receive and execute actions
+    bcQueue = xQueueCreate(10, sizeof(bcTaskMessage*));
+
     //time update event - holiday - repeat every 12h
     TimerHandle_t thHoliday = xTimerCreate("holidayUpdate", pdMS_TO_TICKS(12 * 3600 * 1000), pdTRUE, &tmrHolidayUpdateId, enqueueHoliday);
     if (thHoliday == nullptr)
         Log.errorln(F("Cannot create holidayUpdate timer - Ignored."));
-    if (xTimerStart(thHoliday, 0) != pdPASS)
+    else if (xTimerStart(thHoliday, 0) != pdPASS)
         Log.errorln(F("Cannot start the holidayUpdate timer - Ignored."));
 
     //time update event - sync - repeat every 17h
     TimerHandle_t thSync = xTimerCreate("timeUpdate", pdMS_TO_TICKS(17 * 3600 * 1000), pdTRUE, &tmrTimeUpdateId, enqueueTimeUpdate);
     if (thSync == nullptr)
         Log.errorln(F("Cannot create timeUpdate timer - Ignored."));
-    if (xTimerStart(thSync, 0) != pdPASS)
+    else if (xTimerStart(thSync, 0) != pdPASS)
         Log.errorln(F("Cannot start the timeUpdate timer - Ignored."));
 
     commInit();
 
-    // create the broadcast queue, used by enqueue methods to send actions and execute method to receive and execute actions
-    bcQueue = xQueueCreate(10, sizeof(bcTaskMessage*));
     //setup the client sync thread - below normal priority
     //mirror the priority of the calling task - the broadcast task is intended to have the same priority
     // bcDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle());

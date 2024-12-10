@@ -2,6 +2,8 @@
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #include "net_setup.h"
+#include <queue.h>
+#include <timers.h>
 #include "config.h"
 #include "sysinfo.h"
 #include "timeutil.h"
@@ -9,8 +11,6 @@
 #include "ledstate.h"
 #include "util.h"
 #include "log.h"
-#include "../../../.platformio/packages/framework-arduinopico/libraries/FreeRTOS/lib/FreeRTOS-Kernel/include/queue.h"
-#include "../../../.platformio/packages/framework-arduinopico/libraries/FreeRTOS/lib/FreeRTOS-Kernel/include/timers.h"
 
 using namespace colTheme;
 constexpr char ssid[] PROGMEM = WF_SSID;

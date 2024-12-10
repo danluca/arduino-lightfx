@@ -104,12 +104,13 @@ void logTaskStats() {
     if (LOG_LEVEL_TRACE > Log.getLevel()) {
         //Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes);
         Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap());
+        Log.info("\n  Stack pointer: %u", rp2040.getStackPointer());
     } else {
         Log.trace(heapStackVerboseFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), uxArraySize, rp2040.getTotalHeap(), rp2040.getUsedHeap(),
                   rp2040.getFreeHeap(), rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getUsedPSRAMHeap(), rp2040.getFreePSRAMHeap(), 0, 0);
     }
     Log.endContinuation();
-    Log.infoln(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
+    // Log.infoln(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
 #endif
 }
 

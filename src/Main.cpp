@@ -90,6 +90,7 @@ void enqueueAlarmSetup() {
  */
 void setup1() {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);    //wait for the main core to notify us that it's ready to run these tasks
+    core1Queue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE1 task for communication between cores
     bool bSetupOk = wifi_setup();
     bSetupOk = bSetupOk && timeSetup();
     stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
@@ -102,7 +103,6 @@ void setup1() {
 
     //enqueues the alarm setup event
     enqueueAlarmSetup();
-    core1Queue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE1 task for communication between cores
 
     Log.infoln(F("Main Core 1 Setup completed. System status: %X"), sysInfo->getSysStatus());
     logSystemInfo();
@@ -123,4 +123,13 @@ void loop1() {
                 Log.errorln(F("Comm Action %d not supported"), action);
         }
     }
+}
+
+/**
+ * Log an event to the console when stack overflow is encountered
+ * @param xTask task handle for task that exceeded stack
+ * @param pcTaskName name of the task that exceeded stack
+ */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
+    Log.errorln("Stack overflow in task %s [%X]", pcTaskName, xTask);
 }
