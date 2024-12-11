@@ -92,13 +92,13 @@ void enqueueAlarmSetup() {
 void setup1() {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);    //wait for the main core to notify us that it's ready to run these tasks
     core1Queue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE1 task for communication between cores
-    // bool bSetupOk = wifi_setup();
-    // bSetupOk = bSetupOk && timeSetup();
-    // stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
-
-    commSetup();
+    bool bSetupOk = wifi_setup();
+    bSetupOk = bSetupOk && timeSetup();
+    stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
 
     diagSetup();
+
+    commSetup();
 
     //enqueues the alarm setup event
     enqueueAlarmSetup();
@@ -111,14 +111,13 @@ void setup1() {
  * Core 1 Main loop - runs the communication tasks
  */
 void loop1() {
-    // webserver();
-    //commRun();
+    webserver();
+    commRun();
     //check for any additional actions to be performed
     CommAction action;
-    if (pdTRUE == xQueueReceive(core1Queue, &action, portMAX_DELAY)) {
+    if (pdTRUE == xQueueReceive(core1Queue, &action, 0)) {
         switch (action) {
-            // case WIFI_ENSURE: wifi_ensure(); break;
-            case WIFI_ENSURE: postWifiCheck(); break;
+            case WIFI_ENSURE: wifi_ensure(); break;
             default:
                 Log.errorln(F("Comm Action %d not supported"), action);
         }

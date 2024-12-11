@@ -27,7 +27,6 @@ static constexpr char hdKeepAlive[] PROGMEM = "Connection: keep-alive";
 static constexpr char fmtFxChange[] PROGMEM = R"===({"effect":%d,"auto":false,"broadcast":false})===";
 
 QueueHandle_t bcQueue;
-TaskWrapper* bcTask;
 static uint16_t tmrHolidayUpdateId = 20;
 static uint16_t tmrTimeUpdateId = 21;
 
@@ -41,14 +40,13 @@ void enqueueHoliday(TimerHandle_t xTimer);
 void enqueueTimeUpdate(TimerHandle_t xTimer);
 void enqueueTimeSetup(TimerHandle_t xTimer);
 // broadcast task definition - priority is overwritten during setup, see broadcastSetup
-TaskDef bcDef {commInit, commRun, 2048, "Sync", 255, CORE_1};
 FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
 
 /**
  * Structure of the message sent to the broadcast task - internal use only
  */
 struct bcTaskMessage {
-    enum Action:uint8_t {TIME_SETUP, TIME_UPDATE, HOLIDAY_UPDATE, FX_SYNC, WIFI_ENSURE} event;
+    enum Action:uint8_t {TIME_SETUP, TIME_UPDATE, HOLIDAY_UPDATE, FX_SYNC} event;
     uint16_t data;
 };
 
@@ -78,8 +76,6 @@ void commInit() {
  * Receives events from the broadcast queue and executes appropriate handlers.
  */
 void commRun() {
-    webserver();
-
     bcTaskMessage *msg = nullptr;
     //block indefinitely for a message to be received
     if (pdFALSE == xQueueReceive(bcQueue, &msg, 0))
@@ -90,7 +86,6 @@ void commRun() {
         case bcTaskMessage::TIME_UPDATE: timeUpdate(); break;
         case bcTaskMessage::HOLIDAY_UPDATE: holidayUpdate(); break;
         case bcTaskMessage::FX_SYNC: fxBroadcast(msg->data); break;
-        case bcTaskMessage::WIFI_ENSURE: wifi_ensure(); break;
         default:
             Log.errorln(F("Event type %d not supported"), msg->event);
             break;
@@ -146,13 +141,6 @@ void enqueueTimeSetup(TimerHandle_t xTimer) {
         Log.errorln(F("Error sending TIME_SETUP message to broadcast task for timer %s - error %d"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer), qResult);
     // else
     //     Log.infoln(F("Sent TIME_SETUP event successfully to broadcast task for timer %s"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer));
-}
-
-void postWifiCheck() {
-    auto *msg = new bcTaskMessage{bcTaskMessage::WIFI_ENSURE, 0};
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(2000)); qResult != pdTRUE)
-        Log.errorln(F("Error sending WIFI_ENSURE message to Comm queue - error %d"), qResult);
-
 }
 
 /**
@@ -276,10 +264,6 @@ void timeSetupCheck() {
  * Called from main thread - sets up a task and timers for handling events
  */
 void commSetup() {
-    bool bSetupOk = wifi_setup();
-    bSetupOk = bSetupOk && timeSetup();
-    stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
-
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         Log.errorln(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot setup broadcasting. System status: %X"), sysInfo->getSysStatus());
         return;
@@ -301,12 +285,12 @@ void commSetup() {
     else if (xTimerStart(thSync, 0) != pdPASS)
         Log.errorln(F("Cannot start the timeUpdate timer - Ignored."));
 
-    // commInit();
+    commInit();
 
     //setup the communications thread - normal priority
-    bcTask = Scheduler.startTask(&bcDef);
-    Log.infoln(F("Communications thread [%s], priority %d - has been started with id %u. Events broadcasting enabled=%T"), bcTask->getName(),
-               uxTaskPriorityGet(bcTask->getTaskHandle()), uxTaskGetTaskNumber(bcTask->getTaskHandle()), fxBroadcastEnabled);
+    // bcTask = Scheduler.startTask(&bcDef);
+    // Log.infoln(F("Communications thread [%s], priority %d - has been started with id %u. Events broadcasting enabled=%T"), bcTask->getName(),
+    //            uxTaskPriorityGet(bcTask->getTaskHandle()), uxTaskGetTaskNumber(bcTask->getTaskHandle()), fxBroadcastEnabled);
     postTimeSetupCheck();  //ensure we have the time NTP sync
 }
 
