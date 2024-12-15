@@ -66,7 +66,7 @@ bool imu_setup() {
     Log.info(F("IMU sensor OK"));
     // print the board temperature
     Measurement temp = boardTemperature();
-    Log.info(F("Board temperature %D 'C (%D 'F) at %s"), temp.value, toFahrenheit(temp.value), StringUtils::asString(temp.time).c_str());
+    Log.info(F("Board temperature %.2f 'C (%.2f 'F) at %s"), temp.value, toFahrenheit(temp.value), StringUtils::asString(temp.time).c_str());
     return true;
 }
 
@@ -77,7 +77,7 @@ void adc_setup() {
     adc_init();
     adc_set_temp_sensor_enabled(true);
     analogReadResolution(ADC_RESOLUTION);   //get us the higher resolution of the ADC
-    Log.info("ADC OK %d bit resolution", ADC_RESOLUTION);
+    Log.info("ADC OK %hd bit resolution", ADC_RESOLUTION);
 }
 
 void deviceSetup() {
@@ -93,7 +93,7 @@ void deviceSetup() {
 
     taskDelay(250);
 
-    Log.info(F("Diagnostic devices initialized - system status: %X"), sysInfo->getSysStatus());
+    Log.info(F("Diagnostic devices initialized - system status: %hX"), sysInfo->getSysStatus());
 }
 
 /**
@@ -137,7 +137,7 @@ void diagSetup() {
     diagQueue = xQueueCreate(20, sizeof(DiagAction));
     diagDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle()) + 1;
     diagTask = Scheduler.startTask(&diagDef);
-    Log.info(F("Diagnostic thread [%s] - priority %d - has been setup id %u. Events are dispatching."), diagTask->getName(),
+    Log.info(F("Diagnostic thread [%s] - priority %hd - has been setup id %u. Events are dispatching."), diagTask->getName(),
                uxTaskPriorityGet(diagTask->getTaskHandle()), diagTask->getUID());
 }
 

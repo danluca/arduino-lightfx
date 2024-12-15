@@ -43,7 +43,7 @@ bool timeSetup() {
         if (Log.getTimebase() == 0) {
             const time_t curTime = now();
             const time_t curMs = millis();
-            Log.warn(F("Logging time reference updated from %u ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
+            Log.warn(F("Logging time reference updated from %lu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
             Log.setTimebase(curTime * 1000 - curMs);                //capture current time into the log offset, such that log statements use current time
         }
         Log.info(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),

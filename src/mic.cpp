@@ -73,7 +73,7 @@ void mic_run() {
         if (maxSample > audioBumpThreshold) {
             fxBump = true;
             random16_add_entropy(abs(maxSample));
-            Log.info(F("Audio sample: %d"), maxSample);
+            Log.info(F("Audio sample: %hd"), maxSample);
 
             //contribute to the audio histogram - the bins are 500 units wide and tailored around audioBumpThreshold.
             bool bFoundBin = false;

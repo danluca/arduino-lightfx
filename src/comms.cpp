@@ -25,7 +25,7 @@ static const uint8_t syncClientsLSB[] PROGMEM = {BROADCAST_CLIENTS};     //last 
 static constexpr char hdContentJson[] PROGMEM = "Content-Type: application/json";
 static constexpr char hdUserAgent[] PROGMEM = "User-Agent: rp2040-lightfx-master/1.0.0";
 static constexpr char hdKeepAlive[] PROGMEM = "Connection: keep-alive";
-static constexpr char fmtFxChange[] PROGMEM = R"===({"effect":%d,"auto":false,"broadcast":false})===";
+static constexpr char fmtFxChange[] PROGMEM = R"===({"effect":%u,"auto":false,"broadcast":false})===";
 
 QueueHandle_t bcQueue;
 static uint16_t tmrHolidayUpdateId = 20;
@@ -68,7 +68,7 @@ void commInit() {
         Log.info(F("FX Broadcast recipient %s has been registered"), clientAddr->toString().c_str());
     }
     broadcastState = Configured;
-    Log.info(F("FX Broadcast setup completed - %d clients registered"), fxBroadcastRecipients.size());
+    Log.info(F("FX Broadcast setup completed - %zu clients registered"), fxBroadcastRecipients.size());
     taskDelay(5000);    //delay before starting processing events
 }
 
@@ -88,7 +88,7 @@ void commRun() {
         case bcTaskMessage::HOLIDAY_UPDATE: holidayUpdate(); break;
         case bcTaskMessage::FX_SYNC: fxBroadcast(msg->data); break;
         default:
-            Log.error(F("Event type %d not supported"), msg->event);
+            Log.error(F("Event type %hd not supported"), msg->event);
             break;
     }
     delete msg;
@@ -150,7 +150,7 @@ void enqueueTimeSetup(TimerHandle_t xTimer) {
  */
 void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     CoreMutex lock(&wifiMutex);
-    Log.info(F("Attempting to connect to client %s for FX %d"), ip->toString().c_str(), fxIndex);
+    Log.info(F("Attempting to connect to client %s for FX %hu"), ip->toString().c_str(), fxIndex);
     WiFiClient wiFiClient;  //wifi client - does not need explicit pointer for underlying WiFi class/driver
     HttpClient client(wiFiClient, *ip, HttpClient::kHttpPort);
     client.setTimeout(1000);
@@ -177,11 +177,11 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
         int statusCode = client.responseStatusCode();
         String response = client.responseBody();
         if (statusCode / 100 == 2)
-            Log.info(F("Successful sync FX %d with client %s: %d response status\nBody: %s"), fxIndex, ip->toString().c_str(), statusCode, response.c_str());
+            Log.info(F("Successful sync FX %hu with client %s: %d response status\nBody: %s"), fxIndex, ip->toString().c_str(), statusCode, response.c_str());
         else
-            Log.error(F("Failed to sync FX %d to client %s: %d response status"), fxIndex, ip->toString().c_str(), statusCode);
+            Log.error(F("Failed to sync FX %hu to client %s: %d response status"), fxIndex, ip->toString().c_str(), statusCode);
     } else
-        Log.error(F("Failed to connect to client %s, FX %d not synced"), ip->toString().c_str(), fxIndex);
+        Log.error(F("Failed to connect to client %s, FX %hu not synced"), ip->toString().c_str(), fxIndex);
     client.stop();
 }
 
@@ -191,21 +191,21 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
  */
 void fxBroadcast(const uint16_t index) {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        Log.warn(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform FX  update for %d. System status: %X"),
+        Log.warn(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform FX  update for %d. System status: %hX"),
             index, sysInfo->getSysStatus());
         return;
     }
 
     LedEffect *fx = fxRegistry.getEffect(index);
     if (!fxBroadcastEnabled) {
-        Log.warn(F("This board is not a master (FX Broadcast disabled) - will not push effect %s[%d] to others"), fx->name(), fx->getRegistryIndex());
+        Log.warn(F("This board is not a master (FX Broadcast disabled) - will not push effect %s [%hu] to others"), fx->name(), fx->getRegistryIndex());
         return;
     }
     broadcastState = Broadcasting;
-    Log.info(F("Fx change event - start broadcasting %s[%d] to %d recipients"), fx->name(), fx->getRegistryIndex(), fxBroadcastRecipients.size());
+    Log.info(F("Fx change event - start broadcasting %s [%hu] to %d recipients"), fx->name(), fx->getRegistryIndex(), fxBroadcastRecipients.size());
     for (auto &client : fxBroadcastRecipients)
         clientUpdate(client, fx->getRegistryIndex());
-    Log.info(F("Finished broadcasting to %d recipients - check individual log statements for status of each recipient"), fxBroadcastRecipients.size());
+    Log.info(F("Finished broadcasting to %hu recipients - check individual log statements for status of each recipient"), fxBroadcastRecipients.size());
     broadcastState = Waiting;
 }
 

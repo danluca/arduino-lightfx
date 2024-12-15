@@ -63,7 +63,7 @@ void logTaskStats() {
     if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
         /* Generate raw status information about each task. */
         uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
-        Log.info("Total run time reported by system: %u", ulTotalRunTime);
+        Log.info("Total run time reported by system: %lu", ulTotalRunTime);
 
         /* Avoid divide by zero errors. */
         if( ulTotalRunTime > 100 ) {
@@ -78,7 +78,7 @@ void logTaskStats() {
             ulTotalRunTime /= 100UL;    // For percentage calculations
             coresTotalRunTime[0] /= 100UL;
             coresTotalRunTime[1] /= 100UL;
-            Log.info(F("THREADS/TASKS INFO - max priority %d\n"), configMAX_PRIORITIES-1);
+            Log.info(F("THREADS/TASKS INFO - max priority %hd\n"), configMAX_PRIORITIES-1);
             String strTaskInfo;
             strTaskInfo.reserve(1024);  //ensure enough space to avoid reallocations for each thread
             /* For each populated position in the pxTaskStatusArray array, format the raw data as human-readable ASCII data. */
@@ -89,7 +89,7 @@ void logTaskStats() {
                 uint64_t ref = ((ts.uxCoreAffinityMask & CORE_0 ? coresTotalRunTime[0] : 0) + (ts.uxCoreAffinityMask & CORE_1 ? coresTotalRunTime[1] : 0)) >> 8;
                 double fStatsAsPercentage = (ts.ulRunTimeCounter >> 8) / (double) ref;
                 char strStat[7];
-                size_t szStat = sprintf(strStat, "%.2f", fStatsAsPercentage);
+                size_t szStat = snprintf(strStat, 7, "%.2f", fStatsAsPercentage);
                 strStat[szStat] = 0;    //ensure null terminator
                 //is this a task we created? if so, we have extra information - like stack size
                 const TaskWrapper *tw = Scheduler.getTask(ts.xTaskNumber);
@@ -165,8 +165,8 @@ void logSystemInfo() {
 void logSystemState() {
     char buf[20];
     const unsigned long uptime = millis();
-    snprintf(buf, 16, "%3dD %2dH %2dm", uptime/86400000l, (uptime/3600000l%24), (uptime/60000%60));
-    Log.info(F("System state: %X; uptime %s"), sysInfo->getSysStatus(), buf);
+    snprintf(buf, 16, "%3luD %2luH %2lum", uptime/86400000l, (uptime/3600000l%24), (uptime/60000%60));
+    Log.info(F("System state: %hX; uptime %s"), sysInfo->getSysStatus(), buf);
 }
 
 // SysInfo
@@ -237,7 +237,7 @@ void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     char buf[BUF_ID_SIZE];
     int x = 0;
     for (const auto &b : mac)
-        x += sprintf(buf+x, "%02X:", b);
+        x += snprintf(buf+x, 3, "%02X:", b);
     //last character - at index x-1 is a ':', make it null to trim the last colon character
     buf[x-1] = 0;
     macAddress = buf;
@@ -286,7 +286,7 @@ void readSysInfo() {
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, *json);
         if (error) {
-            Log.error(F("Error reading the system information JSON file %s [%d bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
+            Log.error(F("Error reading the system information JSON file %s [%zu bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
             delete json;
             return;
         }

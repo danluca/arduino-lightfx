@@ -147,7 +147,7 @@ bool secElement_setup() {
     //update entropy - the timing of this call allows us to interact with I2C without other contenders
     uint16_t rnd = secRandom16();
     random16_add_entropy(rnd);
-    Log.info(F("Secure random value %i added as entropy to pseudo random number generator"), rnd);
+    Log.info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
     return true;
 }
 

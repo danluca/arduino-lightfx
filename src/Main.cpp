@@ -56,7 +56,7 @@ void setup() {
     // notifies Core1 to start processing
     TaskHandle_t core1 = xTaskGetHandle("CORE1");    //create a task handle for the second core
     BaseType_t c1NtfStatus = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running
-    Log.info(F("Main Core 0 Setup completed, Core 1 notified %l. System status: %X"), c1NtfStatus, sysInfo->getSysStatus());
+    Log.info(F("Main Core 0 Setup completed, Core 1 notified %d. System status: %hX"), c1NtfStatus, sysInfo->getSysStatus());
 }
 
 /**
@@ -74,7 +74,7 @@ void loop() {
         case ALARM_CHECK: alarm_check(); break;
         case SAVE_SYS_INFO: saveSysInfo(); break;
         default:
-            Log.error(F("Misc Action %d not supported"), action);
+            Log.error(F("Misc Action %hhu not supported"), action);
     }
 //    watchdogPing();   //the main functionality is in Fx thread, we can afford web server not being available
 }
@@ -103,7 +103,7 @@ void setup1() {
     //enqueues the alarm setup event
     enqueueAlarmSetup();
 
-    Log.info(F("Main Core 1 Setup completed. System status: %X"), sysInfo->getSysStatus());
+    Log.info(F("Main Core 1 Setup completed. System status: %hX"), sysInfo->getSysStatus());
     logSystemInfo();
 }
 
@@ -119,7 +119,7 @@ void loop1() {
         switch (action) {
             case WIFI_ENSURE: wifi_ensure(); break;
             default:
-                Log.error(F("Comm Action %d not supported"), action);
+                Log.error(F("Comm Action %hhd not supported"), action);
         }
     }
 }

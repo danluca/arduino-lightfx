@@ -502,7 +502,7 @@ size_t web::handlePutConfig(WiFiClient *client, const String *uri, String *hd, S
         if (masterEnabled)
             postFxChangeEvent(fxRegistry.curEffectPos());   //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
     }
-    Log.info(F("FX: Current config updated effect %u, autoswitch %s, holiday %s, brightness %u, brightness adjustment %s"),
+    Log.info(F("FX: Current config updated effect %hu, autoswitch %s, holiday %s, brightness %hu, brightness adjustment %s"),
                fxRegistry.curEffectPos(), StringUtils::asString(fxRegistry.isAutoRoll()), holidayToString(paletteFactory.getHoliday()),
                stripBrightness, stripBrightnessLocked?"fixed":"automatic");
 
@@ -635,6 +635,6 @@ void web::dispatch() {
         // close the connection:
         client.stop();
         unsigned long dur = millis() - start;
-        Log.info(F("Request: completed %u bytes [%u ms]"), szResp, dur);
+        Log.info(F("Request: completed %zu bytes [%lu ms]"), szResp, dur);
     }
 }

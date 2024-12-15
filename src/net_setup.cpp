@@ -128,11 +128,11 @@ bool wifi_check() {
     if ((gwPingTime < 0) || (wifiBars < 3)) {
         sysInfo->resetSysStatus(SYS_STATUS_WIFI);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
-        Log.warn(F("Ping test failed (%d) or signal strength low (%d bars), WiFi Connection unusable"), rssi, wifiBars);
+        Log.warn(F("Ping test failed (%d) or signal strength low (%hhu bars), WiFi Connection unusable"), rssi, wifiBars);
         return false;
     }
     sysInfo->setSysStatus(SYS_STATUS_WIFI);
-    Log.info(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%d bars)"), gwPingTime, rssi, wifiBars);
+    Log.info(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%hhu bars)"), gwPingTime, rssi, wifiBars);
     return true;
 }
 
@@ -164,7 +164,7 @@ void wifi_ensure() {
     }
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI))
         postTimeSetupCheck();
-    Log.info(F("System status: %X"), sysInfo->getSysStatus());
+    Log.info(F("System status: %hX"), sysInfo->getSysStatus());
 }
 
 void printSuccessfulWifiStatus() {
@@ -180,7 +180,7 @@ void printSuccessfulWifiStatus() {
 
     // print the received signal strength:
     int32_t rssi = WiFi.RSSI();
-    Log.info(F("Signal strength (RSSI) %d dBm; %d bars"), rssi, barSignalLevel(rssi));
+    Log.info(F("Signal strength (RSSI) %d dBm; %hhu bars"), rssi, barSignalLevel(rssi));
 
     // print where to go in a browser:
     Log.info(F("Home page available at http://%s"), sysInfo->getIpAddress().c_str());

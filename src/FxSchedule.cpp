@@ -100,7 +100,7 @@ void scheduleDay(const time_t time) {
         else
             scheduledAlarms.push_back(new AlarmData{.value=bedTime + SECS_PER_DAY, .type=BEDTIME, .onEventHandler=bedtime});
     }
-    Log.info(F("Scheduled %d new alarms for Day %s"), scheduledAlarms.size() - curAlarmCount, StringUtils::asString(time).c_str());
+    Log.info(F("Scheduled %zu new alarms for Day %s"), scheduledAlarms.size() - curAlarmCount, StringUtils::asString(time).c_str());
 }
 
 /**
@@ -108,7 +108,7 @@ void scheduleDay(const time_t time) {
  */
 void logAlarms() {
     for (const auto &al : scheduledAlarms)
-        Log.info(F("Alarm %p type %d scheduled for %s; handler %p"), al, al->type, StringUtils::asString(al->value).c_str(), al->onEventHandler);
+        Log.info(F("Alarm %p type %hd scheduled for %s; handler %p"), al, al->type, StringUtils::asString(al->value).c_str(), al->onEventHandler);
 }
 
 /**
@@ -168,8 +168,9 @@ void alarm_check() {
     const time_t time = now();
     for (auto it = scheduledAlarms.begin(); it != scheduledAlarms.end();) {
         if (auto al = *it; al->value <= time) {
-            Log.info(F("Alarm %X type %d triggered at %s for scheduled time %s; handler %X"), (long)al, al->type, StringUtils::asString(time).c_str(),
-                StringUtils::asString(al->value).c_str(), (long)al->onEventHandler); al->onEventHandler();
+            Log.info(F("Alarm %lX type %hd triggered at %s for scheduled time %s; handler %lX"), (long)al, al->type, StringUtils::asString(time).c_str(),
+                StringUtils::asString(al->value).c_str(), (long)al->onEventHandler);
+             al->onEventHandler();
             it = scheduledAlarms.erase(it);
             delete al;
         } else

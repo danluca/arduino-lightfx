@@ -117,7 +117,7 @@ void readFxState() {
         if (doc[csBroadcast].is<bool>())
             fxBroadcastEnabled = doc[csBroadcast].as<bool>();
 
-        Log.info(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%s), sleepEnabled=%s"),
+        Log.info(F("System state restored from %s [%zu bytes]: autoFx=%s, randomSeed=%d, nextEffect=%hu, brightness=%hu (auto adjust), audioBumpThreshold=%hu, holiday=%s (auto=%s), sleepEnabled=%s"),
                    stateFileName, stateSize, StringUtils::asString(autoAdvance), seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(fxRegistry.isSleepEnabled()));
     }
     delete json;
@@ -770,7 +770,7 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     uint16_t fxIndex = effectsCount - 1;
     if (strcmp(FX_SLEEPLIGHT_ID, effect->name()) == 0)
         sleepEffect = fxIndex;
-    Log.info(F("Effect [%s] registered successfully at index %d"), effect->name(), fxIndex);
+    Log.info(F("Effect [%s] registered successfully at index %hu"), effect->name(), fxIndex);
     return fxIndex;
 }
 

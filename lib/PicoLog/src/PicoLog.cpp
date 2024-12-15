@@ -2,6 +2,9 @@
 //
 
 #include "PicoLog.h"
+
+#include <FS.h>
+
 #include "../../SchedulerExt/src/SchedulerExt.h"
 
 #define SECS_PER_MIN  ((time_t)(60UL))
@@ -42,7 +45,7 @@ void PicoLog::begin(SerialUSB *serial, const LogLevel level) {
 
     if (isStreamingEnabled()) {
         twStream = Scheduler.startTask(&tdStream);
-        log(INFO, F("Serial logging thread [%s] - priority %d - has been setup id %u."), twStream->getName(), uxTaskPriorityGet(twStream->getTaskHandle()), twStream->getUID());
+        log(INFO, F("Serial logging thread [%s] - priority %u - has been setup id %u."), twStream->getName(), uxTaskPriorityGet(twStream->getTaskHandle()), twStream->getUID());
     }
 }
 
@@ -54,8 +57,8 @@ void PicoLog::begin(SerialUSB *serial, const LogLevel level) {
  * @return size of the string written
  */
 size_t PicoLog::print(const LogLevel level, const __FlashStringHelper *format, va_list args) {
-    PGM_P p = reinterpret_cast<PGM_P>(format);
-    return print(level, reinterpret_cast<const char *>(p), args);
+    const String fStr(format);
+    return print(level, fStr.c_str(), args);
 }
 
 
@@ -73,8 +76,8 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     sz += printThread(msg);
     sz += printLevel(level, msg);
 
-    const size_t szMsg = vsnprintf(nullptr, 0, format, args);
-    char buf[szMsg+1];
+    const size_t szMsg = vsnprintf(nullptr, 0, format, args)+1;
+    char buf[szMsg]{};
     vsnprintf(buf, szMsg, format, args);
     msg->reserve(sz + szMsg);
     msg->concat(buf);

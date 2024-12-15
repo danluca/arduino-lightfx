@@ -13,10 +13,10 @@ void log_setup() {
         while (!Serial) {
             taskDelay(100);     //wait for the serial connection to be initiated by the PC
         }
+        Serial.println(F("================================================================================"));
     }
 #endif
     Log.begin(&Serial, LogLevel::INFO);
     taskDelay(500);
-    Log.info(F("========================================"));
 }
 

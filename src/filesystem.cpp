@@ -73,7 +73,7 @@ void fsInit() {
     }
 
     if (FSInfo fsInfo{}; LittleFS.info(fsInfo)) {
-        Log.info(F("Filesystem information (size in bytes): totalSize %lu, used %lu, maxOpenFiles %u, maxPathLength %u, pageSize %u, blockSize %u"),
+        Log.info(F("Filesystem information (size in bytes): totalSize %lu, used %lu, maxOpenFiles %zu, maxPathLength %zu, pageSize %zu, blockSize %zu"),
                    fsInfo.totalBytes, fsInfo.usedBytes, fsInfo.maxOpenFiles, fsInfo.maxPathLength, fsInfo.pageSize, fsInfo.blockSize);
     } else {
         Log.error(F("Cannot retrieve filesystem (LittleFS) information"));
@@ -83,7 +83,7 @@ void fsInit() {
     String dirContent;
     while (d.next()) {
         if (d.isFile())
-            StringUtils::append(dirContent, F("  %s [%u]\n"), d.fileName().c_str(), d.fileSize());
+            StringUtils::append(dirContent, F("  %s [%zu]\n"), d.fileName().c_str(), d.fileSize());
         else
             StringUtils::append(dirContent, F("  %s <DIR>\n"), d.fileName().c_str());
     }
@@ -123,7 +123,7 @@ void fsExecute() {
             xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
             break;
         default:
-            Log.error(F("Event type %d not supported"), msg->event);
+            Log.error(F("Event type %hd not supported"), msg->event);
             break;
     }
 }
@@ -148,7 +148,7 @@ size_t prvReadTextFile(const char *fname, String *s) {
     }
     f.close();
     Log.info(F("Read %d bytes from %s file"), fSize, fname);
-    Log.trace(F("Read file %s content [%d]: %s"), fname, fSize, s->c_str());
+    Log.trace(F("Read file %s content [%zu]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
 
@@ -163,8 +163,8 @@ size_t prvWriteTextFile(const char *fname, const String *s) {
     File f = LittleFS.open(fname, "w");
     fSize = f.write(s->c_str());
     f.close();
-    Log.info(F("File %s has been saved, size %d bytes"), fname, fSize);
-    Log.trace(F("Saved file %s content [%d]: %s"), fname, fSize, s->c_str());
+    Log.info(F("File %s has been saved, size %zu bytes"), fname, fSize);
+    Log.trace(F("Saved file %s content [%zu]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
 
