@@ -12,28 +12,42 @@
 
 #define BUF_ID_SIZE  20
 
-static const char unknown[] PROGMEM = "N/A";
+static constexpr char unknown[] PROGMEM = "N/A";
 static constexpr char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%%[%u] priority=%i state=%s id=%i core=%i stackSize=%u free=%u\n";
 static constexpr char threadInfoVerboseFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%s id=%s \n  basePriority=%i stackBase=%X size=%u free=%u core=%i\n";
 static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%u free: tasks=%u, system=%x;\n  Total Heap:: size=%u free=%u\n";
 static constexpr char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free: tasks=%u, system=%x taskCount=%u;\n  Total Heap:: size=%u used=%u free=%u lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
 static constexpr char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%D MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
-static const char *const csBuildVersion PROGMEM = "buildVersion";
-static const char *const csBoardName PROGMEM = "boardName";
-static const char *const csBuildTime PROGMEM = "buildTime";
-static const char *const csScmBranch PROGMEM = "scmBranch";
-static const char *const csWdReboots PROGMEM = "wdReboots";
-static const char *const csBoardId PROGMEM = "boardId";
-static const char *const csSecElemId PROGMEM = "secElemId";
-static const char *const csMacAddress PROGMEM = "macAddress";
-static const char *const csWifiFwVersion PROGMEM = "wifiFwVersion";
-static const char *const csIpAddress PROGMEM = "ipAddress";
-static const char *const csGatewayAddress PROGMEM = "gatewayIpAddress";
-static const char *const csHeapSize PROGMEM = "heapSize";
-static const char *const csFreeHeap PROGMEM = "freeHeap";
-static const char *const csStackSize PROGMEM = "stackSize";
-static const char *const csFreeStack PROGMEM = "freeStack";
-static const char *const csStatus PROGMEM = "status";
+static constexpr char csBuildVersion[] PROGMEM = "buildVersion";
+static constexpr char csBoardName[] PROGMEM = "boardName";
+static constexpr char csBuildTime[] PROGMEM = "buildTime";
+static constexpr char csScmBranch[] PROGMEM = "scmBranch";
+static constexpr char csWdReboots[] PROGMEM = "wdReboots";
+static constexpr char csBoardId[] PROGMEM = "boardId";
+static constexpr char csSecElemId[] PROGMEM = "secElemId";
+static constexpr char csMacAddress[] PROGMEM = "macAddress";
+static constexpr char csWifiFwVersion[] PROGMEM = "wifiFwVersion";
+static constexpr char csIpAddress[] PROGMEM = "ipAddress";
+static constexpr char csGatewayAddress[] PROGMEM = "gatewayIpAddress";
+static constexpr char csHeapSize[] PROGMEM = "heapSize";
+static constexpr char csFreeHeap[] PROGMEM = "freeHeap";
+static constexpr char csStackSize[] PROGMEM = "stackSize";
+static constexpr char csFreeStack[] PROGMEM = "freeStack";
+static constexpr char csStatus[] PROGMEM = "status";
+static constexpr char csReady[] PROGMEM = "Ready";
+static constexpr char csBlocked[] PROGMEM = "Blocked";
+static constexpr char csSuspended[] PROGMEM = "Suspended";
+static constexpr char csDeleted[] PROGMEM = "Deleted";
+static constexpr char csRunning[] PROGMEM = "Running";
+static constexpr char csInvalid[] PROGMEM = "Invalid";
+static constexpr char csUnknown[] PROGMEM = "Unknown";
+static constexpr char csPowerOn[] PROGMEM = "power on";
+static constexpr char csPinReset[] PROGMEM = "pin reset";
+static constexpr char csSoftReset[] PROGMEM = "soft reset";
+static constexpr char csWatchdog[] PROGMEM = "watchdog";
+static constexpr char csDebug[] PROGMEM = "debug";
+static constexpr char csGlitch[] PROGMEM = "glitch";
+static constexpr char csBrownout[] PROGMEM = "brownout";
 
 //#define STORAGE_CMD_TOTAL_BYTES 32
 
@@ -43,18 +57,19 @@ SysInfo *sysInfo;
 
 const char *taskStatusToString(const eTaskState state) {
     switch (state) {
-        case eReady: return "Ready";
-        case eBlocked: return "Blocked";
-        case eSuspended: return "Suspended";
-        case eDeleted: return "Deleted";
-        case eRunning: return "Running";
-        case eInvalid: return "Invalid";
-        default: return "Unknown";
+        case eReady: return csReady;
+        case eBlocked: return csBlocked;
+        case eSuspended: return csSuspended;
+        case eDeleted: return csDeleted;
+        case eRunning: return csRunning;
+        case eInvalid: return csInvalid;
+        default: return csUnknown;
     }
 }
 void logTaskStats() {
-    if (!Log.isEnabled(INFO))
-        return;
+    // if (!Log.isEnabled(INFO))
+        // return;
+    Log.info(F("Info level enabled %hd"), Log.isEnabled(INFO));
     // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
     unsigned long ulTotalRunTime=0, ulTotalStack=0, ulFreeStack=0;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
@@ -130,17 +145,22 @@ void logTaskStats() {
     // Log.info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
 }
 
-const char *resetReasonToString(const uint8_t reason) {
+/**
+ * See resetReason_t enum definition in RP2040Support.h
+ * @param reason resetReason_t numeric enum value of reset reason
+ * @return string representation of the reset reason numeric value
+ */
+const char *resetReasonToString(const RP2040::resetReason_t reason) {
     switch (reason) {
-        case 0: return "unknown";
-        case 1: return "power on";
-        case 2: return "pin reset";
-        case 3: return "soft";
-        case 4: return "watchdog";
-        case 5: return "debug";
-        case 6: return "glitch";
-        case 7: return "brownout";
-        default: return "n/r";
+        case RP2040::UNKNOWN_RESET: return csUnknown;
+        case RP2040::PWRON_RESET: return csPowerOn;
+        case RP2040::RUN_PIN_RESET: return csPinReset;
+        case RP2040::SOFT_RESET: return csSoftReset;
+        case RP2040::WDT_RESET: return csWatchdog;
+        case RP2040::DEBUG_RESET: return csDebug;
+        case RP2040::GLITCH_RESET: return csGlitch;
+        case RP2040::BROWNOUT_RESET: return csBrownout;
+        default: return unknown;
     }
 }
 

@@ -78,17 +78,18 @@ void fsInit() {
     } else {
         Log.error(F("Cannot retrieve filesystem (LittleFS) information"));
     }
-    Log.info(F("Root FS [/] contents:\n"));
-    Dir d = LittleFS.openDir("/");
     String dirContent;
+    dirContent.reserve(512);
+    dirContent.concat(F("Filesystem content:\n"));
+    Dir d = LittleFS.openDir("/");
     while (d.next()) {
         if (d.isFile())
             StringUtils::append(dirContent, F("  %s [%zu]\n"), d.fileName().c_str(), d.fileSize());
         else
             StringUtils::append(dirContent, F("  %s <DIR>\n"), d.fileName().c_str());
     }
+    dirContent.concat(F("End of filesystem content.\n"));
     Log.info(dirContent.c_str());
-    Log.info(F("Dir complete."));
 }
 
 /**

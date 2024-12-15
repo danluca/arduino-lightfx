@@ -32,6 +32,7 @@ void flushData() {
 
 TaskDef tdStream {nullptr, flushData, 640, "Ser", 255, CORE_ALL};
 
+
 /**
  * Configures the logger using the Serial object. The Serial objects can be null, in which case the logger will be disabled.
  * If needed to be enabled, this function must be called *after* Serial initialization
@@ -44,6 +45,7 @@ void PicoLog::begin(SerialUSB *serial, const LogLevel level) {
         m_stream = serial;
 
     if (isStreamingEnabled()) {
+        log(INFO, F("Serial logging started at level %hu."), m_level);
         twStream = Scheduler.startTask(&tdStream);
         log(INFO, F("Serial logging thread [%s] - priority %u - has been setup id %u."), twStream->getName(), uxTaskPriorityGet(twStream->getTaskHandle()), twStream->getUID());
     }

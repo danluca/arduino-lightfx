@@ -52,7 +52,7 @@ void enqueueSaveSysInfo(TimerHandle_t xTimer);
 void enqueueDiagInfo(TimerHandle_t xTimer);
 
 // diag task definition - priority is overwritten during setup, see diagSetup
-TaskDef diagDef {deviceSetup, diagExecute, 1792, "Diag", 1, CORE_1};
+TaskDef diagDef {deviceSetup, diagExecute, 2048, "Diag", 1, CORE_1};
 enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO} event;
 
 bool imu_setup() {
@@ -492,7 +492,7 @@ void updateSystemTemp() {
 }
 
 void updateSecEntropy() {
-    uint16_t rnd = secRandom16();
+    const uint16_t rnd = secRandom16();
     random16_add_entropy(rnd);
     Log.info(F("Secure random value %i added as entropy to pseudo random number generator"), rnd);
 }
