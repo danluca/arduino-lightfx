@@ -9,6 +9,7 @@
 #include "sysinfo.h"
 #include "util.h"
 #include "log.h"
+#include "stringutils.h"
 
 #define FILE_BUF_SIZE   256
 #define FILE_OPERATIONS_TIMEOUT pdMS_TO_TICKS(1000)     //1 second file operations timeout (plenty time)
@@ -57,7 +58,7 @@ void fsSetup() {
     fsTask = Scheduler.startTask(&fsDef);
     TaskStatus_t tStat;
     vTaskGetTaskInfo(fsTask->getTaskHandle(), &tStat, pdFALSE, eReady);
-    Log.infoln(F("Filesystem task [%s] - priority %d - has been setup id %u. Events are dispatching."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
+    Log.info(F("Filesystem task [%s] - priority %d - has been setup id %u. Events are dispatching."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
 }
 
 /**
@@ -68,27 +69,26 @@ void fsInit() {
 //    LittleFS.setConfig(cfg);  //default is autoFormat = true as well
     if (LittleFS.begin()) {
         sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
-        Log.infoln(F("Filesystem OK"));
+        Log.info(F("Filesystem OK"));
     }
 
-#ifndef DISABLE_LOGGING
     if (FSInfo fsInfo{}; LittleFS.info(fsInfo)) {
-        Log.infoln(F("Filesystem information (size in bytes): totalSize %u, used %u, maxOpenFiles %d, maxPathLength %s, pageSize %d, blockSize %d"),
+        Log.info(F("Filesystem information (size in bytes): totalSize %u, used %u, maxOpenFiles %d, maxPathLength %s, pageSize %d, blockSize %d"),
                    fsInfo.totalBytes, fsInfo.usedBytes, fsInfo.maxOpenFiles, fsInfo.maxPathLength, fsInfo.pageSize, fsInfo.blockSize);
     } else {
-        Log.errorln(F("Cannot retrieve filesystem (LittleFS) information"));
+        Log.error(F("Cannot retrieve filesystem (LittleFS) information"));
     }
     Log.info(F("Root FS [/] contents:\n"));
     Dir d = LittleFS.openDir("/");
+    String dirContent;
     while (d.next()) {
         if (d.isFile())
-            Log.info(F("  %s [%d]\n"), d.fileName().c_str(), d.fileSize());
+            StringUtils::append(dirContent, F("  %s [%d]\n"), d.fileName().c_str(), d.fileSize());
         else
-            Log.info(F("  %s <DIR>\n"), d.fileName().c_str());
+            StringUtils::append(dirContent, F("  %s <DIR>\n"), d.fileName().c_str());
     }
-    Log.endContinuation();
-    Log.infoln(F("Dir complete."));
-#endif
+    Log.info(dirContent.c_str());
+    Log.info(F("Dir complete."));
 }
 
 /**
@@ -113,7 +113,7 @@ void fsExecute() {
         case fsTaskMessage::WRITE_FILE_ASYNC:
             sz = prvWriteTextFileAndFreeMem(msg->data->name, msg->data->content);
             if (!sz)
-                Log.errorln(F("Failed to write file %s asynchronously. Data has is still available, may lead to memory leaks."), msg->data->name);
+                Log.error(F("Failed to write file %s asynchronously. Data has is still available, may lead to memory leaks."), msg->data->name);
             //dispose the messaging data
             delete msg->data;
             delete msg;
@@ -123,7 +123,7 @@ void fsExecute() {
             xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
             break;
         default:
-            Log.errorln(F("Event type %d not supported"), msg->event);
+            Log.error(F("Event type %d not supported"), msg->event);
             break;
     }
 }
@@ -136,7 +136,7 @@ void fsExecute() {
  */
 size_t prvReadTextFile(const char *fname, String *s) {
     if (!LittleFS.exists(fname)) {
-        Log.errorln(F("Text file %s was not found/could not read"), fname);
+        Log.error(F("Text file %s was not found/could not read"), fname);
         return 0;
     }
     File f = LittleFS.open(fname, "r");
@@ -147,8 +147,8 @@ size_t prvReadTextFile(const char *fname, String *s) {
         fSize += charsRead;
     }
     f.close();
-    Log.infoln(F("Read %d bytes from %s file"), fSize, fname);
-    Log.traceln(F("Read file %s content [%d]: %s"), fname, fSize, s->c_str());
+    Log.info(F("Read %d bytes from %s file"), fSize, fname);
+    Log.trace(F("Read file %s content [%d]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
 
@@ -163,8 +163,8 @@ size_t prvWriteTextFile(const char *fname, const String *s) {
     File f = LittleFS.open(fname, "w");
     fSize = f.write(s->c_str());
     f.close();
-    Log.infoln(F("File %s has been saved, size %d bytes"), fname, fSize);
-    Log.traceln(F("Saved file %s content [%d]: %s"), fname, fSize, s->c_str());
+    Log.info(F("File %s has been saved, size %d bytes"), fname, fSize);
+    Log.trace(F("Saved file %s content [%d]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
 
@@ -183,14 +183,14 @@ size_t prvWriteTextFileAndFreeMem(const char *fname, String *s) {
 bool prvRemoveFile(const char *fname) {
     if (!LittleFS.exists(fname)) {
         //file does not exist - return true to the caller, the intent is already fulfilled
-        Log.infoln(F("File %s does not exist, no need to remove"), fname);
+        Log.info(F("File %s does not exist, no need to remove"), fname);
         return true;
     }
     bool bDel = LittleFS.remove(fname);
     if (bDel)
-        Log.infoln(F("File %s successfully removed"), fname);
+        Log.info(F("File %s successfully removed"), fname);
     else
-        Log.errorln(F("File %s can NOT be removed"), fname);
+        Log.error(F("File %s can NOT be removed"), fname);
     return bDel;
 }
 
@@ -210,7 +210,7 @@ size_t readTextFile(const char *fname, String *s) {
         //wait for the filesystem task to finish and notify us
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.errorln(F("Error sending READ_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+        Log.error(F("Error sending READ_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
     delete msg;
     delete args;
@@ -233,7 +233,7 @@ size_t writeTextFile(const char *fname, String *s) {
         //wait for the filesystem task to finish and notify us
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.errorln(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+        Log.error(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
     delete msg;
     delete args;
@@ -251,7 +251,7 @@ bool writeTextFileAsync(const char *fname, String *s) {
 
     BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     if (qResult != pdTRUE) {
-        Log.errorln(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %d"), fname, qResult);
+        Log.error(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
         delete args;
     }
@@ -272,7 +272,7 @@ bool removeFile(const char *fname) {
     if (qResult == pdTRUE) {
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.errorln(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+        Log.error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
     delete msg;
     delete args;

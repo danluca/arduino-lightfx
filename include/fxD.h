@@ -17,13 +17,13 @@ namespace FxD {
 
         bool windDown() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
         void ChangeMe();
 
         void confetti();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxD2 : public LedEffect {
@@ -36,11 +36,11 @@ namespace FxD {
 
         bool windDown() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
         void dot_beat();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxD3 : public LedEffect {
@@ -55,7 +55,7 @@ namespace FxD {
 
         void plasma();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         uint8_t monoColor;
@@ -75,7 +75,7 @@ namespace FxD {
 
         void update_params(uint8_t slot);
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
 

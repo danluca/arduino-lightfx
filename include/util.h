@@ -35,5 +35,4 @@ void watchdogSetup();
 void watchdogPing();
 void taskDelay(uint32_t ms);
 
-
 #endif //ARDUINO_LIGHTFX_UTIL_H

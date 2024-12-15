@@ -150,26 +150,22 @@ public:
 
     virtual void loop();
 
-    const char *description() const;
+    [[nodiscard]] const char *description() const;
 
-    const char *name() const;
+    [[nodiscard]] const char *name() const;
 
-    virtual JsonObject& describeConfig(JsonArray &json) const;
+    virtual void baseConfig(JsonObject &json) const;
 
-    void baseConfig(JsonObject &json) const;
+    [[nodiscard]] uint16_t getRegistryIndex() const;
 
-    uint16_t getRegistryIndex() const;
-
-    inline EffectState getState() const {
-        return state;
-    }
+    [[nodiscard]] inline EffectState getState() const { return state; }
 
     /**
      * What weight does this effect have when random selection is engaged
      * Subclasses have the opportunity to customize this value by e.g. the current holiday, time, etc., hence changing/reshaping the chances of selecting an effect
      * @return a value between 1 and 255. If returning 0, this effectively removes the effect from random selection.
      */
-    virtual inline uint8_t selectionWeight() const {
+    [[nodiscard]] virtual inline uint8_t selectionWeight() const {
         return 1;
     }
 
@@ -177,7 +173,6 @@ public:
 };
 
 class EffectRegistry {
-private:
     std::deque<LedEffect*> effects;
     FixedQueue<uint16_t, MAX_EFFECTS_HISTORY> lastEffects;
     uint16_t currentEffect = 0;
@@ -187,12 +182,13 @@ private:
     bool autoSwitch = true;
     bool sleepState = false;
     bool sleepModeEnabled = false;
+
 public:
-    EffectRegistry() : effects() {};
+    EffectRegistry() = default;
 
-    LedEffect *getCurrentEffect() const;
+    [[nodiscard]] LedEffect *getCurrentEffect() const;
 
-    LedEffect *getEffect(uint16_t index) const;
+    [[nodiscard]] LedEffect *getEffect(uint16_t index) const;
 
     uint16_t nextEffectPos(uint16_t efx);
 
@@ -200,7 +196,7 @@ public:
 
     uint16_t nextEffectPos();
 
-    uint16_t curEffectPos() const;
+    [[nodiscard]] uint16_t curEffectPos() const;
 
     uint16_t nextRandomEffectPos();
 
@@ -210,25 +206,25 @@ public:
 
     LedEffect* findEffect(const char* id) const;
 
-    uint16_t size() const;
+    [[nodiscard]] uint16_t size() const;
 
     void setup() const;
 
     void loop();
 
-    void describeConfig(JsonArray &json) const;
+    void describeConfig(const JsonArray &json) const;
 
     void pastEffectsRun(JsonArray &json);
 
     void autoRoll(bool switchType = true);
 
-    bool isAutoRoll() const;
+    [[nodiscard]] bool isAutoRoll() const;
 
-    bool isSleepEnabled() const;
+    [[nodiscard]] bool isSleepEnabled() const;
 
     void enableSleep(bool bSleep);
 
-    bool isAsleep() const;
+    [[nodiscard]] bool isAsleep() const;
 
     void setSleepState(bool sleepFlag);
     friend void readFxState();

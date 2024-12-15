@@ -18,7 +18,7 @@ namespace FxF {
 
         bool windDown() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxF2 : public LedEffect {
@@ -31,7 +31,7 @@ namespace FxF {
 
         bool windDown() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         void makePattern(uint8_t hue);
@@ -53,10 +53,10 @@ namespace FxF {
         uint16_t pos;   //eye's position in the parent set
         CRGB color;    //current color
 
-        static const uint8_t eyeGapSize = 2;
-        static const uint8_t padding = 3;
-        static const uint8_t eyeSize = 3;   // must be odd number, iris size is implied 1
-        static const uint8_t size {eyeSize*2+eyeGapSize+padding};
+        static constexpr uint8_t eyeGapSize = 2;
+        static constexpr uint8_t padding = 3;
+        static constexpr uint8_t eyeSize = 3;   // must be odd number, iris size is implied 1
+        static constexpr uint8_t size {eyeSize*2+eyeGapSize+padding};
         enum BlinkSteps {OpenLid, PauseOn, CloseLid, PauseOff, Idle, Off};
         BlinkSteps curStep;
         CRGBSet * const holderSet;
@@ -64,7 +64,7 @@ namespace FxF {
         void start();
         void step();
         void reset(uint16_t curPos, CRGB clr);
-        bool isActive() const;
+        [[nodiscard]] bool isActive() const;
         inline operator bool() { return isActive(); }
 
         friend class FxF3;  //intended for FxF3 to have deeper access
@@ -84,7 +84,7 @@ namespace FxF {
 
         EyeBlink *findAvailableEye();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         static const uint8_t maxEyes = 5;   //correlated with size of a FRAME
@@ -101,13 +101,13 @@ namespace FxF {
 
         bool windDown() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         enum FxState {Bounce, Reduce, Flash};
-        static const uint8_t dotSize = 4;
-        static const uint8_t wiggleRoom = 10;   //how many pixels variance for the bouncy point
-        static const uint16_t upLim = (FRAME_SIZE + dotSize + wiggleRoom)/2;
+        static constexpr uint8_t dotSize = 4;
+        static constexpr uint8_t wiggleRoom = 10;   //how many pixels variance for the bouncy point
+        static constexpr uint16_t upLim = (FRAME_SIZE + dotSize + wiggleRoom)/2;
         FxState fxState;
         CRGBSet set1, set2;
         int16_t ofs;
@@ -120,12 +120,8 @@ namespace FxF {
         float velocity=0;
         uint8_t hue=0;
 
-        inline uint16_t iPos() const {
-            return uint16_t(abs(pos));
-        }
-        inline float limitPos(float limit) {
-            return pos = constrain(pos, 0, limit);
-        }
+        [[nodiscard]] inline uint16_t iPos() const { return uint16_t(abs(pos)); }
+        inline float limitPos(const float limit) { return pos = constrain(pos, 0, limit); }
     };
 
     class FxF5 : public LedEffect {
@@ -138,7 +134,7 @@ namespace FxF {
 
         bool windDown() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         //Spark sparks[NUM_SPARKS]{};

@@ -19,11 +19,11 @@ namespace FxE {
 
         static void twinkle();
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
         static void updateParams();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxE2 : public LedEffect {
@@ -38,7 +38,7 @@ namespace FxE {
 
         void beatwave();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxE3 : public LedEffect {
@@ -51,7 +51,7 @@ namespace FxE {
 
         void windDownPrep() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         const uint8_t sasquatchSize = 3;
@@ -74,7 +74,7 @@ namespace FxE {
 
         void serendipitous();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         uint16_t Xorig = 0x012;
@@ -93,7 +93,7 @@ namespace FxE {
 
         void windDownPrep() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         CRGBSet wave2, wave3;

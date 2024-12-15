@@ -51,20 +51,20 @@ void mic_setup() {
     PDM.setGain(5);
     if (!PDM.begin(MIC_CHANNELS, PCM_SAMPLE_FREQ)) {
         //resetStatus(SYS_STATUS_MIC_MASK); //the default value of the flag is reset (0) and we can't leave the function if PDM doesn't initialize properly
-        Log.errorln(F("Failed to start PDM library! (for microphone sampling)"));
+        Log.error(F("Failed to start PDM library! (for microphone sampling)"));
         //vTaskSuspend();
         while (true) yield();
     }
     taskDelay(1000);
     sysInfo->setSysStatus(SYS_STATUS_MIC);
-    Log.infoln(F("PDM - microphone - setup ok"));
+    Log.info(F("PDM - microphone - setup ok"));
 }
 
 void mic_run() {
     // Wait for samples to be read
     if (samplesRead) {
         audioData->push_back(sampleBuffer, samplesRead);
-        //Log.infoln(F("Audio data - added %d samples to circular buffer, size updated to %d items"), samplesRead, audioData->size());
+        //Log.info(F("Audio data - added %d samples to circular buffer, size updated to %d items"), samplesRead, audioData->size());
         short maxSample = INT16_MIN;
         for (uint i = 0; i < samplesRead; i++) {
             if (sampleBuffer[i] > maxSample)
@@ -73,7 +73,7 @@ void mic_run() {
         if (maxSample > audioBumpThreshold) {
             fxBump = true;
             random16_add_entropy(abs(maxSample));
-            Log.infoln(F("Audio sample: %d"), maxSample);
+            Log.info(F("Audio sample: %d"), maxSample);
 
             //contribute to the audio histogram - the bins are 500 units wide and tailored around audioBumpThreshold.
             bool bFoundBin = false;

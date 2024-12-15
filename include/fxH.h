@@ -46,7 +46,7 @@ namespace FxH {
 
     class FxH1 : public LedEffect {
     private:
-        static const uint8_t numFires = 2;
+        static constexpr uint8_t numFires = 2;
         CRGBSet fires[numFires];
         std::vector<CRGB> hMap;
     public:
@@ -58,11 +58,11 @@ namespace FxH {
 
         void windDownPrep() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
         void Fire2012WithPalette(uint8_t xFire);
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxH2 : public LedEffect {
@@ -75,13 +75,13 @@ namespace FxH {
 
         void windDownPrep() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
         static void confetti_pal();
 
         static void updateParams();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxH3 : public LedEffect {
@@ -94,9 +94,9 @@ namespace FxH {
 
         void windDownPrep() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxH4 : public LedEffect {
@@ -109,13 +109,13 @@ namespace FxH {
 
         void windDownPrep() override;
 
-        JsonObject &describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     private:
-        static const uint8_t twinkleDensity = 5;
-        static const uint8_t twinkleSpeed = 4;
-        static const uint8_t secondsPerPalette = 40;
+        static constexpr uint8_t twinkleDensity = 5;
+        static constexpr uint8_t twinkleSpeed = 4;
+        static constexpr uint8_t secondsPerPalette = 40;
 
         static void drawTwinkles(CRGBSet& set);
         static CRGB computeOneTwinkle(uint32_t ms, uint32_t salt);
@@ -135,9 +135,9 @@ namespace FxH {
 
         void windDownPrep() override;
 
-        JsonObject &describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     private:
         int red {0};
         int green {0};
@@ -162,7 +162,7 @@ namespace FxH {
             uint8_t offTime;
             uint8_t _reserved;
         };
-        inline Cycle(uint32_t compact) : compact(compact) { _reserved = 0; };
+        inline Cycle(const uint32_t compact) : compact(compact) { _reserved = 0; };
     };
 
     class Spark {
@@ -197,12 +197,12 @@ namespace FxH {
 
         void windDownPrep() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
         ~FxH6() override;
 
     private:
-        static const int frameSize = 7;
+        static constexpr int frameSize = 7;
         enum Phase:uint8_t {DefinedPattern, Random} stage;
 
         uint16_t timerCounter {};

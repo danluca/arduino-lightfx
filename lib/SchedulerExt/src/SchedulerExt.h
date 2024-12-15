@@ -49,6 +49,8 @@ extern "C" {
 
 class Runnable {
 public:
+    virtual ~Runnable() = default;
+
     virtual void run() = 0;
     virtual void terminate() = 0;
     enum State:uint8_t {NEW, EXECUTING, TERMINATED};
@@ -58,7 +60,7 @@ class TaskWrapper final : Runnable {
 public:
     explicit TaskWrapper(TaskDefPtr taskDef, int16_t x);
 
-    virtual ~TaskWrapper() {
+    ~TaskWrapper() override {
         delete [] id;
     }
 
@@ -88,8 +90,8 @@ public:
     }
 
 protected:
-    [[noreturn]] void run () override;
-    bool waitToEnd(uint16_t msTimeOut=1000);    //defaults to waiting 1s for task to finish
+    void run () override;
+    [[nodiscard]] bool waitToEnd(uint16_t msTimeOut=1000) const;    //defaults to waiting 1s for task to finish
     void terminate() override;
 
     const NoArgTask fnSetup, fnLoop;
@@ -112,7 +114,7 @@ public:
 
     TaskWrapper* startTask(TaskDefPtr taskDef);
 
-    bool stopTask(TaskWrapper *pt);
+    bool stopTask(const TaskWrapper *pt);
     [[nodiscard]] TaskWrapper* getTask(uint index) const;
     [[nodiscard]] TaskWrapper* getTask(const char* name) const;
     [[nodiscard]] TaskWrapper* getTask(UBaseType_t uid) const;

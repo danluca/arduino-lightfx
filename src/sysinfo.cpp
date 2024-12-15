@@ -1,27 +1,23 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
 #include <ArduinoJson.h>
-#include <FreeRTOS.h>
+#include <SchedulerExt.h>
 #include "filesystem.h"
 #include "util.h"
 #include "sysinfo.h"
 #include "config.h"
 #include "timeutil.h"
 #include "version.h"
-#ifndef DISABLE_LOGGING
-#include <SchedulerExt.h>
-#endif
+#include "stringutils.h"
 
 #define BUF_ID_SIZE  20
 
 static const char unknown[] PROGMEM = "N/A";
-#ifndef DISABLE_LOGGING
-static constexpr char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%%[%u] priority=%i state=%i id=%i core=%i stackSize=%u free=%u\n";
-static constexpr char threadInfoVerboseFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%i id=%y \n  basePriority=%i stackBase=%X size=%u free=%u core=%i\n";
+static constexpr char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%%[%u] priority=%i state=%s id=%i core=%i stackSize=%u free=%u\n";
+static constexpr char threadInfoVerboseFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%s id=%s \n  basePriority=%i stackBase=%X size=%u free=%u core=%i\n";
 static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%u free: tasks=%u, system=%x;\n  Total Heap:: size=%u free=%u\n";
 static constexpr char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free: tasks=%u, system=%x taskCount=%u;\n  Total Heap:: size=%u used=%u free=%u lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
 static constexpr char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%D MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
-#endif
 static const char *const csBuildVersion PROGMEM = "buildVersion";
 static const char *const csBoardName PROGMEM = "boardName";
 static const char *const csBuildTime PROGMEM = "buildTime";
@@ -45,8 +41,20 @@ unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
 
+const char *taskStatusToString(const eTaskState state) {
+    switch (state) {
+        case eReady: return "Ready";
+        case eBlocked: return "Blocked";
+        case eSuspended: return "Suspended";
+        case eDeleted: return "Deleted";
+        case eRunning: return "Running";
+        case eInvalid: return "Invalid";
+        default: return "Unknown";
+    }
+}
 void logTaskStats() {
-#ifndef DISABLE_LOGGING
+    if (!Log.isEnabled(INFO))
+        return;
     // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
     unsigned long ulTotalRunTime=0, ulTotalStack=0, ulFreeStack=0;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
@@ -55,7 +63,7 @@ void logTaskStats() {
     if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
         /* Generate raw status information about each task. */
         uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
-        Log.infoln("Total run time reported by system: %u", ulTotalRunTime);
+        Log.info("Total run time reported by system: %u", ulTotalRunTime);
 
         /* Avoid divide by zero errors. */
         if( ulTotalRunTime > 100 ) {
@@ -66,11 +74,13 @@ void logTaskStats() {
                 coresTotalRunTime[0] += (ts.uxCoreAffinityMask & CORE_0 ? ts.ulRunTimeCounter : 0);
                 coresTotalRunTime[1] += (ts.uxCoreAffinityMask & CORE_1 ? ts.ulRunTimeCounter : 0);
             }
-            Log.infoln("Total run time reported by individual tasks per core: CORE 0=%v; CORE 1=%v", coresTotalRunTime[0], coresTotalRunTime[1]);
+            Log.info("Total run time reported by individual tasks per core: CORE 0=%lu; CORE 1=%lu", coresTotalRunTime[0], coresTotalRunTime[1]);
             ulTotalRunTime /= 100UL;    // For percentage calculations
             coresTotalRunTime[0] /= 100UL;
             coresTotalRunTime[1] /= 100UL;
-            Log.info(F("THREADS/TASKS INFO - state 0=running, 1=ready, 2=blocked, 3=suspended, 4=deleted; max priority %d\n"), configMAX_PRIORITIES-1);
+            Log.info(F("THREADS/TASKS INFO - max priority %d\n"), configMAX_PRIORITIES-1);
+            String strTaskInfo;
+            strTaskInfo.reserve(1024);  //ensure enough space to avoid reallocations for each thread
             /* For each populated position in the pxTaskStatusArray array, format the raw data as human-readable ASCII data. */
             for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
                 const TaskStatus_t ts = pxTaskStatusArray[x];
@@ -84,17 +94,17 @@ void logTaskStats() {
                 //is this a task we created? if so, we have extra information - like stack size
                 const TaskWrapper *tw = Scheduler.getTask(ts.xTaskNumber);
                 uint32_t stackSize = tw ? tw->getStackSize() : 0;
-                if (LOG_LEVEL_TRACE > Log.getLevel()) {
-                    Log.info(threadInfoFmt, x, ts.pcTaskName, strStat, ts.ulRunTimeCounter, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber, ts.uxCoreAffinityMask,
+                if (!Log.isEnabled(DEBUG)) {
+                    StringUtils::append(strTaskInfo, threadInfoFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, taskStatusToString(ts.eCurrentState), ts.xTaskNumber, ts.uxCoreAffinityMask,
                         stackSize, ts.usStackHighWaterMark);
-                    Log.info("\n  stack end %X begin %X free %i min %i\n", (*ts.pxEndOfStack), (*ts.pxStackBase), ((*ts.pxEndOfStack)-(*ts.pxStackBase)), ts.usStackHighWaterMark);
+                    StringUtils::append(strTaskInfo,"\n  stack end %X begin %X free %i min %i\n", (*ts.pxEndOfStack), (*ts.pxStackBase), ((*ts.pxEndOfStack)-(*ts.pxStackBase)), ts.usStackHighWaterMark);
                 } else
-                    Log.trace(threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, ts.eCurrentState, ts.xTaskNumber, ts.uxBasePriority,
+                    StringUtils::append(strTaskInfo, threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, taskStatusToString(ts.eCurrentState), ts.xTaskNumber, ts.uxBasePriority,
                         ts.pxStackBase, stackSize, ts.usStackHighWaterMark, ts.uxCoreAffinityMask);
                 ulTotalStack += stackSize;
                 ulFreeStack += ts.usStackHighWaterMark;
             }
-            Log.endContinuation();
+            Log.info(strTaskInfo.c_str());
         }
         /* The array is no longer needed, free the memory it consumes. */
         vPortFree( pxTaskStatusArray );
@@ -102,32 +112,61 @@ void logTaskStats() {
     //memory stats - NOTE: vPortGetHeapStats is not implemented in the RP2040 port with the heap memory strategy adopted (seemingly heap3)
 //    HeapStats_t heapStats;
 //    vPortGetHeapStats(&heapStats);
-    if (LOG_LEVEL_TRACE > Log.getLevel()) {
-        //Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes);
+    if (Log.isEnabled(DEBUG)) {
+        Log.debug(heapStackVerboseFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), uxArraySize, rp2040.getTotalHeap(), rp2040.getUsedHeap(),
+                  rp2040.getFreeHeap(), rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getUsedPSRAMHeap(), rp2040.getFreePSRAMHeap(), 0, 0);
+    } else {
+        //StringUtils::append(strHeapInfo, heapStackInfoFmt, ulTotalStack, ulFreeStack, configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes);
         Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, abs(rp2040.getFreeStack()), rp2040.getTotalHeap(), rp2040.getFreeHeap());
         Log.info("  Stack pointer: start %X, free %X\n", rp2040.getStackPointer(), rp2040.getFreeStack());
-    } else {
-        Log.trace(heapStackVerboseFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), uxArraySize, rp2040.getTotalHeap(), rp2040.getUsedHeap(),
-                  rp2040.getFreeHeap(), rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getUsedPSRAMHeap(), rp2040.getFreePSRAMHeap(), 0, 0);
     }
-    Log.endContinuation();
 
     auto *stats = new String();
     stats->reserve(1024);       // doc states ~40bytes per task, we have 12 tasks
     stats->concat(F("\nName\tSt\tPr\tStk\tNum\tCore\n"));
     vTaskList(stats->begin());
-    Log.infoln(stats->c_str());
+    Log.info(stats->c_str());
 
-    // Log.infoln(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
-#endif
+    // Log.info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
 }
 
+const char *resetReasonToString(const uint8_t reason) {
+    switch (reason) {
+        case 0: return "unknown";
+        case 1: return "power on";
+        case 2: return "pin reset";
+        case 3: return "soft";
+        case 4: return "watchdog";
+        case 5: return "debug";
+        case 6: return "glitch";
+        case 7: return "brownout";
+        default: return "n/r";
+    }
+}
+
+/**
+ * Logs detailed system information for debugging and diagnostic purposes.
+ * This function outputs various system-level details, including:
+ * - CPU ROM version and core speed
+ * - FreeRTOS, Arduino PICO, and SDK version details
+ * - Board identifier, board name, and MAC address
+ * - Device name and flash memory size
+ * - System reset reason with detailed status codes
+ */
 void logSystemInfo() {
-#ifndef DISABLE_LOGGING
-    Log.infoln(sysInfoFmt, rp2040_rom_version(), RP2040::f_cpu()/1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
+    Log.info(sysInfoFmt, rp2040_rom_version(), RP2040::f_cpu()/1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
                sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->get_flash_capacity());
-    Log.infoln(F("System reset reason %d (0=unknown, 1=power on, 2=pin reset, 3=soft, 4=watchdog, 5=debug, 6=glitch, 7=brownout)"), rp2040.getResetReason());
-#endif
+    Log.info(F("System reset reason %s"), resetReasonToString(rp2040.getResetReason()));
+}
+
+/**
+ * Logs the current system state, including system status and formatted uptime.
+ */
+void logSystemState() {
+    char buf[20];
+    const unsigned long uptime = millis();
+    snprintf(buf, 16, "%3dD %2dH %2dm", uptime/86400000l, (uptime/3600000l%24), (uptime/60000%60));
+    Log.info(F("System state: %X; uptime %s"), sysInfo->getSysStatus(), buf);
 }
 
 // SysInfo
@@ -247,7 +286,7 @@ void readSysInfo() {
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, *json);
         if (error) {
-            Log.errorln(F("Error reading the system information JSON file %s [%d bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
+            Log.error(F("Error reading the system information JSON file %s [%d bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
             delete json;
             return;
         }
@@ -261,7 +300,7 @@ void readSysInfo() {
             for (JsonVariant i: wdReboots)
                 sysInfo->wdReboots.push(i.as<time_t>());
         } else
-            Log.warningln(F("Build version change detected - previous watchdog reboot timestamps %s have been discarded"), doc[csWdReboots].as<String>().c_str());
+            Log.warn(F("Build version change detected - previous watchdog reboot timestamps %s have been discarded"), doc[csWdReboots].as<String>().c_str());
         sysInfo->boardId = doc[csBoardId].as<String>();
         sysInfo->secElemId = doc[csSecElemId].as<String>();
         sysInfo->macAddress = doc[csMacAddress].as<String>();
@@ -274,11 +313,9 @@ void readSysInfo() {
         sysInfo->freeStack = doc[csFreeStack];
         //do not override current status (in progress of populating) with last run status
         uint8_t lastStatus = doc[csStatus];
-#ifndef DISABLE_LOGGING
-        Log.infoln(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%X (last %X), IP=%s, Gateway=%s"),
+        Log.info(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%X (last %X), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status, lastStatus,
                    sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
-#endif
     }
     delete json;
 }
@@ -311,6 +348,6 @@ void saveSysInfo() {
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
     if (!writeTextFile(sysFileName, str))
-        Log.errorln(F("Failed to create/write the system information file %s"), sysFileName);
+        Log.error(F("Failed to create/write the system information file %s"), sysFileName);
     delete str;
 }

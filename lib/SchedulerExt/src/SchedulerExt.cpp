@@ -90,19 +90,19 @@ int16_t SchedulerClassExt::findNextThreadSlot() const {
  * Waits for the thread to terminate, then disposes it and frees its slot in the local thread array
  * If the thread is not one tracked in the local thread array, it returns osErrorParameter
  * @param pt pointer to the thread to terminate
- * @return result of executing Thread::join for the given thread
+ * @return whether the task termination and resource cleanup were successful
  */
-bool SchedulerClassExt::stopTask(TaskWrapper *pt) {
+bool SchedulerClassExt::stopTask(const TaskWrapper *pt) {
     bool result = false;
     for (auto & task : tasks) {
         if (task == pt) {
-            //signal task to terminate - see TaskJob::run and taskJobExecutor
-            task->waitToEnd();
+            //signal task to terminate and wait
+            const bool tskEnd = task->waitToEnd();
             //deallocate the thread (created with new) and its name
             delete task;
             //free-up the thread array spot for it
             task = nullptr;
-            result = true;
+            result = tskEnd;
             break;
         }
     }
@@ -153,13 +153,13 @@ TaskWrapper *SchedulerClassExt::getTask(const UBaseType_t uid) const {
 TaskWrapper::TaskWrapper(const TaskDefPtr taskDef, int16_t x) : fnSetup(taskDef->setup), fnLoop(taskDef->loop), stackSize(taskDef->stackSize), coreAffinity(taskDef->core),
                                                           priority(taskDef->priority), index(x) {
     if (taskDef->threadName) {
-        size_t sz = strlen(taskDef->threadName);
+        const size_t sz = strlen(taskDef->threadName);
         id = new char[sz + 1]();   //zero initialized array
-        strcpy(id, taskDef->threadName);
+        strncpy(id, taskDef->threadName, sz);
     } else {
-        size_t sz = sprintf(nullptr, fmtTaskName, index);
+        const size_t sz = sprintf(nullptr, fmtTaskName, index);
         id = new char[sz + 1](); //zero initialized array
-        sprintf(id, fmtTaskName, index);
+        snprintf(id, sz, fmtTaskName, index);
     }
 }
 
@@ -180,7 +180,7 @@ void TaskWrapper::run() {
  * Notifies the task to stop running. Returns when the notification was received and fnLoop execution finished, or the timeout expired
  * The timeout is rounded up to nearest 100ms. Default timeout is 1000ms = 1s.
  */
-bool TaskWrapper::waitToEnd(uint16_t msTimeOut) {
+bool TaskWrapper::waitToEnd(uint16_t msTimeOut) const {
     xTaskNotify(handle, 1, eIncrement);
     //wait for the task to finish a fnLoop execution or timeout
     uint16_t nbrLoops = msTimeOut/100 + 1;      //ensure we have at least 1 loop as well as round up the timeout to nearest 100ms

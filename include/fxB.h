@@ -37,9 +37,9 @@ namespace FxB {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB2 : public LedEffect {
@@ -50,7 +50,7 @@ namespace FxB {
 
         void run() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB3 : public LedEffect {
@@ -61,9 +61,9 @@ namespace FxB {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB4 : public LedEffect {
@@ -74,9 +74,9 @@ namespace FxB {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB5 : public LedEffect {
@@ -87,9 +87,9 @@ namespace FxB {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB6 : public LedEffect {
@@ -100,7 +100,7 @@ namespace FxB {
 
         void run() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB7 : public LedEffect {
@@ -111,9 +111,9 @@ namespace FxB {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB8 : public LedEffect {
@@ -124,9 +124,9 @@ namespace FxB {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB9 : public LedEffect {
@@ -137,7 +137,7 @@ namespace FxB {
 
         void run() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 }
 

@@ -10,6 +10,7 @@
 #include "transition.h"
 #include "util.h"
 #include "ledstate.h"
+#include "stringutils.h"
 
 //~ Global variables definition
 const uint8_t dimmed = 20;
@@ -116,8 +117,8 @@ void readFxState() {
         if (doc[csBroadcast].is<bool>())
             fxBroadcastEnabled = doc[csBroadcast].as<bool>();
 
-        Log.infoln(F("System state restored from %s [%d bytes]: autoFx=%T, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%T), sleepEnabled=%T"),
-                   stateFileName, stateSize, autoAdvance, seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), paletteFactory.isAuto(), fxRegistry.isSleepEnabled());
+        Log.info(F("System state restored from %s [%d bytes]: autoFx=%s, randomSeed=%d, nextEffect=%d, brightness=%d (auto adjust), audioBumpThreshold=%d, holiday=%s (auto=%s), sleepEnabled=%s"),
+                   stateFileName, stateSize, StringUtils::asString(autoAdvance), seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(fxRegistry.isSleepEnabled()));
     }
     delete json;
 }
@@ -137,7 +138,7 @@ void saveFxState() {
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
     if (!writeTextFile(stateFileName, str))
-        Log.errorln(F("Failed to create/write the status file %s"), stateFileName);
+        Log.error(F("Failed to create/write the status file %s"), stateFileName);
     delete str;
 }
 
@@ -769,7 +770,7 @@ uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     uint16_t fxIndex = effectsCount - 1;
     if (strcmp(FX_SLEEPLIGHT_ID, effect->name()) == 0)
         sleepEffect = fxIndex;
-    Log.infoln(F("Effect [%s] registered successfully at index %d"), effect->name(), fxIndex);
+    Log.info(F("Effect [%s] registered successfully at index %d"), effect->name(), fxIndex);
     return fxIndex;
 }
 
@@ -784,7 +785,7 @@ LedEffect *EffectRegistry::findEffect(const char *id) const {
 void EffectRegistry::setSleepState(const bool sleepFlag) {
     if (sleepState != sleepFlag) {
         sleepState = sleepFlag;
-        Log.infoln(F("Switching to sleep state %T (sleep mode enabled %T)"), sleepState, sleepModeEnabled);
+        Log.info(F("Switching to sleep state %s (sleep mode enabled %s)"), StringUtils::asString(sleepState), StringUtils::asString(sleepModeEnabled));
         if (sleepState) {
             nextEffectPos(FX_SLEEPLIGHT_ID);
         } else {
@@ -797,12 +798,12 @@ void EffectRegistry::setSleepState(const bool sleepFlag) {
             }
         }
     } else
-        Log.infoln(F("Sleep state is already %T - no changes"), sleepState);
+        Log.info(F("Sleep state is already %s - no changes"), StringUtils::asString(sleepState));
 }
 
 void EffectRegistry::enableSleep(bool bSleep) {
     sleepModeEnabled = bSleep;
-    Log.infoln(F("Sleep mode enabled is now %T"), sleepModeEnabled);
+    Log.info(F("Sleep mode enabled is now %s"), StringUtils::asString(sleepModeEnabled));
     //determine the proper sleep status based on time
     setSleepState(sleepModeEnabled && !isAwakeTime(now()));
 }
@@ -819,7 +820,7 @@ void EffectRegistry::setup() const {
 void EffectRegistry::loop() {
     //if effect has changed, re-run the effect's setup
     if ((lastEffectRun != currentEffect) && (effects[lastEffectRun]->getState() == Idle)) {
-        Log.infoln(F("Effect change: from index %d [%s] to %d [%s]"),
+        Log.info(F("Effect change: from index %d [%s] to %d [%s]"),
                 lastEffectRun, effects[lastEffectRun]->description(), currentEffect, effects[currentEffect]->description());
         lastEffectRun = currentEffect;
         lastEffects.push(lastEffectRun);
@@ -828,9 +829,11 @@ void EffectRegistry::loop() {
     effects[lastEffectRun]->loop();
 }
 
-void EffectRegistry::describeConfig(JsonArray &json) const {
-    for (auto & effect : effects)
-        effect->describeConfig(json);
+void EffectRegistry::describeConfig(const JsonArray &json) const {
+    for (auto & effect : effects) {
+        auto fxJson = json.add<JsonObject>();
+        effect->baseConfig(fxJson);
+    }
 }
 
 LedEffect *EffectRegistry::getEffect(uint16_t index) const {
@@ -887,12 +890,6 @@ LedEffect::LedEffect(const char *description) : state(Idle), desc(description) {
     id[LED_EFFECT_ID_SIZE-1] = '\0';
     //register the effect
     registryIndex = fxRegistry.registerEffect(this);
-}
-
-JsonObject &LedEffect::describeConfig(JsonArray &json) const {
-    JsonObject obj = json.add<JsonObject>();
-    baseConfig(obj);
-    return obj;
 }
 
 const char *LedEffect::name() const {
@@ -952,29 +949,29 @@ void LedEffect::loop() {
     switch (state) {
         case Setup:
             setup();
-            Log.infoln(F("Effect %s [%d] completed setup, moving to running state"), name(), getRegistryIndex());
+            Log.info(F("Effect %s [%d] completed setup, moving to running state"), name(), getRegistryIndex());
             nextState();
             break;    //one blocking step, non repeat
         case Running: run(); break;                 //repeat, called multiple times to achieve the light effects designed
         case WindDownPrep:
             windDownPrep();
-            Log.infoln(F("Effect %s [%d] completed WindDown Prep"), name(), getRegistryIndex());
+            Log.info(F("Effect %s [%d] completed WindDown Prep"), name(), getRegistryIndex());
             nextState();
             break;
         case WindDown:
             if (windDown()) {
-                Log.infoln(F("Effect %s [%d] completed WindDown"), name(), getRegistryIndex());
+                Log.info(F("Effect %s [%d] completed WindDown"), name(), getRegistryIndex());
                 nextState();
             }
             break;           //repeat, called multiple times to achieve the fade out for the current light effect
         case TransitionBreakPrep:
             transitionBreakPrep();
-            Log.infoln(F("Effect %s [%d] completed TransitionBreak Prep"), name(), getRegistryIndex());
+            Log.info(F("Effect %s [%d] completed TransitionBreak Prep"), name(), getRegistryIndex());
             nextState();
             break;
         case TransitionBreak:
             if (transitionBreak()) {
-                Log.infoln(F("Effect %s [%d] completed TransitionBreak"), name(), getRegistryIndex());
+                Log.info(F("Effect %s [%d] completed TransitionBreak"), name(), getRegistryIndex());
                 nextState();
             }
             break; //repeat, called multiple times to achieve the transition off for the current light effect
@@ -1110,9 +1107,9 @@ void fx_setup() {
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
     if (!writeTextFile(sysCfgFileName, str))
-        Log.errorln(F("Cannot save SysConfig JSON file %s"), sysCfgFileName);
+        Log.error(F("Cannot save SysConfig JSON file %s"), sysCfgFileName);
     delete str;
-    Log.infoln("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)", fxRegistry.getCurrentEffect()->name(),
+    Log.info("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)", fxRegistry.getCurrentEffect()->name(),
                fxRegistry.getCurrentEffect()->getRegistryIndex(), Setup);
 }
 
@@ -1120,7 +1117,7 @@ void fx_setup() {
 void fx_run() {
     EVERY_N_SECONDS(30) {
         if (fxBump) {
-            Log.infoln(F("Audio triggered effect incremental change"));
+            Log.info(F("Audio triggered effect incremental change"));
             fxRegistry.nextEffectPos();
             fxBump = false;
             totalAudioBumps++;
@@ -1128,10 +1125,10 @@ void fx_run() {
         uint8_t oldBrightness = stripBrightness;
         stripBrightness = adjustStripBrightness();
         if (oldBrightness != stripBrightness)
-            Log.infoln(F("Strip brightness updated from %d to %d"), oldBrightness, stripBrightness);
+            Log.info(F("Strip brightness updated from %d to %d"), oldBrightness, stripBrightness);
     }
     EVERY_N_MINUTES(7) {
-        Log.infoln(F("Switching effect to a new random one"));
+        Log.info(F("Switching effect to a new random one"));
         fxRegistry.nextRandomEffectPos();
         shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
         saveFxState();
@@ -1151,6 +1148,6 @@ void bedtime() {
     if (fxRegistry.isSleepEnabled())
         fxRegistry.setSleepState(true);
     else
-        Log.warningln(F("Bedtime alarm triggered, sleep mode is disabled - no changes"));
+        Log.warn(F("Bedtime alarm triggered, sleep mode is disabled - no changes"));
 }
 

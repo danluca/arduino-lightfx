@@ -19,6 +19,7 @@ extern unsigned long prevIdleTime;
 
 void logTaskStats();
 void logSystemInfo();
+void logSystemState();
 void readSysInfo();
 void saveSysInfo();
 

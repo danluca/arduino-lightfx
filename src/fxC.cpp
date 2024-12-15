@@ -169,11 +169,10 @@ void FxC3::run() {
 
 }
 
-JsonObject & FxC3::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["xscale"] = xscale;
-    obj["yscale"] = yscale;
-    return obj;
+void FxC3::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["xscale"] = xscale;
+    json["yscale"] = yscale;
 }
 
 bool FxC3::windDown() {
@@ -196,15 +195,15 @@ void FxC4::setup() {
 
 void FxC4::run() {
     EVERY_N_SECONDS_I(fxc4Timer, 1+random8(frequency)) {
-        uint16_t start = random16(NUM_PIXELS - 8);                               // Determine starting location of flash
-        uint16_t len = random16(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
-        uint8_t flashRound = random8(3, flashes);
+        const uint16_t start = random16(NUM_PIXELS - 8);                               // Determine starting location of flash
+        const uint16_t len = random16(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
+        const uint8_t flashRound = random8(3, flashes);
         CRGBSet flash(leds, start, start+len);
 
         for (uint8_t flashCounter = 0; flashCounter < flashRound; flashCounter++) {
             // the brightness of the leader is scaled down by a factor of 5; return strokes are brighter than the leader
-            uint8_t dimmer = flashCounter == 0 ? 5 : random8(1, 3);
-            CRGB color = ColorFromPalette(palette, random8(), brightness / dimmer, LINEARBLEND);
+            const uint8_t dimmer = flashCounter == 0 ? 5 : random8(1, 3);
+            const CRGB color = ColorFromPalette(palette, random8(), brightness / dimmer, LINEARBLEND);
             flash = color;
             FastLED.show(stripBrightness);                       // Show a section of LED's
             taskDelay(random8(4, 10));                                     // each flash only lasts 4-10 milliseconds

@@ -21,6 +21,7 @@
 //#include "jquery_min_js.h"
 #include "pixel_css.h"
 #include "pixel_js.h"
+#include "stringutils.h"
 
 static constexpr char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
 static constexpr char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
@@ -217,9 +218,7 @@ size_t web::handleGetConfig(WiFiClient *client, const String *uri, String *hd, S
     sz += client->println();
     delete str;
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetConfig invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetConfig invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -246,9 +245,7 @@ size_t web::handleGetCss(WiFiClient *client, const String *uri, String *hd, Stri
     sz += writeLargeP(client, pixel_css, cssLen);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetCss invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetCss invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -281,9 +278,7 @@ size_t web::handleGetJs(WiFiClient *client, const String *uri, String *hd, Strin
     sz += writeLargeP(client, src, jsLen);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetJs invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetJs invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -312,9 +307,7 @@ size_t web::handleGetHtml(WiFiClient *client, const String *uri, String *hd, Str
     sz += writeLargeP(client, index_html, szHtml);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetHtml invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetHtml invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -437,9 +430,7 @@ size_t web::handleGetStatus(WiFiClient *client, const String *uri, String *hd, S
     sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetStatus invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetStatus invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -511,11 +502,9 @@ size_t web::handlePutConfig(WiFiClient *client, const String *uri, String *hd, S
         if (masterEnabled)
             postFxChangeEvent(fxRegistry.curEffectPos());   //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
     }
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("FX: Current config updated effect %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),
-               fxRegistry.curEffectPos(), fxRegistry.isAutoRoll(), holidayToString(paletteFactory.getHoliday()),
+    Log.info(F("FX: Current config updated effect %u, autoswitch %s, holiday %s, brightness %u, brightness adjustment %s"),
+               fxRegistry.curEffectPos(), StringUtils::asString(fxRegistry.isAutoRoll()), holidayToString(paletteFactory.getHoliday()),
                stripBrightness, stripBrightnessLocked?"fixed":"automatic");
-#endif
 
     //main status and headers
     resp["status"] = true;
@@ -529,9 +518,7 @@ size_t web::handlePutConfig(WiFiClient *client, const String *uri, String *hd, S
     sz += transmitJsonDocument(resp, client);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handlePutConfig invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handlePutConfig invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -560,9 +547,7 @@ size_t web::handleInternalError(WiFiClient *client, const String *uri, const cha
     sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.errorln(F("ERROR Handler handleInternalError for %s invoked: message %s"), uri->c_str(), message);
-#endif
+    Log.error(F("ERROR Handler handleInternalError for %s invoked: message %s"), uri->c_str(), message);
     return sz;
 }
 
@@ -591,9 +576,7 @@ size_t web::handleNotFoundError(WiFiClient *client, const String *uri, const cha
     sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.errorln(F("ERROR Handler handleNotFoundError for %s invoked: message %s"), uri->c_str(), message);
-#endif
+    Log.error(F("ERROR Handler handleNotFoundError for %s invoked: message %s"), uri->c_str(), message);
     return sz;
 }
 
@@ -610,8 +593,8 @@ void web::dispatch() {
     WiFiClient client = server.available();
     if (client) {
         unsigned long start = millis();
-        IPAddress clientIp = client.remoteIP();
-        Log.infoln(F("Request: inbound from %p"), &clientIp);
+        const IPAddress clientIp = client.remoteIP();
+        Log.info(F("Request: inbound from %s"), clientIp.toString().c_str());
         size_t szResp = 0;
         while (client.connected()) {
             if (client.available()) {
@@ -630,9 +613,7 @@ void web::dispatch() {
                     reqHeader.trim();
                 }
                 reqUri.remove(reqUri.indexOf(" HTTP/"));
-#ifndef DISABLE_LOGGING
-                Log.infoln(F("Request data:\r\nURI: %s\r\n=== Headers ===\r\n%s\r\n=== Body ===\r\n%s\r\n======"), reqUri.c_str(), reqHeader.c_str(), reqBody.c_str());
-#endif
+                Log.info(F("Request data:\r\nURI: %s\r\n=== Headers ===\r\n%s\r\n=== Body ===\r\n%s\r\n======"), reqUri.c_str(), reqHeader.c_str(), reqBody.c_str());
                 bool foundHandler = false;
                 for (const auto &e : webMappings) {
                     //use regex to determine the URI
@@ -654,6 +635,6 @@ void web::dispatch() {
         // close the connection:
         client.stop();
         unsigned long dur = millis() - start;
-        Log.infoln(F("Request: completed %u bytes [%u ms]"), szResp, dur);
+        Log.info(F("Request: completed %u bytes [%u ms]"), szResp, dur);
     }
 }

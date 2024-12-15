@@ -5,6 +5,7 @@
 #include "util.h"
 #include "timeutil.h"
 #include "PaletteFactory.h"
+#include "stringutils.h"
 #include "sysinfo.h"
 
 constexpr char fmtDate[] PROGMEM = "%4d-%02d-%02d";
@@ -27,9 +28,7 @@ bool timeSetup() {
     //read the time
     setSyncProvider(curUnixTime);
     bool ntpTimeAvailable = ntp_sync();
-#ifndef DISABLE_LOGGING
-    Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
-#endif
+    Log.warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     Holiday hday;
     if (ntpTimeAvailable) {
         bool bDST = isDST(timeClient.getEpochTime());
@@ -41,19 +40,17 @@ bool timeSetup() {
             timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
         setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
         hday = paletteFactory.adjustHoliday();    //update the holiday for new time
-#ifndef DISABLE_LOGGING
-        if (logTimeOffset == 0) {
-            time_t curTime = now();
-            time_t curMs = millis();
-            Log.warningln(F("Logging time reference updated from %u ms (%y) to %y"), curMs, curMs/1000, curTime);
-            logTimeOffset = curTime * 1000 - curMs;                //capture current time into the log offset, such that log statements use current time
+        if (Log.getTimebase() == 0) {
+            const time_t curTime = now();
+            const time_t curMs = millis();
+            Log.warn(F("Logging time reference updated from %u ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
+            Log.setTimebase(curTime * 1000 - curMs);                //capture current time into the log offset, such that log statements use current time
         }
-        Log.infoln(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
+        Log.info(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
                    bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
         char timeBuf[20];
         formatDateTime(timeBuf, now());
-        Log.infoln(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
-#endif
+        Log.info(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
     } else {
         sysInfo->resetSysStatus(SYS_STATUS_NTP);
         paletteFactory.setHoliday(Party);  //setting it explicitly to avoid defaulting to none when there is no wifi altogether
@@ -61,16 +58,12 @@ bool timeSetup() {
         bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
         if (bDST)
             sysInfo->setSysStatus(SYS_STATUS_DST);
-#ifndef DISABLE_LOGGING
         char timeBuf[20];
         formatDateTime(timeBuf, now());
-        Log.warningln(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"),
+        Log.warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"),
               timeBuf, bDST?"CDT":"CST", holidayToString(hday));
     }
-    Log.infoln(F("Current holiday is %s"), holidayToString(hday));
-#else
-    }
-#endif
+    Log.info(F("Current holiday is %s"), holidayToString(hday));
     return ntpTimeAvailable;
 }
 
@@ -132,7 +125,7 @@ time_t curUnixTime() {
 
 bool ntp_sync() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        Log.warningln(F("NTP sync failed. No WiFi connection available."));
+        Log.warn(F("NTP sync failed. No WiFi connection available."));
         return false;
     }
     timeClient.begin();

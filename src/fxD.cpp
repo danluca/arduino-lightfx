@@ -8,11 +8,11 @@ using namespace FxD;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxd1Desc[] PROGMEM = "FXD1: Confetti D";
-const char fxd2Desc[] PROGMEM = "FXD2: dot beat";
-const char fxd3Desc[] PROGMEM = "FXD3: plasma";
-const char fxd4Desc[] PROGMEM = "FXD4: rainbow marching";
-const char fxd5Desc[] PROGMEM = "FXD5: ripples";
+constexpr char fxd1Desc[] PROGMEM = "FXD1: Confetti D";
+constexpr char fxd2Desc[] PROGMEM = "FXD2: dot beat";
+constexpr char fxd3Desc[] PROGMEM = "FXD3: plasma";
+constexpr char fxd4Desc[] PROGMEM = "FXD4: rainbow marching";
+constexpr char fxd5Desc[] PROGMEM = "FXD5: ripples";
 
 void FxD::fxRegister() {
     static FxD1 fxD1;
@@ -53,10 +53,9 @@ void FxD1::run() {
     }
 }
 
-JsonObject & FxD1::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["localBright"] = brightness;
-    return obj;
+void FxD1::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["localBright"] = brightness;
 }
 
 
@@ -115,11 +114,10 @@ void FxD2::run() {
     }
 }
 
-JsonObject & FxD2::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["bpm"] = dotBpm;
-    obj["fade"] = 255-fade;
-    return obj;
+void FxD2::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["bpm"] = dotBpm;
+    json["fade"] = 255-fade;
 }
 
 void FxD2::dot_beat() {

@@ -19,12 +19,12 @@ namespace FxA {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
-        void makeDot(CRGB color, uint16_t szDot);
+        void makeDot(CRGB color, uint16_t szDot) const;
 
         CRGBSet dot;
         uint8_t szSegment = 3;
@@ -39,13 +39,13 @@ namespace FxA {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         enum Movement { forward, pause, backward };
-        void makeDot();
+        void makeDot() const;
         CRGBSet dot;
         uint8_t szSegment = 5;
         Movement movement = forward;
@@ -60,15 +60,13 @@ namespace FxA {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         CRGBSet dot;
-
-        void makeDot(CRGB color, uint16_t szDot);
-
+        void makeDot(CRGB color, uint16_t szDot) const;
         uint8_t szSegment = 5;
         //uint8_t szStackSeg = 3;
         bool bFwd = true;
@@ -82,21 +80,19 @@ namespace FxA {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         CRGBSet dot;
         CRGBSet frL;
         CRGBSet frR;
-
-        void makeDot(CRGB color, uint16_t szDot);
-
         uint8_t szSegment = 5;
         uint8_t szStackSeg = 3;
         uint8_t spacing = 7;
         CRGB curBkg;
+        void makeDot(CRGB color, uint16_t szDot);
     };
 
     class FxA5 : public LedEffect {
@@ -107,9 +103,9 @@ namespace FxA {
 
         void run() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         CRGBSet ovr;
@@ -127,12 +123,12 @@ namespace FxA {
 
         void windDownPrep() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
         ~SleepLight() override = default;
 
     protected:
-        static const uint8_t minBrightness = 24;
+        static constexpr uint8_t minBrightness = 24;
         enum SleepLightState:uint8_t {Fade, FadeColorTransition, SleepTransition, Sleep} state;
         CHSV colorBuf{};
         uint8_t timer{};
