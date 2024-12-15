@@ -53,7 +53,7 @@ void PicoLog::begin(SerialUSB *serial, const LogLevel level) {
  * @param args objects to replace the placeholders in the pattern message, in the order listed
  * @return size of the string written
  */
-size_t PicoLog::print(const LogLevel level, const __FlashStringHelper *format, const va_list args) {
+size_t PicoLog::print(const LogLevel level, const __FlashStringHelper *format, va_list args) {
     PGM_P p = reinterpret_cast<PGM_P>(format);
     return print(level, reinterpret_cast<const char *>(p), args);
 }
@@ -66,13 +66,18 @@ size_t PicoLog::print(const LogLevel level, const __FlashStringHelper *format, c
  * @param args objects to replace the placeholders, in the order listed
  * @return size of the string written
  */
-size_t PicoLog::print(const LogLevel level, const char *format, const va_list args) {
+size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     auto *msg = new String();   // heap memory fragmentation risk; this instance is released when sent through Serial interface (flushData)
+    msg->reserve(128);  //initial size to minimize fragmenting
     size_t sz = printTimestamp(msg);
     sz += printThread(msg);
     sz += printLevel(level, msg);
-    msg->reserve(vsprintf(nullptr, format, args) + sz);
-    vsprintf(msg->end(), format, args);
+
+    const size_t szMsg = vsnprintf(nullptr, 0, format, args);
+    char buf[szMsg+1];
+    vsnprintf(buf, szMsg, format, args);
+    msg->reserve(sz + szMsg);
+    msg->concat(buf);
     m_queue.push(msg);
     return msg->length();
 }
@@ -97,8 +102,11 @@ size_t PicoLog::printTimestamp(String *msg) const {
     const unsigned long Hours = (secs % SECS_PER_DAY) / SECS_PER_HOUR;
 
     // Time as string
-    msg->reserve(msg->length() + 20);
-    return sprintf(msg->end(), "%02lu:%02lu:%02lu.%03lu ", Hours, Minutes, Seconds, MilliSeconds);
+    char time[20];
+    const size_t sz = snprintf(time, 19, "%02lu:%02lu:%02lu.%03lu ", Hours, Minutes, Seconds, MilliSeconds);
+    msg->reserve(msg->length() + sz);
+    msg->concat(time);
+    return sz;
 }
 
 /**
@@ -110,9 +118,12 @@ size_t PicoLog::printThread(String *msg) {
     TaskStatus_t taskStatus;
     vTaskGetInfo(nullptr, &taskStatus, pdFALSE, eRunning);
     constexpr char fmt[] = "[%s-%u.%u] ";
-    const size_t sz = sprintf(nullptr, fmt, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+    const size_t sz = snprintf(nullptr, 0, fmt, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+    char buf[sz+1];
+    snprintf(buf, sz, fmt, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
     msg->reserve(msg->length() + sz);
-    return sprintf(msg->end(), fmt, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+    msg->concat(buf);
+    return sz;
 }
 
 /**

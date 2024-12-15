@@ -73,7 +73,7 @@ void fsInit() {
     }
 
     if (FSInfo fsInfo{}; LittleFS.info(fsInfo)) {
-        Log.info(F("Filesystem information (size in bytes): totalSize %u, used %u, maxOpenFiles %d, maxPathLength %s, pageSize %d, blockSize %d"),
+        Log.info(F("Filesystem information (size in bytes): totalSize %lu, used %lu, maxOpenFiles %u, maxPathLength %u, pageSize %u, blockSize %u"),
                    fsInfo.totalBytes, fsInfo.usedBytes, fsInfo.maxOpenFiles, fsInfo.maxPathLength, fsInfo.pageSize, fsInfo.blockSize);
     } else {
         Log.error(F("Cannot retrieve filesystem (LittleFS) information"));
@@ -83,7 +83,7 @@ void fsInit() {
     String dirContent;
     while (d.next()) {
         if (d.isFile())
-            StringUtils::append(dirContent, F("  %s [%d]\n"), d.fileName().c_str(), d.fileSize());
+            StringUtils::append(dirContent, F("  %s [%u]\n"), d.fileName().c_str(), d.fileSize());
         else
             StringUtils::append(dirContent, F("  %s <DIR>\n"), d.fileName().c_str());
     }
