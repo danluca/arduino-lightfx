@@ -191,19 +191,19 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
  */
 void fxBroadcast(const uint16_t index) {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        Log.warn(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform FX  update for %d. System status: %hX"),
+        Log.warn(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform FX  update for %d. System status: %#hX"),
             index, sysInfo->getSysStatus());
         return;
     }
 
-    LedEffect *fx = fxRegistry.getEffect(index);
+    const LedEffect *fx = fxRegistry.getEffect(index);
     if (!fxBroadcastEnabled) {
         Log.warn(F("This board is not a master (FX Broadcast disabled) - will not push effect %s [%hu] to others"), fx->name(), fx->getRegistryIndex());
         return;
     }
     broadcastState = Broadcasting;
     Log.info(F("Fx change event - start broadcasting %s [%hu] to %d recipients"), fx->name(), fx->getRegistryIndex(), fxBroadcastRecipients.size());
-    for (auto &client : fxBroadcastRecipients)
+    for (const auto &client : fxBroadcastRecipients)
         clientUpdate(client, fx->getRegistryIndex());
     Log.info(F("Finished broadcasting to %hu recipients - check individual log statements for status of each recipient"), fxBroadcastRecipients.size());
     broadcastState = Waiting;
@@ -213,9 +213,8 @@ void fxBroadcast(const uint16_t index) {
  * Update holiday theme, if needed
  */
 void holidayUpdate() {
-    Holiday oldHday = paletteFactory.getHoliday();
-    Holiday hDay = paletteFactory.adjustHoliday();
-    if (oldHday == hDay)
+    const Holiday oldHday = paletteFactory.getHoliday();
+    if (Holiday hDay = paletteFactory.adjustHoliday(); oldHday == hDay)
         Log.info(F("Current holiday remains %s"), holidayToString(hDay));
     else
         Log.info(F("Current holiday adjusted from %s to %s"), holidayToString(oldHday), holidayToString(hDay));
@@ -226,7 +225,7 @@ void holidayUpdate() {
  */
 void timeUpdate() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        Log.error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform time update. System status: %X"), sysInfo->getSysStatus());
+        Log.error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform time update. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
     const bool result = ntp_sync();
@@ -247,16 +246,16 @@ void timeUpdate() {
  */
 void timeSetupCheck() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        Log.error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform time setup check. System status: %X"), sysInfo->getSysStatus());
+        Log.error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform time setup check. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
     if (!timeClient.isTimeSet()) {
         bool result = ntp_sync();
         result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
         updateStateLED((result ? CLR_ALL_OK : CLR_SETUP_ERROR).as_uint32_t());
-        Log.info(F("System status: %X"), sysInfo->getSysStatus());
+        Log.info(F("System status: %#hX"), sysInfo->getSysStatus());
     } else
-        Log.info(F("Time was already properly setup, event fired in excess. System status: %X"), sysInfo->getSysStatus());
+        Log.info(F("Time was already properly setup, event fired in excess. System status: %#hX"), sysInfo->getSysStatus());
 }
 
 /**
@@ -264,7 +263,7 @@ void timeSetupCheck() {
  */
 void commSetup() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        Log.error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot setup broadcasting. System status: %X"), sysInfo->getSysStatus());
+        Log.error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot setup broadcasting. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
     // create the broadcast queue, used by enqueue methods to send actions and execute method to receive and execute actions
@@ -313,6 +312,6 @@ void postFxChangeEvent(const uint16_t index) {
     if (broadcastState >= Configured)
         enqueueFxUpdate(index);
     else
-        Log.warn(F("Broadcast system is not configured yet - effect %d cannot be synced. Broadcast enabled=%s"), StringUtils::asString(fxBroadcastEnabled));
+        Log.warn(F("Broadcast system is not configured yet - effect %hu cannot be synced. Broadcast enabled=%s"), index, StringUtils::asString(fxBroadcastEnabled));
 }
 

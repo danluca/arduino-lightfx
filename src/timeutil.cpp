@@ -27,7 +27,7 @@ NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time fr
 bool timeSetup() {
     //read the time
     setSyncProvider(curUnixTime);
-    bool ntpTimeAvailable = ntp_sync();
+    const bool ntpTimeAvailable = ntp_sync();
     Log.warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     Holiday hday;
     if (ntpTimeAvailable) {

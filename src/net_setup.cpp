@@ -164,7 +164,7 @@ void wifi_ensure() {
     }
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI))
         postTimeSetupCheck();
-    Log.info(F("System status: %hX"), sysInfo->getSysStatus());
+    Log.info(F("System status: %#hX"), sysInfo->getSysStatus());
 }
 
 void printSuccessfulWifiStatus() {

@@ -56,7 +56,7 @@ void setup() {
     // notifies Core1 to start processing
     TaskHandle_t core1 = xTaskGetHandle("CORE1");    //create a task handle for the second core
     BaseType_t c1NtfStatus = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running
-    Log.info(F("Main Core 0 Setup completed, Core 1 notified %d. System status: %hX"), c1NtfStatus, sysInfo->getSysStatus());
+    Log.info(F("Main Core 0 Setup completed, Core 1 notified %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
 }
 
 /**
@@ -103,7 +103,7 @@ void setup1() {
     //enqueues the alarm setup event
     enqueueAlarmSetup();
 
-    Log.info(F("Main Core 1 Setup completed. System status: %hX"), sysInfo->getSysStatus());
+    Log.info(F("Main Core 1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
     logSystemInfo();
 }
 

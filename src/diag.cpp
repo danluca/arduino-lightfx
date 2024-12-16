@@ -93,7 +93,7 @@ void deviceSetup() {
 
     taskDelay(250);
 
-    Log.info(F("Diagnostic devices initialized - system status: %hX"), sysInfo->getSysStatus());
+    Log.info(F("Diagnostic devices initialized - system status: %#hX"), sysInfo->getSysStatus());
 }
 
 /**
