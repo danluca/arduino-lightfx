@@ -211,7 +211,7 @@ size_t readTextFile(const char *fname, String *s) {
         //wait for the filesystem task to finish and notify us
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.error(F("Error sending READ_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+        Log.error(F("Error sending READ_FILE message to filesystem task for file name %s - error %ld"), fname, qResult);
 
     delete msg;
     delete args;
@@ -234,7 +234,7 @@ size_t writeTextFile(const char *fname, String *s) {
         //wait for the filesystem task to finish and notify us
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.error(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+        Log.error(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %ld"), fname, qResult);
 
     delete msg;
     delete args;
@@ -252,7 +252,7 @@ bool writeTextFileAsync(const char *fname, String *s) {
 
     BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     if (qResult != pdTRUE) {
-        Log.error(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %d"), fname, qResult);
+        Log.error(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %ld"), fname, qResult);
         delete msg;
         delete args;
     }
@@ -273,7 +273,7 @@ bool removeFile(const char *fname) {
     if (qResult == pdTRUE) {
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+        Log.error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %ld"), fname, qResult);
 
     delete msg;
     delete args;

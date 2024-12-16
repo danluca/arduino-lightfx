@@ -108,7 +108,7 @@ void scheduleDay(const time_t time) {
  */
 void logAlarms() {
     for (const auto &al : scheduledAlarms)
-        Log.info(F("Alarm %p type %hd scheduled for %s; handler %p"), al, al->type, StringUtils::asString(al->value).c_str(), al->onEventHandler);
+        Log.info(F("Alarm %p type %d scheduled for %s; handler %p"), al, al->type, StringUtils::asString(al->value).c_str(), al->onEventHandler);
 }
 
 /**
@@ -144,8 +144,8 @@ bool isAwakeTime(const time_t time) {
  */
 void enqueueAlarmCheck(TimerHandle_t xTimer) {
     constexpr MiscAction action = ALARM_CHECK;
-    if (BaseType_t qResult = xQueueSend(core0Queue, &action, pdMS_TO_TICKS(0)); qResult != pdTRUE)
-        Log.error(F("Error sending ALARM_CHECK message to core0 queue for timer %d [%s] - error %d"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
+    if (BaseType_t qResult = xQueueSend(core0Queue, &action, 0); qResult != pdTRUE)
+        Log.error(F("Error sending ALARM_CHECK message to core0 queue for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
 }
 
 void alarm_setup() {
@@ -168,8 +168,8 @@ void alarm_check() {
     const time_t time = now();
     for (auto it = scheduledAlarms.begin(); it != scheduledAlarms.end();) {
         if (auto al = *it; al->value <= time) {
-            Log.info(F("Alarm %lX type %hd triggered at %s for scheduled time %s; handler %lX"), (long)al, al->type, StringUtils::asString(time).c_str(),
-                StringUtils::asString(al->value).c_str(), (long)al->onEventHandler);
+            Log.info(F("Alarm %p type %d triggered at %s for scheduled time %s; handler %p"), al, al->type, StringUtils::asString(time).c_str(),
+                StringUtils::asString(al->value).c_str(), al->onEventHandler);
              al->onEventHandler();
             it = scheduledAlarms.erase(it);
             delete al;

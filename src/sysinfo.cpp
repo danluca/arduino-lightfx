@@ -13,11 +13,11 @@
 #define BUF_ID_SIZE  20
 
 static constexpr char unknown[] PROGMEM = "N/A";
-static constexpr char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%%[%u] priority=%i state=%s id=%i core=%i stackSize=%u free=%u\n";
-static constexpr char threadInfoVerboseFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%% priority=%i state=%s id=%s \n  basePriority=%i stackBase=%X size=%u free=%u core=%i\n";
-static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%u free: tasks=%u, system=%x;\n  Total Heap:: size=%u free=%u\n";
-static constexpr char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%u free: tasks=%u, system=%x taskCount=%u;\n  Total Heap:: size=%u used=%u free=%u lowestFree=%u freeBlocks=%u [%u-%u] allocations=%u frees=%u\n";
-static constexpr char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%D MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
+static constexpr char threadInfoFmt[] PROGMEM = "Task[%lu]:: name='%s' time=%s%%[%u] priority=%lu state=%s id=%lu core=%#lX stackSize=%u free=%u\n";
+static constexpr char threadInfoVerboseFmt[] PROGMEM = "Task[%lu]:: name='%s' time=%s%% priority=%lu state=%s id=%lu \n  basePriority=%lu stackBase=%#lX size=%u free=%u core=%#lX\n";
+static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%lu free: tasks=%lu, system=%u;\n  Total Heap:: size=%d free=%d\n";
+static constexpr char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%lu free: tasks=%lu, system=%d taskCount=%lu;\n  Total Heap:: size=%d used=%d free=%d PSRAM=%d freePSRAM=%d\n";
+static constexpr char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 static constexpr char csBuildVersion[] PROGMEM = "buildVersion";
 static constexpr char csBoardName[] PROGMEM = "boardName";
 static constexpr char csBuildTime[] PROGMEM = "buildTime";
@@ -69,7 +69,7 @@ const char *taskStatusToString(const eTaskState state) {
 void logTaskStats() {
     // if (!Log.isEnabled(INFO))
         // return;
-    Log.info(F("Info level enabled %hd"), Log.isEnabled(INFO));
+    Log.info(F("Info level enabled %d"), Log.isEnabled(INFO));
     // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
     unsigned long ulTotalRunTime=0, ulTotalStack=0, ulFreeStack=0;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
@@ -108,11 +108,11 @@ void logTaskStats() {
                 strStat[szStat] = 0;    //ensure null terminator
                 //is this a task we created? if so, we have extra information - like stack size
                 const TaskWrapper *tw = Scheduler.getTask(ts.xTaskNumber);
-                uint32_t stackSize = tw ? tw->getStackSize() : 0;
+                const uint32_t stackSize = tw ? tw->getStackSize() : 0;
                 if (!Log.isEnabled(DEBUG)) {
                     StringUtils::append(strTaskInfo, threadInfoFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, taskStatusToString(ts.eCurrentState), ts.xTaskNumber, ts.uxCoreAffinityMask,
                         stackSize, ts.usStackHighWaterMark);
-                    StringUtils::append(strTaskInfo,"\n  stack end %X begin %X free %i min %i\n", (*ts.pxEndOfStack), (*ts.pxStackBase), ((*ts.pxEndOfStack)-(*ts.pxStackBase)), ts.usStackHighWaterMark);
+                    StringUtils::append(strTaskInfo,"\n  stack end %#lX begin %#lX free %ld min %ld\n", (*ts.pxEndOfStack), (*ts.pxStackBase), ((*ts.pxEndOfStack)-(*ts.pxStackBase)), ts.usStackHighWaterMark);
                 } else
                     StringUtils::append(strTaskInfo, threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, taskStatusToString(ts.eCurrentState), ts.xTaskNumber, ts.uxBasePriority,
                         ts.pxStackBase, stackSize, ts.usStackHighWaterMark, ts.uxCoreAffinityMask);
@@ -129,11 +129,11 @@ void logTaskStats() {
 //    vPortGetHeapStats(&heapStats);
     if (Log.isEnabled(DEBUG)) {
         Log.debug(heapStackVerboseFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), uxArraySize, rp2040.getTotalHeap(), rp2040.getUsedHeap(),
-                  rp2040.getFreeHeap(), rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getUsedPSRAMHeap(), rp2040.getFreePSRAMHeap(), 0, 0);
+                  rp2040.getFreeHeap(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap());
     } else {
         //StringUtils::append(strHeapInfo, heapStackInfoFmt, ulTotalStack, ulFreeStack, configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes);
         Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, abs(rp2040.getFreeStack()), rp2040.getTotalHeap(), rp2040.getFreeHeap());
-        Log.info("  Stack pointer: start %X, free %X\n", rp2040.getStackPointer(), rp2040.getFreeStack());
+        Log.info("  Stack pointer: start %#lX, free %#X\n", rp2040.getStackPointer(), rp2040.getFreeStack());
     }
 
     auto *stats = new String();
