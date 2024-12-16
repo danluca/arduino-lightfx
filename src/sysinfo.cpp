@@ -186,7 +186,7 @@ void logSystemState() {
     char buf[20];
     const unsigned long uptime = millis();
     snprintf(buf, 16, "%3luD %2luH %2lum", uptime/86400000l, (uptime/3600000l%24), (uptime/60000%60));
-    Log.info(F("System state: %hX; uptime %s"), sysInfo->getSysStatus(), buf);
+    Log.info(F("System state: %#hX; uptime %s"), sysInfo->getSysStatus(), buf);
 }
 
 // SysInfo
