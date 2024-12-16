@@ -7,6 +7,10 @@
 #include <Arduino.h>
 #include <util/LogQueue.h>
 
+#ifndef LOGGING_ENABLED
+#define LOGGING_ENABLED 0
+#endif
+
 #define CR "\n"
 #define PICO_LOG_VERSION_STR "1.0.0"
 

@@ -85,8 +85,7 @@ void stateLED(CRGB color) {
 void readFxState() {
     auto json = new String();
     json->reserve(256);  // approximation - currently at 150 bytes
-    size_t stateSize = readTextFile(stateFileName, json);
-    if (stateSize > 0) {
+    if (const size_t stateSize = readTextFile(stateFileName, json); stateSize > 0) {
         JsonDocument doc;
         deserializeJson(doc, *json);
 

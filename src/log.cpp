@@ -2,7 +2,6 @@
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
 #include "log.h"
-#include "PicoLog.h"
 #include <FastLED.h>
 #include "util.h"
 
