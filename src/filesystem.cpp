@@ -85,8 +85,15 @@ void fsInit() {
     while (d.next()) {
         if (d.isFile())
             StringUtils::append(dirContent, F("  %s [%zu]\n"), d.fileName().c_str(), d.fileSize());
-        else
+        else {
+            //simple attempt to log content of top level dirs
             StringUtils::append(dirContent, F("  %s <DIR>\n"), d.fileName().c_str());
+            Dir d2 = LittleFS.openDir(d.fileName());
+            while (d2.next()) {
+                if (d2.isFile())
+                    StringUtils::append(dirContent, F("    %s [%zu]\n"), d2.fileName().c_str(), d2.fileSize());
+            }
+        }
     }
     dirContent.concat(F("End of filesystem content.\n"));
     Log.info(dirContent.c_str());

@@ -25,12 +25,14 @@ class PicoLog {
     bool isEnabled(const LogLevel level) const { return level <= m_level; }
 
     template<class T> size_t log(LogLevel level, const T format, ...) {
+#if LOGGING_ENABLED == 1
         if (!isEnabled(level) || !isStreamingEnabled()) return 0;
         va_list args;
         va_start(args, format);
         const size_t sz = print(level, format, args);
         va_end(args);
         return sz;
+#endif
     }
     template<class T, typename... Args> size_t silent(const T format, Args... args) { return log(SILENT, format, args...); }
     template<class T, typename... Args> size_t fatal(const T format, Args... args) { return log(FATAL, format, args...); }

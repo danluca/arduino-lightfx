@@ -20,7 +20,7 @@ TaskWrapper *twStream;
  */
 void flushData() {
     if (Log.m_queue.empty()) {
-        vTaskDelay(pdMS_TO_TICKS(100)); //empty log queue, allow some time to collect log statements
+        vTaskDelay(pdMS_TO_TICKS(250)); //empty log queue, allow some time to collect log statements
         return;
     }
     while (!Log.m_queue.empty()) {
@@ -141,13 +141,13 @@ size_t PicoLog::printLevel(const LogLevel level, String *msg) {
     // Show log description based on log level
     const size_t sz = msg->length();
     switch (level) {
-        case SILENT: msg->concat("SLN: "); break;
-        case FATAL: msg->concat("FTL: "); break;
-        case ERROR: msg->concat("ERR: "); break;
-        case WARNING: msg->concat("WRN: "); break;
-        case INFO: msg->concat("INF: "); break;
-        case DEBUG: msg->concat("DBG: "); break;
-        case TRACE: msg->concat("TRC: "); break;
+        case SILENT: msg->concat(" S: "); break;
+        case FATAL: msg->concat(" F: "); break;
+        case ERROR: msg->concat(" E: "); break;
+        case WARNING: msg->concat(" W: "); break;
+        case INFO: msg->concat(" I: "); break;
+        case DEBUG: msg->concat(" D: "); break;
+        case TRACE: msg->concat(" T: "); break;
     }
     return msg->length() - sz;
 }

@@ -441,7 +441,7 @@ void readCalibrationInfo() {
         deserializeCalibrationMeasurement(calibTempMeasurements, msmt);
         auto cbparams = doc["calibParams"].as<JsonObject>();
         deserializeCalibrationParams(calibCpuTemp, cbparams);
-        Log.info(F("CPU temp calibration Information restored from %s [%d bytes]: min %.2f 'C, max %.2f 'C; params: tempRange=%.2F, refTemp=%.2F, VTref=%f, slope=%f, time=%s"),
+        Log.info(F("CPU temp calibration Information restored from %s [%d bytes]: min %.2f 'C, max %.2f 'C; params: tempRange=%.2f, refTemp=%.2f, VTref=%f, slope=%f, time=%s"),
                    calibFileName, calibSize, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
                    calibCpuTemp.slope, StringUtils::asString(calibCpuTemp.time).c_str());
     }

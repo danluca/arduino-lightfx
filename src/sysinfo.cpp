@@ -13,11 +13,9 @@
 #define BUF_ID_SIZE  20
 
 static constexpr char unknown[] PROGMEM = "N/A";
-static constexpr char threadInfoFmt[] PROGMEM = "Task[%lu]:: name='%s' time=%s%%[%u] priority=%lu state=%s id=%lu core=%#lX stackSize=%u free=%u\n";
-static constexpr char threadInfoVerboseFmt[] PROGMEM = "Task[%lu]:: name='%s' time=%s%% priority=%lu state=%s id=%lu \n  basePriority=%lu stackBase=%#lX size=%u free=%u core=%#lX\n";
-static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%lu free: tasks=%lu, system=%u;\n  Total Heap:: size=%d free=%d\n";
-static constexpr char heapStackVerboseFmt[] PROGMEM = "HEAP/STACK INFO\nTotal Stack:: size=%lu free: tasks=%lu, system=%d taskCount=%lu;\n  Total Heap:: size=%d used=%d free=%d PSRAM=%d freePSRAM=%d\n";
-static constexpr char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
+static constexpr char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%%[%u] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
+static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%lu free: tasks=%lu, system=%d;\n  Total Heap:: size=%d free=%d used=%d\n";
+static constexpr char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 static constexpr char csBuildVersion[] PROGMEM = "buildVersion";
 static constexpr char csBoardName[] PROGMEM = "boardName";
 static constexpr char csBuildTime[] PROGMEM = "buildTime";
@@ -66,10 +64,43 @@ const char *taskStatusToString(const eTaskState state) {
         default: return csUnknown;
     }
 }
+
+/**
+ * Logs detailed information about FreeRTOS task statistics and heap usage.
+ * This method retrieves and processes data on tasks and heap memory allocation,
+ * providing valuable insights for debugging and performance optimization.
+ *
+ * The task information includes details such as the name of each task, state, priority,
+ * runtime percentages, stack usage, core affinity, and runtime counters across cores.
+ *
+ * Heap statistics report total stack size, free stack space, heap size, and usage.
+ *
+ * Key actions:
+ * 1. Captures the number of active FreeRTOS tasks and allocates memory for task status data.
+ * 2. Obtains task runtime metrics, including runtime counters broken down by cores.
+ * 3. Computes percentage runtime of individual tasks relative to the total runtime.
+ * 4. Logs per-task details formatted as a readable string.
+ * 5. Frees dynamically allocated memory for task status data.
+ * 6. Reports task-related and heap details as formatted logs.
+ *
+ * Note: This method performs critical memory allocations such as `pvPortMalloc` for task data
+ * and ensures proper cleanup using `vPortFree`. Care should be taken when modifying to avoid
+ * memory leaks or division by zero errors.
+ *
+ * This function references:
+ * - FreeRTOS API: `uxTaskGetSystemState`, `vTaskList`, `uxTaskGetNumberOfTasks`.
+ * - Scheduler tasks: Uses `Scheduler.getTask` to get additional task-related metadata.
+ * - Utility formatting: Employs utility functions like `StringUtils::append` for creating compact logs.
+ *
+ * Hardware Dependencies:
+ * - RP2040 chip-specific functions like `rp2040.getFreeStack`, `rp2040.getTotalHeap`, etc.
+ *
+ * This method is resource-intensive and should only be run in contexts where such
+ * overhead does not impact the system performance significantly.
+ */
 void logTaskStats() {
-    // if (!Log.isEnabled(INFO))
-        // return;
-    Log.info(F("Info level enabled %d"), Log.isEnabled(INFO));
+    if (!Log.isEnabled(INFO))
+        return;
     // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
     unsigned long ulTotalRunTime=0, ulTotalStack=0, ulFreeStack=0;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
@@ -109,13 +140,10 @@ void logTaskStats() {
                 //is this a task we created? if so, we have extra information - like stack size
                 const TaskWrapper *tw = Scheduler.getTask(ts.xTaskNumber);
                 const uint32_t stackSize = tw ? tw->getStackSize() : 0;
-                if (!Log.isEnabled(DEBUG)) {
-                    StringUtils::append(strTaskInfo, threadInfoFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, taskStatusToString(ts.eCurrentState), ts.xTaskNumber, ts.uxCoreAffinityMask,
-                        stackSize, ts.usStackHighWaterMark);
-                    StringUtils::append(strTaskInfo,"\n  stack end %#lX begin %#lX free %ld min %ld\n", (*ts.pxEndOfStack), (*ts.pxStackBase), ((*ts.pxEndOfStack)-(*ts.pxStackBase)), ts.usStackHighWaterMark);
-                } else
-                    StringUtils::append(strTaskInfo, threadInfoVerboseFmt, x, ts.pcTaskName, strStat, ts.uxCurrentPriority, taskStatusToString(ts.eCurrentState), ts.xTaskNumber, ts.uxBasePriority,
-                        ts.pxStackBase, stackSize, ts.usStackHighWaterMark, ts.uxCoreAffinityMask);
+                StringUtils::append(strTaskInfo, threadInfoFmt, x, ts.pcTaskName, strStat, ts.ulRunTimeCounter, ts.uxCurrentPriority, ts.uxBasePriority,
+                    taskStatusToString(ts.eCurrentState), ts.xTaskNumber, ts.uxCoreAffinityMask, stackSize, ts.usStackHighWaterMark);
+                StringUtils::append(strTaskInfo,F("  stack end %#X begin %#X free %d min %u"), (*ts.pxEndOfStack), (*ts.pxStackBase),
+                    ((int32_t)(*ts.pxEndOfStack)-(int32_t)(*ts.pxStackBase)), ts.usStackHighWaterMark);
                 ulTotalStack += stackSize;
                 ulFreeStack += ts.usStackHighWaterMark;
             }
@@ -124,17 +152,11 @@ void logTaskStats() {
         /* The array is no longer needed, free the memory it consumes. */
         vPortFree( pxTaskStatusArray );
     }
-    //memory stats - NOTE: vPortGetHeapStats is not implemented in the RP2040 port with the heap memory strategy adopted (seemingly heap3)
-//    HeapStats_t heapStats;
-//    vPortGetHeapStats(&heapStats);
-    if (Log.isEnabled(DEBUG)) {
-        Log.debug(heapStackVerboseFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), uxArraySize, rp2040.getTotalHeap(), rp2040.getUsedHeap(),
-                  rp2040.getFreeHeap(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap());
-    } else {
-        //StringUtils::append(strHeapInfo, heapStackInfoFmt, ulTotalStack, ulFreeStack, configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes);
-        Log.info(heapStackInfoFmt, ulTotalStack, ulFreeStack, abs(rp2040.getFreeStack()), rp2040.getTotalHeap(), rp2040.getFreeHeap());
-        Log.info("  Stack pointer: start %#lX, free %#X\n", rp2040.getStackPointer(), rp2040.getFreeStack());
-    }
+    String strHeapInfo;
+    strHeapInfo.reserve(256);  //ensure enough space to avoid reallocations
+    StringUtils::append(strHeapInfo, heapStackInfoFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap(), rp2040.getUsedHeap());
+    StringUtils::append(strHeapInfo, F("  Stack pointer: start %#X, free %d"), rp2040.getStackPointer(), rp2040.getFreeStack());
+    Log.info(strHeapInfo.c_str());
 
     auto *stats = new String();
     stats->reserve(1024);       // doc states ~40bytes per task, we have 12 tasks
@@ -257,7 +279,7 @@ void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     char buf[BUF_ID_SIZE];
     int x = 0;
     for (const auto &b : mac)
-        x += snprintf(buf+x, 3, "%02X:", b);
+        x += snprintf(buf+x, 4, "%02X:", b);
     //last character - at index x-1 is a ':', make it null to trim the last colon character
     buf[x-1] = 0;
     macAddress = buf;

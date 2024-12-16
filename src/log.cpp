@@ -7,7 +7,7 @@
 #include "util.h"
 
 void log_setup() {
-#ifdef LOGGING_ENABLED
+#if LOGGING_ENABLED == 1
     if (!Serial) {
         Serial.begin(115200); // initialize serial communication - note the rate parameter is likely ignored, HW negotiates with the host PC the proper rate
         while (!Serial) {
@@ -16,7 +16,7 @@ void log_setup() {
         Serial.println(F("================================================================================"));
     }
 #endif
-    Log.begin(&Serial, LogLevel::INFO);
+    Log.begin(&Serial, INFO);
     taskDelay(500);
 }
 
