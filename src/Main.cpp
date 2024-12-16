@@ -54,8 +54,8 @@ void setup() {
 
     core0Queue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for CORE0 task for communication between cores
     // notifies Core1 to start processing
-    TaskHandle_t core1 = xTaskGetHandle("CORE1");    //create a task handle for the second core
-    BaseType_t c1NtfStatus = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running
+    const TaskHandle_t core1 = xTaskGetHandle("CORE1");    //create a task handle for the second core
+    const BaseType_t c1NtfStatus = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running
     Log.info(F("Main Core 0 Setup completed, Core 1 notified %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
 }
 

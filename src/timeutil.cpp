@@ -31,7 +31,7 @@ bool timeSetup() {
     Log.warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     Holiday hday;
     if (ntpTimeAvailable) {
-        bool bDST = isDST(timeClient.getEpochTime());
+        const bool bDST = isDST(timeClient.getEpochTime());
         sysInfo->setSysStatus(SYS_STATUS_NTP);
         if (bDST) {
             sysInfo->setSysStatus(SYS_STATUS_DST);
@@ -43,7 +43,7 @@ bool timeSetup() {
         if (Log.getTimebase() == 0) {
             const time_t curTime = now();
             const time_t curMs = millis();
-            Log.warn(F("Logging time reference updated from %lu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
+            Log.warn(F("Logging time reference updated from %llu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
             Log.setTimebase(curTime * 1000 - curMs);                //capture current time into the log offset, such that log statements use current time
         }
         Log.info(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
@@ -55,7 +55,7 @@ bool timeSetup() {
         sysInfo->resetSysStatus(SYS_STATUS_NTP);
         paletteFactory.setHoliday(Party);  //setting it explicitly to avoid defaulting to none when there is no wifi altogether
         hday = paletteFactory.adjustHoliday();    //update the holiday for new time
-        bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
+        const bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
         if (bDST)
             sysInfo->setSysStatus(SYS_STATUS_DST);
         char timeBuf[20];

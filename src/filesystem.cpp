@@ -73,7 +73,7 @@ void fsInit() {
     }
 
     if (FSInfo fsInfo{}; LittleFS.info(fsInfo)) {
-        Log.info(F("Filesystem information (size in bytes): totalSize %lu, used %lu, maxOpenFiles %zu, maxPathLength %zu, pageSize %zu, blockSize %zu"),
+        Log.info(F("Filesystem information (size in bytes): totalSize %llu, used %llu, maxOpenFiles %zu, maxPathLength %zu, pageSize %zu, blockSize %zu"),
                    fsInfo.totalBytes, fsInfo.usedBytes, fsInfo.maxOpenFiles, fsInfo.maxPathLength, fsInfo.pageSize, fsInfo.blockSize);
     } else {
         Log.error(F("Cannot retrieve filesystem (LittleFS) information"));
