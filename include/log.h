@@ -7,7 +7,7 @@
 // *************************************************************************
 //  Comment line below to fully disable logging (or set it to 0)
 // ************************************************************************
-#define LOGGING_ENABLED     1
+// #define LOGGING_ENABLED     1
 
 #include <PicoLog.h>
 

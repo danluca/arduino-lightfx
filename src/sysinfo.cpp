@@ -13,7 +13,7 @@
 #define BUF_ID_SIZE  20
 
 static constexpr char unknown[] PROGMEM = "N/A";
-static constexpr char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s %% [%u] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
+static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
 static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%lu free: tasks=%lu, system=%d;\n  Total Heap:: size=%d free=%d used=%d\n";
 static constexpr char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 static constexpr char csBuildVersion[] PROGMEM = "buildVersion";
@@ -120,7 +120,7 @@ void logTaskStats() {
                 coresTotalRunTime[0] += (ts.uxCoreAffinityMask & CORE_0 ? ts.ulRunTimeCounter : 0);
                 coresTotalRunTime[1] += (ts.uxCoreAffinityMask & CORE_1 ? ts.ulRunTimeCounter : 0);
             }
-            Log.info("Total run time reported by individual tasks per core: CORE 0=%lu; CORE 1=%lu", coresTotalRunTime[0], coresTotalRunTime[1]);
+            Log.info("Total run time reported by individual tasks per core: CORE 0=%llu; CORE 1=%llu", coresTotalRunTime[0], coresTotalRunTime[1]);
             ulTotalRunTime /= 100UL;    // For percentage calculations
             coresTotalRunTime[0] /= 100UL;
             coresTotalRunTime[1] /= 100UL;
@@ -355,7 +355,7 @@ void readSysInfo() {
         sysInfo->freeStack = doc[csFreeStack];
         //do not override current status (in progress of populating) with last run status
         uint8_t lastStatus = doc[csStatus];
-        Log.info(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%X (last %X), IP=%s, Gateway=%s"),
+        Log.info(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status, lastStatus,
                    sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
     }

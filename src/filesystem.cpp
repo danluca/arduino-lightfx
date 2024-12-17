@@ -194,7 +194,7 @@ bool prvRemoveFile(const char *fname) {
         Log.info(F("File %s does not exist, no need to remove"), fname);
         return true;
     }
-    bool bDel = LittleFS.remove(fname);
+    const bool bDel = LittleFS.remove(fname);
     if (bDel)
         Log.info(F("File %s successfully removed"), fname);
     else
@@ -218,7 +218,7 @@ size_t readTextFile(const char *fname, String *s) {
         //wait for the filesystem task to finish and notify us
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.error(F("Error sending READ_FILE message to filesystem task for file name %s - error %ld"), fname, qResult);
+        Log.error(F("Error sending READ_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
     delete msg;
     delete args;
@@ -241,7 +241,7 @@ size_t writeTextFile(const char *fname, String *s) {
         //wait for the filesystem task to finish and notify us
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.error(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %ld"), fname, qResult);
+        Log.error(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
     delete msg;
     delete args;
@@ -259,7 +259,7 @@ bool writeTextFileAsync(const char *fname, String *s) {
 
     BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     if (qResult != pdTRUE) {
-        Log.error(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %ld"), fname, qResult);
+        Log.error(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
         delete args;
     }
@@ -280,7 +280,7 @@ bool removeFile(const char *fname) {
     if (qResult == pdTRUE) {
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %ld"), fname, qResult);
+        Log.error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
     delete msg;
     delete args;

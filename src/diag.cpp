@@ -65,7 +65,7 @@ bool imu_setup() {
     }
     Log.info(F("IMU sensor OK"));
     // print the board temperature
-    Measurement temp = boardTemperature();
+    const Measurement temp = boardTemperature();
     Log.info(F("Board temperature %.2f 'C (%.2f 'F) at %s"), temp.value, toFahrenheit(temp.value), StringUtils::asString(temp.time).c_str());
     return true;
 }
@@ -148,7 +148,7 @@ void diagSetup() {
 void enqueueRndEntropy(TimerHandle_t xTimer) {
     constexpr DiagAction msg = RND_ENTROPY;
     if (BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending RND_ENTROPY message to diagnostic task for timer %d [%s] - error %ld"), reinterpret_cast<int32_t>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        Log.error(F("Error sending RND_ENTROPY message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     Log.info(F("Sent RND_ENTROPY event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
@@ -160,7 +160,7 @@ void enqueueRndEntropy(TimerHandle_t xTimer) {
 void enqueueSysTemp(TimerHandle_t xTimer) {
     constexpr DiagAction msg = SYS_TEMP;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending SYS_TEMP message to diagnostic task for timer %d [%s] - error %ld"), reinterpret_cast<int32_t>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        Log.error(F("Error sending SYS_TEMP message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     Log.info(F("Sent SYS_TEMP event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
@@ -172,7 +172,7 @@ void enqueueSysTemp(TimerHandle_t xTimer) {
 void enqueueSysVoltage(TimerHandle_t xTimer) {
     constexpr DiagAction msg = SYS_VOLTAGE;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending SYS_VOLTAGE message to diagnostic task for timer %d [%s] - error %ld"), reinterpret_cast<int32_t>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        Log.error(F("Error sending SYS_VOLTAGE message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     Log.info(F("Sent SYS_VOLTAGE event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
@@ -184,7 +184,7 @@ void enqueueSysVoltage(TimerHandle_t xTimer) {
 void enqueueSaveSysInfo(TimerHandle_t xTimer) {
     constexpr MiscAction msg = SAVE_SYS_INFO;
     if (const BaseType_t qResult = xQueueSend(core0Queue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending SAVE_SYS_INFO message to core0 queue for timer %d [%s] - error %ld"), reinterpret_cast<int32_t>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        Log.error(F("Error sending SAVE_SYS_INFO message to core0 queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     Log.info(F("Sent SAVE_SYS_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
@@ -197,7 +197,7 @@ void enqueueSaveSysInfo(TimerHandle_t xTimer) {
 void enqueueDiagInfo(TimerHandle_t xTimer) {
     constexpr DiagAction msg = DIAG_INFO;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending DIAG_INFO message to diagnostic task for timer %d [%s] - error %ld"), reinterpret_cast<int32_t>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        Log.error(F("Error sending DIAG_INFO message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     Log.info(F("Sent DIAG_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
@@ -212,6 +212,7 @@ void diagExecute() {
     if (pdFALSE == xQueueReceive(diagQueue, &msg, portMAX_DELAY))
         return;
     CoreMutex lock(&wifiMutex);     //could this be causing a deadlock? (the other tasks interested in this mutex have lower priority)
+    Log.info("Received event %d from diagnostic task; queue size %d", msg, diagQueue);
     //the reception was successful, hence the msg is not null anymore
     switch (msg) {
         case RND_ENTROPY: updateSecEntropy(); break;
@@ -466,7 +467,7 @@ void saveCalibrationInfo() {
 
 void updateLineVoltage() {
     lineVoltage.setMeasurement(controllerVoltage());
-    Log.info(F("Board Vcc voltage %D V"), lineVoltage.current.value);
+    Log.info(F("Board Vcc voltage %.2f V"), lineVoltage.current.value);
 }
 
 void updateSystemTemp() {
@@ -493,7 +494,7 @@ void updateSystemTemp() {
 void updateSecEntropy() {
     const uint16_t rnd = secRandom16();
     random16_add_entropy(rnd);
-    Log.info(F("Secure random value %i added as entropy to pseudo random number generator"), rnd);
+    Log.info(F("Secure random value %hd added as entropy to pseudo random number generator"), rnd);
 }
 
 void logDiagInfo() {
