@@ -42,6 +42,8 @@ void setup() {
 
     readSysInfo();
     secElement_setup();
+    //TODO: delete this for next build - file is corrupted needs re-saved
+    removeFile("/state.json");    //remove the file if it exists - it's not needed anymore
 
     Scheduler.startTask(&fxTasks);
     Scheduler.startTask(&micTasks);

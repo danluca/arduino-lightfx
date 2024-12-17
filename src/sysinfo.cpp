@@ -13,7 +13,7 @@
 #define BUF_ID_SIZE  20
 
 static constexpr char unknown[] PROGMEM = "N/A";
-static constexpr char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s%%[%u] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
+static constexpr char threadInfoFmt[] PROGMEM = "Task[%u]:: name='%s' time=%s %% [%u] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
 static constexpr char heapStackInfoFmt[] PROGMEM = "HEAP/STACK INFO\n  Total Stack:: size=%lu free: tasks=%lu, system=%d;\n  Total Heap:: size=%d free=%d used=%d\n";
 static constexpr char sysInfoFmt[] PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 static constexpr char csBuildVersion[] PROGMEM = "buildVersion";
@@ -124,9 +124,9 @@ void logTaskStats() {
             ulTotalRunTime /= 100UL;    // For percentage calculations
             coresTotalRunTime[0] /= 100UL;
             coresTotalRunTime[1] /= 100UL;
-            Log.info(F("THREADS/TASKS INFO - max priority %hd\n"), configMAX_PRIORITIES-1);
             String strTaskInfo;
-            strTaskInfo.reserve(1024);  //ensure enough space to avoid reallocations for each thread
+            strTaskInfo.reserve(2304);  //ensure enough space to avoid reallocations for each thread
+            StringUtils::append(strTaskInfo, F("THREADS/TASKS INFO - max priority %hd\n"), configMAX_PRIORITIES-1);
             /* For each populated position in the pxTaskStatusArray array, format the raw data as human-readable ASCII data. */
             for( volatile UBaseType_t x = 0; x < uxArraySize; x++ ) {
                 const TaskStatus_t ts = pxTaskStatusArray[x];
@@ -142,7 +142,7 @@ void logTaskStats() {
                 const uint32_t stackSize = tw ? tw->getStackSize() : 0;
                 StringUtils::append(strTaskInfo, threadInfoFmt, x, ts.pcTaskName, strStat, ts.ulRunTimeCounter, ts.uxCurrentPriority, ts.uxBasePriority,
                     taskStatusToString(ts.eCurrentState), ts.xTaskNumber, ts.uxCoreAffinityMask, stackSize, ts.usStackHighWaterMark);
-                StringUtils::append(strTaskInfo,F("  stack end %#X begin %#X free %d min %u"), (*ts.pxEndOfStack), (*ts.pxStackBase),
+                StringUtils::append(strTaskInfo,F("  stack end %#X begin %#X free %d min %u\n"), (*ts.pxEndOfStack), (*ts.pxStackBase),
                     ((int32_t)(*ts.pxEndOfStack)-(int32_t)(*ts.pxStackBase)), ts.usStackHighWaterMark);
                 ulTotalStack += stackSize;
                 ulFreeStack += ts.usStackHighWaterMark;

@@ -52,7 +52,7 @@ void enqueueSaveSysInfo(TimerHandle_t xTimer);
 void enqueueDiagInfo(TimerHandle_t xTimer);
 
 // diag task definition - priority is overwritten during setup, see diagSetup
-TaskDef diagDef {deviceSetup, diagExecute, 2048, "Diag", 1, CORE_1};
+TaskDef diagDef {deviceSetup, diagExecute, 1408, "Diag", 1, CORE_1};
 enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO} event;
 
 bool imu_setup() {
