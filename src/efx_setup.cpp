@@ -89,13 +89,13 @@ void readFxState() {
         JsonDocument doc;
         deserializeJson(doc, *json);
 
-        bool autoAdvance = doc[csAutoFxRoll].as<bool>();
+        const bool autoAdvance = doc[csAutoFxRoll].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
 
-        uint16_t seed = doc[csRandomSeed];
+        const uint16_t seed = doc[csRandomSeed];
         random16_add_entropy(seed);
 
-        uint16_t fx = doc[csCurFx];
+        const uint16_t fx = doc[csCurFx];
 
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
 

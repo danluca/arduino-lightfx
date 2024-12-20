@@ -1,8 +1,8 @@
 // Copyright (c) 2024 by Dan Luca. All rights reserved.
 //
 
-#include <LittleFS.h>
 #include <FreeRTOS.h>
+#include <LittleFS.h>
 #include <queue.h>
 #include "SchedulerExt.h"
 #include "filesystem.h"
@@ -212,7 +212,7 @@ size_t readTextFile(const char *fname, String *s) {
     auto *args = new fsOperationData {fname, s};
     auto *msg = new fsTaskMessage {fsTaskMessage::READ_FILE, xTaskGetCurrentTaskHandle(), args};
 
-    BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
@@ -235,7 +235,7 @@ size_t writeTextFile(const char *fname, String *s) {
     auto *args = new fsOperationData {fname, s};
     auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE, xTaskGetCurrentTaskHandle(), args};
 
-    BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
@@ -251,13 +251,14 @@ size_t writeTextFile(const char *fname, String *s) {
 /**
  * Non-blocking function that writes the string content into a file with provided name. Can be called from any task.
  * @param fname file path to delete - absolute path
+ * @param s the content to write
  * @return true if successfully deleted, false otherwise
  */
 bool writeTextFileAsync(const char *fname, String *s) {
     auto *args = new fsOperationData {fname, s};
     auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE_ASYNC, nullptr, args};
 
-    BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     if (qResult != pdTRUE) {
         Log.error(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
@@ -275,7 +276,7 @@ bool removeFile(const char *fname) {
     auto *args = new fsOperationData {fname, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::DELETE_FILE, xTaskGetCurrentTaskHandle(), args};
 
-    BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(fsQueue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     size_t sz = 0;
     if (qResult == pdTRUE) {
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
