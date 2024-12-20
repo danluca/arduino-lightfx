@@ -157,11 +157,11 @@ void logTaskStats() {
     StringUtils::append(strHeapInfo, heapStackInfoFmt, ulTotalStack, ulFreeStack, rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap(), rp2040.getUsedHeap());
     StringUtils::append(strHeapInfo, F("  Stack pointer: start %#X, free %d"), rp2040.getStackPointer(), rp2040.getFreeStack());
     Log.info(strHeapInfo.c_str());
-    HeapStats_t heap_stats;
-    vPortGetHeapStats(&heap_stats);
-    Log.info("\nHeap Stats\nfree %zu bytes; minFree %zu bytes; blocks free %zu [%zu -> %zu]; allocs %zu, frees %zu; ",
-        heap_stats.xAvailableHeapSpaceInBytes, heap_stats.xMinimumEverFreeBytesRemaining, heap_stats.xNumberOfFreeBlocks, heap_stats.xSizeOfLargestFreeBlockInBytes,
-        heap_stats.xSizeOfSmallestFreeBlockInBytes, heap_stats.xNumberOfSuccessfulAllocations, heap_stats.xNumberOfSuccessfulFrees);
+    // HeapStats_t heap_stats;
+    // vPortGetHeapStats(&heap_stats);
+    // Log.info("\nHeap Stats\nfree %zu bytes; minFree %zu bytes; blocks free %zu [%zu -> %zu]; allocs %zu, frees %zu; ",
+    //     heap_stats.xAvailableHeapSpaceInBytes, heap_stats.xMinimumEverFreeBytesRemaining, heap_stats.xNumberOfFreeBlocks, heap_stats.xSizeOfLargestFreeBlockInBytes,
+    //     heap_stats.xSizeOfSmallestFreeBlockInBytes, heap_stats.xNumberOfSuccessfulAllocations, heap_stats.xNumberOfSuccessfulFrees);
 
     auto *stats = new String();
     stats->reserve(1024);       // doc states ~40bytes per task, we have 12 tasks
