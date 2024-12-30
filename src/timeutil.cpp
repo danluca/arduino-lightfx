@@ -26,48 +26,9 @@ bool time_setup() {
     //read the time
     setSyncProvider(curUnixTime);
     bool ntpTimeAvailable = ntp_sync();
+    Holiday hday = paletteFactory.adjustHoliday();    //update the holiday for new time
 #ifndef DISABLE_LOGGING
-    Log.warningln(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
-#endif
-    Holiday hday;
-    if (ntpTimeAvailable) {
-        bool bDST = isDST(timeClient.getEpochTime());
-        sysInfo->setSysStatus(SYS_STATUS_NTP);
-        if (bDST) {
-            sysInfo->setSysStatus(SYS_STATUS_DST);
-            timeClient.setTimeOffset(CDT_OFFSET_SECONDS);   //getEpochTime calls account for the offset
-        } else
-            timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
-        setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
-        hday = paletteFactory.adjustHoliday();    //update the holiday for new time
-#ifndef DISABLE_LOGGING
-        if (logTimeOffset == 0) {
-            time_t curTime = now();
-            time_t curMs = millis();
-            Log.warningln(F("Logging time reference updated from %u ms (%y) to %y"), curMs, curMs/1000, curTime);
-            logTimeOffset = curTime * 1000 - curMs;                //capture current time into the log offset, such that log statements use current time
-        }
-        Log.infoln(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
-                   bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
-        char timeBuf[20];
-        formatDateTime(timeBuf, now());
-        Log.infoln(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
-#endif
-    } else {
-        sysInfo->resetSysStatus(SYS_STATUS_NTP);
-        hday = paletteFactory.adjustHoliday();    //update the holiday for new time
-        bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
-        if (bDST)
-            sysInfo->setSysStatus(SYS_STATUS_DST);
-#ifndef DISABLE_LOGGING
-        char timeBuf[20];
-        formatDateTime(timeBuf, now());
-        Log.warningln(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"),
-              timeBuf, bDST?"CDT":"CST", holidayToString(hday));
-    }
-    Log.infoln(F("Current holiday is %s"), holidayToString(hday));
-#else
-    }
+    Log.warningln(F("Acquiring NTP time, attempt %s. Current holiday theme is %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...", holidayToString(hday));
 #endif
     return ntpTimeAvailable;
 }
@@ -121,10 +82,48 @@ time_t curUnixTime() {
         //determine what offset to use
         time_t wifiTime = WiFi.getTime() + CST_OFFSET_SECONDS;
         if (isDST(wifiTime))
-            wifiTime = WiFi.getTime() + CDT_OFFSET_SECONDS;
+            wifiTime = wifiTime - CST_OFFSET_SECONDS + CDT_OFFSET_SECONDS;
         return wifiTime;
     }
     return 0;
+}
+
+void updateTimeOffset() {
+    if (timeClient.isTimeSet()) {
+        bool bDST = isDST(timeClient.getEpochTime());
+        sysInfo->setSysStatus(SYS_STATUS_NTP);
+        if (bDST) {
+            sysInfo->setSysStatus(SYS_STATUS_DST);
+            timeClient.setTimeOffset(CDT_OFFSET_SECONDS);   //getEpochTime calls account for the offset
+        } else {
+            sysInfo->resetSysStatus(SYS_STATUS_DST);
+            timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
+        }
+        setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
+
+#ifndef DISABLE_LOGGING
+        if (logTimeOffset == 0) {
+            time_t curTime = now();
+            time_t curMs = millis();
+            Log.warningln(F("Logging time reference updated from %u ms (%y) to %y"), curMs, curMs/1000, curTime);
+            logTimeOffset = curTime * 1000 - curMs;                //capture current time into the log offset, such that log statements use current time
+        }
+        Log.infoln(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
+                   bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
+        char timeBuf[20];
+        formatDateTime(timeBuf, now());
+        Log.infoln(F("Current time %s %s, timeBuf, bDST?"CDT":"CST");
+#endif
+    } else {
+        sysInfo->resetSysStatus(SYS_STATUS_NTP);
+        bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
+        bDST ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
+#ifndef DISABLE_LOGGING
+        char timeBuf[20];
+        formatDateTime(timeBuf, now());
+        Log.warningln(F("NTP sync failed. Current time sourced from WiFi: %s %s"), timeBuf, bDST?"CDT":"CST");
+#endif
+    }
 }
 
 bool ntp_sync() {
@@ -136,6 +135,7 @@ bool ntp_sync() {
         TimeSync tsync {.localMillis = millis(), .unixSeconds=now()};
         timeSyncs.push(tsync);
     }
+    updateTimeOffset();
     return result;
 }
 

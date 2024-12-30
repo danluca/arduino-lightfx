@@ -25,11 +25,17 @@ static const char fmtFxChange[] PROGMEM = R"===({"effect":%d,"auto":false,"broad
 //function declarations ahead
 void broadcastSetup();
 void fxBroadcast(uint16_t index);
+void holidayUpdate();
+void timeUpdate();
+void timeSetupCheck();
 
 FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
 events::EventQueue broadcastQueue;
-events::Event<void(uint16_t)> evBroadcast(&broadcastQueue, fxBroadcast);
 events::Event<void(void)> evSetup(&broadcastQueue, broadcastSetup);
+events::Event<void(uint16_t)> evBroadcast(&broadcastQueue, fxBroadcast);
+events::Event<void(void)> evHoliday(&broadcastQueue, holidayUpdate);
+events::Event<void(void)> evTimeUpdate(&broadcastQueue, timeUpdate);
+events::Event<void(void)> evTimeSetup(&broadcastQueue, timeSetupCheck);
 rtos::Thread *syncThread;
 
 /**
@@ -122,11 +128,62 @@ void fxBroadcast(const uint16_t index) {
 }
 
 /**
+ * Update holiday theme, if needed
+ */
+void holidayUpdate() {
+    Holiday oldHday = paletteFactory.getHoliday();
+    Holiday hDay = paletteFactory.adjustHoliday();
+#ifndef DISABLE_LOGGING
+    if (oldHday == hDay)
+            Log.infoln(F("Current holiday remains %s"), holidayToString(hDay));
+        else
+            Log.infoln(F("Current holiday adjusted from %s to %s"), holidayToString(oldHday), holidayToString(hDay));
+#endif
+}
+
+/**
+ * Update time with NTP, assert offset (DST or not) and track drift
+ */
+void timeUpdate() {
+    bool result = ntp_sync();
+    Log.infoln(F("Time NTP sync performed; success = %T"), result);
+    if (result && timeSyncs.size() > 2) {
+        //log the current drift
+        time_t from = timeSyncs.end()[-2].unixSeconds;
+        time_t to = now();
+        Log.infoln(F("Current drift between %y and %y (%u s) measured as %d ms"), from, to, (long)(to-from), getLastTimeDrift());
+    }
+}
+
+/**
+ * Time setup re-attempt, in case we weren't successful during system bootstrap
+ */
+void timeSetupCheck() {
+    if (!timeClient.isTimeSet()) {
+        updateStateLED((time_setup() ? CLR_ALL_OK : CLR_SETUP_ERROR).as_uint32_t());
+        Log.infoln(F("System status: %X"), sysInfo->getSysStatus());
+    } else
+        Log.infoln(F("Time was already properly setup, event fired in excess. System status: %X"), sysInfo->getSysStatus());
+}
+
+/**
  * Event timing details setup
  */
 void eventSetup() {
-    evBroadcast.delay(500ms);
+    //initial delays for setup and broadcast, these are one time trigger and on demand respectively
     evSetup.delay(500ms);
+    evBroadcast.delay(500ms);
+
+    //time update events - holiday and time sync
+    evHoliday.delay(1min);
+    evHoliday.period(12h);
+    evHoliday.post();
+
+    evTimeUpdate.delay(3min);
+    evTimeUpdate.period(17h);
+    evTimeUpdate.post();
+
+    evTimeSetup.delay(1s);
 }
 
 /**
@@ -162,4 +219,11 @@ void postWiFiSetupEvent() {
         evSetup.post();
     else
         Log.infoln(F("WiFi setup event received - the broadcast system is already configured. Broadcast enabled=%T"), fxBroadcastEnabled);
+}
+
+void postTimeSetupCheck() {
+    if (!timeClient.isTimeSet())
+        evTimeSetup.post();
+    else
+        Log.infoln(F("Time properly setup - no action taken"));
 }
