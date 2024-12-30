@@ -13,5 +13,6 @@ enum BroadcastState:uint8_t {Uninitialized, Configured, Broadcasting, Waiting};
 
 void postFxChangeEvent(uint16_t index);
 void postWiFiSetupEvent();
+void postTimeSetupCheck();
 
 #endif //ARDUINO_LIGHTFX_BROADCAST_H

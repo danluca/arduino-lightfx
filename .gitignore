@@ -1,5 +1,6 @@
 .pio/
 .vscode/
+.idea/
 logs/
 CMakeListsPrivate.txt
 cmake-build-*/ 

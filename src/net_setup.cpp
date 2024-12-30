@@ -145,34 +145,9 @@ void wifi_loop() {
             Log.warningln(F("WiFi connection unusable/lost - reconnecting..."));
             wifi_reconnect();
         }
-
-        if (!timeClient.isTimeSet()) {
-            if (time_setup())
-                stateLed(CLR_ALL_OK);
-            else
-                stateLed(CLR_SETUP_ERROR);
-        }
+        if (sysInfo->isSysStatus(SYS_STATUS_WIFI))
+            postTimeSetupCheck();
         Log.infoln(F("System status: %X"), sysInfo->getSysStatus());
-    }
-    EVERY_N_HOURS(12) {
-        Holiday oldHday = paletteFactory.getHoliday();
-        Holiday hDay = paletteFactory.adjustHoliday();
-#ifndef DISABLE_LOGGING
-        if (oldHday == hDay)
-            Log.infoln(F("Current holiday remains %s"), holidayToString(hDay));
-        else
-            Log.infoln(F("Current holiday adjusted from %s to %s"), holidayToString(oldHday), holidayToString(hDay));
-#endif
-    }
-    EVERY_N_HOURS(17) {
-        bool result = ntp_sync();
-        Log.infoln(F("Time NTP sync performed; success = %T"), result);
-        if (result && timeSyncs.size() > 2) {
-            //log the current drift
-            time_t from = timeSyncs.end()[-2].unixSeconds;
-            time_t to = now();
-            Log.infoln(F("Current drift between %y and %y (%u s) measured as %d ms"), from, to, (long)(to-from), getLastTimeDrift());
-        }
     }
     webserver();
 }
