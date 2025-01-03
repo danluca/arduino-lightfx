@@ -1,22 +1,18 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
-/**
- * Category D of light effects
- *
- */
-
 #include "fxD.h"
+#include "transition.h"
 
 using namespace FxD;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxd1Desc[] PROGMEM = "FXD1: Confetti D";
-const char fxd2Desc[] PROGMEM = "FXD2: dot beat";
-const char fxd3Desc[] PROGMEM = "FXD3: plasma";
-const char fxd4Desc[] PROGMEM = "FXD4: rainbow marching";
-const char fxd5Desc[] PROGMEM = "FXD5: ripples";
+constexpr auto fxd1Desc PROGMEM = "FXD1: Confetti D";
+constexpr auto fxd2Desc PROGMEM = "FXD2: dot beat";
+constexpr auto fxd3Desc PROGMEM = "FXD3: plasma";
+constexpr auto fxd4Desc PROGMEM = "FXD4: rainbow marching";
+constexpr auto fxd5Desc PROGMEM = "FXD5: ripples";
 
 void FxD::fxRegister() {
     static FxD1 fxD1;
@@ -57,10 +53,9 @@ void FxD1::run() {
     }
 }
 
-JsonObject & FxD1::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["localBright"] = brightness;
-    return obj;
+void FxD1::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["localBright"] = brightness;
 }
 
 
@@ -119,11 +114,10 @@ void FxD2::run() {
     }
 }
 
-JsonObject & FxD2::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["bpm"] = dotBpm;
-    obj["fade"] = 255-fade;
-    return obj;
+void FxD2::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["bpm"] = dotBpm;
+    json["fade"] = 255-fade;
 }
 
 void FxD2::dot_beat() {
@@ -183,7 +177,7 @@ void FxD3::plasma() {
     uint8_t thatPhase = beatsin8(7,-64,64);
 
     for (int k=0; k<NUM_PIXELS; k++) {                              // For each of the LED's in the strand, set a localBright based on a wave as follows:
-        uint8_t colorIndex = cubicwave8((k*23)+thisPhase)/2 + cos8((k*15)+thatPhase)/2;           // Create a wave and add a phase change and add another wave with its own phase change.. Hey, you can even change the frequencies if you wish.
+        uint8_t colorIndex = cubicwave8((k*23)+thisPhase)/2 + cos8((k*15)+thatPhase)/2;           // Create a wave and add a phase change and add another wave with its own phase change. Hey, you can even change the frequencies if you wish.
         uint8_t thisBright = qsuba(colorIndex, beatsin8(7,0,96));              // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
         //plasma becomes slime during Halloween (single color morphing mass)
         uint8_t clr = paletteFactory.isHolidayLimitedHue() ? monoColor : colorIndex;
@@ -191,7 +185,9 @@ void FxD3::plasma() {
     }
 }
 
-FxD3::FxD3() : LedEffect(fxd3Desc) {}
+FxD3::FxD3() : LedEffect(fxd3Desc) {
+    monoColor = 0;
+}
 
 void FxD3::windDownPrep() {
     transEffect.prepare(SELECTOR_WIPE + random8());

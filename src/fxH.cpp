@@ -1,22 +1,19 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
-/**
- * Category H of light effects
- *
- */
 #include "fxH.h"
+#include "transition.h"
 
 using namespace FxH;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxh1Desc[] PROGMEM = "FXH1: Fire segments";
-const char fxh2Desc[] PROGMEM = "FXH2: confetti H";
-const char fxh3Desc[] PROGMEM = "FXH3: filling the strand with colours";
-const char fxh4Desc[] PROGMEM = "FXH4: TwinkleFox";
-const char fxh5Desc[] PROGMEM = "FXH5: RainbowSparkle";
-const char fxh6Desc[] PROGMEM = "FXH6: JustSparkle";
+constexpr auto fxh1Desc PROGMEM = "FXH1: Fire segments";
+constexpr auto fxh2Desc PROGMEM = "FXH2: confetti H";
+constexpr auto fxh3Desc PROGMEM = "FXH3: filling the strand with colours";
+constexpr auto fxh4Desc PROGMEM = "FXH4: TwinkleFox";
+constexpr auto fxh5Desc PROGMEM = "FXH5: RainbowSparkle";
+constexpr auto fxh6Desc PROGMEM = "FXH6: JustSparkle";
 
 void FxH::fxRegister() {
     static FxH1 fxH1;
@@ -159,11 +156,10 @@ void FxH1::Fire2012WithPalette(uint8_t xFire) {
     }
 }
 
-JsonObject &FxH1::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["flameBrightness"] = brightness;
-    obj["numberOfFires"] = numFires;
-    return obj;
+void FxH1::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["flameBrightness"] = brightness;
+    json["numberOfFires"] = numFires;
 }
 
 void FxH1::windDownPrep() {
@@ -239,11 +235,10 @@ void FxH2::updateParams() {
     }
 }
 
-JsonObject &FxH2::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["brightness"] = brightness;
-    obj["speed"] = speed;
-    return obj;
+void FxH2::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["brightness"] = brightness;
+    json["speed"] = speed;
 }
 
 void FxH2::windDownPrep() {
@@ -300,11 +295,10 @@ void FxH3::run() {
 
 }
 
-JsonObject &FxH3::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["hueDiff"] = hueDiff;
-    obj["speed"] = speed;
-    return obj;
+void FxH3::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["hueDiff"] = hueDiff;
+    json["speed"] = speed;
 }
 
 void FxH3::windDownPrep() {
@@ -373,8 +367,8 @@ void FxH4::windDownPrep() {
     LedEffect::windDownPrep();
 }
 
-JsonObject &FxH4::describeConfig(JsonArray &json) const {
-    return LedEffect::describeConfig(json);
+void FxH4::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
 }
 
 uint8_t FxH4::selectionWeight() const {
@@ -566,8 +560,8 @@ void FxH5::windDownPrep() {
     LedEffect::windDownPrep();
 }
 
-JsonObject &FxH5::describeConfig(JsonArray &json) const {
-    return LedEffect::describeConfig(json);
+void FxH5::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
 }
 
 uint8_t FxH5::selectionWeight() const {
@@ -618,6 +612,7 @@ FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSiz
         sparks.push_back(new Spark(p));
     }
     timerCounter = 0;
+    stage = DefinedPattern;
 }
 
 void FxH6::setup() {
@@ -787,10 +782,10 @@ Spark::State Spark::step(const uint8_t dice) {
     return state;
 }
 
-void Spark::on() {
+void Spark::on() const {
     pixel = fgClr;
 }
 
-void Spark::off() {
+void Spark::off() const {
     pixel = dimBkg ? bgClr : BKG;
 }

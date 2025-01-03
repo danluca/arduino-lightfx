@@ -1,21 +1,18 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
-/**
- * Category E of light effects
- *
- */
 #include "fxE.h"
+#include "transition.h"
 
 using namespace FxE;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxe1Desc[] PROGMEM = "FXE1: twinkle";
-const char fxe2Desc[] PROGMEM = "FXE2: beat wave";
-const char fxe3Desc[] PROGMEM = "FXE3: sawtooth back/forth";
-const char fxe4Desc[] PROGMEM = "FXE4: serendipitous";
-const char fxe5Desc[] PROGMEM = "FXE5: three single color beat-waves";
+constexpr auto fxe1Desc PROGMEM = "FXE1: twinkle";
+constexpr auto fxe2Desc PROGMEM = "FXE2: beat wave";
+constexpr auto fxe3Desc PROGMEM = "FXE3: sawtooth back/forth";
+constexpr auto fxe4Desc PROGMEM = "FXE4: serendipitous";
+constexpr auto fxe5Desc PROGMEM = "FXE5: three single color beat-waves";
 
 void FxE::fxRegister() {
     static FxE1 fxe1;
@@ -66,7 +63,7 @@ void FxE1::run() {
 
 void FxE1::twinkle() {
 
-  if (random8() < twinkrate) leds[random16(NUM_PIXELS)] += ColorFromPalette(palette, (randhue ? random8() : hue), brightness, LINEARBLEND);
+  if (random8() < twinkRate) leds[random16(NUM_PIXELS)] += ColorFromPalette(palette, (randHue ? random8() : hue), brightness, LINEARBLEND);
   fadeToBlackBy(leds, NUM_PIXELS, fade);
   
 } // twinkle()
@@ -75,18 +72,17 @@ void FxE1::updateParams() {
     static uint8_t secSlot = 0;
     EVERY_N_SECONDS(5) {
         switch (secSlot) {
-            case 0: speed = 25; randhue = true; saturation=255; fade=8; twinkrate=150; break;  // You can change values here, one at a time , or altogether.
-            case 1: speed = 100; randhue = false; hue=random8(); fade=2; twinkrate=20; break;
+            case 0: speed = 25; randHue = true; saturation=255; fade=8; twinkRate=150; break;  // You can change values here, one at a time , or altogether.
+            case 1: speed = 100; randHue = false; hue=random8(); fade=2; twinkRate=20; break;
             default: break;
         }
         secSlot = inc(secSlot, 1, 3);
     }
 }
 
-JsonObject & FxE1::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["brightness"] = brightness;
-    return obj;
+void FxE1::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["brightness"] = brightness;
 }
 
 bool FxE1::windDown() {
@@ -272,7 +268,7 @@ void FxE4::run() {
 void FxE4::serendipitous() {
     //  Xn = X-(Y/2); Yn = Y+(Xn/2);
     //  Xn = X-Y/2;   Yn = Y+Xn/2;
-    uint16_t Xn = X-(Y/2); uint16_t Yn = Y+(X/2.1); uint16_t Zn = X + Y*2.3;
+    const uint16_t Xn = X-(Y/2); uint16_t Yn = Y+(X/2.1); uint16_t Zn = X + Y*2.3;
     //    Xn = X-(Y/3); Yn = Y+(X/1.5);
     //  Xn = X-(2*Y); Yn = Y+(X/1.1);
 
@@ -314,9 +310,9 @@ void FxE5::run() {
         wave2.fadeToBlackBy(40);
         wave3.fadeToBlackBy(50);
 
-        CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
-        CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
-        CRGB col3 = ColorFromPalette(palette, clr3, brightness, LINEARBLEND);
+        const CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
+        const CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
+        const CRGB col3 = ColorFromPalette(palette, clr3, brightness, LINEARBLEND);
         uint16_t pos = beatsin16(5, 0, tpl.size()-1, 0, 0);
         tpl(curPos, pos) = col1;
         curPos = pos;

@@ -1,35 +1,61 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
-
-#include "global.h"
+#include <Arduino.h>
 #include "timeutil.h"
 #include "PaletteFactory.h"
+#include "util.h"
+#include "stringutils.h"
 #include "sysinfo.h"
+#include "constants.hpp"
+#include "log.h"
 
-const char fmtDate[] PROGMEM = "%4d-%02d-%02d";
-const char fmtTime[] PROGMEM = "%02d:%02d:%02d";
-const char strNone[] PROGMEM = "None";
-const char strParty[] PROGMEM = "Party";
-const char strValentine[] PROGMEM = "ValentineDay";
-const char strStPatrick[] PROGMEM = "StPatrick";
-const char strMemorialDay[] PROGMEM = "MemorialDay";
-const char strIndependenceDay[] PROGMEM = "IndependenceDay";
-const char strHalloween[] PROGMEM = "Halloween";
-const char strThanksgiving[] PROGMEM = "Thanksgiving";
-const char strChristmas[] PROGMEM = "Christmas";
-const char strNewYear[] PROGMEM = "NewYear";
+constexpr auto fmtDate PROGMEM = "%4d-%02d-%02d";
+constexpr auto fmtTime PROGMEM = "%02d:%02d:%02d";
 
+WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
 
-bool time_setup() {
+bool timeSetup() {
     //read the time
     setSyncProvider(curUnixTime);
-    bool ntpTimeAvailable = ntp_sync();
-    Holiday hday = paletteFactory.adjustHoliday();    //update the holiday for new time
-#ifndef DISABLE_LOGGING
-    Log.warningln(F("Acquiring NTP time, attempt %s. Current holiday theme is %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...", holidayToString(hday));
-#endif
+    const bool ntpTimeAvailable = ntp_sync();
+    Log.warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
+    Holiday hday;
+    if (ntpTimeAvailable) {
+        const bool bDST = isDST(timeClient.getEpochTime());
+        sysInfo->setSysStatus(SYS_STATUS_NTP);
+        if (bDST) {
+            sysInfo->setSysStatus(SYS_STATUS_DST);
+            timeClient.setTimeOffset(CDT_OFFSET_SECONDS);   //getEpochTime calls account for the offset
+        } else
+            timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
+        setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
+        hday = paletteFactory.adjustHoliday();    //update the holiday for new time
+        if (Log.getTimebase() == 0) {
+            const time_t curTime = now();
+            const time_t curMs = millis();
+            Log.warn(F("Logging time reference updated from %llu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
+            Log.setTimebase(curTime * 1000 - curMs);                //capture current time into the log offset, such that log statements use current time
+        }
+        Log.info(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
+                   bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
+        char timeBuf[20];
+        formatDateTime(timeBuf, now());
+        Log.info(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
+    } else {
+        sysInfo->resetSysStatus(SYS_STATUS_NTP);
+        paletteFactory.setHoliday(Party);  //setting it explicitly to avoid defaulting to none when there is no wifi altogether
+        hday = paletteFactory.adjustHoliday();    //update the holiday for new time
+        const bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
+        if (bDST)
+            sysInfo->setSysStatus(SYS_STATUS_DST);
+        char timeBuf[20];
+        formatDateTime(timeBuf, now());
+        Log.warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"),
+              timeBuf, bDST?"CDT":"CST", holidayToString(hday));
+    }
+    Log.info(F("Current holiday is %s"), holidayToString(hday));
     return ntpTimeAvailable;
 }
 
@@ -80,63 +106,59 @@ time_t curUnixTime() {
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time telling purpose
         //determine what offset to use
-        time_t wifiTime = WiFi.getTime() + CST_OFFSET_SECONDS;
-        if (isDST(wifiTime))
-            wifiTime = wifiTime - CST_OFFSET_SECONDS + CDT_OFFSET_SECONDS;
-        return wifiTime;
+        time_t wifiTime = WiFi.getTime();
+        time_t localTime = wifiTime + CST_OFFSET_SECONDS;
+        if (isDST(localTime))
+            localTime = wifiTime + CDT_OFFSET_SECONDS;
+        return localTime;
     }
-    return 0;
-}
-
-void updateTimeOffset() {
-    if (timeClient.isTimeSet()) {
-        bool bDST = isDST(timeClient.getEpochTime());
-        sysInfo->setSysStatus(SYS_STATUS_NTP);
-        if (bDST) {
-            sysInfo->setSysStatus(SYS_STATUS_DST);
-            timeClient.setTimeOffset(CDT_OFFSET_SECONDS);   //getEpochTime calls account for the offset
-        } else {
-            sysInfo->resetSysStatus(SYS_STATUS_DST);
-            timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
-        }
-        setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
-
-#ifndef DISABLE_LOGGING
-        if (logTimeOffset == 0) {
-            time_t curTime = now();
-            time_t curMs = millis();
-            Log.warningln(F("Logging time reference updated from %u ms (%y) to %y"), curMs, curMs/1000, curTime);
-            logTimeOffset = curTime * 1000 - curMs;                //capture current time into the log offset, such that log statements use current time
-        }
-        Log.infoln(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
-                   bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
-        char timeBuf[20];
-        formatDateTime(timeBuf, now());
-        Log.infoln(F("Current time %s %s, timeBuf, bDST?"CDT":"CST");
-#endif
-    } else {
-        sysInfo->resetSysStatus(SYS_STATUS_NTP);
-        bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
-        bDST ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
-#ifndef DISABLE_LOGGING
-        char timeBuf[20];
-        formatDateTime(timeBuf, now());
-        Log.warningln(F("NTP sync failed. Current time sourced from WiFi: %s %s"), timeBuf, bDST?"CDT":"CST");
-#endif
-    }
+    return millis();
 }
 
 bool ntp_sync() {
+    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+        Log.warn(F("NTP sync failed. No WiFi connection available."));
+        return false;
+    }
     timeClient.begin();
     timeClient.update();
     timeClient.end();
-    bool result = timeClient.isTimeSet();
+    const bool result = timeClient.isTimeSet();
     if (result) {
-        TimeSync tsync {.localMillis = millis(), .unixSeconds=now()};
-        timeSyncs.push(tsync);
+        const TimeSync tSync {.localMillis = millis(), .unixSeconds=now()};
+        timeSyncs.push(tSync);
     }
-    updateTimeOffset();
     return result;
+}
+
+/**
+ * Are we in DST (Daylight Savings Time) at this time?
+ * @param time
+ * @return
+ */
+bool isDST(const time_t time) {
+//    const uint16_t md = encodeMonthDay(time);
+    // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
+    // to the transition, such that we don't need to implement complex Sunday counting rules
+//    return md > 0x030C && md < 0x0B05;
+    int mo = month(time);
+    int dy = day(time);
+    int hr = hour(time);
+    int dow = weekday(time);
+    // DST runs from second Sunday of March to first Sunday of November
+    // Never in January, February or December
+    if (mo < 3 || mo > 11)
+        return false;
+    // Always in April to October
+    if (mo > 3 && mo < 11)
+        return true;
+    // In March, DST if previous Sunday was on or after the 8th.
+    // Begins at 2am on second Sunday in March
+    int previousSunday = dy - dow;
+    if (mo == 3)
+        return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
+    // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
+    return (previousSunday < 7 && dow == 1) ? (hr < 2) : (previousSunday < 0);
 }
 
 /**
@@ -144,7 +166,7 @@ bool ntp_sync() {
  * @param time
  * @return one of the pre-defined holidays, defaults to Party
  */
-Holiday buildHoliday(time_t time) {
+Holiday buildHoliday(const time_t time) {
     const uint16_t md = encodeMonthDay(time);
     //Valentine's Day: Feb 11 through 15
     if (md > 0x020B && md < 0x0210)
@@ -194,12 +216,14 @@ Holiday parseHoliday(const String *str) {
         return IndependenceDay;
     if (str->equalsIgnoreCase(strHalloween))
         return Halloween;
-    else if (str->equalsIgnoreCase(strThanksgiving))
+    if (str->equalsIgnoreCase(strThanksgiving))
         return Thanksgiving;
-    else if (str->equalsIgnoreCase(strChristmas))
+    if (str->equalsIgnoreCase(strChristmas))
         return Christmas;
-    else if (str->equalsIgnoreCase(strNewYear))
+    if (str->equalsIgnoreCase(strNewYear))
         return NewYear;
+    if (str->equalsIgnoreCase(strNone))
+        return None;
     return Party;
 }
 

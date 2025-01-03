@@ -1,46 +1,62 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
+#include <regex>
 #include "web_server.h"
-#include "log.h"
+#include "filesystem.h"
 #include "timeutil.h"
 #include "sysinfo.h"
+#include "util.h"
 #include "diag.h"
-#include "broadcast.h"
-#include "StreamUtils.h"
+#include "comms.h"
+#include "net_setup.h"
+#include "efx_setup.h"
+#include "FxSchedule.h"
+#include "mic.h"
+#include "log.h"
+#include "stringutils.h"
 
-static const char http200Status[] PROGMEM = "HTTP/1.1 200 OK";
-static const char http303Status[] PROGMEM = "HTTP/1.1 303 See Other";
-static const char http404Status[] PROGMEM = "HTTP/1.1 404 Not Found";
-static const char http500Status[] PROGMEM = "HTTP/1.1 500 Internal Server Error";
+#include "index_html.h"
+#include "pixel_css.h"
+#include "pixel_js.h"
+#include "stats_html.h"
+#include "stats_css.h"
+#include "stats_js.h"
 
-static const char hdHtml[] PROGMEM = R"===(Content-type: text/html
+static constexpr auto http200Status PROGMEM = "HTTP/1.1 200 OK";
+// static constexpr auto http303Status PROGMEM = "HTTP/1.1 303 See Other";
+static constexpr auto http404Status PROGMEM = "HTTP/1.1 404 Not Found";
+static constexpr auto http500Status PROGMEM = "HTTP/1.1 500 Internal Server Error";
+
+static constexpr auto hdHtml PROGMEM = R"===(Content-type: text/html
 Server: rp2040-luca/1.0.0)===";
 
-static const char hdCss[] PROGMEM = R"===(Content-type: text/css
+static constexpr auto hdCss PROGMEM = R"===(Content-type: text/css
 Server: rp2040-luca/1.0.0
 Cache-Control: public, max-age=2592000, immutable)===";
 
-static const char hdJavascript[] PROGMEM = R"===(Content-type: text/javascript
+static constexpr auto hdJavascript PROGMEM = R"===(Content-type: text/javascript
 Server: rp2040-luca/1.0.0
 Cache-Control: public, max-age=2592000, immutable)===";
 
-static const char hdJson[] PROGMEM = R"===(Content-type: application/json
+static constexpr auto hdJson PROGMEM = R"===(Content-type: application/json
 Server: rp2040-luca/1.0.0
 Cache-Control: no-cache, no-store)===";
 
 using namespace web;
 using namespace colTheme;
 
-static const char hdRootLocation[] PROGMEM = "Location: /";
-static const char hdConClose[] PROGMEM = "Connection: close";
-static const char hdFmtContentLength[] PROGMEM = "Content-Length: %d";
-static const char hdFmtDate[] PROGMEM = "Date: %4d-%02d-%02d %02d:%02d:%02d CST";
-static const char hdFmtContentDisposition[] PROGMEM = "Content-Disposition: inline; filename=\"%s\"";
-static const char msgRequestNotMapped[] PROGMEM = "URI not mapped to a handler on this server";
-static const char configJsonFilename[] PROGMEM = "config.json";
-static const char statusJsonFilename[] PROGMEM = "status.json";
+// static constexpr auto hdRootLocation PROGMEM = "Location: /";
+static constexpr auto hdConClose PROGMEM = "Connection: close";
+static constexpr auto hdFmtContentLength PROGMEM = "Content-Length: %d";
+static constexpr auto hdFmtDate PROGMEM = "Date: %4d-%02d-%02d %02d:%02d:%02d CST";
+static constexpr auto hdFmtContentDisposition PROGMEM = "Content-Disposition: inline; filename=\"%s\"";
+static constexpr auto msgRequestNotMapped PROGMEM = "URI not mapped to a handler on this server";
+static constexpr auto configJsonFilename PROGMEM = "config.json";
+static constexpr auto statusJsonFilename PROGMEM = "status.json";
+static constexpr auto tasksJsonFilename PROGMEM = "tasks.json";
 
+size_t handleGetTasks(WiFiClient *client, const String *uri, String *hd, String *body);
 /**
  * Web handler mappings - static in nature and stored in flash
  * The mapping consists of a string key - <code>Http_Method URI</code> associated with the function pointer that
@@ -50,6 +66,7 @@ static const char statusJsonFilename[] PROGMEM = "status.json";
 static const std::map<std::string, reqHandler> webMappings PROGMEM = {
         {"^GET /config\\.json$",  handleGetConfig},
         {"^GET /status\\.json$",  handleGetStatus},
+        {"^GET /tasks\\.json$",   handleGetTasks},
         {"^GET /\\w+\\.css$",     handleGetCss},
         {"^GET /[\\w.]+\\.js$",   handleGetJs},
         {"^GET /\\w+\\.html$",    handleGetHtml},
@@ -57,11 +74,10 @@ static const std::map<std::string, reqHandler> webMappings PROGMEM = {
         {"^PUT /fx$",             handlePutConfig}
 };
 
-rtos::Mutex wifiMutex;
 // global server object - through WiFi module
 WiFiServer server(80);
 //size of the buffer for buffering the response
-static const uint16_t WEB_BUFFER_SIZE = 1024;
+static constexpr uint16_t WEB_BUFFER_SIZE = 1024;
 
 /**
  * Start the server
@@ -74,7 +90,6 @@ void server_setup() {
  * Dispatch incoming requests to their handlers
  */
 void webserver() {
-    ScopedMutexLock lock(wifiMutex);
     web::dispatch();
 }
 
@@ -84,7 +99,7 @@ void webserver() {
  * @return number of bytes written to the client
  */
 size_t writeDateHeader(WiFiClient *client) {
-    time_t curTime = now();
+    const time_t curTime = now();
     int szBuf = snprintf(nullptr, 0, hdFmtDate, year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime)) + 1;
     char buf[szBuf];
     sprintf(buf, hdFmtDate, year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
@@ -139,16 +154,17 @@ size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
 //    }
 //    bufferingStream.flush();
 
-    char buf[WEB_BUFFER_SIZE];
     size_t res = 0;
+    //auto buf = new char[WEB_BUFFER_SIZE];   //do not take space in stack - the web task runs on CORE0 which has a small 1024 bytes stack
     while (srcSize > 0) {
         size_t sz = min(srcSize, WEB_BUFFER_SIZE);
-        memcpy_P(buf, src, sz);     //for RP2040 this is the same as regular memory copy, no difference for copying from flash (and we could have written to WiFi client straight from source, could have saved a local buffer)
-        sz = client->write(buf, sz);
+        //memcpy_P(buf, src, sz);     //for RP2040 this is the same as regular memory copy, no difference for copying from flash (and we could have written to WiFi client straight from source, could have saved a local buffer)
+        sz = client->write(src, sz);
         src += sz;
         srcSize -= sz;  //because sz is min between srcSize and buffer size, when srcSize lowers below buffer size, sz = srcSize and this statement brings srcSize to 0
         res += sz;
     }
+    //delete buf;
     return res;
 }
 
@@ -162,21 +178,22 @@ size_t writeLargeP(WiFiClient *client, const char *src, size_t srcSize) {
  * @see https://github.com/bblanchon/ArduinoStreamUtils
  */
 size_t web::transmitJsonDocument(JsonVariantConst source, WiFiClient *client) {
-    WriteBufferingStream bufferingStream(*client, WEB_BUFFER_SIZE);
-    size_t sz = serializeJson(source, bufferingStream);
-    bufferingStream.flush();
+    // WriteBufferingStream bufferingStream(*client, WEB_BUFFER_SIZE);
+    // const size_t sz = serializeJson(source, bufferingStream);
+    // bufferingStream.flush();
 
     // custom implementation with String buffer on the heap
-//    size_t sz = measureJson(source);
-//    auto buf = new String();
-//    buf->reserve(sz);
-//
-//    serializeJson(source, *buf);
-//    if (sz > WEB_BUFFER_SIZE)
-//        sz = writeLargeP(client, buf->c_str(), buf->length());
-//    else
-//        sz = client->print(*buf);
-//    delete buf;
+    // size_t sz = measureJson(source);
+    auto buf = new String();
+    buf->reserve(5120);     // deemed enough for all/most json docs in this app (largest is the config file at 4800 bytes)
+
+    serializeJson(source, *buf);
+    size_t sz = 0;
+    if (buf->length() > WEB_BUFFER_SIZE)
+        sz = writeLargeP(client, buf->c_str(), buf->length());
+    else
+        sz = client->print(*buf);
+    delete buf;
     return sz;
 }
 
@@ -189,7 +206,7 @@ size_t web::transmitJsonDocument(JsonVariantConst source, WiFiClient *client) {
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetConfig(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdJson);
@@ -199,85 +216,56 @@ size_t web::handleGetConfig(WiFiClient *client, String *uri, String *hd, String 
     sz += client->println();    //done with headers
 
     // response body
-    JsonDocument doc;
-    char buf[20];
-
-    doc["boardName"] = sysInfo->getBoardName();
-    doc["boardUid"] = sysInfo->getBoardId();
-    doc["fwVersion"] = sysInfo->getBuildVersion();
-    doc["fwBranch"] = sysInfo->getScmBranch();
-    doc["buildTime"] = sysInfo->getBuildTime();
-    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
-    doc["cleanBoot"] = sysInfo->isCleanBoot();
-    if (!sysInfo->watchdogReboots().empty()) {
-        formatDateTime(buf, sysInfo->watchdogReboots().back());
-        doc["lastWatchdogReboot"] = buf;
-    }
-    doc["curEffect"] = String(fxRegistry.curEffectPos());
-    doc["auto"] = fxRegistry.isAutoRoll();
-    doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
-    doc["curEffectName"] = fxRegistry.getCurrentEffect()->name();
-    doc["holiday"] = holidayToString(paletteFactory.getHoliday());
-    JsonArray hldList = doc["holidayList"].to<JsonArray>();
-    for (uint8_t hi = None; hi <= NewYear; hi++)
-        hldList.add(holidayToString(static_cast<Holiday>(hi)));
-    formatDateTime(buf, now());
-    doc["currentTime"] = buf;
-    bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
-    doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
-    doc["dst"] = bDST;
-    doc["MAC"] = sysInfo->getMacAddress();
-    JsonArray fxArray = doc["fx"].to<JsonArray>();
-    fxRegistry.describeConfig(fxArray);
-    //send it out
-    sz += transmitJsonDocument(doc, client);
+    auto *str = new String();
+    str->reserve(5120);     //config file is about 4800 bytes
+    if (readTextFile(sysCfgFileName, str))
+        sz += writeLargeP(client, str->c_str(), str->length());
     sz += client->println();
+    delete str;
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetConfig invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetConfig invoked for %s"), uri->c_str());
     return sz;
 }
 
 /**
- * Handles <code>GET /*.css</code> - responds with the sole CSS stylesheet, pixel.css
+ * Handles \code GET / *.css \endcode - responds with the sole CSS stylesheet, pixel.css
  * <p>Must comply with the <code>reqHandler</code> function pointer signature</p>
  * @param client the web client to respond to
- * @param uri URI invoked
+ * @param uri the URI invoked
  * @param hd request headers
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetCss(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetCss(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdCss);
     sz += writeDateHeader(client);
     sz += client->println(hdConClose);
-    size_t cssLen = strlen(pixel_css);
+
+    const char *css = uri->endsWith("/stats.css") ? stats_css : pixel_css;
+    const size_t cssLen = strlen(css);
     sz += writeContentLengthHeader(client, cssLen);
     sz += client->println();    //done with headers
 
     // response body
-    sz += writeLargeP(client, pixel_css, cssLen);
+    sz += writeLargeP(client, css, cssLen);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetCss invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetCss invoked for %s"), uri->c_str());
     return sz;
 }
 
 /**
- * Handles <code>GET /*.js</code> - responds with JS files - one of three options: jquery, jquery-ui, pixel.js (last one is default)
+ * Handles <code>GET / *.js</code> - responds with JS files - one of three options: jquery, jquery-ui, pixel.js (last one is default)
  * <p>Must comply with the <code>reqHandler</code> function pointer signature</p>
  * @param client the web client to respond to
- * @param uri URI invoked
+ * @param uri the URI invoked
  * @param hd request headers
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetJs(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdJavascript);
@@ -285,11 +273,11 @@ size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy
     sz += client->println(hdConClose);
 
     // figure out which JS source we need
-    const char* src = pixel_js;
+    const char* src = uri->endsWith("/stats.js") ? stats_js : pixel_js;
 //    if (uri->endsWith("jquery.min.js"))
 //        src = jquery_min_js;
     // determine size
-    size_t jsLen = strlen(src);
+    const size_t jsLen = strlen(src);
     sz += writeContentLengthHeader(client, jsLen);
     sz += client->println();    //done with headers
 
@@ -297,9 +285,7 @@ size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy
     sz += writeLargeP(client, src, jsLen);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetJs invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetJs invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -312,25 +298,24 @@ size_t web::handleGetJs(WiFiClient *client, String *uri, String *hd, String *bdy
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetHtml(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetHtml(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdHtml);
     sz += writeDateHeader(client);
     sz += client->println(hdConClose);
 
+    const char *html = uri->endsWith("/stats.html") ? stats_html : index_html;
     // determine size
-    size_t szHtml = strlen(index_html);
+    const size_t szHtml = strlen(html);
     sz += writeContentLengthHeader(client, szHtml);
     sz += client->println();    //done with headers
 
     // response body
-    sz += writeLargeP(client, index_html, szHtml);
+    sz += writeLargeP(client, html, szHtml);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetHtml invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetHtml invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -344,7 +329,7 @@ size_t web::handleGetHtml(WiFiClient *client, String *uri, String *hd, String *b
  * @return number of bytes sent to the client
  * @see web::handleGetHtml
  */
-size_t web::handleGetRoot(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetRoot(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     return handleGetHtml(client, uri, hd, bdy);
 }
 
@@ -357,7 +342,7 @@ size_t web::handleGetRoot(WiFiClient *client, String *uri, String *hd, String *b
  * @param bdy request body - empty (this is a GET request)
  * @return number of bytes sent to the client
  */
-size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handleGetStatus(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //main status and headers
     size_t sz = client->println(http200Status);
     sz += client->println(hdJson);
@@ -369,52 +354,56 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     // response body
     JsonDocument doc;
     // WiFi
-    JsonObject wifi = doc["wifi"].to<JsonObject>();
+    const auto wifi = doc["wifi"].to<JsonObject>();
     wifi["IP"] = sysInfo->getIpAddress();         //IP Address
-    int32_t rssi = WiFi.RSSI();
+    const int32_t rssi = WiFi.RSSI();
     wifi["bars"] = barSignalLevel(rssi);  //Wi-Fi signal level
     wifi["rssi"] = rssi;
-    wifi["curVersion"] = sysInfo->getWiFiFwVersion();
-    wifi["latestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
     // Fx
-    JsonObject fx = doc["fx"].to<JsonObject>();
-    fx["count"] = fxRegistry.size();
+    const auto fx = doc["fx"].to<JsonObject>();
     fx[csAuto] = fxRegistry.isAutoRoll();
     fx[csSleepEnabled] = fxRegistry.isSleepEnabled();
     fx["asleep"] = fxRegistry.isAsleep();
-    fx[csHoliday] = holidayToString(paletteFactory.getHoliday());   //could be forced to a fixed value
+    fx["autoTheme"] = paletteFactory.isAuto();
+    fx["theme"] = holidayToString(paletteFactory.getHoliday());   //could be forced to a fixed value
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
     fx[csBroadcast] = fxBroadcastEnabled;
-    JsonArray lastFx = fx["pastEffects"].to<JsonArray>();
+    auto lastFx = fx["pastEffects"].to<JsonArray>();
     fxRegistry.pastEffectsRun(lastFx);                   //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness;
     fx[csBrightnessLocked] = stripBrightnessLocked;
     fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold
     fx["totalAudioBumps"] = totalAudioBumps;                //how many times (in total) have we bumped the effect due to audio level
-    JsonArray audioHist = fx["audioHist"].to<JsonArray>();
+    const auto audioHist = fx["audioHist"].to<JsonArray>();
     for (uint16_t x : maxAudio)
-        audioHist.add(x);
+        audioHist.add<uint16_t>(x);
     // Time
-    JsonObject time = doc["time"].to<JsonObject>();
+    const auto time = doc["time"].to<JsonObject>();
     time["ntpSync"] = timeStatus();
     time["millis"] = millis();           //current time in ms
     char timeBuf[21];
-    time_t curTime = now();
+    const time_t curTime = now();
     formatDate(timeBuf, curTime);
     time["date"] = timeBuf;
     formatTime(timeBuf, curTime);
     time["time"] = timeBuf;
     time["dst"] = sysInfo->isSysStatus(SYS_STATUS_DST);
-    time["holiday"] = holidayToString(currentHoliday());      //time derived holiday
+    time[csHoliday] = holidayToString(currentHoliday());      //time derived holiday
     time["syncSize"] = timeSyncs.size();
     time["averageDrift"] = getAverageTimeDrift();
     time["lastDrift"] = getLastTimeDrift();
     time["totalDrift"] = getTotalDrift();
-    JsonArray alarms = time["alarms"].to<JsonArray>();
+    const auto syncs = time["syncs"].to<JsonArray>();
+    for (const auto &[localMillis, unixSeconds] : timeSyncs) {
+        auto jts = syncs.add<JsonObject>();
+        jts["localMillis"] = localMillis;
+        jts["unixSeconds"] = unixSeconds;
+    }
+    const auto alarms = time["alarms"].to<JsonArray>();
     for (const auto &al : scheduledAlarms) {
-        JsonObject jal = alarms.add<JsonObject>();
+        auto jal = alarms.add<JsonObject>();
         jal["timeLong"] = al->value;
         formatDateTime(timeBuf, al->value);
         jal["timeFmt"] = timeBuf;
@@ -422,10 +411,9 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
 //        jal["taskPtr"] = (long)al->onEventHandler;
     }
     //System
-    snprintf(timeBuf, 9, "%2d.%02d.%02d", MBED_MAJOR_VERSION, MBED_MINOR_VERSION, MBED_PATCH_VERSION);
-    doc["mbedVersion"] = timeBuf;
     doc["boardTemp"] = imuTempRange.current.value;
     doc["chipTemp"] = cpuTempRange.current.value;
+    doc["wifiTemp"] = WiFi.getTemperature();
     doc["vcc"] = lineVoltage.current.value;
     doc["minVcc"] = lineVoltage.min.value;
     doc["maxVcc"] = lineVoltage.max.value;
@@ -435,9 +423,11 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     //ISO8601 format
     //snprintf(timeBuf, 15, "P%2dDT%2dH%2dM", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     //human readable format
-    snprintf(timeBuf, 15, "%2dD %2dH %2dm", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
+    const unsigned long upTime = millis();
+    snprintf(timeBuf, 15, "%2dD %2dH %2dm", upTime/86400000l, (upTime/3600000l%24), (upTime/60000%60));
     doc["upTime"] = timeBuf;
-    JsonObject cpuTempCal = doc["cpuTempCal"].to<JsonObject>();
+    doc["bootTime"] = upTime;
+    const auto cpuTempCal = doc["cpuTempCal"].to<JsonObject>();
     cpuTempCal["valid"] = calibCpuTemp.isValid();
     cpuTempCal["refTemp"] = calibCpuTemp.refTemp;
     cpuTempCal["vtRef"] = calibCpuTemp.vtref;
@@ -458,9 +448,46 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
     sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handleGetStatus invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handleGetStatus invoked for %s"), uri->c_str());
+    return sz;
+}
+
+size_t handleGetTasks(WiFiClient *client, const String *uri, String *hd, String *body) {
+    //main status and headers
+    size_t sz = client->println(http200Status);
+    sz += client->println(hdJson);
+    sz += writeDateHeader(client);
+    sz += writeFilenameHeader(client, tasksJsonFilename);
+    sz += client->println(hdConClose);
+    sz += client->println();    //done with headers
+
+    // response body
+    JsonDocument doc;
+    doc["cycles32"] = rp2040.getCycleCount();
+    doc["cycles64"] = rp2040.getCycleCount64();
+    doc["millis"] = millis();
+    const time_t curTime = now();
+    char timeBuf[21];
+    formatDate(timeBuf, curTime);
+    doc["date"] = timeBuf;
+    formatTime(timeBuf, curTime);
+    doc["time"] = timeBuf;
+    auto heap = doc["heap"].to<JsonObject>();
+    SysInfo::heapStats(heap);
+    auto tasks = doc["tasks"].to<JsonObject>();
+    SysInfo::taskStats(tasks);
+    doc["boardName"] = sysInfo->getBoardName();
+    doc["boardUid"] = sysInfo->getBoardId();
+    doc["fwVersion"] = sysInfo->getBuildVersion();
+    doc["fwBranch"] = sysInfo->getScmBranch();
+    doc["buildTime"] = sysInfo->getBuildTime();
+
+
+    //send it out
+    sz += transmitJsonDocument(doc, client);
+    sz += client->println();
+
+    Log.info(F("Handler handleGetTasks invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -473,53 +500,50 @@ size_t web::handleGetStatus(WiFiClient *client, String *uri, String *hd, String 
  * @param bdy request body - JSON of the update request
  * @return number of bytes sent to the client
  */
-size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String *bdy) {
+size_t web::handlePutConfig(WiFiClient *client, const String *uri, String *hd, String *bdy) {
     //process the body - parse JSON body and react to inputs
     JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, *bdy);
+    const DeserializationError error = deserializeJson(doc, *bdy);
     if (error)
         return handleInternalError(client, uri, error.c_str());
 
     JsonDocument resp;
-    const char strEffect[] = "effect";
-    JsonObject upd = resp["updates"].to<JsonObject>();
-    if (doc.containsKey(csAuto)) {
-        bool autoAdvance = doc[csAuto].as<bool>();
+    const auto upd = resp["updates"].to<JsonObject>();
+    if (doc[csAuto].is<bool>()) {
+        const bool autoAdvance = doc[csAuto].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
         upd[csAuto] = autoAdvance;
     }
-    if (doc.containsKey(strEffect)) {
-        auto nextFx = doc[strEffect].as<uint16_t >();
+    if (doc[strEffect].is<uint16_t>()) {
+        const auto nextFx = doc[strEffect].as<uint16_t >();
         fxRegistry.nextEffectPos(nextFx);
         upd[strEffect] = nextFx;
     }
-    if (doc.containsKey(csHoliday)) {
-        String userHoliday = doc[csHoliday].as<String>();
+    if (doc[csHoliday].is<String>()) {
+        const auto userHoliday = doc[csHoliday].as<String>();
         paletteFactory.setHoliday(parseHoliday(&userHoliday));
-        upd[csHoliday] = paletteFactory.adjustHoliday();
+        upd[csHoliday] = paletteFactory.getHoliday();
     }
-    if (doc.containsKey(csBrightness)) {
-        auto br = doc[csBrightness].as<uint8_t>();
+    if (doc[csBrightness].is<uint8_t>()) {
+        const auto br = doc[csBrightness].as<uint8_t>();
         stripBrightnessLocked = br > 0;
         stripBrightness = stripBrightnessLocked ? br : adjustStripBrightness();
         upd[csBrightness] = stripBrightness;
         upd[csBrightnessLocked] = stripBrightnessLocked;
     }
-    if (doc.containsKey(csAudioThreshold)) {
+    if (doc[csAudioThreshold].is<uint16_t>()) {
         audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
         upd[csAudioThreshold] = audioBumpThreshold;
         clearLevelHistory();
     }
-    if (doc.containsKey(csSleepEnabled)) {
-        bool sleepEnabled = doc[csSleepEnabled].as<bool>();
+    if (doc[csSleepEnabled].is<bool>()) {
+        const bool sleepEnabled = doc[csSleepEnabled].as<bool>();
         fxRegistry.enableSleep(sleepEnabled);
         upd[csSleepEnabled] = sleepEnabled;
         upd["asleep"] = fxRegistry.isAsleep();
     }
-    const char csResetCal[] = "resetTempCal";
-    if (!doc[csResetCal].isNull()) {
-        bool resetCal = doc[csResetCal].as<bool>();
-        if (resetCal) {
+    if (doc[csResetCal].is<bool>()) {
+        if (const bool resetCal = doc[csResetCal].as<bool>()) {
             calibTempMeasurements.reset();
             calibCpuTemp.reset();
             cpuTempRange.reset();
@@ -527,18 +551,16 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
             upd[csResetCal] = resetCal;
         }
     }
-    if (!doc[csBroadcast].isNull()) {
-        bool syncMode = doc[csBroadcast].as<bool>();
-        bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
+    if (doc[csBroadcast].is<bool>()) {
+        const bool syncMode = doc[csBroadcast].as<bool>();
+        const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
         fxBroadcastEnabled = syncMode;  //we need this enabled before we post the event, if we're doing that
         if (masterEnabled)
             postFxChangeEvent(fxRegistry.curEffectPos());   //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
     }
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("FX: Current running effect updated to %u, autoswitch %T, holiday %s, brightness %u, brightness adjustment %s"),
-               fxRegistry.curEffectPos(), fxRegistry.isAutoRoll(), holidayToString(paletteFactory.getHoliday()),
+    Log.info(F("FX: Current config updated effect %hu, autoswitch %s, holiday %s, brightness %hu, brightness adjustment %s"),
+               fxRegistry.curEffectPos(), StringUtils::asString(fxRegistry.isAutoRoll()), holidayToString(paletteFactory.getHoliday()),
                stripBrightness, stripBrightnessLocked?"fixed":"automatic");
-#endif
 
     //main status and headers
     resp["status"] = true;
@@ -552,9 +574,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
     sz += transmitJsonDocument(resp, client);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Handler handlePutConfig invoked for %s"), uri->c_str());
-#endif
+    Log.info(F("Handler handlePutConfig invoked for %s"), uri->c_str());
     return sz;
 }
 
@@ -565,7 +585,7 @@ size_t web::handlePutConfig(WiFiClient *client, String *uri, String *hd, String 
  * @param message error message
  * @return number of bytes sent to the client
  */
-size_t web::handleInternalError(WiFiClient *client, String *uri, const char *message) {
+size_t web::handleInternalError(WiFiClient *client, const String *uri, const char *message) {
     //main status and headers
     size_t sz = client->println(http500Status);
     sz += client->println(hdJson);
@@ -575,7 +595,7 @@ size_t web::handleInternalError(WiFiClient *client, String *uri, const char *mes
 
     //response body
     JsonDocument doc;
-    doc["serverIP"] = WiFi.localIP();
+    doc["serverIP"] = sysInfo->getIpAddress();
     doc["uri"] = uri->c_str();
     doc["errorCode"] = 500;
     doc["errorMessage"] = message;
@@ -583,9 +603,7 @@ size_t web::handleInternalError(WiFiClient *client, String *uri, const char *mes
     sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.errorln(F("ERROR Handler handleInternalError for %s invoked: message %s"), uri->c_str(), message);
-#endif
+    Log.error(F("ERROR Handler handleInternalError for %s invoked: message %s"), uri->c_str(), message);
     return sz;
 }
 
@@ -596,7 +614,7 @@ size_t web::handleInternalError(WiFiClient *client, String *uri, const char *mes
  * @param message error message - included in a small html page in the response body (along with calling URI)
  * @return number of bytes sent to the client
  */
-size_t web::handleNotFoundError(WiFiClient *client, String *uri, const char *message) {
+size_t web::handleNotFoundError(WiFiClient *client, const String *uri, const char *message) {
     //main status and headers
     size_t sz = client->println(http404Status);
     sz += client->println(hdJson);
@@ -606,7 +624,7 @@ size_t web::handleNotFoundError(WiFiClient *client, String *uri, const char *mes
 
     //response body
     JsonDocument doc;
-    doc["serverIP"] = WiFi.localIP();
+    doc["serverIP"] = sysInfo->getIpAddress();
     doc["uri"] = uri->c_str();
     doc["errorCode"] = 404;
     doc["errorMessage"] = message;
@@ -614,9 +632,7 @@ size_t web::handleNotFoundError(WiFiClient *client, String *uri, const char *mes
     sz += transmitJsonDocument(doc, client);
     sz += client->println();
 
-#ifndef DISABLE_LOGGING
-    Log.errorln(F("ERROR Handler handleNotFoundError for %s invoked: message %s"), uri->c_str(), message);
-#endif
+    Log.error(F("ERROR Handler handleNotFoundError for %s invoked: message %s"), uri->c_str(), message);
     return sz;
 }
 
@@ -633,8 +649,8 @@ void web::dispatch() {
     WiFiClient client = server.available();
     if (client) {
         unsigned long start = millis();
-        IPAddress clientIp = client.remoteIP();
-        Log.infoln(F("Request: inbound from %p"), clientIp);
+        const IPAddress clientIp = client.remoteIP();
+        Log.info(F("Request: inbound from %s"), clientIp.toString().c_str());
         size_t szResp = 0;
         while (client.connected()) {
             if (client.available()) {
@@ -653,9 +669,7 @@ void web::dispatch() {
                     reqHeader.trim();
                 }
                 reqUri.remove(reqUri.indexOf(" HTTP/"));
-#ifndef DISABLE_LOGGING
-                Log.infoln(F("Request data:\r\nURI: %s\r\n=== Headers ===\r\n%s\r\n=== Body ===\r\n%s\r\n======"), reqUri.c_str(), reqHeader.c_str(), reqBody.c_str());
-#endif
+                Log.info(F("Request data:\r\nURI: %s\r\n=== Headers ===\r\n%s\r\n=== Body ===\r\n%s\r\n======"), reqUri.c_str(), reqHeader.c_str(), reqBody.c_str());
                 bool foundHandler = false;
                 for (const auto &e : webMappings) {
                     //use regex to determine the URI
@@ -676,7 +690,7 @@ void web::dispatch() {
         }
         // close the connection:
         client.stop();
-        unsigned long dur = millis() - start;
-        Log.infoln(F("Request: completed %u bytes [%u ms]"), szResp, dur);
+        const unsigned long dur = millis() - start;
+        Log.info(F("Request: completed %zu bytes [%lu ms]"), szResp, dur);
     }
 }

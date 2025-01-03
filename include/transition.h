@@ -1,11 +1,10 @@
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_TRANSITION_H
 #define ARDUINO_LIGHTFX_TRANSITION_H
 
 #include <Arduino.h>
-#include "global.h"
 #include <deque>
 
 #define SELECTOR_SPOTS  0x0100
@@ -29,7 +28,7 @@ public:
     bool offWipe(bool rightDir = true);
     bool offHalfWipe(bool inward = true);
     bool offSplit(bool outward = true);
-    bool offRandomBars(bool rightDir = true);
+    bool offRandomBars(bool rightDir = true) const;
     bool offFade();
 
 protected:

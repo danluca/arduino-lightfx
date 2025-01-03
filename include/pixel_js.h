@@ -1,4 +1,5 @@
-const char pixel_js[] PROGMEM = R"~~~(
+#pragma once
+inline constexpr auto pixel_js PROGMEM = R"~~~(
 
 // Only one sequence can be selected
 let config = {};
@@ -18,74 +19,80 @@ let histOptions = {
         }
     ]
 };
+let lastBootTime = 0;
+let rePullConfig = false;
 
 $(() => {
     $('#curYear').html(`-${new Date().getFullYear()}`);
 
-    $.getJSON( "config.json")
-    .done(function( data ) {
-        config = data;
-        let curFxId = data.curEffect;
-        let fxlst = $('#fxlist');
-        $.each( data.fx, function( i, fxi ) {
-            let fx_id = fxi.registryIndex;
-            //let fx_name = fxi.name;
-            let fx_description = overflowString(fxi.description, 60);
-
-            // Add to list
-            fxlst.append(`<option class="opt-select" value="${fx_id}">${fx_description}</option>`);
-        });
-        fxlst.val(curFxId);
-        fxlst.attr("currentFxIndex", curFxId);
-        $('#curEffect').html(`${data.curEffectName} - ${data.fx[data.curEffect].description}`);
-        $('#curEffectId').html(`Index: ${data.curEffect}`);
-        $('#autoFxChange').prop("checked", data.auto);
-        $('#sleepEnabled').prop("checked", data.fx.sleepEnabled);
-        $('#curHolidayValue').html(data.holiday);
-        $.each(data.holidayList, function(i, hld) {
-            if (hld == "None") {
-                $('#holidayList').append(`<option class="opt-select" value="${hld}">Automatic</option>`);
-            } else {
-                $('#holidayList').append(`<option class="opt-select" value="${hld}">${hld}</option>`);
-            }
-        });
-        $('#holidayList').val(data.holiday);
-        $('#boardName').html(data.boardName);
-        $('#deviceName').html(data.boardName);
-        $('#boardUid').html(data.boardUid);
-        $('#buildVersion').html(data.fwVersion);
-        $('#buildBranch').html(data.fwBranch);
-        $('#buildTime').html(data.buildTime);
-        $('#macAddress').html(data.MAC);
-        $('#cleanBoot').html(`${data.cleanBoot}`);
-        let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
-        $('#wdReboots').html(wdr);
-    });
+    getConfig();
     getStatus();
     setInterval(getStatus, 2*60*1000);  //every 2 minutes update status
 
 });
+
+function getConfig() {
+    $.getJSON("config.json")
+        .done(function (data) {
+            config = data;
+            // let curFxId = 0;
+            let fxlst = $('#fxlist');
+            fxlst.empty();
+            $.each(data.fx, function (i, fxi) {
+                let fx_id = fxi.registryIndex;
+                //let fx_name = fxi.name;
+                let fx_description = overflowString(fxi.description, 60);
+                // Add to list
+                fxlst.append(`<option class="opt-select" value="${fx_id}">${fx_description}</option>`);
+            });
+            // fxlst.val(curFxId);
+            // fxlst.attr("currentFxIndex", curFxId);
+            $('#fxCount').html(`${data.fx.length} effects`);
+            let hdList = $('#holidayList');
+            hdList.empty();
+            $.each(data.holidayList, function (i, hld) {
+                if (hld == "None") {
+                    hdList.append(`<option class="opt-select" value="${hld}">Automatic</option>`);
+                } else {
+                    hdList.append(`<option class="opt-select" value="${hld}">${hld}</option>`);
+                }
+            });
+            hdList.val(data.holiday);
+            $('#boardName').html(data.boardName);
+            $('#deviceName').html(data.boardName);
+            $('#boardUid').html(data.boardUid);
+            $('#buildVersion').html(data.fwVersion);
+            $('#buildBranch').html(data.fwBranch);
+            $('#buildTime').html(data.buildTime);
+            $('#macAddress').html(data.MAC);
+            $('#cleanBoot').html(`${data.cleanBoot}`);
+            let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
+            $('#wdReboots').html(wdr);
+            $('#osVersion').html(`${data.arduinoPicoVersion}<br/>&nbsp;&nbsp;[FreeRTOS ${data.freeRTOSVersion}]`);
+            if (data.wifiCurVersion !== data.wifiLatestVersion) {
+                $('#wfVersion').html(`WiFi NINA v${data.wifiCurVersion} [could upgrade to ${data.wifiLatestVersion}]`);
+            } else {
+                $('#wfVersion').html(`WiFi NINA v${data.wifiCurVersion} (latest)`);
+            }
+
+        });
+}
 
 function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
             $('#status h1').removeClass('red');
             $('#boardTemp').html(`${data.boardTemp.toFixed(1)} °C (${(data.boardTemp*9/5+32).toFixed(1)} °F)`);
-            $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(1)} - ${data.boardMaxTemp.toFixed(1)}] °C (chip ${data.chipTemp.toFixed(1)} °C)`);
+            $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(1)} - ${data.boardMaxTemp.toFixed(1)}] °C`);
+            $('#cpuTemp').html(`${data.chipTemp.toFixed(1)} °C (${(data.chipTemp*9/5+32).toFixed(1)} °F)`);
+            $('#wifiTemp').html(`${data.wifiTemp.toFixed(1)} °C (${(data.wifiTemp*9/5+32).toFixed(1)} °F)`);
             $('#boardVcc').html(`${data.vcc.toFixed(2)} V`);
             $('#rangeVcc').html(`[${data.minVcc.toFixed(2)} - ${data.maxVcc.toFixed(2)}] V`);
-            $('#mbedVersion').html(`${data.mbedVersion}`);
             $('#audioThreshold').html(`${data.fx.audioThreshold}`);
             $('#upTime').html(`${data.upTime}`);
             $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
             $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
-            if (data.wifi.curVersion !== data.wifi.latestVersion) {
-                $('#wfVersion').html(`WiFi NINA v${data.wifi.curVersion} [could upgrade to ${data.wifi.latestVersion}]`);
-            } else {
-                $('#wfVersion').html(`WiFi NINA v${data.wifi.curVersion} (latest)`);
-            }
-            $('#fxCount').html(`${data.fx.count} effects`);
             if (data.fx.asleep) {
                 $('#fxCurEffect').html(`${data.fx.name} - asleep [${data.fx.index}]`);
             } else {
@@ -125,22 +132,34 @@ function getStatus() {
             let fxlst = $('#fxlist');
             fxlst.val(data.fx.index);
             fxlst.attr("currentFxIndex", data.fx.index);
-            $('#curHolidayValue').html(data.fx.holiday);
+            $('#curHolidayValue').html(data.fx.theme);
             let hdlst = $('#holidayList');
-            hdlst.val(data.fx.holiday);
-            hdlst.attr("currentColorTheme", data.fx.holiday);
+            if (data.fx.autoTheme) {
+                hdlst.val("None");
+                hdlst.attr("currentColorTheme", "None");
+            } else {
+                hdlst.val(data.fx.theme);
+                hdlst.attr("currentColorTheme", data.fx.theme);
+            }
             //approximately undo the dimming rules in FastLED library where dimming raw is equivalent with x*x/256
             let brPerc = Math.round(Math.sqrt(data.fx.brightness * 256)*100/256);
             $('#fxBrightness').html(`${brPerc}% (${data.fx.brightness}${data.fx.brightnessLocked?' fixed':' auto'})`)
             let brList = $('#brightList');
             brList.val(brPerc);
             brList.attr("currentBrightness", brPerc);
-
+            if (lastBootTime > data.bootTime) {
+                rePullConfig = true;
+            }
+            lastBootTime = data.bootTime;
         })
         .fail(function (req, textStatus, error){
             console.log(`status.json call failed ${textStatus} - ${error}`);
             $('#status h1').addClass('red');
         });
+    if (rePullConfig) {
+        getConfig();
+        rePullConfig = false;
+    }
 }
 
 function updateEffect() {
@@ -253,7 +272,7 @@ function updateHoliday() {
         success: function (response) {
             $('#updateStatus').html("Color theme update successful").removeClass().addClass("status-ok");
             hldlst.attr("currentColorTheme", selHld);
-            $('#curHolidayValue').html(selHld);
+            $('#curHolidayValue').html(response.updates.holiday);
             scheduleClearStatus();
         },
         error: function (request, status, error) {

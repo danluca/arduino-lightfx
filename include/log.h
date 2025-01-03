@@ -5,17 +5,12 @@
 #define LIGHTFX_LOG_H
 
 // *************************************************************************
-//  Uncomment line below to fully disable logging, and reduce project size
+//  Comment line below to fully disable logging (or set it to 0)
 // ************************************************************************
-#define DISABLE_LOGGING
+// #define LOGGING_ENABLED     1
 
-#include <ArduinoLog.h>
-#include <TimeLib.h>
-
-extern time_t logTimeOffset;
+#include <PicoLog.h>
 
 void log_setup();
-void logPrefix(Print* _logOutput, int logLevel);
-void logExtraFormats(Print* _logOutput, char fmt, va_list *args);
 
 #endif //LIGHTFX_LOG_H

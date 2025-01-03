@@ -1,24 +1,19 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
 //
-
-#include "util.h"
+#include <ArduinoECCX08.h>
 #include "utility/ECCX08DefaultTLSConfig.h"
+#include <FreeRTOS.h>
 #include "timeutil.h"
-// increase the amount of space for file system to 128kB (default 64kB)
-#define RP2040_FS_SIZE_KB   (128)
-#include <LittleFSWrapper.h>
 #include "hardware/watchdog.h"
-#include "sysinfo.h"
 #include "FastLED.h"
+#include "sysinfo.h"
+#include "util.h"
+#include "stringutils.h"
+#include "log.h"
 
-#define FILE_BUF_SIZE   256
-const char stateFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/state.json";
-const char sysFileName[] PROGMEM = LITTLEFS_FILE_PREFIX "/sys.json";
 
 FixedQueue<TimeSync, 8> timeSyncs;
-LittleFSWrapper *fsPtr;
-//rtos::Mutex i2cMutex;
 
 /**
  * Adapted from article https://rheingoldheavy.com/better-arduino-random-values/
@@ -36,7 +31,7 @@ ulong adcRandom() {
             for (uint8_t bitSum = 0; bitSum < 8; bitSum++) {        // 8 samples of analog pin
                 seedBitValue += (analogRead(A1) & 0x03);  // Flip the coin 8 times, adding the results together
             }
-            delay(1);                                               // Delay a single millisecond to allow the pin to fluctuate
+            taskDelay(1);                                               // Delay a single millisecond to allow the pin to fluctuate
             seedByteValue |= ((seedBitValue & 0x03) << byteShift);  // Build a stack of eight flipped coins
             seedBitValue = 0;                                       // Clear out the previous coin value
         }
@@ -44,117 +39,6 @@ ulong adcRandom() {
         seedByteValue = 0;                                                // Clear out the previous stack value
     }
     return (seedWordValue);
-}
-
-/**
- * Setup the on-board status LED
- */
-void setupStateLED() {
-    pinMode(LEDR, OUTPUT);
-    pinMode(LEDG, OUTPUT);
-    pinMode(LEDB, OUTPUT);
-    updateStateLED(0, 0, 0);    //black, turned off
-}
-/**
- * Controls the on-board status LED
- * @param color
- */
-void updateStateLED(uint32_t colorCode) {
-    uint8_t r = (colorCode >> 16) & 0xFF;
-    uint8_t g = (colorCode >>  8) & 0xFF;
-    uint8_t b = (colorCode >>  0) & 0xFF;
-    updateStateLED(r, g, b);
-}
-
-void updateStateLED(uint8_t red, uint8_t green, uint8_t blue) {
-    analogWrite(LEDR, 255 - red);
-    analogWrite(LEDG, 255 - green);
-    analogWrite(LEDB, 255 - blue);
-}
-
-void fsInit() {
-#ifndef DISABLE_LOGGING
-    mbed::BlockDevice *bd = mbed::BlockDevice::get_default_instance();
-    bd->init();
-    Log.infoln(F("Default BlockDevice type %s, size %u B, read size %u B, program size %u B, erase size %u B"),
-               bd->get_type(), bd->size(), bd->get_read_size(), bd->get_program_size(), bd->get_erase_size());
-    bd->deinit();
-#endif
-
-    fsPtr = new LittleFSWrapper();
-    if (fsPtr->init()) {
-        sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
-        Log.infoln("Filesystem OK");
-    }
-
-#ifndef DISABLE_LOGGING
-    Log.infoln(F("Root FS %s contents:"), LittleFSWrapper::getRoot());
-    DIR *d = opendir(LittleFSWrapper::getRoot());
-    struct dirent *e = nullptr;
-    while (e = readdir(d))
-        Log.infoln(F("  %s [%d]"), e->d_name, e->d_type);
-    Log.infoln(F("Dir complete."));
-#endif
-}
-
-/**
- * Reads a text file - if it exists - into a string object
- * @param fname name of the file to read
- * @param s string to store contents into
- * @return number of characters in the file; 0 if file is empty or doesn't exist
- */
-size_t readTextFile(const char *fname, String *s) {
-    FILE *f = fopen(fname, "r");
-    size_t fsize = 0;
-    if (f) {
-        char buf[FILE_BUF_SIZE];
-        memset(buf, 0, FILE_BUF_SIZE);
-        size_t cread = 1;
-        while (cread = fread(buf, 1, FILE_BUF_SIZE, f)) {
-            s->concat(buf, cread);
-            fsize += cread;
-        }
-        fclose(f);
-        Log.infoln(F("Read %d bytes from %s file"), fsize, fname);
-        Log.traceln(F("Read file %s content [%d]: %s"), fname, fsize, s->c_str());
-    } else
-        Log.errorln(F("Text file %s was not found/could not read"), fname);
-    return fsize;
-}
-
-/**
- * Writes (overrides if already exists) a file using the string content
- * @param fname file name to write
- * @param s contents to write
- * @return number of bytes written
- */
-size_t writeTextFile(const char *fname, String *s) {
-    size_t fsize = 0;
-    FILE *f = fopen(fname, "w");
-    if (f) {
-        fsize = fwrite(s->c_str(), sizeof(s->charAt(0)), s->length(), f);
-        fclose(f);
-        Log.infoln(F("File %s has been saved, size %d bytes"), fname, s->length());
-        Log.traceln(F("Saved file %s content [%d]: %s"), fname, fsize, s->c_str());
-    } else
-        Log.errorln(F("Failed to create file %s for writing"), fname);
-    return fsize;
-}
-
-bool removeFile(const char *fname) {
-    FILE *f = fopen(fname, "r");
-    if (f) {
-        fclose(f);
-        int retCode = remove(fname);        //lfs.remove(fname) can be an option, likely if fname is relative to lfs root
-        if (retCode == 0)
-            Log.infoln(F("File %s successfully removed"), fname);
-        else
-            Log.errorln(F("File %s can NOT be removed; error code: %d"), fname, retCode);
-        return retCode == 0;
-    }
-    //file does not exist - return true to the caller, the intent is already fulfilled
-    Log.infoln(F("File %s does not exist, no need to remove"), fname);
-    return true;
 }
 
 /**
@@ -201,36 +85,6 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
 }
 
 /**
- * Are we in DST (Daylight Savings Time) at this time?
- * @param time
- * @return
- */
-bool isDST(const time_t time) {
-//    const uint16_t md = encodeMonthDay(time);
-    // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
-    // to the transition, such that we don't need to implement complex Sunday counting rules
-//    return md > 0x030C && md < 0x0B05;
-    int mo = month(time);
-    int dy = day(time);
-    int hr = hour(time);
-    int dow = weekday(time);
-    // DST runs from second Sunday of March to first Sunday of November
-    // Never in January, February or December
-    if (mo < 3 || mo > 11)
-        return false;
-    // Always in April to October
-    if (mo > 3 && mo < 11)
-        return true;
-    // In March, DST if previous Sunday was on or after the 8th.
-    // Begins at 2am on second Sunday in March
-    int previousSunday = dy - dow;
-    if (mo == 3)
-        return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
-    // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
-    return (previousSunday < 7 && dow == 1) ? (hr < 2) : (previousSunday < 0);
-}
-
-/**
  * Leverages ECC608B's High-Quality NIST SP 800-90A/B/C Random Number Generator
  * <p>It is slow - takes about 30ms</p>
  * @param minLim minimum value, defaults to 0
@@ -269,29 +123,29 @@ uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
 
 bool secElement_setup() {
     if (!ECCX08.begin()) {
-        Log.errorln(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
+        Log.error(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
         return false;
     }
     sysInfo->setSecureElementId(ECCX08.serialNumber());
     const char* eccSerial = sysInfo->getSecureElementId().c_str();
     if (!ECCX08.locked()) {
-        Log.warningln(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
+        Log.warn(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
         if (!ECCX08.writeConfiguration(ECCX08_DEFAULT_TLS_CONFIG)) {
-            Log.errorln(F("Writing ECCX08 default TLS configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
+            Log.error(F("Writing ECCX08 default TLS configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
             return false;
         }
         if (!ECCX08.lock()) {
-            Log.errorln(F("Locking ECCX08 configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
+            Log.error(F("Locking ECCX08 configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
             return false;
         }
-        Log.infoln(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
+        Log.info(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
     }
-    Log.infoln(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
+    Log.info(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
     sysInfo->setSysStatus(SYS_STATUS_ECC);
     //update entropy - the timing of this call allows us to interact with I2C without other contenders
     uint16_t rnd = secRandom16();
     random16_add_entropy(rnd);
-    Log.infoln(F("Secure random value %i added as entropy to pseudo random number generator"), rnd);
+    Log.info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
     return true;
 }
 
@@ -302,12 +156,13 @@ bool secElement_setup() {
 void watchdogSetup() {
     if (watchdog_caused_reboot()) {
         time_t rebootTime = now();
-        Log.warningln(F("A watchdog caused reboot has occurred at %y"), rebootTime);
+        Log.warn(F("A watchdog caused reboot has occurred at %s"), StringUtils::asString(rebootTime).c_str());
         sysInfo->watchdogReboots().push(rebootTime);
         sysInfo->markDirtyBoot();
     }
     //if no ping in 3 seconds, reboot
     watchdog_enable(3000, true);
+    //rp2040.wdt_begin(3000);
 }
 
 /**
@@ -315,5 +170,25 @@ void watchdogSetup() {
  */
 void watchdogPing() {
     watchdog_update();
+    //rp2040.wdt_reset();
+}
+
+/**
+ * Delays a task for number of ms provided by leveraging FreeRTOS task primitives. Alternate to the plain delay() function that may be implemented
+ * differently on FastLED, or collide with the RP2040 port implementation
+ * @param ms number of milliseconds to delay
+ */
+void taskDelay(uint32_t ms) {
+    vTaskDelay(pdMS_TO_TICKS(ms));
+}
+
+/**
+ * Retrieves the current runtime counter value used for task monitoring and profiling.
+ * The value is derived by converting the tick count to milliseconds.
+ *
+ * @return the runtime counter value in milliseconds, representing the time since the system start-up.
+ */
+unsigned long ulMainGetRunTimeCounterValue() {
+    return xTaskGetTickCount()/pdMS_TO_TICKS(1);
 }
 

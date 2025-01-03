@@ -33,12 +33,13 @@ SOFTWARE.
 #ifndef DISABLE_LOGGING
 /** One character for each LOG_LEVEL_* definition  */
 const char* Logging::levels PROGMEM = "FEWITV";
-rtos::Mutex serial_mtx;
+mutex_t serial_mtx;
 #endif
 
 void Logging::begin(int level, Print* logOutput, bool showLevel)
 {
 #ifndef DISABLE_LOGGING
+    mutex_init(&serial_mtx);
 	setLevel(level);
 	setShowLevel(showLevel);
 	_logOutput = logOutput;
@@ -127,8 +128,7 @@ void Logging::print(const __FlashStringHelper *format, va_list args)
 	va_list args_copy;
 	va_copy(args_copy, args);
 #endif
-	char c = pgm_read_byte(p++);
-	for(;c != 0; c = pgm_read_byte(p++))
+	for(char c = pgm_read_byte(p++);c != 0; c = pgm_read_byte(p++))
 	{
 		if (c == '%')
 		{
@@ -156,7 +156,7 @@ void Logging::print(const __FlashStringHelper *format, va_list args)
  * @return how many nibbles are non-zero in the hex representation of this number
  */
 uint8_t Logging::countSignificantNibbles(unsigned long ul) {
-    const uint8_t szLong = sizeof(unsigned long);
+	constexpr uint8_t szLong = sizeof(unsigned long);
     ulong mask = 0x0F << (szLong*8-4);
     uint8_t sigNibbles = 0;
     for (uint x=0; x<szLong; x++) {
@@ -204,7 +204,7 @@ void Logging::print(const char *format, va_list args) {
 #endif
 }
 
-void Logging::printFormat(const char format, va_list *args) {
+void Logging::printFormat(const char format, va_list *args) const {
 #ifndef DISABLE_LOGGING
 	if (format == '\0') return;
     switch (format) {
@@ -217,7 +217,7 @@ void Logging::printFormat(const char format, va_list *args) {
             break;
         }
         case 'S': {
-            __FlashStringHelper *s = (__FlashStringHelper *) va_arg(*args, int);
+            const auto *s = (__FlashStringHelper *) va_arg(*args, int);
             _logOutput->print(s);
             break;
         }
@@ -241,7 +241,7 @@ void Logging::printFormat(const char format, va_list *args) {
             break;
         }
         case 'p': {
-            Printable *obj = (Printable *) va_arg(*args, int);
+            const auto *obj = (Printable *) va_arg(*args, int);
             _logOutput->print(*obj);
             break;
         }

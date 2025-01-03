@@ -24,7 +24,7 @@ namespace FxC {
 
         void animationB();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxC2 : public LedEffect {
@@ -37,7 +37,7 @@ namespace FxC {
 
         void windDownPrep() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxC3 : public LedEffect {
@@ -50,9 +50,9 @@ namespace FxC {
 
         bool windDown() override;
 
-        JsonObject & describeConfig(JsonArray &json) const override;
+        void baseConfig(JsonObject &json) const override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxC4 : public LedEffect {
@@ -65,7 +65,7 @@ namespace FxC {
 
         bool windDown() override;
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         uint8_t frequency {10};
@@ -86,7 +86,7 @@ namespace FxC {
 
         void matrix();
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         uint8_t palIndex = 95;
@@ -107,7 +107,7 @@ namespace FxC {
 
         void one_sine_pal(uint8_t colorIndex);
 
-        uint8_t selectionWeight() const override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         uint8_t allfreq = 32;                                     // You can change the frequency, thus distance between bars.

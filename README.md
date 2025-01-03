@@ -1,23 +1,24 @@
-# arduino-lightfx
+# Lucas LightFx
 LightFX Arduino code repository for LED strips using WS2811 chip - light effects tailored to my house setup.
 
 ## Dev Env
 ### Tools
-* Install Python 3.11
-  * On Windows: Go to MS Store and look for _Python 3.11_ application. Install it as any other store app
+* Install Python 3.12
+  * On Windows: Go to MS Store and look for _Python 3.12_ application. Install it as any other store app
 * Install PlatformIO Core (CLI)
   * [Follow instructions](https://docs.platformio.org/en/latest/core/installation/methods/installer-script.html#local-download-macos-linux-windows) in the docs - I used the local download approach. Use what makes sense for your platform.
 * Install an IDE
   * [CLion](https://www.jetbrains.com/clion/download) is a great one - however, commercial product (but REALLY Great)
   * [VS Code](https://code.visualstudio.com/) is a great for someone starting with PlatformIO - recommended by the team. Freeware.
+* (optional) Enable an AI assistant
 
 ### Setup
-To create a new project, follow the [instructions on PlatformIO](https://docs.platformio.org/en/stable/core/quickstart.html) site about getting started. There is great documentation
-about integrations with IDEs, capabilities and configuration needed of supported boards (Arduino, Raspberry Pi, ESP32, etc).
+This project is focused on Raspberry Pi microcontrollers - in particular RP2040, RP2350.
+The board of choice - for which all the code has been targeted - is [Arduino Nano RP 2040 Connect](https://docs.arduino.cc/hardware/nano-rp2040-connect). Other RP2040 based boards 
+can work as well (see e.g. Pimoroni, Adafruit, SparkFun, etc.) with minimal modifications in the code - mainly to disable peripherals these boards may not have.
+A board with WiFi connectivity is strongly recommended.
 
 # Overview
-This project started as Arduino IDE based, then as number of files grew moved over to PlatformIO and CLion.
-
 The backbone of controlling the LEDs is the [FastLED](https://github.com/FastLED/FastLED) library.
 Several light effects are original, many others are inspired from great example repositories 
 (many thanks to their respective owners for sharing - it has helped me learn a LOT!):
@@ -37,15 +38,15 @@ Several light effects are original, many others are inspired from great example 
 The target board is an [Arduino Nano RP 2040 Connect](https://docs.arduino.cc/hardware/nano-rp2040-connect) feature packed and powerful in a small package - built around dual core Raspberry Pi 2040 microcontroller.
 It sports a Wi-Fi module that has been leveraged to host a little web-server to aid in configuring the light effects.
 
-The Nano RP2040 board has a built-in PDM microphone, which has been enabled as a source of entropy for the random number generator - the PDM library takes about 20% 
-of the board's available RAM (264kB) for the audio signal processing. Overall, this program uses about 40% of the available RAM - the other 20% are consumed 
+The Nano RP2040 board has a built-in PDM microphone, which has been leveraged in some effects - the PDM library takes about 20% 
+of the board's available RAM (264kB) for the audio signal processing. Overall, this program uses about 35% of the available RAM - the rest of 15% are consumed 
 by the OS, FastLED and light effects data.
 
 PIO availability helps a lot with [FastLED](https://github.com/FastLED/FastLED) library performance and effects consistent timings - creating and outputting the PWM 
 signal for controlling the LEDs does not take main CPU cycles and is handled in the background.
 
-The RP2040 chip overall computing power (two ARM cores @ 133MHz) and RAM are leveraged by the design in engaging features that might be challenging for a lesser configuration:
-* multithreading
+The RP2040 chip overall computing power (two ARM cores @ 133MHz) and RAM are leveraged with design features that might be challenging for a lesser configuration:
+* multi-core multi-threading
 * regular expression matching
 * array manipulation
 * sound processing
@@ -55,9 +56,8 @@ The RP2040 chip overall computing power (two ARM cores @ 133MHz) and RAM are lev
   * web server, JSON REST API
   * NTP connection for time sync
 
-Note the code is not designed with portability in mind - quite the opposite, it targets Nano RP2040 board and its resources specifically. 
-This avoids code & design complexity and employs a good amount of power reserve for other tasks or more complex lighting effects. 
-It is acknowledged that it sacrifices portability. 
+Note the code is not designed with portability in mind - quite the opposite and unapologetically. 
+It is acknowledged that it sacrifices portability - we'll cross that bridge once we get there. 
 
 ## Design
 The system is designed as a platform that hosts a number of light effects, has awareness of time and holiday in effect, and changes the current light effect on few criteria.
@@ -68,18 +68,32 @@ The time awareness gives several benefits:
 * auto-detection of holiday (based on day/month) that drives the color palettes appropriate for the occasion
 * dimming rules for the time of day (brightness reduction of the LED strip, as we head further into the night)
 
+### Core Library
+The code is built atop Earle F. Philhower's [Arduino-Pico](https://github.com/earlephilhower/arduino-pico) core, based on FreeRTOS kernel. Very efficient resource utilization, rich capabilities built-in, multi-core enabled.
+
+The built-in [WiFi support in the Arduino-Pico](https://arduino-pico.readthedocs.io/en/latest/wifi.html) is more generic and portable, yet seemingly targeted at Pico W and arguably still a work in progress.
+As such, it consumes quite more memory than what I'm used to see from WiFiNINA and it requires a different FW for the WiFi module (a U-blox NINA W102) to make it compliant with the lwIP layer of the core.
+
+For all these reasons, I've chosen to make the [Arduino WiFiNINA](https://github.com/arduino-libraries/WiFiNINA?tab=readme-ov-file) library work with this core instead. The result is minimal RAM and Flash increase, good and reliable WiFi capability.
+The downsides - the WiFi actions are bound to Core0 task; reading the IP address from the WiFi module (over SPI) hangs the whole system. I'm using static IP allocation and I do not mind running WiFi on Core0, other tasks aren't as strict. 
+
 ### Multi-threading
-Several dedicated threads are defined in the system:
-* Main thread runs the Web Server
-  * as the Web Server implements REST-ful API using JSON data format, the [Arduino JSON](https://github.com/bblanchon/ArduinoJson) library needed more memory allocated 
-  for a dedicated thread. On the main thread, however, no special memory provisions were needed - hence it was left running there.
-* Thread 0 runs the light effects
-* Thread 1 runs the microphone signal processing (PDM to PCM conversion)
+Several dedicated threads are defined in the system that take advantage of both cores:
+* CORE 0 (main)
+  * CORE0 (main task) runs the Web Server - the WiFi NINA library seems to work best with this affinity.
+  * ALM task - processes time based alarms
+  * FS task - file system interactions. As LittleFS library (basic file system implementation) is not thread safe, all file operations are channeled through a dedicated task that ensures single access at a time to filesystem.  
+* CORE 1 (second core)
+  * FX task runs the light effects
+  * Mic task runs the microphone signal processing (PDM to PCM conversion)
+  * CORE1 task runs the diagnostic actions - logging system info, measure temperature, etc.
 
 ### Configuration
 A single LED controller is instantiated from `FastLED` library that runs on pin 25 (aka pin D2 on the pinout diagram) for PWM output.
-The number of pixels configured in the system is 384 - this drives memory allocation for pixel arrays. The LED strip installed on the 
-house are connected in a graph with the longest path at about 300 pixels. For WS2811 LED strips - running at 12V - a pixel consists of 3 LEDs.
+The number of pixels is configured in the system through defines (there are few board and light strip configuration variants).
+For instance, the LED strip installed on the house is connected in a graph with the longest path at about 300 pixels. 
+
+Note for WS2811 LED strips - running at 12V - a pixel consists of 3 LEDs.
 
 I have used LED strips with a LED density of 30 LED/m - made by BTF-Lighting (part number WS28115M30LW65 on Amazon) - outdoor splash proof rated IP65.
 
@@ -95,16 +109,18 @@ The PWM 3.3V signal is run through a level shifter (74HCT125) to 5V for the LED 
 This way, a single 3 pin connector is used to connect the board to the LED strip as its controller - it takes 12V power from the strip
 and supplies PWM 5V signal to the LEDs control pin. 
 
-The electronic schematic and PCB designs can be found as [EasyEDA project](https://pro.easyeda.com/editor#id=9c50130b250b4c23b522b4ac978d99bf). 
+The electronic schematic and PCB designs can be found as [EasyEDA project](https://pro.easyeda.com/editor#id=9c50130b250b4c23b522b4ac978d99bf).
+
+Note: Pimoroni's [Plasma Stick 2040 W](https://shop.pimoroni.com/products/plasma-stick-2040-w?variant=40359072301139) board is a good equivalent of this setup, albeit running at 5V.
 
 ## C++ standard
-The current Arduino libraries are leveraging the **C++ 14** standard, hence the code can be written with this standard 
+The current Arduino libraries are leveraging the **C++ 17** standard, hence the code can be written with this standard 
 level in mind and IDE support can be configured accordingly (if needed).
 
 The confirmation of which C++ standard is currently in use comes from a verbose build with PlatformIO - `pio run -v` after a clean.
-Inspect the compiler `-std=xyz` argument. For instance, `-std=gnu++14` indicates C++ 14 standard is used.
+Inspect the compiler `-std=xyz` argument. For instance, `-std=gnu++17` indicates C++ 17 standard is used.
 
-Please see [C++ 14 reference](https://en.cppreference.com/w/cpp/14) for standard details.
+Please see [C++ 17 reference](https://en.cppreference.com/w/cpp/17) for standard details.
 
 ## Debug
 ### Overview
@@ -131,7 +147,7 @@ The debug serial port wires can be soldered directly onto the header respective 
 Assumptions:
 * the code base is located at `~/Code/Arduino/repos/arduino-lightfx` on the Ubuntu machine
 * the custom tools folder exists at `~/Code/Tools`
-* current working folder is `~/Code/Arduino/repos/arduino-lightfx` 
+* current working folder is `~/Code/Arduino/repos/rp2040-lightfx` 
 
 From Earle Philhower's [Pico Quick Toolchain](https://github.com/earlephilhower/pico-quick-toolchain/releases) download the 
 latest [OpenOCD tool](https://github.com/earlephilhower/pico-quick-toolchain/releases/download/2.1.0-a/aarch64-linux-gnu.openocd-4d87f6dca.230911.tar.gz) 
@@ -191,50 +207,54 @@ One of the side effects of this command is to re-write the platformio.ini file a
 Replace the debug environment with following (adjust for your home path):
 ```ini
 [env:rp2040-dbg]
-;;Edit ~\.platformio\platforms\raspberrypi\boards\nanorp2040connect.json for proper amounts of Flash memory (or other board specifics). Nano RP2040 has 16MB flash onboard, per the specs.
-;;platform = https://github.com/maxgerhardt/platform-raspberrypi.git
-board = nanorp2040connect
 monitor_speed = 115200
-debug_tool = cmsis-dap
-upload_protocol = cmsis-dap
+; the other option is cmsis-dap for both debug_tool and upload_protocol; picoprobe seems to be working better with RP2040 and the Pico Debug Probe
+debug_tool = picoprobe
+upload_protocol = picoprobe
 ; ignore all warnings - comment this when adding new libraries, or making major code changes
 build_flags =
-    -w
-    -D GIT_COMMIT=\"DBG\"
-    -D GIT_COMMIT_SHORT=\"DBG\"
-    -D GIT_BRANCH=\"DEV\"
-    -D BUILD_TIME=\"NOW\"
+  -w
+  -D configMAX_PRIORITIES=12
+  -D configTIMER_QUEUE_LENGTH=24
+  -D configRECORD_STACK_HIGH_ADDRESS=1
+  -D configRUN_TIME_COUNTER_TYPE=uint64_t
+  -D GIT_COMMIT=\"DBG\"
+  -D GIT_COMMIT_SHORT=\"DBG\"
+  -D GIT_BRANCH=\"DEV\"
+  -D BUILD_TIME=\"${UNIX_TIME}\"
+  -D LOGGING_ENABLED=1
+  -D DEBUG_RP2040_PORT=Serial
+;    -D DEBUG_RP2040_SPI=1
 ; See Readme - custom OpenOCD with Nano RP2040 Connect Atmel 16MB flash chip specifications added - built from source at https://github.com/raspberrypi/openocd.git branch rp2040-v0.12.0
 platform_packages =
-    tool-openocd-raspberrypi=symlink:///home/dan/Code/Tools/openocd-rp2040-earle
+  tool-openocd-raspberrypi=symlink:///home/dan/Code/Tools/openocd-rp2040-earle
 ;;FOR PIO HOME INSPECTION only: to succeed building debug flavor, in efx_setup.h add #define FASTLED_ALLOW_INTERRUPTS 0 before including the PaletteFactory.h; see https://github.com/FastLED/FastLED/issues/1481
 build_type = debug
 debug_build_flags = -Og -ggdb -DFASTLED_ALLOW_INTERRUPTS=0
 debug_speed = 5000
 ;;debug_svd_path=/home/dan/.platformio/packages/framework-arduino-mbed/svd/rp2040.svd
-
 ``` 
 
 ### Debug Session
 VSCode is assumed to be the IDE with the codebase open.
-* ensure the `env:rp2040-dbg (arduino-lightfx` shows up in the status bar for the profile (click on it and change it, if it lists something different - like rp2040-rel)
+* ensure the `env:rp2040-dbg (rp2040-lightfx)` shows up in the status bar for the profile (click on it and change it, if it lists something different - like rp2040-rel)
 * switch to Debug view
 * run the `PIO Debug` action. For reference, while the `launch.json` is updated automatically by PlatformIO plugin, the content below is an example of how configuration should look like:
 ```json
-        {
-            "type": "platformio-debug",
-            "request": "launch",
-            "name": "PIO Debug",
-            "executable": "/home/dan/Code/Arduino/repos/arduino-lightfx/.pio/build/rp2040-dbg/firmware.elf",
-            "projectEnvName": "rp2040-dbg",
-            "toolchainBinDir": "/home/dan/.platformio/packages/toolchain-gccarmnoneeabi@1.90201.191206/bin",
-            "internalConsoleOptions": "openOnSessionStart",
-            "svdPath": "/home/dan/.platformio/platforms/raspberrypi/misc/svd/rp2040.svd",
-            "preLaunchTask": {
-                "type": "PlatformIO",
-                "task": "Pre-Debug (rp2040-dbg)"
-            }
-        },
+  {
+  "type": "platformio-debug",
+  "request": "launch",
+  "name": "PIO Debug",
+  "executable": "/home/dan/Code/Arduino/repos/rp2040-lightfx/.pio/build/rp2040-rel/firmware.elf",
+  "projectEnvName": "rp2040-dbg",
+  "toolchainBinDir": "/home/dan/.platformio/packages/toolchain-rp2040-earlephilhower/bin",
+  "internalConsoleOptions": "openOnSessionStart",
+  "svdPath": "/home/dan/.platformio/platforms/raspberrypi@src-ff76a3915224135aafad379817f41edd/misc/svd/rp2040.svd",
+  "preLaunchTask": {
+    "type": "PlatformIO",
+    "task": "Pre-Debug"
+    }
+  },
 ```
 * Note that upon finishing setting up the environment, the VSCode will show an error pop-up in the _Debug Console_ tab that states it cannot parse the SVD file.
 The error is known and [talked about in the community](https://github.com/platformio/platform-raspberrypi/issues/21) (message is rather cryptic) and at this time 

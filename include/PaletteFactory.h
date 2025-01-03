@@ -5,7 +5,6 @@
 #define ARDUINO_LIGHTFX_PALETTEFACTORY_H
 
 #include <FastLED.h>
-#include "util.h"
 #include "timeutil.h"
 
 namespace colTheme {

@@ -1,23 +1,20 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
-/**
- * Category C of light effects
- *
- */
-
 #include "fxC.h"
+#include "transition.h"
+#include "util.h"
 
 using namespace FxC;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxc1Desc[] PROGMEM = "FXC1: blend between two concurrent animations";
-const char fxc2Desc[] PROGMEM = "FXC2: blur function";
-const char fxc3Desc[] PROGMEM = "FXC3: Perlin Noise for moving up and down the strand";
-const char fxc4Desc[] PROGMEM = "FxC4: lightnings";
-const char fxc5Desc[] PROGMEM = "FXC5: matrix";
-const char fxc6Desc[] PROGMEM = "FXC6: one sine";
+constexpr auto fxc1Desc PROGMEM = "FXC1: blend between two concurrent animations";
+constexpr auto fxc2Desc PROGMEM = "FXC2: blur function";
+constexpr auto fxc3Desc PROGMEM = "FXC3: Perlin Noise for moving up and down the strand";
+constexpr auto fxc4Desc PROGMEM = "FxC4: lightnings";
+constexpr auto fxc5Desc PROGMEM = "FXC5: matrix";
+constexpr auto fxc6Desc PROGMEM = "FXC6: one sine";
 
 void FxC::fxRegister() {
     static FxC1 fxC1;
@@ -136,8 +133,8 @@ uint8_t FxC2::selectionWeight() const {
  * We've used sine waves and counting to move pixels around a strand. In this case, I'm using Perlin Noise to move a pixel up and down the strand.
  * The advantage here is that it provides random natural movement without requiring lots of fancy math by joe programmer.
  */
-const uint32_t xscale = 8192;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
-const uint32_t yscale = 7680;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
+constexpr uint32_t xscale = 8192;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
+constexpr uint32_t yscale = 7680;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 
 FxC3::FxC3() : LedEffect(fxc3Desc) {}
 
@@ -172,11 +169,10 @@ void FxC3::run() {
 
 }
 
-JsonObject & FxC3::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["xscale"] = xscale;
-    obj["yscale"] = yscale;
-    return obj;
+void FxC3::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["xscale"] = xscale;
+    json["yscale"] = yscale;
 }
 
 bool FxC3::windDown() {
@@ -199,24 +195,24 @@ void FxC4::setup() {
 
 void FxC4::run() {
     EVERY_N_SECONDS_I(fxc4Timer, 1+random8(frequency)) {
-        uint16_t start = random16(NUM_PIXELS - 8);                               // Determine starting location of flash
-        uint16_t len = random16(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
-        uint8_t flashRound = random8(3, flashes);
+        const uint16_t start = random16(NUM_PIXELS - 8);                               // Determine starting location of flash
+        const uint16_t len = random16(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
+        const uint8_t flashRound = random8(3, flashes);
         CRGBSet flash(leds, start, start+len);
 
         for (uint8_t flashCounter = 0; flashCounter < flashRound; flashCounter++) {
             // the brightness of the leader is scaled down by a factor of 5; return strokes are brighter than the leader
-            uint8_t dimmer = flashCounter == 0 ? 5 : random8(1, 3);
-            CRGB color = ColorFromPalette(palette, random8(), brightness / dimmer, LINEARBLEND);
+            const uint8_t dimmer = flashCounter == 0 ? 5 : random8(1, 3);
+            const CRGB color = ColorFromPalette(palette, random8(), brightness / dimmer, LINEARBLEND);
             flash = color;
             FastLED.show(stripBrightness);                       // Show a section of LED's
-            delay(random8(4, 10));                                     // each flash only lasts 4-10 milliseconds
+            taskDelay(random8(4, 10));                                     // each flash only lasts 4-10 milliseconds
             flash = BKG;
             FastLED.show(stripBrightness);
 
-            if (flashCounter == 0) delay(250);                       // longer speed until next flash after the leader
+            if (flashCounter == 0) taskDelay(250);                       // longer speed until next flash after the leader
 
-            delay(50 + random8(100));                                   // shorter speed between strokes
+            taskDelay(50 + random8(100));                                   // shorter speed between strokes
         }
         fxc4Timer.setPeriod(1+random8(frequency));    // speed between strikes
     }

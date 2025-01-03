@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_CONFIG_H
 #define LIGHTFX_CONFIG_H
@@ -17,7 +17,8 @@
 #define BRIGHTNESS 255
 
 // These are lists and need to be commas instead of dots eg. for IP address 192.168.0.1 use 192,168,0,1 instead
-#define IP_DNS 8,8,8,8              // Google DNS
+// #define IP_DNS 8,8,8,8              // Google DNS
+#define IP_DNS 75,75,75,75              // Xfinity DNS
 #define IP_GW 192,168,0,1           // default gateway (router)
 #define IP_SUBNET 255,255,255,0     // usual subnet mask
 #define BROADCAST_CLIENTS     10, 11        //this is a CSV of last byte of board IP addresses
@@ -32,8 +33,9 @@
 // Board specific configurations
 #if BOARD_ID == 1
 
-#define NUM_PIXELS  240      //number of pixels on the office window edge (need to be at least three times the frame size)
-#define FRAME_SIZE  76       //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBArray must fit at least 3 frames
+#define NUM_PIXELS  164      //number of pixels on the office window edge
+#define FRAME_SIZE  76
+#define PIXEL_BUFFER_SPACE  4*FRAME_SIZE    //number of pixels to reserve for secondary buffer (used for effects data maneuvering)
 
 // static IP - alternatively, the router can be configured to reserve IPs based on MAC
 #define IP_ADDR 192,168,0,10    //Board 1 (dev)
@@ -49,7 +51,8 @@
 #if BOARD_ID == 2
 
 #define NUM_PIXELS  320      //number of pixels on the house edge (300 measured + reserve)
-#define FRAME_SIZE  68       //NOTE: frame size must be at least 3 times less than NUM_PIXELS. The frame CRGBArray must fit at least 3 frames
+#define FRAME_SIZE  68
+#define PIXEL_BUFFER_SPACE  4*FRAME_SIZE    //number of pixels to reserve for secondary buffer (used for effects data maneuvering)
 
 // static IP - alternatively, the router can be configured to reserve IPs based on MAC
 #define IP_ADDR 192,168,0,11    //Board 2
