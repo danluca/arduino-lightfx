@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #include "fxF.h"
 #include <vector>
@@ -38,14 +38,14 @@ void FxF1::setup() {
 
 void FxF1::run() {
     EVERY_N_MILLISECONDS(speed) {
-        const uint8_t dotSize = 2;
+        constexpr uint8_t dotSize = 2;
         tpl.fadeToBlackBy(fade);
 
-        uint16_t w1 = (beatsin16(12, 0, tpl.size()-dotSize-1) + beatsin16(24, 0, tpl.size()-dotSize-1))/2;
-        uint16_t w2 = beatsin16(14, 0, tpl.size()-dotSize-1, 0, beat8(10)*128);
+        const uint16_t w1 = (beatsin16(12, 0, tpl.size()-dotSize-1) + beatsin16(24, 0, tpl.size()-dotSize-1))/2;
+        const uint16_t w2 = beatsin16(14, 0, tpl.size()-dotSize-1, 0, beat8(10)*128);
 
-        CRGB clr1 = ColorFromPalette(palette, hue, brightness, LINEARBLEND);
-        CRGB clr2 = ColorFromPalette(targetPalette, hue, brightness, LINEARBLEND);
+        const CRGB clr1 = ColorFromPalette(palette, hue, brightness, LINEARBLEND);
+        const CRGB clr2 = ColorFromPalette(targetPalette, hue, brightness, LINEARBLEND);
 
         CRGBSet seg1 = tpl(w1, w1+dotSize);
         seg1 = clr1;
@@ -81,10 +81,10 @@ void FxF2::setup() {
 void FxF2::run() {
     // frame rate - 20fps
     EVERY_N_MILLISECONDS(50) {
-        double dBreath = (exp(sin(millis()/2400.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;       //(exp(sin(millis()/4000.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;
-        uint8_t breathLum = map(dBreath, 0, 255, 0, BRIGHTNESS);
-        CRGB clr = ColorFromPalette(palette, hue, breathLum, LINEARBLEND);
-        for (CRGBSet::iterator m=pattern.begin(), p=tpl.begin(), me=pattern.end(), pe=tpl.end(); m!=me && p!=pe; ++m, ++p) {
+        const double dBreath = (exp(sin(millis()/2400.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;       //(exp(sin(millis()/4000.0*PI)) - 0.36787944)*108.0;//(exp(sin(millis()/2000.0*PI)) - 0.36787944)*108.0;
+        const uint8_t breathLum = map(dBreath, 0, 255, 0, BRIGHTNESS);
+        const CRGB clr = ColorFromPalette(palette, hue, breathLum, LINEARBLEND);
+        for (auto m=pattern.begin(), p=tpl.begin(), me=pattern.end(), pe=tpl.end(); m!=me && p!=pe; ++m, ++p) {
             if ((*m) == CRGB::White)
                 (*p) = clr;
         }
@@ -136,12 +136,10 @@ void FxF3::setup() {
 void FxF3::run() {
     EVERY_N_SECONDS(5) {
         //activate eyes if possible
-        uint8_t numEyes = 1 + random8(maxEyes);
+        const uint8_t numEyes = 1 + random8(maxEyes);
         for (uint8_t i = 0; i < numEyes; i++) {
-            Viewport v = nextEyePos();
-            if (v.size() > 0) {
-                EyeBlink *availEye = findAvailableEye();
-                if (availEye) {
+            if (Viewport v = nextEyePos(); v.size() > 0) {
+                if (EyeBlink *availEye = findAvailableEye()) {
                     availEye->reset(random16(v.low, v.high),
                         ColorFromPalette(palette, hue, brightness, LINEARBLEND));
                     availEye->start();
@@ -188,7 +186,7 @@ Viewport FxF3::nextEyePos() {
         return {0, static_cast<uint16_t>(tpl.size() - EyeBlink::size)};
 
     //sort active eyes ascending by position - notice the use of lambda expression for custom comparator (available since C++11, we're using C++14) - cool stuff!!
-    std::sort(actEyes.begin(), actEyes.end(), [](EyeBlink *a, EyeBlink *b) {return a->pos < b->pos;});
+    std::sort(actEyes.begin(), actEyes.end(), [](const EyeBlink *a, const EyeBlink *b) {return a->pos < b->pos;});
     //find the gaps
     uint16_t posGap = 0, szGap = 0, prevEyeEnd = 0, curGap = 0;
     for (auto & actEye : actEyes) {
@@ -219,7 +217,7 @@ uint8_t FxF3::selectionWeight() const {
 /**
  * Default constructor - initializes all fields with sensible values
  */
-EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
+EyeBlink::EyeBlink() : color(CRGB::Red), curStep(Off), holderSet(&tpl) {
     //initialize the inner fields with default values
     idleTime = 100;  //100 cycles before this eye can be used again (6s at 60ms time base)
     brIncr = 80;    //each step brightness is increased/decreased by this amount
@@ -236,8 +234,8 @@ EyeBlink::EyeBlink() : curStep(Off), holderSet(&tpl), color(CRGB::Red) {
 void EyeBlink::step() {
     if (!isActive())
         return;
-    CRGBSet eye = (*holderSet)(pos, pos+size-1);
-    uint8_t halfEyeSize = eyeSize/2;
+    const CRGBSet eye = (*holderSet)(pos, pos+size-1);
+    constexpr uint8_t halfEyeSize = eyeSize/2;
     switch (curStep) {
         case OpenLid:
             curBrightness = qadd8(curBrightness, brIncr);
@@ -462,7 +460,7 @@ void FxF5::setup() {
  * Send up a flare
  */
 void FxF5::flare() {
-    const ushort flareSparksCount = 3;
+    constexpr ushort flareSparksCount = 3;
     float flareStep = flarePos = 0;
     bFade = random8() % 2;
     curPos = random16(tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10);
@@ -528,7 +526,7 @@ void FxF5::explode() const {
     // since they were all fixed values, the math shows the number of iterations can be precisely determined. The formula is iterCount = log(c2/128/255)/log(degFactor),
     // rounded up to nearest integer. For instance, for original values of c2=50, degFactor=0.99, we're looking at 645 loops. With some experiments, I've landed
     // at c2=30, degFactor=0.987, looping at 535 loops.
-    const ushort loopCount = 540;
+    constexpr ushort loopCount = 540;
     float dying_gravity = gravity;
     ushort iter = 0;
     bool activeSparks = true;

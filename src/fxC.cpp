@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #include "fxC.h"
 #include "transition.h"
@@ -133,8 +133,8 @@ uint8_t FxC2::selectionWeight() const {
  * We've used sine waves and counting to move pixels around a strand. In this case, I'm using Perlin Noise to move a pixel up and down the strand.
  * The advantage here is that it provides random natural movement without requiring lots of fancy math by joe programmer.
  */
-const uint32_t xscale = 8192;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
-const uint32_t yscale = 7680;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
+constexpr uint32_t xscale = 8192;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
+constexpr uint32_t yscale = 7680;                                         // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
 
 FxC3::FxC3() : LedEffect(fxc3Desc) {}
 

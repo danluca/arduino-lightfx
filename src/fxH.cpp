@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #include "fxH.h"
 #include "transition.h"
@@ -612,6 +612,7 @@ FxH6::FxH6() : LedEffect(fxh6Desc), window(leds, frameSize), rest(leds, frameSiz
         sparks.push_back(new Spark(p));
     }
     timerCounter = 0;
+    stage = DefinedPattern;
 }
 
 void FxH6::setup() {
@@ -781,10 +782,10 @@ Spark::State Spark::step(const uint8_t dice) {
     return state;
 }
 
-void Spark::on() {
+void Spark::on() const {
     pixel = fgClr;
 }
 
-void Spark::off() {
+void Spark::off() const {
     pixel = dimBkg ? bgClr : BKG;
 }

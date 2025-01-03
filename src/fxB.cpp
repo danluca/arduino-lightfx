@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #include "fxB.h"
 #include "transition.h"
@@ -217,7 +217,7 @@ void FxB5::run() {
  * Eight colored dots, weaving in and out of sync with each other.
  */
 void FxB::juggle_short() {
-    const uint16_t segSize = 8;
+    constexpr uint16_t segSize = 8;
     tpl.fadeToBlackBy(20);
 
     for (uint16_t i = 0; i < segSize; i++) {

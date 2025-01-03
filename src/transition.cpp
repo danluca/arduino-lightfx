@@ -1,4 +1,4 @@
-// Copyright (c) 2023 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2025 by Dan Luca. All rights reserved.
 //
 
 #include "transition.h"
@@ -25,8 +25,7 @@ void EffectTransition::resetRandomBars() {
 }
 
 bool EffectTransition::transition() {
-    uint8_t effect = prefFx ? (prefFx-1) : sel/2;
-    switch (effect) {
+    switch (uint8_t effect = prefFx ? (prefFx-1) : sel/2) {
         case 0: return offSpots();
         case 1: return offWipe(sel % 2);
         case 2: return offFade();
@@ -121,7 +120,7 @@ bool EffectTransition::offWipe(bool rightDir) {
 bool EffectTransition::offHalfWipe(bool inward) {
     bool allOff = false;
     EVERY_N_MILLIS(60) {
-        const uint16_t halfSize = NUM_PIXELS/2;
+        constexpr uint16_t halfSize = NUM_PIXELS/2;
         CRGBSet stripH1(leds, halfSize);
         CRGBSet stripH2(leds, halfSize, NUM_PIXELS-1);
         if (inward) {
@@ -167,8 +166,8 @@ bool EffectTransition::offFade() {
 bool EffectTransition::offSplit(bool outward) {
     bool allOff = false;
     EVERY_N_MILLIS(50) {
-        const uint16_t halfSize = NUM_PIXELS/2;
-        const uint16_t maxIndex = NUM_PIXELS-1;
+        constexpr uint16_t halfSize = NUM_PIXELS/2;
+        constexpr uint16_t maxIndex = NUM_PIXELS-1;
         const uint16_t offSegSize = 1+offPosIndex/8;
         CRGBSet s1(leds, outward?offPosIndex:qsuba(halfSize-1, offPosIndex), outward?(offPosIndex+offSegSize):qsuba(halfSize-1, offPosIndex+offSegSize));
         CRGBSet s2(leds, outward?(maxIndex-offPosIndex):capu(halfSize+offPosIndex, maxIndex), outward?(maxIndex-offPosIndex-offSegSize):capu(halfSize+offPosIndex+offSegSize, maxIndex));
@@ -191,14 +190,13 @@ bool EffectTransition::offSplit(bool outward) {
  * @param rightDir whether turning off happens from left to right (default) or right to left
  * @return true if all leds are off, false otherwise
  */
-bool EffectTransition::offRandomBars(bool rightDir) {
+bool EffectTransition::offRandomBars(bool rightDir) const {
     bool allOff = false;
     EVERY_N_MILLIS(50) {
         uint16_t ovrSz = 0;
         bool segOff = true;
         for (auto &sz : randomBarSegs) {
-            CRGBSet seg(leds, rightDir?ovrSz:(ovrSz+sz-1), rightDir?(ovrSz+sz-1):ovrSz);
-            if (!spreadColor(seg, BKG, 120))
+            if (CRGBSet seg(leds, rightDir?ovrSz:(ovrSz+sz-1), rightDir?(ovrSz+sz-1):ovrSz); !spreadColor(seg, BKG, 120))
                 segOff = false;
             ovrSz+=sz;
         }

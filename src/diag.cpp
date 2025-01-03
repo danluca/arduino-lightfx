@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -106,7 +106,7 @@ void diagSetup() {
     else if (xTimerStart(thRndEntropy, 0) != pdPASS)
         Log.error(F("Cannot start the rndEntropy timer - Ignored."));
 
-    //read system temperature event - both the IMU chip as well as the CPU internal ADC based temp sensor - repeated each 32 seconds
+    //read system temperature event - both the IMU chip and the CPU internal ADC based temp sensor - repeated each 32 seconds
     const TimerHandle_t thSysTemp = xTimerCreate("sysTemp", pdMS_TO_TICKS(32*1000), pdTRUE, &tmrSysTempId, enqueueSysTemp);
     if (thSysTemp == nullptr)
         Log.error(F("Cannot create sysTemp timer - Ignored."));
@@ -279,11 +279,11 @@ void CalibrationMeasurement::setMeasurement(const MeasurementPair &msmt) {
  * Build the calibration parameters, leveraging the pre-calculated range arguments passed in
  */
 void buildCalParams() {
-    float adcRange = (float)calibTempMeasurements.max.adcRaw - (float)calibTempMeasurements.min.adcRaw;
-    float tempRange = calibTempMeasurements.min.value - calibTempMeasurements.max.value;
+    const float adcRange = (float)calibTempMeasurements.max.adcRaw - (float)calibTempMeasurements.min.adcRaw;
+    const float tempRange = calibTempMeasurements.min.value - calibTempMeasurements.max.value;
     calibCpuTemp.refTemp = calibTempMeasurements.ref.value;
-    calibCpuTemp.vtref = (float)calibTempMeasurements.ref.adcRaw * (float)calibCpuTemp.ref33 / maxAdc;
-    calibCpuTemp.slope = adcRange * (float)calibCpuTemp.ref33 / maxAdc / tempRange;
+    calibCpuTemp.vtref = (float)calibTempMeasurements.ref.adcRaw * (float)CalibrationParams::ref33 / maxAdc;
+    calibCpuTemp.slope = adcRange * (float)CalibrationParams::ref33 / maxAdc / tempRange;
     calibCpuTemp.refDelta = fabs(tempRange);
     calibCpuTemp.time = calibTempMeasurements.ref.time;
 }
@@ -411,7 +411,7 @@ static void deserializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonO
     deserializeMeasurementPair(obj.ref, jsRef);
 }
 static void serializeCalibrationParams(const CalibrationParams& obj, JsonObject& json) {
-    json["ref33"] = obj.ref33;
+    json["ref33"] = CalibrationParams::ref33;
     json["refTemp"] = obj.refTemp;
     json["vtref"] = obj.vtref;
     json["slope"] = obj.slope;

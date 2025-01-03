@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 #include "timeutil.h"
@@ -115,44 +115,6 @@ time_t curUnixTime() {
     return millis();
 }
 
-void updateTimeOffset() {
-    if (timeClient.isTimeSet()) {
-        bool bDST = isDST(timeClient.getEpochTime());
-        sysInfo->setSysStatus(SYS_STATUS_NTP);
-        if (bDST) {
-            sysInfo->setSysStatus(SYS_STATUS_DST);
-            timeClient.setTimeOffset(CDT_OFFSET_SECONDS);   //getEpochTime calls account for the offset
-        } else {
-            sysInfo->resetSysStatus(SYS_STATUS_DST);
-            timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
-        }
-        setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
-
-#ifndef DISABLE_LOGGING
-        if (logTimeOffset == 0) {
-            time_t curTime = now();
-            time_t curMs = millis();
-            Log.warningln(F("Logging time reference updated from %u ms (%y) to %y"), curMs, curMs/1000, curTime);
-            logTimeOffset = curTime * 1000 - curMs;                //capture current time into the log offset, such that log statements use current time
-        }
-        Log.infoln(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
-                   bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
-        char timeBuf[20];
-        formatDateTime(timeBuf, now());
-        Log.infoln(F("Current time %s %s, timeBuf, bDST?"CDT":"CST");
-#endif
-    } else {
-        sysInfo->resetSysStatus(SYS_STATUS_NTP);
-        bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
-        bDST ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
-#ifndef DISABLE_LOGGING
-        char timeBuf[20];
-        formatDateTime(timeBuf, now());
-        Log.warningln(F("NTP sync failed. Current time sourced from WiFi: %s %s"), timeBuf, bDST?"CDT":"CST");
-#endif
-    }
-}
-
 bool ntp_sync() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         Log.warn(F("NTP sync failed. No WiFi connection available."));
@@ -166,7 +128,6 @@ bool ntp_sync() {
         const TimeSync tSync {.localMillis = millis(), .unixSeconds=now()};
         timeSyncs.push(tSync);
     }
-    updateTimeOffset();
     return result;
 }
 

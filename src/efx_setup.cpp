@@ -175,7 +175,7 @@ uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
     static constexpr float d1 = 2.75f;
     static constexpr float n1 = 7.5625f;
 
-    float xf = ((float)x)/(float)lim;
+    const float xf = ((float)x)/(float)lim;
     float res = 0;
     if (xf < 1/d1) {
         res = n1*xf*xf;

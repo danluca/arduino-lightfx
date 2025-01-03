@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -144,6 +144,7 @@ void enqueueTimeSetup(TimerHandle_t xTimer) {
 /**
  * Single client update - identified through IP address
  * @param ip recipient's IP address
+ * @param fxIndex effect index to update
  */
 void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     Log.info(F("Attempting to connect to client %s for FX %hu"), ip->toString().c_str(), fxIndex);
@@ -154,7 +155,7 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     client.connectionKeepAlive();
     client.noDefaultRequestHeaders();
 
-    size_t sz = sprintf(nullptr, fmtFxChange, fxIndex);
+    const size_t sz = sprintf(nullptr, fmtFxChange, fxIndex);
     char buf[sz+1];
     sprintf(buf, fmtFxChange, fxIndex);
     buf[sz] = 0;    //null terminated string
@@ -170,7 +171,7 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
         client.print(buf);
         client.endRequest();
 
-        int statusCode = client.responseStatusCode();
+        const int statusCode = client.responseStatusCode();
         String response = client.responseBody();
         if (statusCode / 100 == 2)
             Log.info(F("Successful sync FX %hu with client %s: %d response status\nBody: %s"), fxIndex, ip->toString().c_str(), statusCode, response.c_str());

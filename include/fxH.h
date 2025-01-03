@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXH_H
 #define LIGHTFX_FXH_H
@@ -170,8 +170,8 @@ namespace FxH {
         explicit Spark(CRGB& ref);
         enum State:uint8_t {Idle, On, Off, WaitOn};
         State step(uint8_t dice);
-        void on();
-        void off();
+        void on() const;
+        void off() const;
         void reset();
         void activate(CRGB clr, Cycle cycle = 0);
         void setColor(CRGB clr);

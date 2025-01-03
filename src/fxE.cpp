@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #include "fxE.h"
 #include "transition.h"
@@ -268,7 +268,7 @@ void FxE4::run() {
 void FxE4::serendipitous() {
     //  Xn = X-(Y/2); Yn = Y+(Xn/2);
     //  Xn = X-Y/2;   Yn = Y+Xn/2;
-    uint16_t Xn = X-(Y/2); uint16_t Yn = Y+(X/2.1); uint16_t Zn = X + Y*2.3;
+    const uint16_t Xn = X-(Y/2); uint16_t Yn = Y+(X/2.1); uint16_t Zn = X + Y*2.3;
     //    Xn = X-(Y/3); Yn = Y+(X/1.5);
     //  Xn = X-(2*Y); Yn = Y+(X/1.1);
 
@@ -310,9 +310,9 @@ void FxE5::run() {
         wave2.fadeToBlackBy(40);
         wave3.fadeToBlackBy(50);
 
-        CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
-        CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
-        CRGB col3 = ColorFromPalette(palette, clr3, brightness, LINEARBLEND);
+        const CRGB col1 = ColorFromPalette(palette, clr1, brightness, LINEARBLEND);
+        const CRGB col2 = ColorFromPalette(palette, clr2, brightness, LINEARBLEND);
+        const CRGB col3 = ColorFromPalette(palette, clr3, brightness, LINEARBLEND);
         uint16_t pos = beatsin16(5, 0, tpl.size()-1, 0, 0);
         tpl(curPos, pos) = col1;
         curPos = pos;

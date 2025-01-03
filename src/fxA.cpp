@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #include "fxA.h"
 #include "transition.h"
@@ -408,8 +408,8 @@ SleepLight::SleepLight() : LedEffect(fxa6Desc), state(Fade), refPixel(&ledSet[0]
 }
 
 uint8_t excludeActiveColors(uint8_t hue) {
-    const uint8_t min = HUE_ORANGE-8;     //24       (~33°)
-    const uint8_t max = HUE_AQUA;         //128      (180°)
+    constexpr uint8_t min = HUE_ORANGE-8;     //24       (~33°)
+    constexpr uint8_t max = HUE_AQUA;         //128      (180°)
     return scale8(sin8(hue), (max-min)) + min;
 }
 

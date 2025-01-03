@@ -1,4 +1,4 @@
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_TRANSITION_H
@@ -28,7 +28,7 @@ public:
     bool offWipe(bool rightDir = true);
     bool offHalfWipe(bool inward = true);
     bool offSplit(bool outward = true);
-    bool offRandomBars(bool rightDir = true);
+    bool offRandomBars(bool rightDir = true) const;
     bool offFade();
 
 protected:

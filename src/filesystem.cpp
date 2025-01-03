@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -22,7 +22,7 @@ void fsExecute();
 void fsInit();
 size_t prvReadTextFile(const char *fname, String *s);
 size_t prvWriteTextFile(const char *fname, const String *s);
-size_t prvWriteTextFileAndFreeMem(const char *fname, String *s);
+size_t prvWriteTextFileAndFreeMem(const char *fname, const String *s);
 bool prvRemoveFile(const char *fname);
 
 // filesystem task definition - priority is overwritten during setup, see fsSetup
@@ -224,7 +224,7 @@ size_t prvWriteTextFile(const char *fname, const String *s) {
     return fSize;
 }
 
-size_t prvWriteTextFileAndFreeMem(const char *fname, String *s) {
+size_t prvWriteTextFileAndFreeMem(const char *fname, const String *s) {
     const size_t fSize = prvWriteTextFile(fname, s);
     if (fSize)
         delete s;

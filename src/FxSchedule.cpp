@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 
 #include "FxSchedule.h"
@@ -21,7 +21,7 @@ uint16_t currentDay = 0;
 
 std::deque<AlarmData*> scheduledAlarms;
 
-const char *alarmTypeToString(AlarmType alType) {
+const char *alarmTypeToString(const AlarmType alType) {
     switch (alType) {
         case WAKEUP: return strWakeup;
         case BEDTIME: return strBedtime;
