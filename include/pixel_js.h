@@ -1,5 +1,5 @@
 #pragma once
-constexpr auto pixel_js PROGMEM = R"~~~(
+inline constexpr auto pixel_js PROGMEM = R"~~~(
 
 // Only one sequence can be selected
 let config = {};

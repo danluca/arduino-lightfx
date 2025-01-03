@@ -22,10 +22,16 @@ void FxI::fxRegister() {
 
 //FXI1
 
-FxI1::FxI1() : LedEffect(fxi1Desc), wallStart(0), wallEnd(FRAME_SIZE), currentPos(0), segmentLength(5), forward(true) {
+FxI1::FxI1() : LedEffect(fxi1Desc) {
+    wallStart = 0;
+    wallEnd = FRAME_SIZE;
+    prevWallStart = wallStart;
+    prevWallEnd = wallEnd;
+    currentPos = 0;
+    segmentLength = 5;
+    forward = true;
     fgColor = 0;
     bgColor = 0;
-    speed = 25;
 }
 
 void FxI1::setup() {
@@ -33,28 +39,61 @@ void FxI1::setup() {
     bgColor = random8();
     fgColor = random8();
     forward = true;
-    reWall();
+    wallStart = random8(1, NUM_PIXELS/4);
+    wallEnd = FRAME_SIZE - wallStart;
+    prevWallStart = 0;
+    prevWallEnd = FRAME_SIZE;
+    currentPos = wallStart;
+    segmentLength = random8(1, 11);
+    fgColor = random8();
+    bgColor = -random8();
+    tpl(0, wallStart-1) = ColorFromPalette(targetPalette, bgColor, 7, LINEARBLEND);
+    tpl(wallStart, prevWallEnd-1) = BKG;
 }
 
 /**
  * Adjust walls at the end of a run
  */
 void FxI1::reWall() {
-    wallStart = random8(1, 16);
-    wallEnd = FRAME_SIZE - wallStart;
-    currentPos = wallStart;
-    segmentLength = random8(1, 10);
-    speed = random8(20, 250);
-    fgColor += random8(0, 10);
-    bgColor += random8(0, 16);
-    const CRGB clr = ColorFromPalette(targetPalette, bgColor, 7, LINEARBLEND);
-    tpl(0, wallStart-1) = clr;
-    tpl(wallEnd, FRAME_SIZE-1) = clr;
-    tpl(wallStart, wallEnd-1) = BKG;
+    segmentLength = random8(1, 11);
+    const uint8_t clrVar = random8(3, 19);
+    bgColor += clrVar;
+    fgColor += clrVar;
+    if (forward) {
+        wallEnd = FRAME_SIZE - random8(1, NUM_PIXELS/4);
+    } else {
+        wallStart = random8(1, NUM_PIXELS/4);
+    }
+}
+
+static void updateWall(uint16_t &prevWall, const uint16_t wallLimit, const CRGB color, const CRGB bg) {
+    if (prevWall != wallLimit) {
+        if (prevWall > wallLimit)
+            tpl[prevWall--] = color;
+        else
+            tpl[prevWall++] = bg;
+    }
+}
+
+static void blendWall(const uint16_t start, const uint16_t end, const CRGB color) {
+    if (tpl[end] != color)
+        tpl(start, end).nblend(color, 32);
 }
 
 void FxI1::run() {
-    EVERY_N_MILLISECONDS_I(speed, 50) {
+    EVERY_N_MILLISECONDS_I(speed, 75) {
+        //update the wall sizes and color
+        const CRGB wallColor = ColorFromPalette(targetPalette, bgColor, 7, LINEARBLEND);
+        if (forward) {
+            updateWall(prevWallEnd, wallEnd, wallColor, BKG);
+            if (prevWallEnd == wallEnd)
+                blendWall(wallEnd, FRAME_SIZE - 1, wallColor);
+        } else {
+            updateWall(prevWallStart, wallStart, BKG, wallColor);
+            if (prevWallStart == wallStart)
+                blendWall(0, wallStart - 1, wallColor);
+        }
+
         // Fade the LED trail with a small dimming effect
         for (int i = wallStart; i < wallEnd; i++) {
             tpl[i].fadeToBlackBy(64);
@@ -68,6 +107,7 @@ void FxI1::run() {
             }
         }
 
+        // adjust the speed
         if (random8() < 160)
             speed = forward ? csub8(speed, 3, 20) : cadd8(speed, 5, 250);
 
@@ -76,11 +116,14 @@ void FxI1::run() {
             currentPos++;
             if ((currentPos + segmentLength) >= wallEnd) {
                 forward = false; // Reverse direction at the wall
+                speed = csub8(speed, 10, 20);
+                reWall();
             }
         } else {
             currentPos--;
             if (currentPos <= wallStart) {
                 forward = true; // Reverse direction at the wall
+                speed = random8(80, 160);
                 reWall();
             }
         }

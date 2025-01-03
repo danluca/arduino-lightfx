@@ -1,5 +1,5 @@
 #pragma once
-constexpr auto stats_js PROGMEM = R"~~~(
+inline constexpr auto stats_js PROGMEM = R"~~~(
 
 /*
  * Copyright (c) 2025 by Dan Luca. All rights reserved.
