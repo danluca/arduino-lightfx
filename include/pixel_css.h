@@ -1,4 +1,5 @@
-const char pixel_css[] PROGMEM = R"~~~(
+#pragma once
+constexpr auto pixel_css PROGMEM = R"~~~(
 /* Set padding and margins to 0 then change later
 Helps with cross browser support */
 * {
@@ -32,6 +33,12 @@ footer {
     font-size: 12pt;
     margin-top: 2em;
     width: 95%;
+}
+#links {
+    float: right;
+    font-size: 14pt;
+    padding-right: 2em;
+    text-align: right;
 }
 
 #effects, #time, #status, #settings {
@@ -118,10 +125,6 @@ footer {
     font-weight: bold;
     font-size: 18pt;
     text-align: center;
-}
-
-#settings {
-    display: none;
 }
 
 #audioLevelHistogram {

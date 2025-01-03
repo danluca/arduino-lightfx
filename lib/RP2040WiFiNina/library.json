@@ -1,0 +1,27 @@
+{
+  "name": "RP2040WiFiNINA",
+  "keywords": "Communication,WiFi,NINA,RP2040",
+  "description": "Enables network connection (local and Internet) with the Arduino Nano RP2040 Connect.",
+  "version": "1.8.14-1",
+  "authors": [{
+    "name": "The Android Open Source Project - Arduino <info@arduino.cc>",
+    "url": "https://github.com/arduino-libraries/WiFiNINA",
+    "maintainer": true
+  }, {
+    "name": "Juraj Andrassy",
+    "url": "https://github.com/JAndrassy/WiFiNINA/tree/all_fixes",
+    "maintainer": true
+  }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arduino-libraries/WiFiNINA"
+  },
+  "homepage": "https://www.arduino.cc/en/Reference/WiFiNINA",
+  "frameworks": ["arduino"],
+  "platforms": "raspberrypi",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
+  }
+}

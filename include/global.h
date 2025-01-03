@@ -1,12 +1,8 @@
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_GLOBAL_H
 #define ARDUINO_LIGHTFX_GLOBAL_H
-
-#include <Arduino.h>
-#include <FastLED.h>
-#include "config.h"
 
 #define capd(x, d) (((x)<=(d))?(d):(x))
 #define capu(x, u) (((x)>=(u))?(u):(x))
@@ -24,73 +20,32 @@
 #define AUDIO_HIST_BINS_COUNT   10
 #define FX_SLEEPLIGHT_ID    "FXA6"
 
-const uint16_t turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
-extern const char csAutoFxRoll[];
-extern const char csStripBrightness[];
-extern const char csAudioThreshold[];
-extern const char csColorTheme[];
-extern const char csAutoColorAdjust[];
-extern const char csRandomSeed[];
-extern const char csCurFx[];
-extern const char csSleepEnabled[];
-extern const char csBrightness[];
-extern const char csBrightnessLocked[];
-extern const char csAuto[];
-extern const char csHoliday[];
-extern const char strNR[];
-extern const char csBroadcast[];
-
-extern const uint8_t dimmed;
-//extern const uint16_t FRAME_SIZE;
-extern const CRGB BKG;
-extern const uint8_t maxChanges;
-extern const uint16_t dailyBedTime;
-extern const uint16_t dailyWakeupTime;
-enum OpMode { TurnOff, Chase };
-enum EffectState:uint8_t {Setup, Running, WindDownPrep, WindDown, TransitionBreakPrep, TransitionBreak, Idle};
-extern CRGB leds[NUM_PIXELS];
-extern CRGBArray<NUM_PIXELS> frame;
-extern CRGBSet tpl;
-extern CRGBSet others;
-extern CRGBSet ledSet;
-extern uint16_t stripShuffleIndex[NUM_PIXELS];
-extern CRGBPalette16 palette;
-extern CRGBPalette16 targetPalette;
-extern OpMode mode;
-extern uint8_t brightness;
-extern uint8_t stripBrightness;
-extern bool stripBrightnessLocked;
-extern uint8_t colorIndex;
-extern uint8_t lastColorIndex;
-extern uint8_t fade;
-extern uint8_t hue;
-extern uint8_t dotBpm;
-extern uint8_t saturation;
-extern uint8_t delta;
-extern uint8_t twinkrate;
-extern uint16_t szStack;
-extern uint16_t hueDiff;
-extern bool dirFwd;
-extern int8_t rot;
-extern int32_t dist;
-extern bool randhue;
-extern volatile uint16_t audioBumpThreshold;
-extern volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT];
-extern uint16_t totalAudioBumps;
-
-extern volatile bool fxBump;
-extern volatile bool fxBroadcastEnabled;
-extern volatile uint16_t speed;
-extern volatile uint16_t curPos;
-
-static inline uint8_t cadd8(uint8_t i, uint8_t j, uint8_t cap) {
-    uint8_t t = qadd8(i, j);    //this saturates at 0xFF
-    return t > cap ? cap : t;
+/**
+ * Add one byte to another, saturating at given cap value
+ * @param i operand to add
+ * @param j operand to add
+ * @param cap upper bound
+ * @return the result of adding i to j saturating at cap
+ */
+static uint8_t cadd8(const uint8_t i, const uint8_t j, const uint8_t cap) {
+    uint t = i + j;
+    if (t > cap)
+        t = cap;
+    return t;
 }
 
-static inline uint8_t csub8(uint8_t i, uint8_t j, uint8_t cap) {
-    uint8_t t = qsub8(i, j);    //this saturates at 0x00
-    return t < cap ? cap : t;
+/**
+ * Subtract second byte arg from the first, saturating at given cap value
+ * @param i operand to subtract from
+ * @param j operand to subtract
+ * @param cap lower bound
+ * @return the result of i-j saturating at cap
+ */
+static uint8_t csub8(const uint8_t i, const uint8_t j, const uint8_t cap) {
+    int t = i - j;
+    if (t < cap)
+        t = cap;
+    return t;
 }
 
 #endif //ARDUINO_LIGHTFX_GLOBAL_H

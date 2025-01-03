@@ -1,4 +1,5 @@
-const char index_html[] PROGMEM = R"~~~(
+#pragma once
+constexpr auto index_html PROGMEM = R"~~~(
 <!DOCTYPE html>
 <html lang="en">
 
@@ -19,6 +20,7 @@ const char index_html[] PROGMEM = R"~~~(
         <div>Board: <span id="boardName"></span></div>
     </header>
     <main>
+        <div id="links"><a href="stats.html">Runtime Stats</a></div>
         <div id="updateStatus"></div>
         <section id="effects">
             <h1>Effects</h1>
@@ -62,9 +64,6 @@ const char index_html[] PROGMEM = R"~~~(
             <div id="curEffectArea">
                 <span id="curEffectLabel">Current effect: </span> <span id="curEffect"></span> (<span id="curEffectId"></span>)
             </div>
-<!--        </section>-->
-<!--        <section id="time">-->
-<!--            <h1>Time</h1>-->
             <div class="separator"></div>
             <div id="timeChangeArea">
                 <label for="holidayList" id="holidayListLabel">Change current color theme</label>
@@ -76,12 +75,6 @@ const char index_html[] PROGMEM = R"~~~(
                 <span id="curHolidayLabel">Current color theme: </span><span id="curHolidayValue"></span>
             </div>
         </section>
-        <section id="settings">
-            <h1>Settings</h1>
-            <div id="settingsChange">
-                TBD
-            </div>
-        </section>
         <section id="status">
             <h1 onclick="getStatus()">Status</h1>
             <dl id="statusArea">
@@ -89,7 +82,7 @@ const char index_html[] PROGMEM = R"~~~(
                 <dt>Board [Nano RP2040 Connect]</dt>
                 <dd>UID: <span id="boardUid"></span><div>[vendor: 0x2341, model: 0x5E]</div></dd>
                 <dd>Device Name: <span id="deviceName"></span></dd>
-                <dd>Mbed OS: <span id="mbedVersion"></span></dd>
+                <dd>Arduino Pico: <span id="osVersion"></span></dd>
                 <dd>Up Time: <span id="upTime"></span> </dd>
                 <dd>Clean Boot: <span id="cleanBoot"></span></dd>
                 <dd>Status code: <span id="overallStatus"></span></dd>
@@ -110,7 +103,13 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Signal: <span id="wfSignal"></span></dd>
                 <dd>WiFi FW: <span id="wfVersion"></span></dd>
                 <dt>Environment</dt>
-                <dd>Temperature: <span id="boardTemp"></span> <br/><span id="rangeTemp" class="indent2"></span></dd>
+                <dd>Temperature: <br/>
+                    <ul class="indent2">
+                        <li>Board (Acc): <span id="boardTemp"></span><br/><span id="rangeTemp" class="indent1"></span></li>
+                        <li>CPU (ADC): <span id="cpuTemp"></span></li>
+                        <li>WiFi (ESP32): <span id="wifiTemp"></span></li>
+                    </ul>
+                </dd>
                 <dd>Vcc: <span id="boardVcc"></span> <span id="rangeVcc" class="indent2"></span></dd>
                 </div>
                 <div>
@@ -121,7 +120,6 @@ const char index_html[] PROGMEM = R"~~~(
                 <dd>Strip Brightness: <span id="fxBrightness"></span></dd>
                 <dd>Audio Threshold: <span id="audioThreshold"></span></dd>
                 <dd>Audio Effect Changes: <span id="totalAudioBumps"></span></dd>
-<!--                <dd>Audio Level Histogram: <span id="audioLevelHistogram"></span></dd>-->
                 <div id="audioHistogram"></div>
                 </div>
             </dl>

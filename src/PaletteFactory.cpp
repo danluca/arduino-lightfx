@@ -4,6 +4,7 @@
 
 #include "PaletteFactory.h"
 #include "sysinfo.h"
+#include "util.h"
 
 using namespace colTheme;
 
@@ -199,12 +200,12 @@ bool PaletteFactory::isAuto() const {
     return autoChangeHoliday;
 }
 
-void PaletteFactory::setAuto(bool autoMode) {
+void PaletteFactory::setAuto(const bool autoMode) {
     autoChangeHoliday = autoMode;
 }
 
 void PaletteFactory::setHoliday(const Holiday hday) {
-    bool noPref = hday == None;
+    const bool noPref = hday == None;
     setAuto(noPref);
     if (noPref)
         adjustHoliday();
@@ -228,7 +229,7 @@ bool PaletteFactory::isHolidayLimitedHue() const {
     return getHoliday() == Halloween;
 }
 
-CRGBPalette16 PaletteFactory::randomPalette(uint8_t ofsHue, time_t time) {
+CRGBPalette16 PaletteFactory::randomPalette(const uint8_t ofsHue, const time_t time) {
     if (time > 0)
         random16_add_entropy(time >> 4);
     return {CHSV(ofsHue + random8(0, 256 - ofsHue), 160, random8(128, 255)),

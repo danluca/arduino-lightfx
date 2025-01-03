@@ -1,23 +1,20 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category A of light effects
- * 
- */
 #include "fxA.h"
+#include "transition.h"
 
 //~ Global variables definition for FxA
 using namespace FxA;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxa1Desc[] PROGMEM = "FXA1: Multiple Tetris segments";
-const char fxa2Desc[] PROGMEM = "FXA2: Randomly sized and spaced segments moving on entire strip";
-const char fxa3Desc[] PROGMEM = "FXA3: Moving variable dot size back and forth";
-const char fxa4Desc[] PROGMEM = "FXA4: pixel segments moving opposite directions";
-const char fxa5Desc[] PROGMEM = "FXA5: Moving a color swath on top of another";
-const char fxa6Desc[] PROGMEM = "FXA6: Sleep Light";
+constexpr auto fxa1Desc PROGMEM = "FXA1: Multiple Tetris segments";
+constexpr auto fxa2Desc PROGMEM = "FXA2: Randomly sized and spaced segments moving on entire strip";
+constexpr auto fxa3Desc PROGMEM = "FXA3: Moving variable dot size back and forth";
+constexpr auto fxa4Desc PROGMEM = "FXA4: pixel segments moving opposite directions";
+constexpr auto fxa5Desc PROGMEM = "FXA5: Moving a color swath on top of another";
+constexpr auto fxa6Desc PROGMEM = "FXA6: Sleep Light";
 
 void FxA::fxRegister() {
     static FxA1 fxA1;
@@ -72,7 +69,7 @@ void FxA1::setup() {
     makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
-void FxA1::makeDot(CRGB color, uint16_t szDot) {
+void FxA1::makeDot(CRGB color, uint16_t szDot) const {
     for (uint16_t x = 0; x < szDot; x++) {
         dot[x] = color;
         dot[x] %= brightness;
@@ -119,10 +116,9 @@ void FxA1::run() {
     }
 }
 
-JsonObject & FxA1::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["segmentSize"] = szSegment;
-    return obj;
+void FxA1::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["segmentSize"] = szSegment;
 }
 
 uint8_t FxA1::selectionWeight() const {
@@ -138,7 +134,7 @@ void FxA2::setup() {
     makeDot();
 }
 
-void FxA2::makeDot() {
+void FxA2::makeDot() const {
     uint8_t brdIndex = beatsin8(11);
     uint8_t brdBright = brdIndex % 2 ? BRIGHTNESS : dimmed;
     dot[szSegment - 1] = ColorFromPalette(palette, brdIndex, brdBright, LINEARBLEND);
@@ -204,10 +200,9 @@ void FxA2::run() {
     }
 }
 
-JsonObject & FxA2::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["segmentSize"] = szSegment;
-    return obj;
+void FxA2::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["segmentSize"] = szSegment;
 }
 
 uint8_t FxA2::selectionWeight() const {
@@ -225,7 +220,7 @@ void FxA3::setup() {
     transEffect.prepare(random8());
 }
 
-void FxA3::makeDot(CRGB color, uint16_t szDot) {
+void FxA3::makeDot(CRGB color, uint16_t szDot) const {
     for (uint16_t x = 0; x < szDot; x++) {
         dot[x] = color;
         dot[x] %= brightness;
@@ -260,8 +255,8 @@ void FxA3::run() {
     }
 }
 
-JsonObject & FxA3::describeConfig(JsonArray &json) const {
-    return LedEffect::describeConfig(json);
+void FxA3::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
 }
 
 uint8_t FxA3::selectionWeight() const {
@@ -330,8 +325,8 @@ void FxA4::run() {
     }
 }
 
-JsonObject & FxA4::describeConfig(JsonArray &json) const {
-    return LedEffect::describeConfig(json);
+void FxA4::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
 }
 
 uint8_t FxA4::selectionWeight() const {
@@ -397,8 +392,8 @@ void FxA5::run() {
     }
 }
 
-JsonObject & FxA5::describeConfig(JsonArray &json) const {
-    return LedEffect::describeConfig(json);
+void FxA5::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
 }
 
 uint8_t FxA5::selectionWeight() const {
@@ -427,7 +422,7 @@ void SleepLight::setup() {
     hue = colorBuf.hue = excludeActiveColors(0);
     colorBuf.sat = 160;
     colorBuf.val = stripBrightness;
-//    Log.infoln(F("SleepLight setup: colorBuf=%r, hue=%d, sat=%d, val=%d"), (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val);
+//    Log.info(F("SleepLight setup: colorBuf=%r, hue=%d, sat=%d, val=%d"), (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val);
 }
 
 /**
@@ -448,14 +443,14 @@ void SleepLight::run() {
         EVERY_N_SECONDS(5) {
             colorBuf.val = flrSub(colorBuf.val, 3, minBrightness);
             state = colorBuf.val > minBrightness ? FadeColorTransition : SleepTransition;
-//            Log.infoln(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
+//            Log.info(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
         }
         EVERY_N_SECONDS(3) {
             hue += random8(2, 19);
             colorBuf.hue = excludeActiveColors(hue);
             colorBuf.sat = map(colorBuf.val, minBrightness, brightness, 24, 160);
             state = colorBuf.val > minBrightness ? FadeColorTransition : SleepTransition;
-//            Log.infoln(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
+//            Log.info(F("SleepLight parameters: state=%d, colorBuf=%r HSV=(%d,%d,%d), refPixel=%r"), state, (CRGB)colorBuf, colorBuf.hue, colorBuf.sat, colorBuf.val, *refPixel);
         }
     }
     EVERY_N_MILLIS(125) {
@@ -487,7 +482,7 @@ SleepLight::SleepLightState SleepLight::step() {
             break;
     }
 //    if (oldState != state)
-//        Log.infoln(F("SleepLight state changed from %d to %d, colorBuf=%r, refPixel=%r"), oldState, state, (CRGB)colorBuf, *refPixel);
+//        Log.info(F("SleepLight state changed from %d to %d, colorBuf=%r, refPixel=%r"), oldState, state, (CRGB)colorBuf, *refPixel);
     return oldState;
 }
 

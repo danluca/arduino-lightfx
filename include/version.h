@@ -1,11 +1,11 @@
 //
-// Copyright (c) 2023 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2025 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_VERSION_H
 #define ARDUINO_LIGHTFX_VERSION_H
 
-#define MAIN_VERSION        "1.0.1"
+#define MAIN_VERSION        "1.2.0"
 
 #ifndef GIT_COMMIT
 

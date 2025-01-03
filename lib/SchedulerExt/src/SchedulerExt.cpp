@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2012 The Android Open Source Project
  * Copyright (C) 2023 Dan Luca
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,210 +16,188 @@
 
 #include "SchedulerExt.h"
 
-static const char *const unknown PROGMEM = "Thd N/R";
+static constexpr char fmtTaskName[] PROGMEM = "Tsk %d";
 
 SchedulerClassExt Scheduler;
 
-/**
- * Method that implements optional setup + continuous run of the task
- * Do not use this method if not intending to run a loop
- * @param args tasks to run in the new thread - the setup function pointer is optional, the loop function pointer is required
- */
-[[noreturn]] static void setupLoopHelper(TasksPtr args) {
-    if (args->setup != nullptr)
-        args->setup();
-    while (true) {
-        args->loop();
-        yield();
-    }
+void taskJobExecutor(void *params) {
+    auto *tj = static_cast<Runnable*>(params);
+    tj->run();
+    //should never get here - but if we do, must delete the task per FreeRTOS documentation - https://www.freertos.org/implementing-a-FreeRTOS-task.html
+    tj->terminate();
 }
 
 /**
- * Overload that just runs a task in continuous loop
- * @param loopTask the task to run
+ * Starts a task based on the definition provided. Definition includes functions to execute, name, priority, stack size, core affinity
+ * @param taskDef
+ * @return pointer to TaskWrapper created for this task
  */
-[[noreturn]] static void loopHelper(SchedulerTask loopTask) {
-    while (true) {
-        loopTask();
-        yield();
-    }
-}
-
-/**
- * Starts a task with optional setup step and main loop
- * @param task the task structure - setup (optional, executed once) and main loop (required, executed indefinitely) callback pointers, stack and name info
- * @return the rtos thread pointer for the newly created thread that handles this task actions
- */
-rtos::Thread* SchedulerClassExt::startTask(TasksPtr task) {
-    uint i = findNextThreadSlot();
-    if (i >= MAX_THREADS_NUMBER)
+TaskWrapper *SchedulerClassExt::startTask(TaskDefPtr taskDef) {
+    const int16_t tPos = findNextThreadSlot();
+    if (tPos < 0)
         return nullptr;
-
-    threads[i] = task->threadName ? new ThreadWrapper(task->threadName, task->stackSize) : new ThreadWrapper(i, task->stackSize);
-    threads[i]->getThread()->start(mbed::callback(setupLoopHelper, task));
-    return threads[i]->getThread();
-}
-
-/**
- * Starts a new thread with main loop only, executed indefinitely
- * @param task main loop task
- * @param stackSize stack size in bytes to allocate for the task; default to 1024 if not specified
- * @return the new OS thread created
- */
-rtos::Thread* SchedulerClassExt::startLoop(SchedulerTask task, uint32_t stackSize) {
-    uint i = findNextThreadSlot();
-    if (i >= MAX_THREADS_NUMBER)
-        return nullptr;
-
-    threads[i] = new ThreadWrapper(i, stackSize);
-    threads[i]->getThread()->start(mbed::callback(loopHelper, task));
-    return threads[i]->getThread();
-}
-
-/**
- * Starts a new thread that runs once a task
- * @param task the task
- * @param stackSize stack size in bytes to allocate for the task; default to 1024 if not specified
- * @return the new OS thread created
- * @see SchedulerClassExt::waitToEnd
- */
-rtos::Thread* SchedulerClassExt::start(SchedulerTask task, uint32_t stackSize) {
-    uint i = findNextThreadSlot();
-    if (i >= MAX_THREADS_NUMBER)
-        return nullptr;
-
-    threads[i] = new ThreadWrapper(i, stackSize);
-    threads[i]->getThread()->start(task);
-    return threads[i]->getThread();
-}
-
-/**
- * Starts a new thread that runs once a parameterized task (one parameter of type pointer to any data type)
- * @param task the task
- * @param taskData argument to pass to the task
- * @param stackSize stack size in bytes to allocate for the task; default to 1024 if not specified
- * @return the new OS thread created
- * @see SchedulerClassExt::waitToEnd
- */
-rtos::Thread* SchedulerClassExt::start(SchedulerParametricTask task, void *taskData, uint32_t stackSize) {
-    uint i = findNextThreadSlot();
-    if (i >= MAX_THREADS_NUMBER)
-        return nullptr;
-
-    threads[i] = new ThreadWrapper(i, stackSize);
-    threads[i]->getThread()->start(mbed::callback(task, taskData));
-    return threads[i]->getThread();
-}
-
-/**
- * Waits for the thread to terminate, then disposes it and frees its slot in the local thread array
- * If the thread is not one tracked in the local thread array, it returns osErrorParameter
- * @param pt pointer to the thread to terminate
- * @return result of executing Thread::join for the given thread
- */
-osStatus SchedulerClassExt::waitToEnd(rtos::Thread *pt) {
-    osStatus tStat = osErrorParameter;
-    for (auto & thread : threads) {
-        if (thread->getThread() == pt) {
-            //waits for thread to terminate
-            tStat = thread->getThread()->join();
-            delete thread;
-            //free-up the thread array spot for it
-            thread = nullptr;
-            break;
-        }
-    }
-    return tStat;
-}
-
-/**
- * Terminate thread then disposes it and frees its slot in the local thread array
- * If the thread is not one tracked in the local thread array, it returns osErrorParameter
- * @param pt pointer to the thread to terminate
- * @return result of executing Thread::join for the given thread
- */
-osStatus SchedulerClassExt::terminate(rtos::Thread *pt) {
-    osStatus tStat = osErrorParameter;
-    for (auto & thread : threads) {
-        if (thread->getThread() == pt) {
-            //terminates thread
-            tStat = thread->getThread()->terminate();
-            thread->getThread()->join();
-            //delete wrapper
-            delete thread;
-            //free-up the thread array spot for it
-            thread = nullptr;
-            break;
-        }
-    }
-    return tStat;
-}
-
-/**
- * Finds the index for the next thread.
- * If the local thread array is full, it returns osThreadSpaceExhausted
- * @return either the index where next thread can be stored in the local thread array, or osThreadSpaceExhausted (0xF0F0)
- */
-uint SchedulerClassExt::findNextThreadSlot() const {
-    uint i = 0;
-    while (threads[i] != nullptr && i < MAX_THREADS_NUMBER)
-        i++;
-
-    return i < MAX_THREADS_NUMBER ? i : osThreadSpaceExhausted;
+    //if priority is not provided (above the range), use the default priority of the calling task
+    if (taskDef->priority >= configMAX_PRIORITIES)
+        taskDef->priority = uxTaskPriorityGet(nullptr);
+    auto *job = new TaskWrapper(taskDef, tPos);
+    tasks[tPos] = job;
+    return scheduleTask(job) ? job : nullptr;
 }
 
 /**
  * How many slots do we have available in the local threads array
  * @return number of available threads, if any
  */
-uint SchedulerClassExt::availableThreads() const {
-    uint i = 0;
-    while (threads[i] == nullptr && i < MAX_THREADS_NUMBER)
-        i++;
-    //the index is 0 based, we need to return how many slots are available
-    return i;
-}
-
-//ThreadWrapper
-/**
- * Creates a thread using the stack size and name determined as below.<br/>
- * Creates a simple thread name - using pattern Thd <n>, where n is the index in the local thread array
- * Note this method creates the string on the heap, the thread name must be available for the life of the thread. When thread is disposed of,
- * the memory allocated for name needs also released.
- * @param index index to use in the thread name
- * @param stackSize stack size to allocate to new thread, in bytes
- */
-ThreadWrapper::ThreadWrapper(const uint index, const uint32_t stackSize) {
-    size_t sz = sprintf(nullptr, "Thd %d", index);
-    name = new char[sz+1](); //zero initialized array
-    sprintf(name, "Thd %d", index);
-    thread = new rtos::Thread(osPriorityNormal, stackSize, nullptr, name);
+uint16_t SchedulerClassExt::availableThreads() const {
+    uint16_t res = 0;
+    for (const auto task : tasks) {
+        if (task == nullptr)
+            res++;
+    }
+    return res;
 }
 
 /**
- * Creates a thread using the stack size and name determined as below. <br/>
- * Uses the name provided for the thread name
- * @param thName thread name
- * @param stackSize stack size to allocate to new thread, in bytes
+ * Enters the task into the RTOS scheduler's scope - stack memory gets allocated and the task will now be scheduled
+ * CPU time based on its priority
+ * @param taskJob the task information including functions to execute
+ * @return true if scheduling was successful
  */
-ThreadWrapper::ThreadWrapper(const char *thName, uint32_t stackSize) {
-    if (thName != nullptr) {
-        size_t sz = strlen(thName);
-        name = new char[sz + 1]();    //zero initialized array
-        strcpy(name, thName);
-        thread = new rtos::Thread(osPriorityNormal, stackSize, nullptr, name);
+bool SchedulerClassExt::scheduleTask(TaskWrapper *taskJob) {
+    const BaseType_t result = xTaskCreateAffinitySet(taskJobExecutor, taskJob->id, taskJob->stackSize, taskJob,
+                                               taskJob->priority, taskJob->coreAffinity, &(taskJob->handle));
+    if (result == pdPASS) {
+        TaskStatus_t taskStatus;
+        vTaskGetInfo(taskJob->handle, &taskStatus, pdFALSE, eReady);
+        taskJob->uid = taskStatus.xTaskNumber;
+    }
+    return result == pdPASS;
+}
+
+/**
+ * Finds the index for the next thread.
+ * If the local thread array is full, it returns -1
+ * @return either the index where next thread can be stored in the local thread array, or -1 (0xFFFF)
+ */
+int16_t SchedulerClassExt::findNextThreadSlot() const {
+    for (int16_t i = 0; i < MAX_THREADS_NUMBER; i++)
+        if (tasks[i] == nullptr)
+            return i;
+    return -1;
+}
+
+/**
+ * Waits for the thread to terminate, then disposes it and frees its slot in the local thread array
+ * If the thread is not one tracked in the local thread array, it returns osErrorParameter
+ * @param pt pointer to the thread to terminate
+ * @return whether the task termination and resource cleanup were successful
+ */
+bool SchedulerClassExt::stopTask(const TaskWrapper *pt) {
+    bool result = false;
+    for (auto & task : tasks) {
+        if (task == pt) {
+            //signal task to terminate and wait
+            const bool tskEnd = task->waitToEnd();
+            //deallocate the thread (created with new) and its name
+            delete task;
+            //free-up the thread array spot for it
+            task = nullptr;
+            result = tskEnd;
+            break;
+        }
+    }
+    return result;
+}
+
+/**
+ * Retrieves the task wrapper with given name
+ * @param name task name to find
+ * @return task with given name, nullptr is no task exists with the input name
+ */
+TaskWrapper *SchedulerClassExt::getTask(const char *name) const {
+    for (auto & task : tasks) {
+        if (task != nullptr && strcmp(task->id, name) == 0)
+            return task;
+    }
+    return nullptr;
+}
+
+/**
+ * Retrieves the task wrapper at given index
+ * @param index task index to retrieve
+ * @return the task at given index, or nullptr if the index is higher than max tasks or there is no task at the index
+ */
+TaskWrapper *SchedulerClassExt::getTask(uint index) const {
+    return index >= MAX_THREADS_NUMBER ? nullptr : tasks[index];
+}
+
+/**
+ * Retrieves the task wrapper that matches task unique number (TaskStatus_t.xTaskNumber) in the system
+ * @param uid task unique number to lookup
+ * @return the task wrapper that matches a task with the uid provided, nullptr is none found
+ */
+TaskWrapper *SchedulerClassExt::getTask(const UBaseType_t uid) const {
+    for (auto &task : tasks) {
+        if (task != nullptr && task->uid == uid)
+            return task;
+    }
+    return nullptr;
+}
+
+// TaskWrapper
+/**
+ * Initialize a task wrapper from task definitions
+ * @param taskDef definitions
+ * @param x index in the Scheduler tasks array that this task will take
+ */
+TaskWrapper::TaskWrapper(const TaskDefPtr taskDef, int16_t x) : fnSetup(taskDef->setup), fnLoop(taskDef->loop), stackSize(taskDef->stackSize), coreAffinity(taskDef->core),
+                                                          priority(taskDef->priority), index(x) {
+    if (taskDef->threadName) {
+        const size_t sz = strlen(taskDef->threadName);
+        id = new char[sz + 1]();   //zero initialized array
+        strncpy(id, taskDef->threadName, sz);
     } else {
-        name = nullptr;
-        thread = new rtos::Thread(osPriorityNormal, stackSize, nullptr, unknown);
+        const size_t sz = sprintf(nullptr, fmtTaskName, index);
+        id = new char[sz + 1](); //zero initialized array
+        snprintf(id, sz, fmtTaskName, index);
     }
 }
 
 /**
- * Frees up the resources allocated on the heap - name and thread. Ensures the thread has been terminated
+ * Executes the task
  */
-ThreadWrapper::~ThreadWrapper() {
-    delete thread;
-    delete name;
+void TaskWrapper::run() {
+    state = EXECUTING;
+    if (fnSetup)
+        fnSetup();
+    //with each loop, check if we have been notified to stop
+    while (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1)) == 0U)
+        fnLoop();
+    state = TERMINATED;
 }
 
+/**
+ * Notifies the task to stop running. Returns when the notification was received and fnLoop execution finished, or the timeout expired
+ * The timeout is rounded up to nearest 100ms. Default timeout is 1000ms = 1s.
+ */
+bool TaskWrapper::waitToEnd(uint16_t msTimeOut) const {
+    xTaskNotify(handle, 1, eIncrement);
+    //wait for the task to finish a fnLoop execution or timeout
+    uint16_t nbrLoops = msTimeOut/100 + 1;      //ensure we have at least 1 loop as well as round up the timeout to nearest 100ms
+    while (state != TERMINATED && nbrLoops > 0) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        nbrLoops--;
+    }
+    return state == TERMINATED;
+}
+
+/**
+ * Forcefully terminates the task
+ */
+void TaskWrapper::terminate() {
+    if (state < EXECUTING)
+        return;
+    state = TERMINATED;
+    vTaskDelete(handle);
+}
 

@@ -1,26 +1,23 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category B of light effects
- *
- */
 #include "fxB.h"
+#include "transition.h"
 
 //~ Global variables definition for FxB
 using namespace FxB;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxb1Desc[] PROGMEM = "FXB1: rainbow";
-const char fxb2Desc[] PROGMEM = "FXB2: rainbow with glitter";
-const char fxb3Desc[] PROGMEM = "FXB3: confetti B";
-const char fxb4Desc[] PROGMEM = "FXB4: sinelon";
-const char fxb5Desc[] PROGMEM = "FXB5: juggle short segments";
-const char fxb6Desc[] PROGMEM = "FXB6: bpm";
-const char fxb7Desc[] PROGMEM = "FXB7: ease";
-const char fxb8Desc[] PROGMEM = "FXB8: fadein";
-const char fxb9Desc[] PROGMEM = "FXB9: juggle long segments";
+constexpr auto fxb1Desc PROGMEM = "FXB1: rainbow";
+constexpr auto fxb2Desc PROGMEM = "FXB2: rainbow with glitter";
+constexpr auto fxb3Desc PROGMEM = "FXB3: confetti B";
+constexpr auto fxb4Desc PROGMEM = "FXB4: sinelon";
+constexpr auto fxb5Desc PROGMEM = "FXB5: juggle short segments";
+constexpr auto fxb6Desc PROGMEM = "FXB6: bpm";
+constexpr auto fxb7Desc PROGMEM = "FXB7: ease";
+constexpr auto fxb8Desc PROGMEM = "FXB8: fadein";
+constexpr auto fxb9Desc PROGMEM = "FXB9: juggle long segments";
 
 void FxB::fxRegister() {
     static FxB1 fxb1;
@@ -64,10 +61,9 @@ void FxB::rainbow() {
     replicateSet(tpl, others);
 }
 
-JsonObject &FxB1::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["brightness"] = brightness;
-    return obj;
+void FxB1::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["brightness"] = brightness;
 }
 
 uint8_t FxB1::selectionWeight() const {
@@ -150,10 +146,9 @@ void FxB::fxb_confetti() {
     hue += 2;
 }
 
-JsonObject &FxB3::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["brightness"] = brightness;
-    return obj;
+void FxB3::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["brightness"] = brightness;
 }
 
 uint8_t FxB3::selectionWeight() const {
@@ -189,10 +184,9 @@ void FxB::sinelon() {
     replicateSet(tpl, others);
 }
 
-JsonObject &FxB4::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["brightness"] = brightness;
-    return obj;
+void FxB4::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["brightness"] = brightness;
 }
 
 uint8_t FxB4::selectionWeight() const {
@@ -238,10 +232,9 @@ void FxB::juggle_short() {
     FastLED.show(stripBrightness);
 }
 
-JsonObject &FxB5::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["brightness"] = brightness;
-    return obj;
+void FxB5::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["brightness"] = brightness;
 }
 
 uint8_t FxB5::selectionWeight() const {
@@ -300,10 +293,10 @@ void FxB7::run() {
 void FxB::ease() {
     static uint16_t easeInVal = 0;
 
-    uint16_t easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
+    const uint16_t easeOutVal = ease16InOutQuad(easeInVal);                     // Start with easeInVal at 0 and then go to 255 for the full easing.
     easeInVal += 811;         //completes a full 65536 cycle in about 6 seconds, given 75ms execution cadence
 
-    uint16_t lerpVal = lerp16by16(0, tpl.size() - 1, easeOutVal);                // Map it to the number of LED's you have.
+    const uint16_t lerpVal = lerp16by16(0, tpl.size() - 1, easeOutVal);                // Map it to the number of LED's you have.
 
     if (lerpVal != szStack) {
         if (lerpVal > curPos)
@@ -320,10 +313,9 @@ void FxB::ease() {
 
 }
 
-JsonObject &FxB7::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["brightness"] = brightness;
-    return obj;
+void FxB7::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["brightness"] = brightness;
 }
 
 uint8_t FxB7::selectionWeight() const {
@@ -361,7 +353,7 @@ void FxB::fadein() {
     random16_set_seed(535);                                                           // The randomizer needs to be re-set each time through the loop in order for the 'random' numbers to be the same each time through.
 
     for (uint16_t i = 0; i < tpl.size(); i++) {
-        uint8_t fader = sin8(millis() / random8(10, 20));                                  // The random number for each 'i' will be the same every time.
+        const uint8_t fader = sin8(millis() / random8(10, 20));                                  // The random number for each 'i' will be the same every time.
         tpl[i] = ColorFromPalette(palette, i * 20, fader, LINEARBLEND);       // Now, let's run it through the palette lookup.
     }
     replicateSet(tpl, others);
@@ -370,10 +362,9 @@ void FxB::fadein() {
     random16_set_seed(hueDiff);                                                      // Re-randomizing the random number seed for other routines.
 }
 
-JsonObject &FxB8::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["brightness"] = brightness;
-    return obj;
+void FxB8::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["brightness"] = brightness;
 }
 
 uint8_t FxB8::selectionWeight() const {

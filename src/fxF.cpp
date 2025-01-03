@@ -1,23 +1,21 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category F of light effects
- *
- */
 #include "fxF.h"
 #include <vector>
 #include <algorithm>
+#include "transition.h"
+#include "util.h"
 
 using namespace FxF;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxf1Desc[] PROGMEM = "FXF1: beat wave";
-const char fxf2Desc[] PROGMEM = "FXF2: Halloween breathe with various color blends";
-const char fxf3Desc[] PROGMEM = "FXF3: Eye Blink";
-const char fxf4Desc[] PROGMEM = "FXF4: Bouncy segments";
-const char fxf5Desc[] PROGMEM = "FXF5: Fireworks";
+constexpr auto fxf1Desc PROGMEM = "FXF1: beat wave";
+constexpr auto fxf2Desc PROGMEM = "FXF2: Halloween breathe with various color blends";
+constexpr auto fxf3Desc PROGMEM = "FXF3: Eye Blink";
+constexpr auto fxf4Desc PROGMEM = "FXF4: Bouncy segments";
+constexpr auto fxf5Desc PROGMEM = "FXF5: Fireworks";
 
 void FxF::fxRegister() {
     static FxF1 fxF1;

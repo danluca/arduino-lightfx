@@ -1,21 +1,18 @@
 //
 // Copyright (c) 2023,2024 by Dan Luca. All rights reserved
 //
-/**
- * Category E of light effects
- *
- */
 #include "fxE.h"
+#include "transition.h"
 
 using namespace FxE;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-const char fxe1Desc[] PROGMEM = "FXE1: twinkle";
-const char fxe2Desc[] PROGMEM = "FXE2: beat wave";
-const char fxe3Desc[] PROGMEM = "FXE3: sawtooth back/forth";
-const char fxe4Desc[] PROGMEM = "FXE4: serendipitous";
-const char fxe5Desc[] PROGMEM = "FXE5: three single color beat-waves";
+constexpr auto fxe1Desc PROGMEM = "FXE1: twinkle";
+constexpr auto fxe2Desc PROGMEM = "FXE2: beat wave";
+constexpr auto fxe3Desc PROGMEM = "FXE3: sawtooth back/forth";
+constexpr auto fxe4Desc PROGMEM = "FXE4: serendipitous";
+constexpr auto fxe5Desc PROGMEM = "FXE5: three single color beat-waves";
 
 void FxE::fxRegister() {
     static FxE1 fxe1;
@@ -66,7 +63,7 @@ void FxE1::run() {
 
 void FxE1::twinkle() {
 
-  if (random8() < twinkrate) leds[random16(NUM_PIXELS)] += ColorFromPalette(palette, (randhue ? random8() : hue), brightness, LINEARBLEND);
+  if (random8() < twinkRate) leds[random16(NUM_PIXELS)] += ColorFromPalette(palette, (randHue ? random8() : hue), brightness, LINEARBLEND);
   fadeToBlackBy(leds, NUM_PIXELS, fade);
   
 } // twinkle()
@@ -75,18 +72,17 @@ void FxE1::updateParams() {
     static uint8_t secSlot = 0;
     EVERY_N_SECONDS(5) {
         switch (secSlot) {
-            case 0: speed = 25; randhue = true; saturation=255; fade=8; twinkrate=150; break;  // You can change values here, one at a time , or altogether.
-            case 1: speed = 100; randhue = false; hue=random8(); fade=2; twinkrate=20; break;
+            case 0: speed = 25; randHue = true; saturation=255; fade=8; twinkRate=150; break;  // You can change values here, one at a time , or altogether.
+            case 1: speed = 100; randHue = false; hue=random8(); fade=2; twinkRate=20; break;
             default: break;
         }
         secSlot = inc(secSlot, 1, 3);
     }
 }
 
-JsonObject & FxE1::describeConfig(JsonArray &json) const {
-    JsonObject obj = LedEffect::describeConfig(json);
-    obj["brightness"] = brightness;
-    return obj;
+void FxE1::baseConfig(JsonObject &json) const {
+    LedEffect::baseConfig(json);
+    json["brightness"] = brightness;
 }
 
 bool FxE1::windDown() {

@@ -5,7 +5,7 @@ function makeHeaderFile([System.IO.FileInfo]$file) {
     pushd ../../include
 
     $fname = $file.Name -replace '-|\.','_'
-    $constStrStart = "const char $fname[] PROGMEM = R`"~~~("
+    $constStrStart = "#pragma once`nconstexpr auto $fname PROGMEM = R`"~~~("
     $constStrEnd = ")~~~`";"
     $f=New-Item -Path "$($fname).h" -ItemType File -Force
     $constStrStart | Out-File $f -Append -Encoding utf8

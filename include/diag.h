@@ -6,27 +6,20 @@
 #define ARDUINO_LIGHTFX_DIAG_H
 
 #include "config.h"
-#include <Arduino_LSM6DSOX.h>
 #include "log.h"
 
 #define IMU_TEMPERATURE_NOT_AVAILABLE   0.001f
 #define TEMP_NA_COMPARE_EPSILON      0.0001f
 
-extern const char calibFileName[];
-
-void diag_events_setup();
-void diag_setup();
-bool imu_setup();
-void updateLineVoltage();
-void updateSystemTemp();
-void updateSecEntropy();
-void logDiagInfo();
-
+void diagSetup();
+void diagExecute();
 
 enum Unit:uint8_t {Volts, Deg_F, Deg_C};
 
 // Measurement data structure - value, unit, time (unit is fixed once instantiated)
 struct Measurement {
+    virtual ~Measurement() = default;
+
     float value;
     time_t time;
     const Unit unit;
@@ -36,17 +29,17 @@ struct Measurement {
 
     void copy(const Measurement& msmt) volatile;
 
-    inline bool operator<(volatile Measurement &other) const {
+    bool operator<(const volatile Measurement &other) const {
         if (unit == other.unit)
             return value < other.value;
         return false;
     };
-    inline bool operator>(volatile Measurement &other) const {
+    bool operator>(const volatile Measurement &other) const {
         if (unit == other.unit)
             return value > other.value;
         return false;
     }
-    virtual inline void reset() volatile {
+    virtual void reset() volatile {
         value = 0.0f;
         time = 0;
     }
@@ -59,7 +52,8 @@ struct MeasurementRange {
     Measurement current;
     void setMeasurement(const Measurement& msmt) volatile;
     explicit MeasurementRange(Unit unit);
-    inline void reset() volatile {
+
+    void reset() volatile {
         min.reset();
         max.reset();
         current.reset();
@@ -72,7 +66,8 @@ struct MeasurementPair : Measurement {
 
     MeasurementPair() : Measurement(Deg_C), adcRaw(0) {};
     void copy(const MeasurementPair& msmt);
-    inline void reset() volatile override {
+
+    void reset() volatile override {
         Measurement::reset();
         adcRaw = 0;
     }
@@ -83,9 +78,10 @@ struct CalibrationMeasurement {
     MeasurementPair max;
     MeasurementPair ref;
 
-    CalibrationMeasurement() : min(), max(), ref() {};
+    CalibrationMeasurement() {};
     void setMeasurement(const MeasurementPair& msmt);
-    inline void reset() {
+
+    void reset() {
         min.reset();
         max.reset();
         ref.reset();
@@ -93,15 +89,16 @@ struct CalibrationMeasurement {
 };
 
 struct CalibrationParams {
-    const uint ref33 = MV3_3;     //line V3.3 voltage in milliVolts
+    static constexpr uint ref33 = MV3_3;     //line V3.3 voltage in milliVolts
     float refTemp;  //reference temperature in degrees Celsius
     float vtref;    //ADC voltage reading at refTemp temperature - in milliVolts
     float slope;    //voltage slope - in mV/C
     float refDelta; //the amount of temperature variation that was used for last calibration; meaningful only if valid is true
     time_t time;    //last calibration time; also used to determine whether this params set is valid
     CalibrationParams(): refTemp(0.0f), vtref(0.0f), slope(0.0f), refDelta(0.0f), time(0) {};
-    inline bool isValid() const { return time > 0; }
-    inline void reset() {
+    bool isValid() const { return time > 0; }
+
+    void reset() {
         refTemp = 0.0f;
         vtref = 0.0f;
         slope = 0.0f;
@@ -112,7 +109,6 @@ struct CalibrationParams {
 extern CalibrationMeasurement calibTempMeasurements;
 extern CalibrationParams calibCpuTemp;
 
-bool calibrate();
 void readCalibrationInfo();
 void saveCalibrationInfo();
 // end self-calibration support
@@ -122,16 +118,12 @@ extern volatile MeasurementRange cpuTempRange;
 extern volatile MeasurementRange lineVoltage;
 
 
-inline static float toFahrenheit(const float celsius) {
+static float toFahrenheit(const float celsius) {
     return celsius * 9.0f / 5 + 32;
 }
 
-inline static Measurement toFahrenheit(const Measurement &msmt) {
+static Measurement toFahrenheit(const Measurement &msmt) {
     return Measurement {toFahrenheit(msmt.value), msmt.time, Deg_F};
 }
-
-Measurement boardTemperature();
-MeasurementPair chipTemperature();
-Measurement controllerVoltage();
 
 #endif //ARDUINO_LIGHTFX_DIAG_H

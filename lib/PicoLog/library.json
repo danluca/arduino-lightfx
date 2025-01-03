@@ -1,0 +1,25 @@
+{
+  "name": "PicoLog",
+  "keywords": "logging, debug, log",
+  "description": "PicoLog is a minimalistic logging framework that leverages a circular buffer and a dedicated task to stream data out to serial port",
+  "version": "1.0.0",
+  "authors": {
+    "name": "Dan Luca",
+    "url": "https://github.com/danluca",
+    "maintainer": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danluca/arduino-lightfx"
+  },
+  "homepage": "https://github.com/danluca/arduino-lightfx",
+  "frameworks": ["arduino"],
+  "platforms": "raspberrypi",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
+  },
+  "dependencies": {
+    "version": "SchedulerExt"
+  }
+}

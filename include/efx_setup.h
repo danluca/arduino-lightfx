@@ -1,20 +1,18 @@
 //
-// Copyright 2023,2024 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
 //
 
 #ifndef LIGHTFX_EFX_SETUP_H
 #define LIGHTFX_EFX_SETUP_H
 
 #include <Arduino.h>
-#include "mic.h"
-#include "PaletteFactory.h"
 #include <ArduinoJson.h>
-#include "global.h"
-#include "util.h"
-#include "transition.h"
-#include "FxSchedule.h"
-#include "config.h"
+#include <FastLED.h>
 #include "fixed_queue.h"
+#include "config.h"
+#include "global.h"
+#include "PaletteFactory.h"
+#include "constants.hpp"
 
 typedef void (*setupFunc)();
 
@@ -27,8 +25,43 @@ struct Viewport {
 
     explicit Viewport(uint16_t high);
     Viewport(uint16_t low, uint16_t high);
-    uint16_t size() const;
+    [[nodiscard]] uint16_t size() const;
 };
+enum OpMode { TurnOff, Chase };
+enum EffectState:uint8_t {Setup, Running, WindDownPrep, WindDown, TransitionBreakPrep, TransitionBreak, Idle};
+extern CRGB leds[NUM_PIXELS];
+extern CRGBArray<PIXEL_BUFFER_SPACE> frame;
+extern CRGBSet tpl;
+extern CRGBSet others;
+extern CRGBSet ledSet;
+extern uint16_t stripShuffleIndex[NUM_PIXELS];
+extern CRGBPalette16 palette;
+extern CRGBPalette16 targetPalette;
+extern OpMode mode;
+extern uint8_t brightness;
+extern uint8_t stripBrightness;
+extern bool stripBrightnessLocked;
+extern uint8_t colorIndex;
+extern uint8_t lastColorIndex;
+extern uint8_t fade;
+extern uint8_t hue;
+extern uint8_t dotBpm;
+extern uint8_t saturation;
+extern uint8_t delta;
+extern uint8_t twinkRate;
+extern uint16_t szStack;
+extern uint16_t hueDiff;
+extern bool dirFwd;
+extern int8_t rot;
+extern int32_t dist;
+extern bool randHue;
+extern uint16_t totalAudioBumps;
+extern volatile uint16_t audioBumpThreshold;
+extern volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT];
+extern volatile bool fxBump;
+extern volatile bool fxBroadcastEnabled;
+extern volatile uint16_t speed;
+extern volatile uint16_t curPos;
 
 
 void stateLED(CRGB color);
@@ -56,11 +89,11 @@ void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
 
 void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, uint16_t length);
 
-uint16_t countPixelsBrighter(CRGBSet *set, CRGB backg = BKG);
+uint16_t countPixelsBrighter(const CRGBSet *set, CRGB backg = BKG);
 
 bool isAnyLedOn(CRGBSet *set, CRGB backg = BKG);
 
-bool isAnyLedOn(CRGB *arr, uint16_t szArray, CRGB backg = BKG);
+bool isAnyLedOn(const CRGB *arr, uint16_t szArray, CRGB backg = BKG);
 
 void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs = 0);
 
@@ -80,7 +113,7 @@ uint8_t getBrightness(const CRGB& rgb);
 inline CHSV toHSV(const CRGB &rgb) { return rgb2hsv_approximate(rgb); }
 inline CRGB toRGB(const CHSV &hsv) { CRGB rgb{}; hsv2rgb_rainbow(hsv, rgb); return rgb; }
 
-bool rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay);
+bool rblend(CRGB &existing, const CRGB &target, fract8 frOverlay);
 void blendMultiply(CRGBSet &blendLayer, const CRGBSet &topLayer);
 void blendMultiply(CRGB &blendRGB, const CRGB &topRGB);
 void blendScreen(CRGBSet &blendLayer, const CRGBSet &topLayer);
@@ -154,26 +187,22 @@ public:
 
     virtual void loop();
 
-    const char *description() const;
+    [[nodiscard]] const char *description() const;
 
-    const char *name() const;
+    [[nodiscard]] const char *name() const;
 
-    virtual JsonObject& describeConfig(JsonArray &json) const;
+    virtual void baseConfig(JsonObject &json) const;
 
-    void baseConfig(JsonObject &json) const;
+    [[nodiscard]] uint16_t getRegistryIndex() const;
 
-    uint16_t getRegistryIndex() const;
-
-    inline EffectState getState() const {
-        return state;
-    }
+    [[nodiscard]] inline EffectState getState() const { return state; }
 
     /**
      * What weight does this effect have when random selection is engaged
      * Subclasses have the opportunity to customize this value by e.g. the current holiday, time, etc., hence changing/reshaping the chances of selecting an effect
      * @return a value between 1 and 255. If returning 0, this effectively removes the effect from random selection.
      */
-    virtual inline uint8_t selectionWeight() const {
+    [[nodiscard]] virtual inline uint8_t selectionWeight() const {
         return 1;
     }
 
@@ -181,7 +210,6 @@ public:
 };
 
 class EffectRegistry {
-private:
     std::deque<LedEffect*> effects;
     FixedQueue<uint16_t, MAX_EFFECTS_HISTORY> lastEffects;
     uint16_t currentEffect = 0;
@@ -191,12 +219,13 @@ private:
     bool autoSwitch = true;
     bool sleepState = false;
     bool sleepModeEnabled = false;
+
 public:
-    EffectRegistry() : effects() {};
+    EffectRegistry() = default;
 
-    LedEffect *getCurrentEffect() const;
+    [[nodiscard]] LedEffect *getCurrentEffect() const;
 
-    LedEffect *getEffect(uint16_t index) const;
+    [[nodiscard]] LedEffect *getEffect(uint16_t index) const;
 
     uint16_t nextEffectPos(uint16_t efx);
 
@@ -204,7 +233,7 @@ public:
 
     uint16_t nextEffectPos();
 
-    uint16_t curEffectPos() const;
+    [[nodiscard]] uint16_t curEffectPos() const;
 
     uint16_t nextRandomEffectPos();
 
@@ -212,27 +241,27 @@ public:
 
     uint16_t registerEffect(LedEffect *effect);
 
-    LedEffect* findEffect(const char* id);
+    LedEffect* findEffect(const char* id) const;
 
-    uint16_t size() const;
+    [[nodiscard]] uint16_t size() const;
 
-    void setup();
+    void setup() const;
 
     void loop();
 
-    void describeConfig(JsonArray &json);
+    void describeConfig(const JsonArray &json) const;
 
-    void pastEffectsRun(JsonArray &json);
+    void pastEffectsRun(const JsonArray &json);
 
     void autoRoll(bool switchType = true);
 
-    bool isAutoRoll() const;
+    [[nodiscard]] bool isAutoRoll() const;
 
-    bool isSleepEnabled() const;
+    [[nodiscard]] bool isSleepEnabled() const;
 
     void enableSleep(bool bSleep);
 
-    bool isAsleep() const;
+    [[nodiscard]] bool isAsleep() const;
 
     void setSleepState(bool sleepFlag);
     friend void readFxState();
