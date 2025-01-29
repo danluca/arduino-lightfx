@@ -124,7 +124,7 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
     }
     _currentMethod = method;
 
-    log_debug("method: %s url: %s search: %s", methodStr.c_str(), url.c_str(), searchStr.c_str());
+    log_debug(F("Request data: URI: %s %s %s"), methodStr.c_str(), url.c_str(), searchStr.c_str());
 
     //attach handler
     RequestHandler* handler;
@@ -144,7 +144,8 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
         bool isForm = false;
         bool isEncoded = false;
         //parse headers
-        while (1) {
+        log_debug(F("=== Headers ==="));
+        while (true) {
             req = client->readStringUntil('\r');
             client->readStringUntil('\n');
             if (req == "") {
@@ -159,8 +160,7 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
             headerValue.trim();
             _collectHeader(headerName.c_str(), headerValue.c_str());
 
-            log_debug("headerName: %s", headerName.c_str());
-            log_debug("headerValue: %s", headerValue.c_str());
+            log_debug(F("%s: %s"), headerName.c_str(), headerValue.c_str());
 
             if (headerName.equalsIgnoreCase(FPSTR(Content_Type))) {
                 using namespace mime;
@@ -182,12 +182,11 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
         }
 
         if (!isForm && _currentHandler && _currentHandler->canRaw(*this, _currentUri)) {
-            log_debug("Parse raw");
+            log_debug(F("=== Body Parse raw ==="));
             _currentRaw.reset(new HTTPRaw());
             _currentRaw->status = RAW_START;
             _currentRaw->totalSize = 0;
             _currentRaw->currentSize = 0;
-            log_debug("Start Raw");
             _currentHandler->raw(*this, _currentUri, *_currentRaw);
             _currentRaw->status = RAW_WRITE;
 
@@ -203,7 +202,7 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
             }
             _currentRaw->status = RAW_END;
             _currentHandler->raw(*this, _currentUri, *_currentRaw);
-            log_debug("Finish Raw");
+            log_debug(F("Raw length %zu\n====="), _currentRaw->totalSize);
         } else if (!isForm) {
             size_t plainLength;
             char* plainBuf = readBytesWithTimeout(client, _clientContentLength, plainLength, HTTP_MAX_POST_WAIT);
@@ -227,7 +226,7 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
                     arg.value = String(plainBuf);
                 }
 
-                log_debug("Request Body as argument: %s: %s", reqBodyArgName, plainBuf);
+                log_debug(F("=== Body (as argument: %s) ===\n%s====="), reqBodyArgName, plainBuf);
                 free(plainBuf);
             } else {
                 // No content - but we can still have arguments in the URL.
@@ -244,7 +243,8 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
         String headerName;
         String headerValue;
         //parse headers
-        while (1) {
+        log_debug(F("=== Headers ==="));
+        while (true) {
             req = client->readStringUntil('\r');
             client->readStringUntil('\n');
             if (req == "") {
@@ -257,9 +257,7 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
             headerName = req.substring(0, headerDiv);
             headerValue = req.substring(headerDiv + 2);
             _collectHeader(headerName.c_str(), headerValue.c_str());
-
-            log_debug("headerName: %s", headerName.c_str());
-            log_debug("headerValue: %s", headerValue.c_str());
+            log_debug(F("%s: %s"), headerName.c_str(), headerValue.c_str());
 
             if (headerName.equalsIgnoreCase("Host")) {
                 _hostHeader = headerValue;
@@ -268,9 +266,6 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
         _parseArguments(searchStr);
     }
     client->flush();
-
-    log_debug("Request: %s", url.c_str());
-    log_debug(" Arguments: %s", searchStr.c_str());
 
     return CLIENT_REQUEST_CAN_CONTINUE;
 }
@@ -286,7 +281,7 @@ bool HTTPServer::_collectHeader(const char* headerName, const char* headerValue)
 }
 
 void HTTPServer::_parseArguments(const String& data) {
-    log_debug("args: %s", data.c_str());
+    log_debug("Request args: %s", data.c_str());
     delete[] _currentArgs;
     _currentArgs = 0;
     if (data.length() == 0) {
@@ -304,8 +299,6 @@ void HTTPServer::_parseArguments(const String& data) {
         ++i;
         ++_currentArgCount;
     }
-    log_debug("args count: %d", _currentArgCount);
-
     _currentArgs = new RequestArgument[_currentArgCount + 1];
     int pos = 0;
     int iarg;
@@ -332,11 +325,11 @@ void HTTPServer::_parseArguments(const String& data) {
         pos = next_arg_index + 1;
     }
     _currentArgCount = iarg;
-    log_debug("args count: %d", _currentArgCount);
+    log_debug("Parsed args count: %d", _currentArgCount);
 
 }
 
-void HTTPServer::_uploadWriteByte(uint8_t b) {
+void HTTPServer::_uploadWriteByte(const uint8_t b) {
     if (_currentUpload->currentSize == HTTP_UPLOAD_BUFLEN) {
         if (_currentHandler && _currentHandler->canUpload(*this, _currentUri)) {
             _currentHandler->upload(*this, _currentUri, *_currentUpload);
@@ -449,7 +442,7 @@ bool HTTPServer::_parseForm(WiFiClient * client, String boundary, uint32_t len) 
                     }
                     log_debug("PostArg Type: %s", argType.c_str());
                     if (!argIsFile) {
-                        while (1) {
+                        while (true) {
                             line = client->readStringUntil('\r');
                             client->readStringUntil('\n');
                             if (line.startsWith("--" + boundary)) {
@@ -552,9 +545,7 @@ bool HTTPServer::_parseForm(WiFiClient * client, String boundary, uint32_t len) 
             arg.key = _currentArgs[iarg].key;
             arg.value = _currentArgs[iarg].value;
         }
-        if (_currentArgs) {
-            delete[] _currentArgs;
-        }
+        delete[] _currentArgs;
         _currentArgs = new RequestArgument[_postArgsLen];
         for (iarg = 0; iarg < _postArgsLen; iarg++) {
             RequestArgument &arg = _currentArgs[iarg];
@@ -576,12 +567,11 @@ bool HTTPServer::_parseForm(WiFiClient * client, String boundary, uint32_t len) 
 String HTTPServer::urlDecode(const String & text) {
     String decoded = "";
     char temp[] = "0x00";
-    unsigned int len = text.length();
+    const unsigned int len = text.length();
     unsigned int i = 0;
     while (i < len) {
         char decodedChar;
-        char encodedChar = text.charAt(i++);
-        if ((encodedChar == '%') && (i + 1 < len)) {
+        if (const char encodedChar = text.charAt(i++); (encodedChar == '%') && (i + 1 < len)) {
             temp[2] = text.charAt(i++);
             temp[3] = text.charAt(i++);
 

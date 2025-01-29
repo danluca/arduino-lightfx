@@ -330,7 +330,7 @@ void web::handleNotFound() {
 void web::server_setup() {
     if (!server_handlers_configured) {
         server.setServerAgent(serverAgent);
-        server.serveStatic("/", LittleFS, "/status", &inFlashResources, hdCacheStatic);
+        server.serveStatic("/", LittleFS, "/status/", &inFlashResources, hdCacheStatic);
         server.serveStatic("/config.json", LittleFS, "/status/sysconfig.json", nullptr, hdCacheJson);
         server.on("/status.json", HTTP_GET, handleGetStatus);
         server.on("/fx", HTTP_PUT, handlePutConfig);

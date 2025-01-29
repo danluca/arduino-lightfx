@@ -14,10 +14,7 @@ using namespace mime;
 class FunctionRequestHandler : public RequestHandler {
 public:
     FunctionRequestHandler(HTTPServer::THandlerFunction fn, HTTPServer::THandlerFunction ufn, const Uri &uri, const HTTPMethod method)
-        : _fn(std::move(fn))
-        , _ufn(std::move(ufn))
-        , _uri(uri.clone())
-        , _method(method) {
+        : _fn(std::move(fn)) , _ufn(std::move(ufn)) , _uri(uri.clone()) , _method(method) {
         _uri->initPathArgs(pathArgs);
     }
 
@@ -25,7 +22,7 @@ public:
         delete _uri;
     }
 
-    bool canHandle(const HTTPMethod requestMethod, const String &requestUri) const override  {
+    [[nodiscard]] bool canHandle(const HTTPMethod requestMethod, const String &requestUri) const override  {
         if (_method != HTTP_ANY && _method != requestMethod) {
             return false;
         }
@@ -33,14 +30,14 @@ public:
         return _uri->canHandle(requestUri, pathArgs);
     }
 
-    bool canUpload(const String &requestUri) const override  {
+    [[nodiscard]] bool canUpload(const String &requestUri) const override  {
         if (!_ufn || !canHandle(HTTP_POST, requestUri)) {
             return false;
         }
 
         return true;
     }
-    bool canRaw(const String &requestUri) const override {
+    [[nodiscard]] bool canRaw(const String &requestUri) const override {
         (void) requestUri;
         if (!_ufn || _method == HTTP_GET) {
             return false;
@@ -105,8 +102,7 @@ public:
 protected:
     HTTPServer::THandlerFunction _fn;
     HTTPServer::THandlerFunction _ufn;
-    // _filter should return 'true' when the request should be handled
-    // and 'false' when the request should be ignored
+    // _filter should return 'true' when the request should be handled and 'false' when the request should be ignored
     HTTPServer::FilterFunction _filter;
     Uri *_uri;
     HTTPMethod _method;
@@ -244,7 +240,7 @@ public:
 protected:
     // _filter should return 'true' when the request should be handled
     // and 'false' when the request should be ignored
-    HTTPServer::FilterFunction _filter;
+    HTTPServer::FilterFunction _filter{};
     FS _fs;
     String _uri;
     String _path;
@@ -278,7 +274,7 @@ public:
      */
     StaticInMemoryRequestHandler(const std::map<std::string, const char*> &memRes, const char* uri, const char* cache_header)
         : _inMemResources(memRes), _uri(uri), _cache_header(cache_header) {
-        log_debug("StaticRequestHandler: uri=%s cache_header=%s", uri, cache_header ? cache_header : ""); // issue 5506 - cache_header can be nullptr
+        log_debug("StaticInMemoryRequestHandler: uri=%s cache_header=%s", uri, cache_header ? cache_header : ""); // issue 5506 - cache_header can be nullptr
         _baseUriLength = _uri.length();
     }
 
@@ -313,13 +309,13 @@ public:
             return false;
         }
 
-        log_debug("StaticRequestHandler::handle: request=%s _uri=%s", requestUri.c_str(), _uri.c_str());
+        log_debug("StaticInMemoryRequestHandler::handle: request=%s _uri=%s", requestUri.c_str(), _uri.c_str());
 
         String path;
         getPath(requestUri, path);
         path.toLowerCase();
 
-        log_debug("StaticRequestHandler::handle: path=%s", path.c_str());
+        log_debug("StaticInMemoryRequestHandler::handle: path=%s", path.c_str());
 
         const String contentType = getContentType(path);
 
