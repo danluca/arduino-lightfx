@@ -6,40 +6,34 @@ class RequestHandler {
 public:
     virtual ~RequestHandler() = default;
 
-    /*
-        note: old handler API for backward compatibility
-    */
-
-    virtual bool canHandle(const HTTPMethod method, const String &uri) {
+    /* note: old handler API for backward compatibility (const is new) */
+    [[nodiscard]] virtual bool canHandle(const HTTPMethod method, const String &uri) const {
         (void)method;
         (void)uri;
         return false;
     }
-    virtual bool canUpload(const String &uri) {
+    [[nodiscard]] virtual bool canUpload(const String &uri) const {
         (void)uri;
         return false;
     }
-    virtual bool canRaw(const String &uri) {
+    [[nodiscard]] virtual bool canRaw(const String &uri) const {
         (void)uri;
         return false;
     }
 
-    /*
-        note: new handler API with support for filters etc.
-    */
-
-    virtual bool canHandle(HTTPServer &server, const HTTPMethod method, const String &uri) {
+    /* note: new handler API with support for filters etc. */
+    virtual bool canHandle(HTTPServer &server, const HTTPMethod method, const String &uri) const {
         (void)server;
         (void)method;
         (void)uri;
         return false;
     }
-    virtual bool canUpload(HTTPServer &server, const String &uri) {
+    virtual bool canUpload(HTTPServer &server, const String &uri) const {
         (void)server;
         (void)uri;
         return false;
     }
-    virtual bool canRaw(HTTPServer &server, const String &uri) {
+    virtual bool canRaw(HTTPServer &server, const String &uri) const {
         (void)server;
         (void)uri;
         return false;

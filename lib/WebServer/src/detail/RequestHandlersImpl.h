@@ -282,7 +282,7 @@ public:
         _baseUriLength = _uri.length();
     }
 
-    bool canHandle(const HTTPMethod requestMethod, const String &requestUri) override  {
+    [[nodiscard]] bool canHandle(const HTTPMethod requestMethod, const String &requestUri) const override  {
         if (requestMethod != HTTP_GET) {
             return false;
         }
@@ -297,7 +297,7 @@ public:
         return true;
     }
 
-    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) override {
+    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) const override {
         if (!canHandle(requestMethod, requestUri))
             return false;
 
@@ -353,7 +353,7 @@ public:
 protected:
     // _filter should return 'true' when the request should be handled
     // and 'false' when the request should be ignored
-    HTTPServer::FilterFunction _filter;
+    HTTPServer::FilterFunction _filter{};
     const std::map<std::string, const char*> &_inMemResources;
     String _uri;
     String _cache_header;

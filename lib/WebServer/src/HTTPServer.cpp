@@ -606,11 +606,11 @@ void HTTPServer::onNotFound(const THandlerFunction &fn) {
 void HTTPServer::_handleRequest() {
     bool handled = false;
     if (!_currentHandler) {
-        log_error("request handler not found");
+        log_error("request handler not found for %d request %s", _currentMethod, _currentUri.c_str());
     } else {
         handled = _currentHandler->handle(*this, _currentMethod, _currentUri);
         if (!handled) {
-            log_error("request handler failed to handle request");
+            log_error("request handler failed to handle %d request %s", _currentMethod, _currentUri.c_str());
         }
     }
     if (!handled && _notFoundHandler) {
@@ -622,9 +622,7 @@ void HTTPServer::_handleRequest() {
         send(404, String(FPSTR(mimeTable[html].mimeType)), String(F("Not found: ")) + _currentUri);
         handled = true;
     }
-    if (handled) {
-        _finalizeResponse();
-    }
+    _finalizeResponse();
     _currentUri = "";
 }
 

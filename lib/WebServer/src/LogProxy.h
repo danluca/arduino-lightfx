@@ -6,7 +6,7 @@
 
 #if LOGGING_ENABLED == 1
 #include "../../PicoLog/src/PicoLog.h"
-#define log_debug Log.debug
+#define log_debug Log.info
 #define log_info Log.info
 #define log_warn Log.warn
 #define log_error Log.error
