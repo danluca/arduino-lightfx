@@ -25,7 +25,7 @@ public:
         delete _uri;
     }
 
-    bool canHandle(const HTTPMethod requestMethod, const String &requestUri) override  {
+    bool canHandle(const HTTPMethod requestMethod, const String &requestUri) const override  {
         if (_method != HTTP_ANY && _method != requestMethod) {
             return false;
         }
@@ -33,14 +33,14 @@ public:
         return _uri->canHandle(requestUri, pathArgs);
     }
 
-    bool canUpload(const String &requestUri) override  {
+    bool canUpload(const String &requestUri) const override  {
         if (!_ufn || !canHandle(HTTP_POST, requestUri)) {
             return false;
         }
 
         return true;
     }
-    bool canRaw(const String &requestUri) override {
+    bool canRaw(const String &requestUri) const override {
         (void) requestUri;
         if (!_ufn || _method == HTTP_GET) {
             return false;
@@ -49,24 +49,24 @@ public:
         return true;
     }
 
-    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) override {
+    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) const override {
         if (_method != HTTP_ANY && _method != requestMethod) {
             return false;
         }
 
-        return _uri->canHandle(requestUri, pathArgs) && (_filter != NULL ? _filter(server) : true);
+        return _uri->canHandle(requestUri, pathArgs) && (_filter != nullptr ? _filter(server) : true);
     }
 
-    bool canUpload(HTTPServer &server, const String &requestUri) override {
+    bool canUpload(HTTPServer &server, const String &requestUri) const override {
         if (!_ufn || !canHandle(server, HTTP_POST, requestUri)) {
             return false;
         }
 
         return true;
     }
-    bool canRaw(HTTPServer &server, const String &requestUri) override {
+    bool canRaw(HTTPServer &server, const String &requestUri) const override {
         (void) requestUri;
-        if (!_ufn || _method == HTTP_GET || (_filter != NULL ? _filter(server) == false : false)) {
+        if (!_ufn || _method == HTTP_GET || (_filter != nullptr ? _filter(server) == false : false)) {
             return false;
         }
 
@@ -140,7 +140,7 @@ public:
         _baseUriLength = _uri.length();
     }
 
-    bool canHandle(const HTTPMethod requestMethod, const String &requestUri) override  {
+    bool canHandle(const HTTPMethod requestMethod, const String &requestUri) const override  {
         if (requestMethod != HTTP_GET) {
             return false;
         }
@@ -152,7 +152,7 @@ public:
         return true;
     }
 
-    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) override {
+    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) const override {
         if (requestMethod != HTTP_GET) {
             return false;
         }

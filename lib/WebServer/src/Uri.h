@@ -12,15 +12,15 @@ public:
     Uri(const char *uri) : _uri(uri) {}
     Uri(const String &uri) : _uri(uri) {}
     Uri(const __FlashStringHelper *uri) : _uri(String(uri)) {}
-    virtual ~Uri() {}
+    virtual ~Uri() = default;
 
-    virtual Uri* clone() const {
+    [[nodiscard]] virtual Uri* clone() const {
         return new Uri(_uri);
     };
 
-    virtual void initPathArgs(__attribute__((unused)) std::vector<String> &pathArgs) {}
+    virtual void initPathArgs(__attribute__((unused)) const std::vector<String> &pathArgs) {}
 
-    virtual bool canHandle(const String &requestUri, __attribute__((unused)) std::vector<String> &pathArgs) {
+    [[nodiscard]] virtual bool canHandle(const String &requestUri, __attribute__((unused)) const std::vector<String> &pathArgs) const {
         return _uri == requestUri;
     }
 };
