@@ -22,7 +22,7 @@ public:
         delete _uri;
     }
 
-    [[nodiscard]] bool canHandle(const HTTPMethod requestMethod, const String &requestUri) const override  {
+    [[nodiscard]] bool canHandle(const HTTPMethod requestMethod, const String &requestUri) override  {
         if (_method != HTTP_ANY && _method != requestMethod) {
             return false;
         }
@@ -30,14 +30,14 @@ public:
         return _uri->canHandle(requestUri, pathArgs);
     }
 
-    [[nodiscard]] bool canUpload(const String &requestUri) const override  {
+    [[nodiscard]] bool canUpload(const String &requestUri) override  {
         if (!_ufn || !canHandle(HTTP_POST, requestUri)) {
             return false;
         }
 
         return true;
     }
-    [[nodiscard]] bool canRaw(const String &requestUri) const override {
+    [[nodiscard]] bool canRaw(const String &requestUri) override {
         (void) requestUri;
         if (!_ufn || _method == HTTP_GET) {
             return false;
@@ -46,7 +46,7 @@ public:
         return true;
     }
 
-    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) const override {
+    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) override {
         if (_method != HTTP_ANY && _method != requestMethod) {
             return false;
         }
@@ -54,14 +54,14 @@ public:
         return _uri->canHandle(requestUri, pathArgs) && (_filter != nullptr ? _filter(server) : true);
     }
 
-    bool canUpload(HTTPServer &server, const String &requestUri) const override {
+    bool canUpload(HTTPServer &server, const String &requestUri) override {
         if (!_ufn || !canHandle(server, HTTP_POST, requestUri)) {
             return false;
         }
 
         return true;
     }
-    bool canRaw(HTTPServer &server, const String &requestUri) const override {
+    bool canRaw(HTTPServer &server, const String &requestUri) override {
         (void) requestUri;
         if (!_ufn || _method == HTTP_GET || (_filter != nullptr ? _filter(server) == false : false)) {
             return false;
@@ -132,11 +132,11 @@ public:
         : _fs(fs), _uri(uri), _path(path), _cache_header(cache_header) {
         const File f = fs.open(path, "r");
         _isFile = (f && (! f.isDirectory()));
-        log_debug("StaticRequestHandler: path=%s uri=%s isFile=%d, cache_header=%s", path, uri, _isFile, cache_header ? cache_header : ""); // issue 5506 - cache_header can be nullptr
+        log_debug("StaticFileRequestHandler: path=%s uri=%s isFile=%d, cache_header=%s", path, uri, _isFile, cache_header ? cache_header : ""); // issue 5506 - cache_header can be nullptr
         _baseUriLength = _uri.length();
     }
 
-    bool canHandle(const HTTPMethod requestMethod, const String &requestUri) const override  {
+    bool canHandle(const HTTPMethod requestMethod, const String &requestUri) override  {
         if (requestMethod != HTTP_GET) {
             return false;
         }
@@ -148,7 +148,7 @@ public:
         return true;
     }
 
-    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) const override {
+    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) override {
         if (requestMethod != HTTP_GET) {
             return false;
         }
@@ -160,8 +160,9 @@ public:
         if (_filter != nullptr ? _filter(server) == false : false) {
             return false;
         }
-
-        return true;
+        String path;
+        getPath(requestUri, path);
+        return _fs.exists(path);
     }
 
     bool handle(HTTPServer& server, const HTTPMethod requestMethod, const String &requestUri) override {
@@ -169,12 +170,12 @@ public:
             return false;
         }
 
-        log_debug("StaticRequestHandler::handle: request=%s _uri=%s", requestUri.c_str(), _uri.c_str());
+        log_debug("StaticFileRequestHandler::handle: request=%s _uri=%s", requestUri.c_str(), _uri.c_str());
 
         String path;
         getPath(requestUri, path);
 
-        log_debug("StaticRequestHandler::handle: path=%s, isFile=%d", path.c_str(), _isFile);
+        log_debug("StaticFileRequestHandler::handle: path=%s, isFile=%d", path.c_str(), _isFile);
 
         const String contentType = getContentType(path);
 
@@ -186,8 +187,11 @@ public:
             }
         }
 
+        if (!_fs.exists(path))
+            return false;
         File f = _fs.open(path, "r");
-        if (!f || !f.available()) {
+        if (!f.available()) {
+            f.close();
             return false;
         }
 
@@ -196,6 +200,7 @@ public:
         }
 
         server.streamFile(f, contentType);
+        f.close();
         return true;
     }
 
@@ -278,7 +283,7 @@ public:
         _baseUriLength = _uri.length();
     }
 
-    [[nodiscard]] bool canHandle(const HTTPMethod requestMethod, const String &requestUri) const override  {
+    [[nodiscard]] bool canHandle(const HTTPMethod requestMethod, const String &requestUri) override  {
         if (requestMethod != HTTP_GET) {
             return false;
         }
@@ -293,7 +298,7 @@ public:
         return true;
     }
 
-    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) const override {
+    bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) override {
         if (!canHandle(requestMethod, requestUri))
             return false;
 
