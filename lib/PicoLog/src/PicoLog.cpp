@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 
 #include "PicoLog.h"
@@ -11,7 +11,11 @@
 #define SECS_PER_HOUR ((time_t)(3600UL))
 #define SECS_PER_DAY  ((time_t)(SECS_PER_HOUR * 24UL))
 
+#if LOGGING_ENABLED == 1
 PicoLog Log;
+#else
+DummyLog Log;
+#endif
 TaskWrapper *twStream;
 
 #define SERIAL_BUFFER_SIZE 256
@@ -21,6 +25,7 @@ static constexpr char fmtTaskPriorityRegular[] PROGMEM = " [%s-%u]";
 static constexpr char logLevelTags[] PROGMEM = "SFEWIDT";    //NOTE this string must be as long as LogLevel enum!
 static constexpr char fmtLevel[] PROGMEM = " %c: ";
 
+#if LOGGING_ENABLED == 1
 /**
  * Flushes the log data queue by processing and outputting all queued log messages.
  * If the log queue is empty, delays execution briefly to allow for log gathering.
@@ -43,6 +48,10 @@ void flushData() {
 }
 
 TaskDef tdStream {nullptr, flushData, 640, "SRL", 255, CORE_ALL};
+#else
+void noop() {}
+TaskDef tdStream {nullptr, noop, 128, "NOP", 255, CORE_ALL};
+#endif
 
 
 /**

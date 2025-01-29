@@ -25,6 +25,6 @@ WiFiStorageFile WiFiStorageClass::open(const char *filename) {
 	return file;
 }
 
-WiFiStorageFile WiFiStorageClass::open(String filename) {
+WiFiStorageFile WiFiStorageClass::open(const String& filename) {
 	return open(filename.c_str());
 }

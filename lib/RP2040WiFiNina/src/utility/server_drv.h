@@ -21,8 +21,7 @@
 #ifndef Server_Drv_h
 #define Server_Drv_h
 
-#include <inttypes.h>
-#include "utility/wifi_spi.h"
+#include <cinttypes>
 
 typedef enum eProtMode {TCP_MODE, UDP_MODE, TLS_MODE, UDP_MULTICAST_MODE, TLS_BEARSSL_MODE}tProtMode;
 
@@ -51,7 +50,7 @@ public:
 
     static bool getDataBuf(uint8_t sock, uint8_t *data, uint16_t *len);
 
-    static bool insertDataBuf(uint8_t sock, const uint8_t *_data, uint16_t _dataLen);
+    static bool insertDataBuf(uint8_t sock, const uint8_t *data, uint16_t len);
 
     static uint16_t sendData(uint8_t sock, const uint8_t *data, uint16_t len);
 

@@ -17,6 +17,7 @@
 #include "log.h"
 #include "mic.h"
 #include "util.h"
+#include "web_server.h"
 
 /**
  * TASK ALLOCATIONS
@@ -117,7 +118,7 @@ void alarm_misc_run() {
  * This function is intended to be invoked regularly to handle web communication and actions efficiently.
  */
 void web_run() {
-    webserver();
+    web::webserver();
     commRun();
     //check for any additional actions to be performed
     CommAction action;
@@ -159,7 +160,7 @@ void setup() {
     bool bSetupOk = wifi_setup();
     bSetupOk = bSetupOk && timeSetup();
     stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
-
+    web::server_setup();
     commSetup();
 
     // notifies Core1 to start processing tasks that need WiFi

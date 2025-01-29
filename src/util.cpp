@@ -1,9 +1,10 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
 #include <ArduinoECCX08.h>
 #include "utility/ECCX08DefaultTLSConfig.h"
 #include <FreeRTOS.h>
+#include <task.h>
 #include "timeutil.h"
 #include "hardware/watchdog.h"
 #include "FastLED.h"

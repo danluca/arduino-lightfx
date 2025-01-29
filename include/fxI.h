@@ -17,6 +17,7 @@ namespace FxI {
         void setup() override;
         void run() override; // Main loop for the ping-pong effect
         void reWall();
+        [[nodiscard]] uint8_t selectionWeight() const override;
 
     private:
         uint16_t wallStart, wallEnd, prevWallStart, prevWallEnd;

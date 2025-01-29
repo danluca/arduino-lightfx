@@ -26,20 +26,20 @@ class WiFiSSLClient : public WiFiClient {
 
 public:
 	WiFiSSLClient();
-	WiFiSSLClient(uint8_t sock);
+	explicit WiFiSSLClient(uint8_t sock);
 
-	virtual int connect(IPAddress ip, uint16_t port);
-	virtual int connect(const char* host, uint16_t port);
+	int connect(IPAddress ip, uint16_t port) override;
+	int connect(const char* host, uint16_t port) override;
 };
 
 class WiFiBearSSLClient : public WiFiClient {
 
 public:
 	WiFiBearSSLClient();
-	WiFiBearSSLClient(uint8_t sock);
+	explicit WiFiBearSSLClient(uint8_t sock);
 
-	virtual int connect(IPAddress ip, uint16_t port);
-	virtual int connect(const char* host, uint16_t port);
+	int connect(IPAddress ip, uint16_t port) override;
+	int connect(const char* host, uint16_t port) override;
 };
 
 #endif /* WIFISSLCLIENT_H */

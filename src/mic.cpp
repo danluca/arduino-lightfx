@@ -3,6 +3,8 @@
 //
 
 #include <PDM.h>
+#include <FreeRTOS.h>
+#include <task.h>
 #include "mic.h"
 #include "efx_setup.h"
 #include "sysinfo.h"

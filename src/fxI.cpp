@@ -39,7 +39,7 @@ void FxI1::setup() {
     bgColor = random8();
     fgColor = random8();
     forward = true;
-    wallStart = random8(1, NUM_PIXELS/4);
+    wallStart = random8(1, FRAME_SIZE/4);
     wallEnd = FRAME_SIZE - wallStart;
     prevWallStart = 0;
     prevWallEnd = FRAME_SIZE;
@@ -60,9 +60,9 @@ void FxI1::reWall() {
     bgColor += clrVar;
     fgColor += clrVar;
     if (forward) {
-        wallEnd = FRAME_SIZE - random8(1, NUM_PIXELS/4);
+        wallEnd = FRAME_SIZE - random8(1, FRAME_SIZE/4);
     } else {
-        wallStart = random8(1, NUM_PIXELS/4);
+        wallStart = random8(1, FRAME_SIZE/4);
     }
 }
 
@@ -77,7 +77,7 @@ static void updateWall(uint16_t &prevWall, const uint16_t wallLimit, const CRGB 
 
 static void blendWall(const uint16_t start, const uint16_t end, const CRGB color) {
     if (tpl[end] != color)
-        tpl(start, end).nblend(color, 32);
+        tpl(start, end).nblend(color, 80);
 }
 
 void FxI1::run() {
@@ -96,7 +96,7 @@ void FxI1::run() {
 
         // Fade the LED trail with a small dimming effect
         for (int i = wallStart; i < wallEnd; i++) {
-            tpl[i].fadeToBlackBy(64);
+            tpl[i].fadeToBlackBy(80);
         }
 
         // Draw the segment at the current position
@@ -108,15 +108,15 @@ void FxI1::run() {
         }
 
         // adjust the speed
-        if (random8() < 160)
-            speed = forward ? csub8(speed, 3, 20) : cadd8(speed, 5, 250);
+        if (random8() < 96)
+            speed = forward ? csub8(speed, 1, 20) : cadd8(speed, 3, 250);
 
         // Update the position of the segment
         if (forward) {
             currentPos++;
             if ((currentPos + segmentLength) >= wallEnd) {
                 forward = false; // Reverse direction at the wall
-                speed = csub8(speed, 10, 20);
+                // speed = csub8(speed, 10, 20);
                 reWall();
             }
         } else {
@@ -134,4 +134,7 @@ void FxI1::run() {
     }
 }
 
+uint8_t FxI1::selectionWeight() const {
+    return 7;
+}
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef PICOLOG_H
@@ -68,6 +68,32 @@ private:
     friend void flushData();
 };
 
-extern PicoLog Log;
+class DummyLog {
+    public:
+    DummyLog() = default;
+    ~DummyLog() = default;
+    void begin(SerialUSB* serial, LogLevel level = INFO) {};
+    void setTimebase(time_t time) {};
+    time_t getTimebase() const { return 0; }
+    void setLevel(const LogLevel level) { };
+    LogLevel getLevel() const { return SILENT; }
+    bool isEnabled(const LogLevel level) const { return false; }
+    size_t getMinBufferSpace() const { return LOG_BUFFER_SIZE; }
 
+    template<class T> size_t log(LogLevel level, const T format, ...) const { return 0; }
+    template<class T> size_t silent(const T format, ...) const { return 0; }
+    template<class T> size_t fatal(const T format, ...) const { return 0; }
+    template<class T> size_t error(const T format, ...) const { return 0; }
+    template<class T> size_t warn(const T format, ...) const { return 0; }
+    template<class T> size_t info(const T format, ...) const { return 0; }
+    template<class T> size_t debug(const T format, ...) const { return 0; }
+    template<class T> size_t trace(const T format, ...) const { return 0; }
+};
+
+
+#if LOGGING_ENABLED == 1
+extern PicoLog Log;
+#else
+extern DummyLog Log;
+#endif
 #endif //PICOLOG_H

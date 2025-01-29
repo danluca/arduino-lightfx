@@ -18,83 +18,78 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <string.h>
+#include <cstring>
 #include "utility/server_drv.h"
 
 extern "C" {
-  #include "utility/debug.h"
+#include "utility/debug.h"
 }
 
 #include "WiFi.h"
 #include "WiFiClient.h"
 #include "WiFiServer.h"
 
-WiFiServer::WiFiServer() :
-  _sock(NO_SOCKET_AVAIL),
-  _lastSock(NO_SOCKET_AVAIL)
-{
+WiFiServer::WiFiServer() : _sock(NO_SOCKET_AVAIL), _lastSock(NO_SOCKET_AVAIL) {
     _port = 80;
 }
 
-WiFiServer::WiFiServer(uint16_t port) :
-  _sock(NO_SOCKET_AVAIL),
-  _lastSock(NO_SOCKET_AVAIL)
-{
+WiFiServer::WiFiServer(const uint16_t port) : _sock(NO_SOCKET_AVAIL), _lastSock(NO_SOCKET_AVAIL) {
     _port = port;
 }
 
-void WiFiServer::begin()
-{
+void WiFiServer::begin() {
     end();
     _sock = ServerDrv::getSocket();
-    if (_sock != NO_SOCKET_AVAIL)
-    {
+    if (_sock != NO_SOCKET_AVAIL) {
         ServerDrv::startServer(_port, _sock);
     }
 }
 
-void WiFiServer::begin(uint16_t port)
-{
+void WiFiServer::begin(const uint16_t port) {
     end();
     _port = port;
     begin();
 }
 
-void WiFiServer::end()
-{
+void WiFiServer::close() {
+    end();
+}
+
+void WiFiServer::stop() {
+    end();
+}
+
+void WiFiServer::end() {
     if (_sock != NO_SOCKET_AVAIL) {
-      ServerDrv::stopServer(_sock);
-      _sock = NO_SOCKET_AVAIL;
-      _lastSock = NO_SOCKET_AVAIL;
+        ServerDrv::stopServer(_sock);
+        _sock = NO_SOCKET_AVAIL;
+        _lastSock = NO_SOCKET_AVAIL;
     }
 }
 
-WiFiClient WiFiServer::available(byte* status)
-{
+WiFiClient WiFiServer::available(byte *status) {
     int sock = NO_SOCKET_AVAIL;
 
     if (_sock != NO_SOCKET_AVAIL) {
-      // check previous received client socket
-      if (_lastSock != NO_SOCKET_AVAIL) {
-          WiFiClient client(_lastSock);
+        // check previous received client socket
+        if (_lastSock != NO_SOCKET_AVAIL) {
+            if (WiFiClient client(_lastSock); client.connected() && client.available()) {
+                sock = _lastSock;
+            }
+        }
 
-          if (client.connected() && client.available()) {
-              sock = _lastSock;
-          }
-      }
-
-      if (sock == NO_SOCKET_AVAIL) {
-          // check for new client socket
-          sock = ServerDrv::availServer(_sock);
-      } else {
-          _lastSock = NO_SOCKET_AVAIL;
-      }    
+        if (sock == NO_SOCKET_AVAIL) {
+            // check for new client socket
+            sock = ServerDrv::availServer(_sock);
+        } else {
+            _lastSock = NO_SOCKET_AVAIL;
+        }
     }
 
     if (sock != NO_SOCKET_AVAIL) {
         WiFiClient client(sock);
 
-        if (status != NULL) {
+        if (status != nullptr) {
             *status = client.status();
         }
 
@@ -106,13 +101,12 @@ WiFiClient WiFiServer::available(byte* status)
     return WiFiClient(255);
 }
 
-WiFiClient WiFiServer::accept()
-{
-    int sock = ServerDrv::availServer(_sock, true);
+WiFiClient WiFiServer::accept() const {
+    const int sock = ServerDrv::availServer(_sock, true);
     return WiFiClient(sock);
 }
 
-uint8_t WiFiServer::status() {
+uint8_t WiFiServer::status() const {
     if (_sock == NO_SOCKET_AVAIL) {
         return CLOSED;
     } else {
@@ -120,32 +114,27 @@ uint8_t WiFiServer::status() {
     }
 }
 
-WiFiServer::operator bool() {
-  return (_sock != NO_SOCKET_AVAIL);
+WiFiServer::operator bool() const {
+    return (_sock != NO_SOCKET_AVAIL);
 }
 
-size_t WiFiServer::write(uint8_t b)
-{
+size_t WiFiServer::write(uint8_t b) {
     return write(&b, 1);
 }
 
-size_t WiFiServer::write(const uint8_t *buffer, size_t size)
-{
-    if (size==0)
-    {
+size_t WiFiServer::write(const uint8_t *buffer, size_t size) {
+    if (size == 0) {
         setWriteError();
         return 0;
     }
 
-    size_t written = ServerDrv::sendData(_sock, buffer, size);
-    if (!written)
-    {
+    const size_t written = ServerDrv::sendData(_sock, buffer, size);
+    if (!written) {
         setWriteError();
         return 0;
     }
 
-    if (!ServerDrv::checkDataSent(_sock))
-    {
+    if (!ServerDrv::checkDataSent(_sock)) {
         setWriteError();
         return 0;
     }

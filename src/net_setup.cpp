@@ -1,7 +1,8 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #include "net_setup.h"
+#include <WiFiNINA.h>
 #include <queue.h>
 #include <timers.h>
 #include "config.h"
@@ -11,6 +12,7 @@
 #include "ledstate.h"
 #include "util.h"
 #include "log.h"
+#include "web_server.h"
 
 using namespace colTheme;
 constexpr auto ssid PROGMEM = WF_SSID;
@@ -19,6 +21,7 @@ constexpr auto hostname PROGMEM = "Arduino-RP2040-" DEVICE_NAME;
 
 const CRGB CLR_ALL_OK = CRGB::Indigo;
 const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;
+const CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
 const CRGB CLR_SETUP_ERROR = CRGB::Red;
 static uint16_t tmrWifiEnsure = 40;
 
@@ -29,7 +32,7 @@ static uint16_t tmrWifiEnsure = 40;
  * @param rssi the RSSI value from WiFi system
  * @return number of bars as signal level - between 0 (no signal, connection likely lost) through 4 bars (strong signal)
  */
-uint8_t barSignalLevel(int32_t rssi) {
+uint8_t barSignalLevel(const int32_t rssi) {
     static constexpr uint8_t numLevels = 5;
     static constexpr int16_t minRSSI = -100;
     static constexpr int16_t maxRSSI = -55;
@@ -37,8 +40,8 @@ uint8_t barSignalLevel(int32_t rssi) {
         return 0;
     if (rssi >= maxRSSI)
         return numLevels - 1;
-    float inRange = maxRSSI - minRSSI;
-    float outRange = numLevels - 1;
+    constexpr float inRange = maxRSSI - minRSSI;
+    constexpr float outRange = numLevels - 1;
     return (uint8_t) ((float) (rssi - minRSSI) * outRange / inRange);
 }
 
@@ -50,7 +53,7 @@ bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
     WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
     WiFi.setHostname(hostname);
-    Log.info("Connecting to WiFI '%s'", ssid);  // print the network name (SSID);
+    Log.info(F("Connecting to WiFI '%s'"), ssid);  // print the network name (SSID);
     // attempt to connect to WiFi network:
     uint attCount = 0;
     uint8_t wifiStatus = WiFi.status();
@@ -73,7 +76,6 @@ bool wifi_connect() {
         else
             Log.warn(F("Failed pinging the gateway - will retry later"));
     }
-    server_setup();     // start the web server on port 80
     printSuccessfulWifiStatus();  // you're connected now, so print out the status
 
     return result;
@@ -98,7 +100,7 @@ bool wifi_setup() {
     //enable low power mode - web server is not the primary function of this module
     WiFi.lowPowerMode();
 
-    bool connStatus = wifi_connect();
+    const bool connStatus = wifi_connect();
 
     // create timer to re-check WiFi and ensure connectivity
     const TimerHandle_t thWifiEnsure = xTimerCreate("wifiEnsure", pdMS_TO_TICKS(7*60*1000), pdTRUE, &tmrWifiEnsure, enqueueWifiEnsure);
@@ -120,9 +122,9 @@ bool wifi_check() {
         Log.warn(F("WiFi Connection lost"));
         return false;
     }
-    int gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 64);
-    int32_t rssi = WiFi.RSSI();
-    uint8_t wifiBars = barSignalLevel(rssi);
+    const int gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 64);
+    const int32_t rssi = WiFi.RSSI();
+    const uint8_t wifiBars = barSignalLevel(rssi);
     if ((gwPingTime < 0) || (wifiBars < 3)) {
         sysInfo->resetSysStatus(SYS_STATUS_WIFI);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
@@ -142,9 +144,7 @@ bool wifi_check() {
 void wifi_reconnect() {
     sysInfo->resetSysStatus(SYS_STATUS_WIFI);
     stateLed(CLR_SETUP_IN_PROGRESS);
-    server.clearWriteError();
-    if (WiFiClient client = server.available())
-        client.stop();
+    web::server.stop();
     Udp.stop();
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
@@ -159,6 +159,7 @@ void wifi_ensure() {
         stateLed(CLR_SETUP_ERROR);
         Log.warn(F("WiFi connection unusable/lost - reconnecting..."));
         wifi_reconnect();
+        web::server_setup();
     }
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI))
         postTimeSetupCheck();

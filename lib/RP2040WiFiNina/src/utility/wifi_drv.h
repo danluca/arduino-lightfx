@@ -21,13 +21,10 @@
 #ifndef WiFi_Drv_h
 #define WiFi_Drv_h
 
-#include <cinttypes>
 #include "utility/wifi_spi.h"
-#include "IPAddress.h"
-#include "WiFiUdp.h"
 #include "WiFiClient.h"
 #include <FreeRTOS.h>
-#include <task.h>
+// #include <task.h>
 
 // Key index length
 #define KEY_IDX_LEN     1
@@ -111,10 +108,10 @@ public:
      * param len: Length of key string.
      * return: WL_SUCCESS or WL_FAILURE
      */
-    static int8_t wifiSetKey(const char* ssid, uint8_t ssid_len, uint8_t key_idx, const void *key, const uint8_t len);
+    static int8_t wifiSetKey(const char* ssid, uint8_t ssid_len, uint8_t key_idx, const void *key, uint8_t len);
 
     static int8_t wifiSetApNetwork(const char* ssid, uint8_t ssid_len);
-    static int8_t wifiSetApPassphrase(const char* ssid, uint8_t ssid_len, const char *passphrase, const uint8_t len);
+    static int8_t wifiSetApPassphrase(const char* ssid, uint8_t ssid_len, const char *passphrase, uint8_t len);
 
     /* Set IP configuration disabling DHCP client
         *
@@ -241,7 +238,7 @@ public:
 	 *
      * return: SSID string of the specified item on the networks scanned list
      */
-    static const char* getSSIDNetoworks(uint8_t networkItem);
+    static const char* getSSIDNetworks(uint8_t networkItem);
 
     /*
      * Return the RSSI of the networks discovered during the scanNetworks
@@ -250,7 +247,7 @@ public:
 	 *
      * return: signed value of RSSI of the specified item on the networks scanned list
      */
-    static int32_t getRSSINetoworks(uint8_t networkItem);
+    static int32_t getRSSINetworks(uint8_t networkItem);
 
     /*
      * Return the encryption type of the networks discovered during the scanNetworks
@@ -259,11 +256,11 @@ public:
 	 *
      * return: encryption type (enum wl_enc_type) of the specified item on the networks scanned list
      */
-    static uint8_t getEncTypeNetowrks(uint8_t networkItem);
+    static uint8_t getEncTypeNetworks(uint8_t networkItem);
 
-    static uint8_t* getBSSIDNetowrks(uint8_t networkItem, uint8_t* bssid);
+    static uint8_t* getBSSIDNetworks(uint8_t networkItem, uint8_t* bssid);
 
-    static uint8_t getChannelNetowrks(uint8_t networkItem);
+    static uint8_t getChannelNetworks(uint8_t networkItem);
 
     /*
      * Resolve the given hostname to an IP address.
@@ -285,14 +282,9 @@ public:
     static void setPowerMode(uint8_t mode);
 
     static int8_t wifiSetApNetwork(const char* ssid, uint8_t ssid_len, uint8_t channel);
-    static int8_t wifiSetApPassphrase(const char* ssid, uint8_t ssid_len, const char *passphrase, const uint8_t len, uint8_t channel);
-    static int8_t wifiSetEnterprise(uint8_t eapType,
-                                    const char* ssid, uint8_t ssid_len,
-                                    const char *username, const uint8_t username_len,
-                                    const char *password, const uint8_t password_len,
-                                    const char *identity, const uint8_t identity_len,
-                                    const char* ca_cert, uint16_t ca_cert_len);
-
+    static int8_t wifiSetApPassphrase(const char* ssid, uint8_t ssid_len, const char *passphrase, uint8_t len, uint8_t channel);
+    static int8_t wifiSetEnterprise(uint8_t eapType, const char* ssid, uint8_t ssid_len, const char *username, uint8_t username_len,
+		const char *password, uint8_t password_len, const char *identity, uint8_t identity_len, const char* ca_cert, uint16_t ca_cert_len);
 
     static int16_t ping(uint32_t ipAddress, uint8_t ttl);
 
@@ -306,20 +298,20 @@ public:
 
     static int8_t downloadFile(const char* url, uint8_t url_len, const char *filename, uint8_t filename_len);
     static int8_t downloadOTA(const char* url, uint8_t url_len);
-    static int8_t renameFile(const char * old_file_name, uint8_t const old_file_name_len, const char * new_file_name, uint8_t const new_file_name_len);
+    static int8_t renameFile(const char * old_file_name, uint8_t old_file_name_len, const char * new_file_name, uint8_t new_file_name_len);
 
     static int8_t fileOperation(uint8_t operation, const char *filename, uint8_t filename_len, uint32_t offset, uint8_t* buffer, uint32_t len);
 
-    static int8_t readFile(const char *filename, uint8_t filename_len, uint32_t offset, uint8_t* buffer, uint32_t buffer_len) {
+    static int8_t readFile(const char *filename, const uint8_t filename_len, const uint32_t offset, uint8_t* buffer, const uint32_t buffer_len) {
         return fileOperation(READ_FILE, filename, filename_len, offset, buffer, buffer_len);
     };
-    static int8_t writeFile(const char *filename, uint8_t filename_len, uint32_t offset, uint8_t* buffer, uint32_t buffer_len) {
+    static int8_t writeFile(const char *filename, const uint8_t filename_len, const uint32_t offset, uint8_t* buffer, const uint32_t buffer_len) {
         return fileOperation(WRITE_FILE, filename, filename_len, offset, buffer, buffer_len);
     };
-    static int8_t deleteFile(const char *filename, uint8_t filename_len)  {
-        return fileOperation(DELETE_FILE, filename, filename_len, 0, NULL, 0);
+    static int8_t deleteFile(const char *filename, const uint8_t filename_len)  {
+        return fileOperation(DELETE_FILE, filename, filename_len, 0, nullptr, 0);
     };
-    static int8_t existsFile(const char *filename, uint8_t filename_len, uint32_t* len)  {
+    static int8_t existsFile(const char *filename, const uint8_t filename_len, uint32_t* len)  {
         int32_t length = 0;
         fileOperation(EXISTS_FILE, filename, filename_len, 0, (uint8_t*)&length, sizeof(length));
         *len = length;

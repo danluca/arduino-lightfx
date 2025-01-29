@@ -1,10 +1,12 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
 #include <Arduino.h>
+
+struct CRGB;
 
 inline constexpr int turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 inline constexpr auto csAutoFxRoll PROGMEM = "autoFxRoll";
