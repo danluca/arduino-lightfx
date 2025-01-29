@@ -26,13 +26,15 @@ function getOTAEnabledIPAddress() {
             return $_ -split '\s+' | Select-String -Pattern '\d+\.\d+\.\d+\.\d+' -AllMatches | ForEach-Object { $_.Matches.Value }
         }
     } | Where-Object { $otaAddrHint ? ($_ -match $otaAddrHint) : $true } | Select-Object -First 1
-    Write-Information "${clrMsg}Found OTA enabled device at $ipAddress${clrReset}" -InformationAction Continue
+    if ($ipAddress) {
+        Write-Information "${clrMsg}Found OTA enabled device at $ipAddress${clrReset}" -InformationAction Continue
+    }
     return $ipAddress
 }
 
 function buildClean() {
     pio run -t clean -e $brdEnv
-    pio run -t build -e $brdEnv
+    pio run -e $brdEnv
 }
 
 function updateFirmwareSerial() {
@@ -44,7 +46,7 @@ function updateFirmwareSerial() {
 }
 
 function updateFirmwareOTA() {
-    $ipAddress = isArduinoCliPresent ? getOTAEnabledIPAddress : $null
+    $ipAddress = (isArduinoCliPresent) ? (getOTAEnabledIPAddress) : $null
     if ($null -eq $ipAddress) {
         Write-Warning "No OTA enabled device found, proceeding with serial upload"
         updateFirmwareSerial

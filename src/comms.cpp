@@ -285,6 +285,7 @@ void commSetup() {
     // Log.infoln(F("Communications thread [%s], priority %d - has been started with id %u. Events broadcasting enabled=%T"), bcTask->getName(),
     //            uxTaskPriorityGet(bcTask->getTaskHandle()), uxTaskGetTaskNumber(bcTask->getTaskHandle()), fxBroadcastEnabled);
     postTimeSetupCheck();  //ensure we have the time NTP sync
+    Log.info(F("Communication system setup OK"));
 }
 
 /**

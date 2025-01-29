@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #include "log.h"
 #include <FastLED.h>
@@ -17,5 +17,6 @@ void log_setup() {
 #endif
     Log.begin(&Serial, INFO);
     taskDelay(500);
+    Log.info(F("Logging system setup OK"));
 }
 

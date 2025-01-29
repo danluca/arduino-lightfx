@@ -118,7 +118,7 @@ bool HTTPServer::authenticate(const char * username, const char * password) {
                 _cnonce = _extractParam(authReq, F("cnonce=\""), '\"');
             }
             const String H1 = md5str(String(username) + ':' + _realm + ':' + String(password));
-            log_debug("Hash of user:realm:pass=%s", _H1.c_str());
+            log_debug("Hash of user:realm:pass=%s", H1.c_str());
             String H2 = "";
             if (_currentMethod == HTTP_GET) {
                 H2 = md5str(String(F("GET:")) + _uri);
@@ -131,7 +131,7 @@ bool HTTPServer::authenticate(const char * username, const char * password) {
             } else {
                 H2 = md5str(String(F("GET:")) + _uri);
             }
-            log_debug("Hash of GET:uri=%s", _H2.c_str());
+            log_debug("Hash of GET:uri=%s", H2.c_str());
             String _responsecheck = "";
             if (authReq.indexOf(FPSTR(qop_auth)) != -1 || authReq.indexOf(FPSTR(qop_auth_quoted)) != -1) {
                 _responsecheck = md5str(H1 + ':' + _nonce + ':' + _nc + ':' + _cnonce + F(":auth:") + H2);

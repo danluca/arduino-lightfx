@@ -5,7 +5,7 @@
 #define LOGPROXY_H
 
 #if LOGGING_ENABLED == 1
-#include "../PicoLog/PicoLog.h"
+#include "../../PicoLog/src/PicoLog.h"
 #define log_debug Log.debug
 #define log_info Log.info
 #define log_warn Log.warn

@@ -317,7 +317,7 @@ void SysInfo::taskStats(JsonObject &doc) {
     if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
         // General counts
         doc["count"] = uxArraySize;
-        auto jsArray = doc["items"].to<JsonArray>();
+        const auto jsArray = doc["items"].to<JsonArray>();
         /* Generate raw status information about each task. */
         uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
         doc["sysTotalRunTime"] = ulTotalRunTime;
@@ -352,7 +352,7 @@ void SysInfo::taskStats(JsonObject &doc) {
  * Note the time this is performed, the WiFi is not ready, nor other fields even populated yet
  */
 void readSysInfo() {
-    auto json = new String();
+    const auto json = new String();
     json->reserve(512);  // approximation
     if (const size_t sysSize = readTextFile(sysFileName, json); sysSize > 0) {
         JsonDocument doc;
@@ -363,12 +363,12 @@ void readSysInfo() {
             return;
         }
         //const fields
-        String bldVersion = doc[csBuildVersion];
-        String brdName = doc[csBoardName];
-        String bldTime = doc[csBuildTime];
-        auto gitBranch = doc[csScmBranch].as<String>();
+        const String bldVersion = doc[csBuildVersion];
+        const String brdName = doc[csBoardName];
+        const String bldTime = doc[csBuildTime];
+        const auto gitBranch = doc[csScmBranch].as<String>();
         if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {
-            auto wdReboots = doc[csWdReboots].as<JsonArray>();
+            const auto wdReboots = doc[csWdReboots].as<JsonArray>();
             for (JsonVariant i: wdReboots)
                 sysInfo->wdReboots.push(i.as<time_t>());
         } else
@@ -384,11 +384,12 @@ void readSysInfo() {
         sysInfo->stackSize = doc[csStackSize];
         sysInfo->freeStack = doc[csFreeStack];
         //do not override current status (in progress of populating) with last run status
-        uint8_t lastStatus = doc[csStatus];
+        const uint8_t lastStatus = doc[csStatus];
         Log.info(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status, lastStatus,
                    sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
-    }
+    } else
+        Log.info(F("System information file %s not found - system information will be re-built"), sysFileName);
     delete json;
 }
 

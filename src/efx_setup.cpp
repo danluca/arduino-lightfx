@@ -66,7 +66,7 @@ void stateLED(CRGB color) {
 }
 
 void readFxState() {
-    auto json = new String();
+    const auto json = new String();
     json->reserve(256);  // approximation - currently at 150 bytes
     if (const size_t stateSize = readTextFile(stateFileName, json); stateSize > 0) {
         JsonDocument doc;
@@ -83,7 +83,7 @@ void readFxState() {
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
 
         audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
-        auto savedHoliday = doc[csColorTheme].as<String>();
+        const auto savedHoliday = doc[csColorTheme].as<String>();
         paletteFactory.setHoliday(parseHoliday(&savedHoliday));
         paletteFactory.setAuto(doc[csAutoColorAdjust].as<bool>());
         if (doc[csSleepEnabled].is<bool>())
@@ -91,8 +91,7 @@ void readFxState() {
         else
             fxRegistry.enableSleep(false);      //this doesn't invoke effect changing because sleep state is initialized with false
         //we need the sleep mode flag setup first to properly advance to next effect
-        const uint16_t sleepFxIndex = fxRegistry.findEffect(FX_SLEEPLIGHT_ID)->getRegistryIndex();
-        if (fx == sleepFxIndex && !fxRegistry.isAsleep())
+        if (const uint16_t sleepFxIndex = fxRegistry.findEffect(FX_SLEEPLIGHT_ID)->getRegistryIndex(); fx == sleepFxIndex && !fxRegistry.isAsleep())
             fxRegistry.lastEffectRun = fxRegistry.currentEffect = random16(fxRegistry.effectsCount);
         else
             fxRegistry.lastEffectRun = fxRegistry.currentEffect = fx;
@@ -785,7 +784,7 @@ void EffectRegistry::setSleepState(const bool sleepFlag) {
         Log.info(F("Sleep state is already %s - no changes"), StringUtils::asString(sleepState));
 }
 
-void EffectRegistry::enableSleep(bool bSleep) {
+void EffectRegistry::enableSleep(const bool bSleep) {
     sleepModeEnabled = bSleep;
     Log.info(F("Sleep mode enabled is now %s"), StringUtils::asString(sleepModeEnabled));
     //determine the proper sleep status based on time
