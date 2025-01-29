@@ -381,8 +381,9 @@ size_t HTTPServer::send(const int code, const char *content_type, const String &
     // Can we assume the following?
     //if(code == 200 && content.length() == 0 && _contentLength == CONTENT_LENGTH_NOT_SET)
     //  _contentLength = CONTENT_LENGTH_UNKNOWN;
-    if (content.length() == 0) {
-        log_warn("content length is zero");
+    if (content.length() == 0 && _contentLength == CONTENT_LENGTH_NOT_SET) {
+        log_warn("content length is zero or unknown (improper streaming?)");
+        _contentLength = CONTENT_LENGTH_UNKNOWN;
     }
     _prepareHeader(header, code, content_type, content.length());
     _currentClientWrite(header.c_str(), header.length());

@@ -116,6 +116,9 @@ protected:
  * handling HTTP GET requests by serving static content from the file system. It supports
  * both file and directory requests, and can optionally filter requests based on user-defined
  * criteria or provide caching headers.
+ * NOTE: This class makes direct access to FileSystem object provided (likely LittleFS concrete type) on a different thread/task
+ * than the filesystem one (LittleFS is known not to be thread safe). If things get hairy, odd hanging, etc. may want to revisit how this
+ * class retrieves and streams the content of a file from a different task than the dedicated filesystem one.
  */
 class StaticFileRequestHandler : public RequestHandler {
 public:
@@ -145,7 +148,9 @@ public:
             return false;
         }
 
-        return true;
+        String path;
+        getPath(requestUri, path);
+        return _fs.exists(path);
     }
 
     bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) override {

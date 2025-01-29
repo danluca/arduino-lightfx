@@ -179,6 +179,8 @@ void setup() {
  * Core 0 Main loop - runs the web actions
  */
 void loop() {
+    //wait for the other core to finish all initializations before allowing web server to respond to requests
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     web_run();
 }
 
@@ -202,7 +204,9 @@ void setup1() {
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)+1);    //raise the priority of the diag task to allow uninterrupted I2C interactions
     diagSetup();
 
-    Log.info(F("Main Core 1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
+    const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
+    const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
+    Log.info(F("Main Core 1 Setup completed, Core 0 notified of WebServer %d. System status: %#hX"), c0NtfStatus, sysInfo->getSysStatus());
 }
 
 /**

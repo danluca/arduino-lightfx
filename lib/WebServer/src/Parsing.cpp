@@ -263,6 +263,7 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
                 _hostHeader = headerValue;
             }
         }
+        log_debug(F("====="));
         _parseArguments(searchStr);
     }
     client->flush();
