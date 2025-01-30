@@ -297,6 +297,7 @@ public:
         getPath(requestUri, path);
         path.toLowerCase();
         if (const std::string pathStr = path.c_str(); _inMemResources.find(pathStr) == _inMemResources.end()) {
+            log_debug("StaticInMemoryRequestHandler::canHandle: path=%s not found", pathStr);
             return false;
         }
 

@@ -26,6 +26,8 @@
 #include <memory>
 #include <WiFi.h>
 #include <map>
+#include <detail/StringStream.h>
+
 #include "HTTP_Method.h"
 #include "Uri.h"
 
@@ -178,7 +180,7 @@ public:
     size_t sendContent(const char *content, size_t contentLength);
     size_t sendContent_P(PGM_P content);
     size_t sendContent_P(PGM_P content, size_t size);
-    bool chunkedResponseModeStart_P(int code, PGM_P content_type) {
+    bool chunkedResponseModeStart_P(const int code, PGM_P content_type) {
         if (_currentVersion == 0)
             // no chunk mode in HTTP/1.0
         {
@@ -203,15 +205,19 @@ public:
     }
     size_t streamData(const String& data, const String& contentType, const int code = 200) {
         _streamFileCore(data.length(), "", contentType, code);
-        return _currentClient->write(data.c_str(), data.length());
+        StringStream ss(data);
+        return _currentClient->write(ss);
     }
     size_t streamData(const char* data, const size_t length, const String& contentType, const int code = 200) {
         _streamFileCore(length, "", contentType, code);
-        return _currentClient->write(data, length);
+        StringStream ss(data, length);
+        return _currentClient->write(ss);
     }
     size_t streamData(const __FlashStringHelper* data, const size_t length, const String& contentType, const int code = 200) {
         _streamFileCore(length, "", contentType, code);
-        return _currentClient->write(String(data).c_str(), length);
+        const String strData(data);
+        StringStream ss(strData);
+        return _currentClient->write(ss);
     }
     static String urlDecode(const String& text);
 
@@ -235,10 +241,10 @@ public:
     }
 
 protected:
-    virtual size_t _currentClientWrite(const char* b, size_t l) {
+    virtual size_t _currentClientWrite(const char* b, const size_t l) {
         return _currentClient->write(b, l);
     }
-    virtual size_t _currentClientWrite_P(PGM_P b, size_t l) {
+    virtual size_t _currentClientWrite_P(PGM_P b, const size_t l) {
         return _currentClient->write(b, l);
     }
     void _addRequestHandler(RequestHandler* handler);
@@ -256,6 +262,10 @@ protected:
     bool _collectHeader(const char* headerName, const char* headerValue) const;
 
     size_t _streamFileCore(size_t fileSize, const String &fileName, const String &contentType, int code = 200);
+    size_t writeClientBuffered(const char* b, size_t l);
+    size_t writeClientBuffered_P(PGM_P b, size_t l);
+    size_t writeClientBuffered(const String& s);
+    size_t writeClientBuffered(const __FlashStringHelper* s);
 
     static String _getRandomHexString();
     // for extracting Auth parameters

@@ -173,14 +173,14 @@ void setup() {
     watchdogSetup();
     Log.info(F("Main Core 0 Setup completed, Core 1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
+    //wait for the other core to finish all initializations before allowing web server to respond to requests
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 }
 
 /**
  * Core 0 Main loop - runs the web actions
  */
 void loop() {
-    //wait for the other core to finish all initializations before allowing web server to respond to requests
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     web_run();
 }
 

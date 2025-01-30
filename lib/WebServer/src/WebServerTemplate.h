@@ -130,11 +130,10 @@ template <typename ServerType, int DefaultPort> void WebServerTemplate<ServerTyp
                 } // switch _parseRequest()
             } else {
                 // !_currentClient.available(): waiting for more data
-                unsigned long timeSinceChange = millis() - _statusChange;
                 // Use faster connection drop timeout if any other client has data
                 // or the buffer of pending clients is full
-                if (timeSinceChange > HTTP_MAX_DATA_WAIT) {
-                    //Log.debug("webserver: closing after read timeout\r\n");
+                if (const unsigned long timeSinceChange = millis() - _statusChange; timeSinceChange > HTTP_MAX_DATA_WAIT) {
+                    log.debug("WebServer: closing after read timeout %d ms", HTTP_MAX_DATA_WAIT);
                 } else {
                     keepCurrentClient = true;
                 }
