@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <LogProxy.h>
 #include "HTTPServer.h"
 
 template<typename ServerType, int DefaultPort = 80> class WebServerTemplate;
@@ -133,7 +134,7 @@ template <typename ServerType, int DefaultPort> void WebServerTemplate<ServerTyp
                 // Use faster connection drop timeout if any other client has data
                 // or the buffer of pending clients is full
                 if (const unsigned long timeSinceChange = millis() - _statusChange; timeSinceChange > HTTP_MAX_DATA_WAIT) {
-                    log.debug("WebServer: closing after read timeout %d ms", HTTP_MAX_DATA_WAIT);
+                    log_debug("WebServer: closing after read timeout %d ms", HTTP_MAX_DATA_WAIT);
                 } else {
                     keepCurrentClient = true;
                 }

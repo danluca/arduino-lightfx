@@ -12,7 +12,7 @@ StringStream::StringStream(const String &str) : _buffer(str.c_str()), _length(st
 }
 
 // Reading a single character
-int StringStream::read() override {
+int StringStream::read() {
     if (_position < _length) {
         return _buffer[_position++];
     }
@@ -20,7 +20,7 @@ int StringStream::read() override {
 }
 
 // Peek the next character without advancing the position
-int StringStream::peek() override {
+int StringStream::peek() {
     if (_position < _length) {
         return _buffer[_position];
     }
@@ -28,7 +28,7 @@ int StringStream::peek() override {
 }
 
 // Check how much data is available
-int StringStream::available() override {
+int StringStream::available() {
     return _length - _position;
 }
 
@@ -42,10 +42,10 @@ size_t StringStream::readBytes(char *buffer, const size_t length) {
 }
 
 // Flush (no-op here as there's no output buffer)
-void StringStream::flush() override {
+void StringStream::flush() {
 }
 
 // Write data (unsupported for StringStream)
-size_t StringStream::write(uint8_t) override {
+size_t StringStream::write(uint8_t) {
     return 0; // Read-only stream
 }
