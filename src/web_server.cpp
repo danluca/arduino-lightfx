@@ -23,26 +23,6 @@
 #include "stats_css.h"
 #include "stats_js.h"
 
-static constexpr auto http200Status PROGMEM = "HTTP/1.1 200 OK";
-// static constexpr auto http303Status PROGMEM = "HTTP/1.1 303 See Other";
-static constexpr auto http404Status PROGMEM = "HTTP/1.1 404 Not Found";
-static constexpr auto http500Status PROGMEM = "HTTP/1.1 500 Internal Server Error";
-
-static constexpr auto hdHtml PROGMEM = R"===(Content-type: text/html
-Server: rp2040-luca/1.0.0)===";
-
-static constexpr auto hdCss PROGMEM = R"===(Content-type: text/css
-Server: rp2040-luca/1.0.0
-Cache-Control: public, max-age=2592000, immutable)===";
-
-static constexpr auto hdJavascript PROGMEM = R"===(Content-type: text/javascript
-Server: rp2040-luca/1.0.0
-Cache-Control: public, max-age=2592000, immutable)===";
-
-static constexpr auto hdJson PROGMEM = R"===(Content-type: application/json
-Server: rp2040-luca/1.0.0
-Cache-Control: no-cache, no-store)===";
-
 static constexpr auto hdCacheControl PROGMEM = "Cache-Control";
 static constexpr auto hdCacheStatic PROGMEM = "public, max-age=2592000, immutable";
 static constexpr auto hdCacheJson PROGMEM = "no-cache, no-store";
@@ -51,9 +31,6 @@ static constexpr auto serverAgent PROGMEM = "rp2040-luca/1.0.0";
 using namespace web;
 // using namespace colTheme;
 
-// static constexpr auto hdRootLocation PROGMEM = "Location: /";
-static constexpr auto hdConClose PROGMEM = "Connection: close";
-static constexpr auto hdFmtContentLength PROGMEM = "Content-Length: %d";
 static constexpr auto hdFmtDate PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d CST";
 static constexpr auto hdFmtContentDisposition PROGMEM = "inline; filename=\"%s\"";
 static constexpr auto msgRequestNotMapped PROGMEM = "URI not mapped to a handler on this server";
@@ -85,6 +62,9 @@ static const std::map<std::string, const char*> inFlashResources PROGMEM = {
     {"/stats.html", stats_html}
 };
 
+/**
+ * Adds the current date as an HTTP header for the current outgoing response
+ */
 void dateHeader() {
     const time_t curTime = now();
     const int szBuf = snprintf(nullptr, 0, hdFmtDate, year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime)) + 1;
@@ -93,6 +73,10 @@ void dateHeader() {
     server.sendHeader(F("Date"), buf);
 }
 
+/**
+ * Adds the content-disposition HTTP header - file name - for the current outgoing response
+ * @param fname file name
+ */
 void contentDispositionHeader(const char *fname) {
     const int szBuf = snprintf(nullptr, 0, hdFmtContentDisposition, fname) + 1;
     char buf[szBuf];
@@ -100,6 +84,12 @@ void contentDispositionHeader(const char *fname) {
     server.sendHeader(F("Content-Disposition"), buf);
 }
 
+/**
+ * Serializes a JSON document into string and sends it out to the current client awaiting response from the server
+ * @param doc JSON document to marshal
+ * @param srv web server to use for sending JSON out
+ * @return number of bytes written in response
+ */
 size_t web::marshalJson(const JsonDocument &doc, WebServer &srv) {
     //send it out
     const auto buf = new String();
@@ -110,6 +100,9 @@ size_t web::marshalJson(const JsonDocument &doc, WebServer &srv) {
     return sz;
 }
 
+/**
+ * Web request handler - GET /status.json. Method invoked by the web server; response sent to current client awaiting response from the server
+ */
 void web::handleGetStatus() {
     dateHeader();
     contentDispositionHeader(statusJsonFilename);
@@ -213,6 +206,9 @@ void web::handleGetStatus() {
     Log.info(F("Handler handleGetStatus invoked for %s, response completed %zu bytes"), server.uri().c_str(), sz);
 }
 
+/**
+ * Web request handler - PUT /fx. Method invoked by the web server; response sent to current client awaiting response from the server
+ */
 void web::handlePutConfig() {
     dateHeader();
     server.sendHeader(hdCacheControl, hdCacheJson);
@@ -291,6 +287,9 @@ void web::handlePutConfig() {
     Log.info(F("Handler handlePutConfig invoked for %s, response completed %zu bytes"), server.uri().c_str(), sz);
 }
 
+/**
+ * Web request handler - GET /tasks.json. Method invoked by the web server; response sent to current client awaiting response from the server
+ */
 void web::handleGetTasks() {
     dateHeader();
     contentDispositionHeader(tasksJsonFilename);
@@ -322,11 +321,18 @@ void web::handleGetTasks() {
     Log.info(F("Handler handleGetStatus invoked for %s, response completed %zu bytes"), server.uri().c_str(), sz);
 }
 
+/**
+ * Special web request handler for resources not found on this server
+ */
 void web::handleNotFound() {
     const size_t sz = server.send(404, mime::mimeTable[mime::txt].mimeType, msgRequestNotMapped);
     Log.info(F("Handler handleNotFound invoked for %s, response completed %zu bytes"), server.uri().c_str(), sz);
 }
 
+/**
+ * Configures the web server with specific dynamic and static request handlers
+ * This method can be called again upon WiFi reconnecting
+ */
 void web::server_setup() {
     if (!server_handlers_configured) {
         server.setServerAgent(serverAgent);
@@ -342,6 +348,9 @@ void web::server_setup() {
     Log.info(F("Web server started"));
 }
 
+/**
+ * Web Server client handling - one at a time
+ */
 void web::webserver() {
     if (WiFi.status() != WL_CONNECTED)
         return;

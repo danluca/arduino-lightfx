@@ -241,13 +241,15 @@ public:
     }
 
 protected:
-    // unbuffered current client write - note with WiFiNINA we've seen issues writing contents larger than 4k in one call
+    // buffered current client write - note with WiFiNINA we've seen issues writing contents larger than 4k in one call
     virtual size_t _currentClientWrite(const char* b, const size_t l) {
-        return _currentClient->write(b, l);
+        StringStream ss(b, l);
+        return _currentClientWrite(ss);
     }
-    // unbuffered current client write - note with WiFiNINA we've seen issues writing contents larger than 4k in one call
+    // buffered current client write - note with WiFiNINA we've seen issues writing contents larger than 4k in one call
     virtual size_t _currentClientWrite_P(PGM_P b, const size_t l) {
-        return _currentClient->write(b, l);
+        StringStream ss(b, l);
+        return _currentClientWrite(ss);
     }
     // this method employs buffering due to implementation in WiFiClient
     virtual size_t _currentClientWrite(Stream& s) {
