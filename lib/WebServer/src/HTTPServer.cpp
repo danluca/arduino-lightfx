@@ -372,6 +372,8 @@ void HTTPServer::_prepareHeader(String& response, const int code, const char* co
 
     response += _responseHeaders;
     response += "\r\n";
+    log_info(F("Web Response: status code %d (%s), content type %s, length %zu"), code, _responseCodeToString(code).c_str(), content_type, _contentLength);
+    log_debug(F("=== Headers ===\n%s"), response.c_str());
     _responseHeaders = "";
 }
 
@@ -607,11 +609,11 @@ void HTTPServer::onNotFound(const THandlerFunction &fn) {
 void HTTPServer::_handleRequest() {
     bool handled = false;
     if (!_currentHandler) {
-        log_error("request handler not found for %d request %s", _currentMethod, _currentUri.c_str());
+        log_error("Web request handler not found for %d request %s", _currentMethod, _currentUri.c_str());
     } else {
         handled = _currentHandler->handle(*this, _currentMethod, _currentUri);
         if (!handled) {
-            log_error("request handler failed to handle %d request %s", _currentMethod, _currentUri.c_str());
+            log_error("Web request handler failed to handle %d request %s", _currentMethod, _currentUri.c_str());
         }
     }
     if (!handled && _notFoundHandler) {
@@ -632,6 +634,7 @@ void HTTPServer::_finalizeResponse() {
     if (_chunked) {
         sendContent("");
     }
+    log_info(F("====="));
 }
 
 String HTTPServer::_responseCodeToString(const int code) {

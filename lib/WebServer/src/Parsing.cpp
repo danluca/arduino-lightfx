@@ -124,7 +124,7 @@ HTTPServer::ClientFuture HTTPServer::_parseRequest(WiFiClient* client) {
     }
     _currentMethod = method;
 
-    log_debug(F("Request data: URI: %s %s %s"), methodStr.c_str(), url.c_str(), searchStr.c_str());
+    log_debug(F("Web Request data: URI: %s %s %s"), methodStr.c_str(), url.c_str(), searchStr.c_str());
 
     //attach handler
     RequestHandler* handler;
@@ -397,12 +397,10 @@ bool HTTPServer::_parseForm(WiFiClient * client, String boundary, uint32_t len) 
     client->readStringUntil('\n');
     //start reading the form
     if (line == ("--" + boundary)) {
-        if (_postArgs) {
-            delete[] _postArgs;
-        }
+        delete[] _postArgs;
         _postArgs = new RequestArgument[WEBSERVER_MAX_POST_ARGS];
         _postArgsLen = 0;
-        while (1) {
+        while (true) {
             String argName;
             String argValue;
             String argType;

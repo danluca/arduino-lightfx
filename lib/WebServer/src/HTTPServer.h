@@ -163,7 +163,7 @@ public:
     size_t send(int code, const char *content_type, const char *content, size_t contentLength);
     size_t send_P(int code, PGM_P content_type, PGM_P content);
     size_t send_P(int code, PGM_P content_type, PGM_P content, size_t contentLength);
-    template<typename TypeName> void send(const int code, PGM_P content_type, TypeName content, size_t contentLength) {
+    template<typename TypeName> void send(const int code, PGM_P content_type, TypeName content, const size_t contentLength) {
         send(code, content_type, (const char *)content, contentLength);
     }
 
@@ -201,23 +201,23 @@ public:
     }
     template<typename T> size_t streamFile(T &file, const String& contentType, const int code = 200) {
         _streamFileCore(file.size(), file.name(), contentType, code);
-        return _currentClient->write(file);
+        return _currentClientWrite(file);
     }
     size_t streamData(const String& data, const String& contentType, const int code = 200) {
         _streamFileCore(data.length(), "", contentType, code);
         StringStream ss(data);
-        return _currentClient->write(ss);
+        return _currentClientWrite(ss);
     }
     size_t streamData(const char* data, const size_t length, const String& contentType, const int code = 200) {
         _streamFileCore(length, "", contentType, code);
         StringStream ss(data, length);
-        return _currentClient->write(ss);
+        return _currentClientWrite(ss);
     }
     size_t streamData(const __FlashStringHelper* data, const size_t length, const String& contentType, const int code = 200) {
         _streamFileCore(length, "", contentType, code);
         const String strData(data);
         StringStream ss(strData);
-        return _currentClient->write(ss);
+        return _currentClientWrite(ss);
     }
     static String urlDecode(const String& text);
 
@@ -241,11 +241,17 @@ public:
     }
 
 protected:
+    // unbuffered current client write - note with WiFiNINA we've seen issues writing contents larger than 4k in one call
     virtual size_t _currentClientWrite(const char* b, const size_t l) {
         return _currentClient->write(b, l);
     }
+    // unbuffered current client write - note with WiFiNINA we've seen issues writing contents larger than 4k in one call
     virtual size_t _currentClientWrite_P(PGM_P b, const size_t l) {
         return _currentClient->write(b, l);
+    }
+    // this method employs buffering due to implementation in WiFiClient
+    virtual size_t _currentClientWrite(Stream& s) {
+        return _currentClient->write(s);
     }
     void _addRequestHandler(RequestHandler* handler);
     bool _removeRequestHandler(const RequestHandler *handler);
@@ -262,10 +268,6 @@ protected:
     bool _collectHeader(const char* headerName, const char* headerValue) const;
 
     size_t _streamFileCore(size_t fileSize, const String &fileName, const String &contentType, int code = 200);
-    size_t writeClientBuffered(const char* b, size_t l);
-    size_t writeClientBuffered_P(PGM_P b, size_t l);
-    size_t writeClientBuffered(const String& s);
-    size_t writeClientBuffered(const __FlashStringHelper* s);
 
     static String _getRandomHexString();
     // for extracting Auth parameters

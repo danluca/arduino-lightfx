@@ -32,7 +32,7 @@ public:
 
     explicit WebServerTemplate(IPAddress addr, int port = DefaultPort);
     explicit WebServerTemplate(int port = DefaultPort);
-    virtual ~WebServerTemplate();
+    ~WebServerTemplate() override;
 
     virtual void begin();
     virtual void begin(uint16_t port);

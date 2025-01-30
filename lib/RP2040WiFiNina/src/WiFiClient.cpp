@@ -181,7 +181,6 @@ size_t WiFiClient::write(Stream &stream) {
         uint8_t buff[WL_STREAM_BUFFER_SIZE];
         if (const size_t i = stream.readBytes(buff, WL_STREAM_BUFFER_SIZE)) {
             // Send as a single packet
-            Serial.printf("WiFiClient::Sending data %d bytes", i);
             const size_t len = write(buff, i);
             sent += len;
             if (len != i) {
@@ -192,7 +191,6 @@ size_t WiFiClient::write(Stream &stream) {
             break;
         }
     }
-    Serial.printf("WiFiClient::Sent %d bytes", sent);
     return sent;
 }
 

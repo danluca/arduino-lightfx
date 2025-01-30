@@ -297,7 +297,6 @@ public:
         getPath(requestUri, path);
         path.toLowerCase();
         if (const std::string pathStr = path.c_str(); _inMemResources.find(pathStr) == _inMemResources.end()) {
-            log_debug("StaticInMemoryRequestHandler::canHandle: path=%s not found", pathStr);
             return false;
         }
 
@@ -345,11 +344,12 @@ public:
     void getPath(const String& uri, String& path, const char* defaultPath = "index.html") const {
         // Enforce all in-memory resource map to have entries named using pattern "/<name.ext>" with a forward slash prefix
         // Append whatever follows this URI in request to get the entry path.
-        path = uri.substring(_baseUriLength);
-        if (!path.startsWith("/"))
-            path.concat("/");
-        if (path.endsWith("/"))
-            path += defaultPath;
+        String basePath = uri.substring(_baseUriLength);
+        if (!basePath.startsWith("/"))
+            basePath = "/" + basePath;
+        if (basePath.endsWith("/"))
+            basePath += defaultPath;
+        path = basePath;
     }
 
     StaticInMemoryRequestHandler& setFilter(const HTTPServer::FilterFunction &filter) override {

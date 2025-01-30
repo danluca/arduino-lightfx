@@ -171,7 +171,7 @@ void setup() {
     enqueueAlarmSetup();
 
     watchdogSetup();
-    Log.info(F("Main Core 0 Setup completed, Core 1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
+    Log.info(F("Main Core 0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
     //wait for the other core to finish all initializations before allowing web server to respond to requests
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -206,7 +206,7 @@ void setup1() {
 
     const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
     const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
-    Log.info(F("Main Core 1 Setup completed, Core 0 notified of WebServer %d. System status: %#hX"), c0NtfStatus, sysInfo->getSysStatus());
+    Log.info(F("Main Core 1 Setup completed, CORE0 notified of WebServer %d. System status: %#hX"), c0NtfStatus, sysInfo->getSysStatus());
 }
 
 /**

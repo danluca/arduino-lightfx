@@ -25,7 +25,7 @@
 #include "Client.h"
 #include "IPAddress.h"
 
-#define WL_STREAM_BUFFER_SIZE 256
+#define WL_STREAM_BUFFER_SIZE 1024
 
 class WiFiClient : public Client {
 
