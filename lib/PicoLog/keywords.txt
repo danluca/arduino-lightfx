@@ -1,5 +1,5 @@
 #######################################
-# Syntax Coloring Map ArduinoLog library
+# Syntax Coloring Map PicoLog library
 #######################################
 
 #######################################

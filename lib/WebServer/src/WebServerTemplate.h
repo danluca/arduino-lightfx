@@ -97,6 +97,7 @@ template <typename ServerType, int DefaultPort> void WebServerTemplate<ServerTyp
     bool callYield = false;
 
     if (_currentClient->connected()) {
+        log_debug(F("WebServer: new client, current status %d"), _currentStatus);
         switch (_currentStatus) {
         case HC_NONE:
             // No-op to avoid C++ compiler warning

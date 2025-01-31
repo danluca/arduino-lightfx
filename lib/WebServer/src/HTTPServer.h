@@ -22,9 +22,10 @@
 
 #pragma once
 
+#include <filesystem.h>
 #include <functional>
 #include <memory>
-#include <WiFi.h>
+#include <WiFiNINA.h>
 #include <map>
 #include <detail/StringStream.h>
 
@@ -81,10 +82,6 @@ typedef struct {
 
 #include "detail/RequestHandler.h"
 
-namespace fs {
-class FS;
-}
-
 class HTTPServer {
 public:
     HTTPServer();
@@ -106,7 +103,7 @@ public:
     bool removeRoute(const String &uri, HTTPMethod method);
     void addHandler(RequestHandler* handler);
     bool removeHandler(const RequestHandler *handler);
-    void serveStatic(const char* uri, fs::FS& fs, const char* path, const std::map<std::string, const char*> *memRes = nullptr, const char* cache_header = nullptr);
+    void serveStatic(const char* uri, SynchronizedFS& fs, const char* path, const std::map<std::string, const char*> *memRes = nullptr, const char* cache_header = nullptr);
     void onNotFound(const THandlerFunction &fn);  //called when handler is not assigned
     void onFileUpload(const THandlerFunction &ufn); //handle file uploads
     [[nodiscard]] String uri() const {

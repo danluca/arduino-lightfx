@@ -1,7 +1,7 @@
 {
-  "name": "PicoLog",
-  "keywords": "logging, debug, log",
-  "description": "PicoLog is a minimalistic logging framework that leverages a circular buffer and a dedicated task to stream data out to serial port",
+  "name": "FilesystemTask",
+  "keywords": "filesystem, thread-safe, littlefs",
+  "description": "FilesystemTask is a synchronized wrapper around LittleFS filesystem that uses a dedicated task for accessing LittleFS and filesystem. LittleFS is known not to be thread safe.",
   "version": "1.0.0",
   "authors": {
     "name": "Dan Luca",
@@ -20,6 +20,7 @@
     "includeDir": "src"
   },
   "dependencies": {
-    "SchedulerExt": "0.4.4.1"
+    "SchedulerExt": "0.4.4.1",
+    "PicoLog": "1.0.0"
   }
 }

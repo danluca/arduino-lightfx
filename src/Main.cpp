@@ -4,6 +4,7 @@
 // Collection of light strip effects with ability to be configured through Wi-Fi
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+#include <LittleFS.h>
 #include <SchedulerExt.h>
 #include <queue.h>
 #include "filesystem.h"
@@ -146,7 +147,7 @@ void setup() {
     RP2040::enableDoubleResetBootloader();   //that's just good idea overall
 
     sysInfo = new SysInfo();    //system information object built once per run
-    fsSetup();
+    SyncFs.begin(LittleFS);    //initialize the filesystem
 
     readSysInfo();
     secElement_setup();

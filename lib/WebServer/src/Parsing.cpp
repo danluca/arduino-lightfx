@@ -489,8 +489,7 @@ bool HTTPServer::_parseForm(WiFiClient * client, String boundary, uint32_t len) 
                                 // Unexpected, we should have had data available per above
                                 return _parseFormUploadAborted();
                             }
-                            char in = (char)ret;
-                            if (in == fastBoundary[boundaryPtr]) {
+                            if (char in = (char)ret; in == fastBoundary[boundaryPtr]) {
                                 // The input matched the current expected character, advance and possibly exit this file
                                 boundaryPtr++;
                                 if (boundaryPtr == fastBoundaryLen - 1) {

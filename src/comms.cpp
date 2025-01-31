@@ -78,7 +78,7 @@ void commInit() {
  */
 void commRun() {
     bcTaskMessage *msg = nullptr;
-    //block indefinitely for a message to be received
+    //check for a message to be received, return if we don't have any at this time
     if (pdFALSE == xQueueReceive(bcQueue, &msg, 0))
         return;
     //the reception was successful, hence the msg is not null anymore

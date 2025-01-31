@@ -8,6 +8,7 @@
 #include <utility>
 #include "Uri.h"
 #include "LogProxy.h"
+#include "../../../FilesystemTask/src/filesystem.h"
 
 using namespace mime;
 
@@ -131,10 +132,10 @@ public:
      * @param uri base URI allocated to static resources
      * @param cache_header cache header content for response
      */
-    StaticFileRequestHandler(FS& fs, const char* path, const char* uri, const char* cache_header)
+    StaticFileRequestHandler(SynchronizedFS& fs, const char* path, const char* uri, const char* cache_header)
         : _fs(fs), _uri(uri), _path(path), _cache_header(cache_header) {
-        const File f = fs.open(path, "r");
-        _isFile = (f && (! f.isDirectory()));
+        const FileInfo fi = fs.info(path);
+        _isFile = fi.size >0 && (!fi.isDir);
         log_debug("StaticFileRequestHandler: path=%s uri=%s isFile=%d, cache_header=%s", path, uri, _isFile, cache_header ? cache_header : ""); // issue 5506 - cache_header can be nullptr
         _baseUriLength = _uri.length();
     }
@@ -150,7 +151,7 @@ public:
 
         String path;
         getPath(requestUri, path);
-        return _fs.exists(path);
+        return _fs.exists(path.c_str());
     }
 
     bool canHandle(HTTPServer &server, const HTTPMethod requestMethod, const String &requestUri) override {
@@ -167,14 +168,11 @@ public:
         }
         String path;
         getPath(requestUri, path);
-        return _fs.exists(path);
+        return _fs.exists(path.c_str());
     }
 
     bool handle(HTTPServer& server, const HTTPMethod requestMethod, const String &requestUri) override {
-        if (!canHandle(server, requestMethod, requestUri)) {
-            return false;
-        }
-
+        //canHandle has been already called to determine whether this method will be invoked; no point in checking again if this handler can handle the request
         log_debug("StaticFileRequestHandler::handle: request=%s _uri=%s", requestUri.c_str(), _uri.c_str());
 
         String path;
@@ -183,29 +181,28 @@ public:
         log_debug("StaticFileRequestHandler::handle: path=%s, isFile=%d", path.c_str(), _isFile);
 
         const String contentType = getContentType(path);
+        bool pathExists = _fs.exists(path.c_str());
 
         // look for gz file, only if the original specified path is not a gz.  So part only works to send gzip via content encoding when a non-compressed is asked for
         // if you point the path to gzip you will serve the gzip as content type "application/x-gzip", not text or javascript etc...
-        if (!path.endsWith(FPSTR(mimeTable[gz].endsWith)) && !_fs.exists(path))  {
-            if (const String pathWithGz = path + FPSTR(mimeTable[gz].endsWith); _fs.exists(pathWithGz)) {
+        if (!path.endsWith(FPSTR(mimeTable[gz].endsWith)) && !pathExists)  {
+            if (const String pathWithGz = path + FPSTR(mimeTable[gz].endsWith); _fs.exists(pathWithGz.c_str())) {
                 path += FPSTR(mimeTable[gz].endsWith);
+                pathExists = true;
             }
         }
 
-        if (!_fs.exists(path))
+        if (!pathExists)
             return false;
-        File f = _fs.open(path, "r");
-        if (!f.available()) {
-            f.close();
-            return false;
-        }
+        const auto content = new String();
+        _fs.readFile(path.c_str(), content);
 
         if (_cache_header.length() != 0) {
             server.sendHeader(F("Cache-Control"), _cache_header);
         }
 
-        server.streamFile(f, contentType);
-        f.close();
+        server.streamData(*content, contentType);
+        delete content;
         return true;
     }
 
@@ -251,7 +248,7 @@ protected:
     // _filter should return 'true' when the request should be handled
     // and 'false' when the request should be ignored
     HTTPServer::FilterFunction _filter{};
-    FS _fs;
+    SynchronizedFS _fs;
     String _uri;
     String _path;
     String _cache_header;
@@ -315,10 +312,7 @@ public:
     }
 
     bool handle(HTTPServer& server, const HTTPMethod requestMethod, const String &requestUri) override {
-        if (!canHandle(server, requestMethod, requestUri)) {
-            return false;
-        }
-
+        //canHandle has been already called to determine whether this method will be invoked; no point in checking again if this handler can handle the request
         log_debug("StaticInMemoryRequestHandler::handle: request=%s _uri=%s", requestUri.c_str(), _uri.c_str());
 
         String path;

@@ -71,7 +71,7 @@ private:
     RequestHandler* _next = nullptr;
 
 protected:
-    std::vector<String> pathArgs;
+    std::vector<String> pathArgs{};
 
 public:
     const String& pathArg(const unsigned int i) {

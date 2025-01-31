@@ -263,7 +263,7 @@ void web::handlePutConfig() {
             calibTempMeasurements.reset();
             calibCpuTemp.reset();
             cpuTempRange.reset();
-            removeFile(calibFileName);
+            SyncFs.remove(calibFileName);
             upd[csResetCal] = resetCal;
         }
     }
@@ -336,8 +336,8 @@ void web::handleNotFound() {
 void web::server_setup() {
     if (!server_handlers_configured) {
         server.setServerAgent(serverAgent);
-        server.serveStatic("/", LittleFS, "/status/", &inFlashResources, hdCacheStatic);
-        server.serveStatic("/config.json", LittleFS, "/status/sysconfig.json", nullptr, hdCacheJson);
+        server.serveStatic("/", SyncFs, "/status/", &inFlashResources, hdCacheStatic);
+        server.serveStatic("/config.json", SyncFs, "/status/sysconfig.json", nullptr, hdCacheJson);
         server.on("/status.json", HTTP_GET, handleGetStatus);
         server.on("/fx", HTTP_PUT, handlePutConfig);
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
@@ -352,7 +352,7 @@ void web::server_setup() {
  * Web Server client handling - one at a time
  */
 void web::webserver() {
-    if (WiFi.status() != WL_CONNECTED)
-        return;
+    // if (WiFi.status() != WL_CONNECTED)
+        // return;
     server.handleClient();
 }

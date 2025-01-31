@@ -68,7 +68,7 @@ void stateLED(CRGB color) {
 void readFxState() {
     const auto json = new String();
     json->reserve(256);  // approximation - currently at 150 bytes
-    if (const size_t stateSize = readTextFile(stateFileName, json); stateSize > 0) {
+    if (const size_t stateSize = SyncFs.readFile(stateFileName, json); stateSize > 0) {
         JsonDocument doc;
         deserializeJson(doc, *json);
 
@@ -118,7 +118,7 @@ void saveFxState() {
     auto str = new String();
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
-    if (!writeTextFile(stateFileName, str))
+    if (!SyncFs.writeFile(stateFileName, str))
         Log.error(F("Failed to create/write the status file %s"), stateFileName);
     delete str;
 }
@@ -1089,10 +1089,10 @@ void fx_setup() {
     auto *str = new String();
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
-    if (!writeTextFile(sysCfgFileName, str))
+    if (!SyncFs.writeFile(sysCfgFileName, str))
         Log.error(F("Cannot save SysConfig JSON file %s"), sysCfgFileName);
     delete str;
-    Log.info("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)", fxRegistry.getCurrentEffect()->name(),
+    Log.info(F("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)"), fxRegistry.getCurrentEffect()->name(),
                fxRegistry.getCurrentEffect()->getRegistryIndex(), Setup);
 }
 

@@ -1,7 +1,7 @@
 {
-  "name": "PicoLog",
-  "keywords": "logging, debug, log",
-  "description": "PicoLog is a minimalistic logging framework that leverages a circular buffer and a dedicated task to stream data out to serial port",
+  "name": "StringUtils",
+  "keywords": "string, utils",
+  "description": "Various string utilities",
   "version": "1.0.0",
   "authors": {
     "name": "Dan Luca",
@@ -18,8 +18,5 @@
   "build": {
     "srcDir": "src",
     "includeDir": "src"
-  },
-  "dependencies": {
-    "SchedulerExt": "0.4.4.1"
   }
 }
