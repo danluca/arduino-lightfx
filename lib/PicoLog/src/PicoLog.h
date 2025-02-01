@@ -13,7 +13,7 @@
 
 #define CR "\n"
 #define PICO_LOG_VERSION_STR "1.0.0"
-#define LOG_BUFFER_SIZE 8192
+#define LOG_BUFFER_SIZE 10240
 
 enum LogLevel:uint8_t {SILENT, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE};
 

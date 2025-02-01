@@ -479,12 +479,12 @@ bool SynchronizedFS::prvList(const char *path, const std::function<void(const Fi
 
 bool SynchronizedFS::prvInfo(const char *path, const std::function<void(const FileInfo&)> &callback) const {
     if (!fsPtr->exists(path)) {
-        Log.error(F("File %s does not exist"), path);
+        Log.error(F("File %s does not exist, no info retrieved"), path);
         return false;
     }
     FileInfo fInfo{};
     fInfo.name = StringUtils::fileName(path);
-    fInfo.path = StringUtils::fileName(path);
+    fInfo.path = StringUtils::fileDir(path);
     FSStat fsStat{};
     fsPtr->stat(path, &fsStat);
     fInfo.size = fsStat.size;

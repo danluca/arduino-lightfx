@@ -2,9 +2,6 @@
 //
 
 #include "PicoLog.h"
-
-#include <FS.h>
-
 #include "../../SchedulerExt/src/SchedulerExt.h"
 
 #define SECS_PER_MIN  ((time_t)(60UL))

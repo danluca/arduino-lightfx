@@ -104,6 +104,7 @@ public:
     void addHandler(RequestHandler* handler);
     bool removeHandler(const RequestHandler *handler);
     void serveStatic(const char* uri, SynchronizedFS& fs, const char* path, const std::map<std::string, const char*> *memRes = nullptr, const char* cache_header = nullptr);
+    void serveStatic(const char* uri, FS& fs, const char* path, const std::map<std::string, const char*> *memRes = nullptr, const char* cache_header = nullptr);
     void onNotFound(const THandlerFunction &fn);  //called when handler is not assigned
     void onFileUpload(const THandlerFunction &ufn); //handle file uploads
     [[nodiscard]] String uri() const {

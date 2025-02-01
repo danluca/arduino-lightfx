@@ -297,11 +297,16 @@ bool HTTPServer::_removeRequestHandler(const RequestHandler *handler) {
  * @param cache_header
  */
 void HTTPServer::serveStatic(const char* uri, SynchronizedFS& fs, const char* path, const std::map<std::string, const char*> *memRes, const char* cache_header) {
-    _addRequestHandler(new StaticFileRequestHandler(fs, path, uri, cache_header));
+    _addRequestHandler(new StaticSyncFileRequestHandler(fs, path, uri, cache_header));
     if (memRes)
         _addRequestHandler(new StaticInMemoryRequestHandler(*memRes, uri, cache_header));
 }
 
+void HTTPServer::serveStatic(const char *uri, FS &fs, const char *path, const std::map<std::string, const char *> *memRes, const char *cache_header) {
+    _addRequestHandler(new StaticFileRequestHandler(fs, path, uri, cache_header));
+    if (memRes)
+        _addRequestHandler(new StaticInMemoryRequestHandler(*memRes, uri, cache_header));
+}
 
 void HTTPServer::httpClose() {
     _currentStatus = HC_NONE;

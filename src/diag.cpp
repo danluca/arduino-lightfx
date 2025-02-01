@@ -432,7 +432,7 @@ void readCalibrationInfo() {
     json->reserve(512);  // approximation
     if (const size_t calibSize = SyncFs.readFile(calibFileName, json); calibSize > 0) {
         JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, *json);
+        const DeserializationError error = deserializeJson(doc, *json);
         if (error) {
             Log.error(F("Error reading the CPU temp calibration information JSON file %s [%zd bytes]: %s - calibration information state NOT restored. Content read:\n%s"), calibFileName, calibSize, error.c_str(), json->c_str());
             delete json;

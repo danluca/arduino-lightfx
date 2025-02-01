@@ -1,6 +1,7 @@
 // Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 #include "stringutils.h"
+#include <FastLED.h>
 
 static inline constexpr auto FS_PATH_SEPARATOR PROGMEM = "/";
 

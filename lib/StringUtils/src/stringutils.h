@@ -5,7 +5,10 @@
 #define STRINGUTILS_H
 
 #include <Arduino.h>
-#include <FastLED.h>
+
+struct CRGB;
+template<class PIXEL_TYPE> class CPixelView;
+typedef CPixelView<CRGB> CRGBSet;
 
 inline constexpr auto EMPTY PROGMEM = "";
 

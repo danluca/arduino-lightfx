@@ -50,7 +50,7 @@ void enqueueAlarmSetup();
 constexpr TaskDef fxTasks {fx_setup, fx_run, 2048, "Fx", 255, CORE_1};
 constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 255, CORE_1};
 constexpr TaskDef alarmTasks {nullptr, alarm_misc_run, 1024, "ALM", 255, CORE_0};
-//bool core1_separate_stack = true;
+bool core1_separate_stack = true;
 QueueHandle_t almQueue;
 QueueHandle_t webQueue;
 
@@ -165,17 +165,20 @@ void setup() {
     webQueue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE0 task for communication between cores
     almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for ALM task for communication between cores
     bool bSetupOk = wifi_setup();
+    taskDelay(2500);    //let the WiFi settle
     bSetupOk = bSetupOk && timeSetup();
     stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
-    web::server_setup();
     commSetup();
 
     // notifies Core1 to start processing tasks that need WiFi
     const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
 
     Scheduler.startTask(&alarmTasks);
+    taskDelay(250);         // leave reasonable time to alarm task to setup
     //enqueues the alarm setup event
     enqueueAlarmSetup();
+
+    web::server_setup();
 
     watchdogSetup();
     Log.info(F("Main Core 0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
@@ -209,6 +212,7 @@ void setup1() {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)+1);    //raise the priority of the diag task to allow uninterrupted I2C interactions
+    taskDelay(250);    // safety delay after priority bump
     diagSetup();
 
     const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
