@@ -9,6 +9,8 @@
 #include <functional>
 #include "../../SchedulerExt/src/SchedulerExt.h"
 
+inline constexpr auto FS_PATH_SEPARATOR PROGMEM = "/";
+
 /**
  * File Information - name, directory, size, last modified, dir or file
  */

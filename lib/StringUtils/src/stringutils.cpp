@@ -2,6 +2,8 @@
 //
 #include "stringutils.h"
 
+static inline constexpr auto FS_PATH_SEPARATOR PROGMEM = "/";
+
 String StringUtils::asString(const CRGB &rgb) {
     //conversion to uint32 uses 0xFF for the alpha channel - we're not interested in the alpha channel
     const uint32_t numClr = rgb.as_uint32_t() & 0xFFFFFF;
@@ -96,4 +98,19 @@ size_t StringUtils::append(String &str, const __FlashStringHelper *fmt, ...) {
     const size_t sz = prvAppend(str, p.c_str(), args);
     va_end(args);
     return sz;
+}
+
+String StringUtils::fileName(const String &path) {
+    if (path.endsWith(FS_PATH_SEPARATOR))
+        return EMPTY;
+    if (const int xSep = path.lastIndexOf(FS_PATH_SEPARATOR); xSep >= 0)
+        return path.substring(xSep+1);
+    return path;
+}
+
+String StringUtils::fileDir(const String &path) {
+    const int xSep = path.lastIndexOf(FS_PATH_SEPARATOR);
+    if (xSep < 0)
+        return EMPTY;
+    return path.substring(0, xSep);
 }

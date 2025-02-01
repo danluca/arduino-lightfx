@@ -7,6 +7,8 @@
 #include <Arduino.h>
 #include <FastLED.h>
 
+inline constexpr auto EMPTY PROGMEM = "";
+
 class StringUtils {
 public:
     static size_t toString(const CRGB &rgb, String &str);
@@ -18,6 +20,8 @@ public:
     static const char *asString(const bool b) { return b ? "true" : "false";};
     static size_t append(String &str, const char *fmt, ...);
     static size_t append(String &str, const __FlashStringHelper *fmt, ...);
+    static String fileName(const String &path);
+    static String fileDir(const String &path);
 };
 
 #endif //STRINGUTILS_H

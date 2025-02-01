@@ -16,6 +16,7 @@
 #define FILE_OPERATIONS_TIMEOUT pdMS_TO_TICKS(1000)     //1 second file operations timeout (plenty time)
 
 SynchronizedFS SyncFs;
+static auto rootDir = FS_PATH_SEPARATOR;
 
 //ahead definitions
 void fsExecute();
@@ -84,7 +85,7 @@ void listFiles(Dir &dir, String &path, const std::function<void(const FileInfo&)
         FileInfo fInfo {dir.fileName(), path, dir.fileSize(), dir.fileTime(), dir.isDirectory()};
         callback(fInfo);
         if (fInfo.isDir) {
-            path.concat(F("/"));
+            path.concat(FS_PATH_SEPARATOR);
             path.concat(fInfo.name);
             Dir d = SyncFs.fsPtr->openDir(path);
             listFiles(d, path, callback);
@@ -120,7 +121,7 @@ void fsInit() {
     String dirContent;
     dirContent.reserve(512);
     dirContent.concat(F("Filesystem content:\n"));
-    Dir d = SyncFs.fsPtr->openDir("/");
+    Dir d = SyncFs.fsPtr->openDir(rootDir);
     StringUtils::append(dirContent, F("%*c<ROOT-DIR> %s\n"), 2, ' ', d.fileName());
     logFiles(*SyncFs.fsPtr, d, dirContent, 2, collectCorruptedFiles);
     dirContent.concat(F("End of filesystem content.\n"));
@@ -481,10 +482,9 @@ bool SynchronizedFS::prvInfo(const char *path, const std::function<void(const Fi
         Log.error(F("File %s does not exist"), path);
         return false;
     }
-    FileInfo fInfo;
-    const String dirPath = path;
-    fInfo.name = dirPath.substring(dirPath.lastIndexOf("/")+1);
-    fInfo.path = dirPath.substring(0, dirPath.lastIndexOf("/"));
+    FileInfo fInfo{};
+    fInfo.name = StringUtils::fileName(path);
+    fInfo.path = StringUtils::fileName(path);
     FSStat fsStat{};
     fsPtr->stat(path, &fsStat);
     fInfo.size = fsStat.size;

@@ -75,8 +75,8 @@ bool wifi_connect() {
             Log.info(F("Gateway ping successful: %d ms"), resPing);
         else
             Log.warn(F("Failed pinging the gateway - will retry later"));
+        printSuccessfulWifiStatus();  // you're connected now, so print out the status
     }
-    printSuccessfulWifiStatus();  // you're connected now, so print out the status
 
     return result;
 }

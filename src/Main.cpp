@@ -132,6 +132,12 @@ void web_run() {
     }
 }
 
+void filesystem_setup() {
+    SyncFs.begin(LittleFS);
+    Log.info(F("Filesystem setup completed"));
+    sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
+}
+
 //===First core tasks===
 /**
  * Core 0 Setup LED strip and global data structures
@@ -147,7 +153,7 @@ void setup() {
     RP2040::enableDoubleResetBootloader();   //that's just good idea overall
 
     sysInfo = new SysInfo();    //system information object built once per run
-    SyncFs.begin(LittleFS);    //initialize the filesystem
+    filesystem_setup();
 
     readSysInfo();
     secElement_setup();
