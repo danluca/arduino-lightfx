@@ -263,7 +263,7 @@ void web::handlePutConfig() {
             calibTempMeasurements.reset();
             calibCpuTemp.reset();
             cpuTempRange.reset();
-            SyncFs.remove(calibFileName);
+            SyncFsImpl.remove(calibFileName);
             upd[csResetCal] = resetCal;
         }
     }
@@ -336,13 +336,14 @@ void web::handleNotFound() {
 void web::server_setup() {
     if (!server_handlers_configured) {
         server.setServerAgent(serverAgent);
-        server.serveStatic("/", LittleFS, "/status/", &inFlashResources, hdCacheStatic);
-        server.serveStatic("/config.json", LittleFS, "/status/sysconfig.json", nullptr, hdCacheJson);
+        server.serveStatic("/", SyncFsImpl, "/status/", &inFlashResources, hdCacheStatic);
+        server.serveStatic("/config.json", SyncFsImpl, "/status/sysconfig.json", nullptr, hdCacheJson);
         server.on("/status.json", HTTP_GET, handleGetStatus);
         server.on("/fx", HTTP_PUT, handlePutConfig);
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
         server.onNotFound(handleNotFound);
         server_handlers_configured = true;
+        server.collectHeaders("Host", "Connection", "Accept", "Referer", "User-Agent");
     }
     server.begin();
     Log.info(F("Web server started"));

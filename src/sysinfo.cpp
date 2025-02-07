@@ -354,7 +354,7 @@ void SysInfo::taskStats(JsonObject &doc) {
 void readSysInfo() {
     const auto json = new String();
     json->reserve(512);  // approximation
-    if (const size_t sysSize = SyncFs.readFile(sysFileName, json); sysSize > 0) {
+    if (const size_t sysSize = SyncFsImpl.readFile(sysFileName, json); sysSize > 0) {
         JsonDocument doc;
         const DeserializationError error = deserializeJson(doc, *json);
         if (error) {
@@ -420,7 +420,7 @@ void saveSysInfo() {
     auto str = new String();    //larger temporary string, put it on the heap
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
-    if (!SyncFs.writeFile(sysFileName, str))
+    if (!SyncFsImpl.writeFile(sysFileName, str))
         Log.error(F("Failed to create/write the system information file %s"), sysFileName);
     delete str;
 }

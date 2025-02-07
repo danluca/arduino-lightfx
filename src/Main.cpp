@@ -133,7 +133,7 @@ void web_run() {
 }
 
 void filesystem_setup() {
-    SyncFs.begin(LittleFS);
+    SyncFsImpl.begin(LittleFS);
     Log.info(F("Filesystem setup completed"));
     sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
 }

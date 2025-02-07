@@ -20,7 +20,9 @@
 
 #pragma once
 
-#include <LogProxy.h>
+#include <detail/mimetable.h>
+
+#include "../../PicoLog/src/LogProxy.h"
 #include "HTTPServer.h"
 
 template<typename ServerType, int DefaultPort = 80> class WebServerTemplate;
@@ -46,8 +48,8 @@ public:
     }
 
     ClientType& client() override {
-        // _currentClient is always a WiFiClient*, so we need to coerce to the proper type for SSL
-        return *(ClientType*)_currentClient;
+        // _currentClient is always a WiFiClient, so we need to coerce to the proper type for SSL
+        return (ClientType&)_currentClient;
     }
 
 private:
@@ -78,12 +80,9 @@ template <typename ServerType, int DefaultPort> void WebServerTemplate<ServerTyp
 
 template <typename ServerType, int DefaultPort> void WebServerTemplate<ServerType, DefaultPort>::handleClient() {
     if (_currentStatus == HC_NONE) {
-        if (_currentClient) {
-            delete _currentClient;
-            _currentClient = nullptr;
-        }
-
-        _currentClient = new ClientType(_server.accept());
+        //we're not managing the current client object - just leveraging the client instance that WiFiNINA library manages
+        //should we use available() instead of accept()?
+        _currentClient = _server.available();
         if (!_currentClient) {
             if (_nullDelay) {
                 delay(1);
@@ -91,42 +90,46 @@ template <typename ServerType, int DefaultPort> void WebServerTemplate<ServerTyp
             return;
         }
         _currentStatus = HC_WAIT_READ;
-        _statusChange = millis();
+        _statusChangeTime = millis();
+        log_debug(F("WebServer: new client discovered, current status %d"), _currentStatus);
+        //TODO: here we should reset server's internal status
+        resetRequestHandling();
     }
     bool keepCurrentClient = false;
-    bool callYield = false;
+    bool shouldYield = false;
 
-    if (_currentClient->connected()) {
-        log_debug(F("WebServer: new client, current status %d"), _currentStatus);
+    if (_currentClient.connected()) {
         switch (_currentStatus) {
         case HC_NONE:
             // No-op to avoid C++ compiler warning
             break;
         case HC_WAIT_READ:
             // Wait for data from client to become available
-            if (_currentClient->available()) {
-                _currentClient->setTimeout(HTTP_MAX_SEND_WAIT);
-                switch (_parseRequest(_currentClient)) {
+            if (_currentClient.available()) {
+                _currentClient.setTimeout(HTTP_MAX_SEND_WAIT);
+                switch (_parseHandleRequest(&_currentClient)) {
                 case CLIENT_REQUEST_CAN_CONTINUE:
                     _contentLength = CONTENT_LENGTH_NOT_SET;
                     _handleRequest();
                 /* fallthrough */
                 case CLIENT_REQUEST_IS_HANDLED:
-                    if (_currentClient->connected() || _currentClient->available()) {
+                    if (_currentClient.connected() || _currentClient.available()) {
                         _currentStatus = HC_WAIT_CLOSE;
-                        _statusChange = millis();
+                        _statusChangeTime = millis();
                         keepCurrentClient = true;
                     } else {
                         //Log.debug("webserver: peer has closed after served\n");
                     }
                     break;
                 case CLIENT_MUST_STOP:
-                    //Log.debug("Close client\n");
-                    _currentClient->stop();
+                    //this is in response to bad inbound request - either from parsing it or handling its raw data
+                    send(400, mime::mimeTable[mime::txt].mimeType, _responseCodeToString(400));
+                    _currentClient.stop();
                     break;
                 case CLIENT_IS_GIVEN:
                     // client must not be stopped but must not be handled here anymore
                     // (example: tcp connection given to websocket)
+                    // keepCurrentClient = true;
                     //Log.debug("Give client\n");
                     break;
                 } // switch _parseRequest()
@@ -134,34 +137,30 @@ template <typename ServerType, int DefaultPort> void WebServerTemplate<ServerTyp
                 // !_currentClient.available(): waiting for more data
                 // Use faster connection drop timeout if any other client has data
                 // or the buffer of pending clients is full
-                if (const unsigned long timeSinceChange = millis() - _statusChange; timeSinceChange > HTTP_MAX_DATA_WAIT) {
+                if (const unsigned long timeSinceChange = millis() - _statusChangeTime; timeSinceChange > HTTP_MAX_DATA_WAIT) {
                     // log_debug("WebServer: closing after read timeout %d ms", HTTP_MAX_DATA_WAIT);
-                } else {
+                } else
                     keepCurrentClient = true;
-                }
-                callYield = true;
+                shouldYield = true;
             }
             break;
         case HC_WAIT_CLOSE:
             // Wait for client to close the connection
-            if (millis() - _statusChange <= HTTP_MAX_CLOSE_WAIT) {
+            if (millis() - _statusChangeTime <= HTTP_MAX_CLOSE_WAIT) {
                 keepCurrentClient = true;
-                callYield = true;
+                shouldYield = true;
             }
         }
     }
 
     if (!keepCurrentClient) {
-        if (_currentClient) {
-            delete _currentClient;
-            _currentClient = nullptr;
-        }
+        _currentClient.stop();
         _currentStatus = HC_NONE;
         _currentUpload.reset();
         _currentRaw.reset();
     }
 
-    if (callYield) {
+    if (shouldYield) {
         yield();
     }
 

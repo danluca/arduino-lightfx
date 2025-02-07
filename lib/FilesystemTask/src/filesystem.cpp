@@ -15,7 +15,8 @@
 #define MAX_DIR_LEVELS  10          // maximum number of directory levels to list (limits the recursion in the list function)
 #define FILE_OPERATIONS_TIMEOUT pdMS_TO_TICKS(1000)     //1 second file operations timeout (plenty time)
 
-SynchronizedFS SyncFs;
+SynchronizedFS SyncFsImpl;
+FS SyncLittleFS(FSImplPtr(&SyncFsImpl));
 static auto rootDir = FS_PATH_SEPARATOR;
 
 //ahead definitions
@@ -32,14 +33,14 @@ TaskDef fsDef {fsInit, fsExecute, 1024, "FS", 1, CORE_0};
 struct fsOperationData {
     const char* const name;
     String* const content;
-    const std::function<void(const FileInfo&)> &callback;
+    const std::function<void(void*)> &callback;
 };
 
 /**
  * Structure of the message sent to the filesystem task - internal use only
  */
 struct fsTaskMessage {
-    enum Action:uint8_t {READ_FILE, WRITE_FILE, DELETE_FILE, WRITE_FILE_ASYNC, FILE_EXISTS, FORMAT, LIST_FIlES, FILE_INFO} event;
+    enum Action:uint8_t {READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, RENAME, DELETE, EXISTS, FORMAT, LIST_FIlES, INFO, STAT, MAKE_DIR} event;
     TaskHandle_t task;
     fsOperationData* data;
 };
@@ -80,14 +81,14 @@ void logFiles(FS& fs, Dir &dir, String &s, const uint8_t level, const std::funct
  * @param path accumulated absolute path of the directory
  * @param callback callback to execute for each directory entry
  */
-void listFiles(Dir &dir, String &path, const std::function<void(const FileInfo&)> &callback) {
+void listFiles(Dir &dir, String &path, const std::function<void(FileInfo*)> &callback) {
     while (dir.next()) {
         FileInfo fInfo {dir.fileName(), path, dir.fileSize(), dir.fileTime(), dir.isDirectory()};
-        callback(fInfo);
+        callback(&fInfo);
         if (fInfo.isDir) {
             path.concat(FS_PATH_SEPARATOR);
             path.concat(fInfo.name);
-            Dir d = SyncFs.fsPtr->openDir(path);
+            Dir d = SyncFsImpl.fsPtr->openDir(path);
             listFiles(d, path, callback);
             path.remove(path.length()-fInfo.name.length()-1);
         }
@@ -99,11 +100,11 @@ void listFiles(Dir &dir, String &path, const std::function<void(const FileInfo&)
  * Runs on FS dedicated task
  */
 void fsInit() {
-    SyncFs.fsPtr->setTimeCallback(now);
-    if (SyncFs.fsPtr->begin())
+    SyncFsImpl.fsPtr->setTimeCallback(now);
+    if (SyncFsImpl.fsPtr->begin())
         Log.info(F("Filesystem OK"));
 
-    if (FSInfo fsInfo{}; SyncFs.fsPtr->info(fsInfo)) {
+    if (FSInfo fsInfo{}; SyncFsImpl.fsPtr->info(fsInfo)) {
         Log.info(F("Filesystem information (size in bytes): totalSize %llu, used %llu, maxOpenFiles %zu, maxPathLength %zu, pageSize %zu, blockSize %zu"),
                    fsInfo.totalBytes, fsInfo.usedBytes, fsInfo.maxOpenFiles, fsInfo.maxPathLength, fsInfo.pageSize, fsInfo.blockSize);
     } else {
@@ -121,15 +122,15 @@ void fsInit() {
     String dirContent;
     dirContent.reserve(512);
     dirContent.concat(F("Filesystem content:\n"));
-    Dir d = SyncFs.fsPtr->openDir(rootDir);
+    Dir d = SyncFsImpl.fsPtr->openDir(rootDir);
     StringUtils::append(dirContent, F("%*c<ROOT-DIR> %s\n"), 2, ' ', d.fileName());
-    logFiles(*SyncFs.fsPtr, d, dirContent, 2, collectCorruptedFiles);
+    logFiles(*SyncFsImpl.fsPtr, d, dirContent, 2, collectCorruptedFiles);
     dirContent.concat(F("End of filesystem content.\n"));
 
     if (!corruptedFiles.empty()) {
         StringUtils::append(dirContent, F("Found %d (likely) corrupted files (size < 64 bytes), deleting\n"), corruptedFiles.size());
         while (!corruptedFiles.empty()) {
-            const bool removed = SyncFs.prvRemove(corruptedFiles.front().c_str());
+            const bool removed = SyncFsImpl.prvRemove(corruptedFiles.front().c_str());
             corruptedFiles.pop();
         }
     }
@@ -143,46 +144,62 @@ void fsInit() {
 void fsExecute() {
     fsTaskMessage *msg = nullptr;
     //block indefinitely for a message to be received
-    if (pdFALSE == xQueueReceive(SyncFs.queue, &msg, portMAX_DELAY))
+    if (pdFALSE == xQueueReceive(SyncFsImpl.queue, &msg, portMAX_DELAY))
         return;
     //the reception was successful, hence the msg is not null anymore
     size_t sz = 0;
     bool success = false;
     switch (msg->event) {
         case fsTaskMessage::READ_FILE:
-            sz = SyncFs.prvReadFile(msg->data->name, msg->data->content);
+            sz = SyncFsImpl.prvReadFile(msg->data->name, msg->data->content);
             xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::WRITE_FILE:
-            sz = SyncFs.prvWriteFile(msg->data->name, msg->data->content);
+            sz = SyncFsImpl.prvWriteFile(msg->data->name, msg->data->content);
             xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::WRITE_FILE_ASYNC:
-            sz = SyncFs.prvWriteFileAndFreeMem(msg->data->name, msg->data->content);
+            sz = SyncFsImpl.prvWriteFileAndFreeMem(msg->data->name, msg->data->content);
             if (!sz)
                 Log.error(F("Failed to write file %s asynchronously. Data is still available, may lead to memory leaks."), msg->data->name);
             //dispose the messaging data
             delete msg->data;
             delete msg;
             break;
-        case fsTaskMessage::DELETE_FILE:
-            sz = SyncFs.prvRemove(msg->data->name);
+        case fsTaskMessage::APPEND_FILE:
+            sz = SyncFsImpl.prvAppendFile(msg->data->name, msg->data->content);
             xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
             break;
-        case fsTaskMessage::FILE_EXISTS:
-            success = SyncFs.prvExists(msg->data->name);
+        case fsTaskMessage::DELETE:
+            sz = SyncFsImpl.prvRemove(msg->data->name);
+            xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
+            break;
+        case fsTaskMessage::RENAME:
+            success = SyncFsImpl.prvRename(msg->data->name, msg->data->content);
+            xTaskNotify(msg->task, success, eSetValueWithOverwrite);
+            break;
+        case fsTaskMessage::EXISTS:
+            success = SyncFsImpl.prvExists(msg->data->name);
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::FORMAT:
-            success = SyncFs.prvFormat();
+            success = SyncFsImpl.prvFormat();
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::LIST_FIlES:
-            success = SyncFs.prvList(msg->data->name, msg->data->callback);
+            success = SyncFsImpl.prvList(msg->data->name, msg->data->callback);
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
-        case fsTaskMessage::FILE_INFO:
-            success = SyncFs.prvInfo(msg->data->name, msg->data->callback);
+        case fsTaskMessage::INFO:
+            success = SyncFsImpl.prvInfo(msg->data->name, msg->data->callback);
+            xTaskNotify(msg->task, success, eSetValueWithOverwrite);
+            break;
+        case fsTaskMessage::STAT:
+            success = SyncFsImpl.prvStat(msg->data->name, msg->data->callback);
+            xTaskNotify(msg->task, success, eSetValueWithOverwrite);
+            break;
+        case fsTaskMessage::MAKE_DIR:
+            success = SyncFsImpl.prvMakeDir(msg->data->name);
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         default:
@@ -193,9 +210,33 @@ void fsExecute() {
 
 SynchronizedFS::SynchronizedFS() = default;
 
+/**
+ * Constructor that sets the underlying filesystem to use
+ * Given that the typical usage of SynchronizedFS is to instantiate it in global space, this constructor is impractical:
+ * a statement of e.g. <code>SynchronizedFS fs(LittleFS);</code> in global space renders a warning from IDE:
+ * "Initializing non-local variable with non-const expression depending on uninitialized non-local variable 'LittleFS'"
+ * @param fs file system to use
+ */
+SynchronizedFS::SynchronizedFS(FS &fs) : fsPtr(&fs) {
+}
+
 SynchronizedFS::~SynchronizedFS() {
+    // same implementation as end(), but we don't want to call a virtual method in the destructor
+    Scheduler.stopTask(fsTask);
     if (fsPtr)
         fsPtr->end();
+}
+
+bool SynchronizedFS::setConfig(const FSConfig &cfg) {
+    if (fsPtr)
+        return fsPtr->setConfig(cfg);
+    return false;
+}
+
+bool SynchronizedFS::begin() {
+    if (fsPtr)
+        return begin(*fsPtr);
+    return false;
 }
 
 /**
@@ -203,7 +244,7 @@ SynchronizedFS::~SynchronizedFS() {
  * recommended to do all file operations in a single thread
  * This method can be called from any task
  */
-void SynchronizedFS::begin(FS &fs) {
+bool SynchronizedFS::begin(FS &fs) {
     fsPtr = &fs;
     queue = xQueueCreate(10, sizeof(fsTaskMessage*));
     //mirror the priority of the calling task - the filesystem task is intended to have the same priority
@@ -212,6 +253,7 @@ void SynchronizedFS::begin(FS &fs) {
     TaskStatus_t tStat;
     vTaskGetTaskInfo(fsTask->getTaskHandle(), &tStat, pdFALSE, eReady);
     Log.info(F("Filesystem task [%s] - priority %d - has been setup id %u. Events are dispatching."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
+    return true;
 }
 
 /**
@@ -262,9 +304,9 @@ size_t SynchronizedFS::writeFile(const char *fname, String *s) const {
 
 /**
  * Non-blocking function that writes the string content into a file with provided name. Can be called from any task.
- * @param fname file path to delete - absolute path
+ * @param fname file path to write - absolute path
  * @param s the content to write
- * @return true if successfully deleted, false otherwise
+ * @return true if successfully enqueued to write, false otherwise
  */
 bool SynchronizedFS::writeFileAsync(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
@@ -280,20 +322,67 @@ bool SynchronizedFS::writeFileAsync(const char *fname, String *s) const {
 }
 
 /**
+ * Blocking function that appends the string content into a file with given name. Can be called from any task.
+ * The file is created if it doesn't already exist (similar with writeFile); if it exists the content is appended at the end of the file.
+ * @param fname file path to append to - does not have to exist
+ * @param s content to write
+ * @return true if successfully appended to, false otherwise
+ */
+size_t SynchronizedFS::appendFile(const char *fname, String *s) const {
+    auto *args = new fsOperationData {fname, s, nullptr};
+    auto *msg = new fsTaskMessage {fsTaskMessage::APPEND_FILE, xTaskGetCurrentTaskHandle(), args};
+
+    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    size_t sz = 0;
+    if (qResult == pdTRUE) {
+        //wait for the filesystem task to finish and notify us
+        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    } else
+        Log.error(F("Error sending APPEND_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+
+    delete msg;
+    delete args;
+    return sz;
+}
+
+/**
  * Blocking function that deletes a file with given name. Can be called from any task.
- * @param fname file path to delete - absolute path
+ * @param path file path to delete - absolute path
  * @return true if successfully deleted, false otherwise
  */
-bool SynchronizedFS::remove(const char *fname) const {
-    auto *args = new fsOperationData {fname, nullptr, nullptr};
-    auto *msg = new fsTaskMessage{fsTaskMessage::DELETE_FILE, xTaskGetCurrentTaskHandle(), args};
+bool SynchronizedFS::remove(const char *path) {
+    auto *args = new fsOperationData {path, nullptr, nullptr};
+    auto *msg = new fsTaskMessage{fsTaskMessage::DELETE, xTaskGetCurrentTaskHandle(), args};
 
     const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     bool success = false;
     if (qResult == pdTRUE) {
         success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
-        Log.error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+        Log.error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), path, qResult);
+
+    delete msg;
+    delete args;
+    return success;
+}
+
+/**
+ * Rename a file/directory - blocking call, can be called from any task.
+ * @param pathFrom old path to rename
+ * @param pathTo new path name
+ * @return true if rename was successful (old path exists, rename succeeded); false otherwise
+ */
+bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
+    String pathToStr(pathTo);
+    auto *args = new fsOperationData {pathFrom, &pathToStr, nullptr};
+    auto *msg = new fsTaskMessage{fsTaskMessage::RENAME, xTaskGetCurrentTaskHandle(), args};
+
+    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    bool success = false;
+    if (qResult == pdTRUE) {
+        success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    } else
+        Log.error(F("Error sending RENAME message to filesystem task for file name %s - error %d"), pathFrom, qResult);
 
     delete msg;
     delete args;
@@ -305,9 +394,9 @@ bool SynchronizedFS::remove(const char *fname) const {
  * @param fname file path to check - absolute path
  * @return true if file exists, false otherwise
  */
-bool SynchronizedFS::exists(const char *fname) const {
+bool SynchronizedFS::exists(const char *fname) {
     auto *args = new fsOperationData {fname, nullptr, nullptr};
-    auto *msg = new fsTaskMessage{fsTaskMessage::FILE_EXISTS, xTaskGetCurrentTaskHandle(), args};
+    auto *msg = new fsTaskMessage{fsTaskMessage::EXISTS, xTaskGetCurrentTaskHandle(), args};
 
     const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     bool exists = false;
@@ -325,7 +414,7 @@ bool SynchronizedFS::exists(const char *fname) const {
  * Blocking function that formats the file system. Can be called from any task
  * @return true if successful
  */
-bool SynchronizedFS::format() const {
+bool SynchronizedFS::format() {
     auto *args = new fsOperationData {nullptr, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::FORMAT, xTaskGetCurrentTaskHandle(), args};
 
@@ -347,7 +436,7 @@ bool SynchronizedFS::format() const {
  * @param path path to list files from (recursively)
  * @param callback callback for each file/dir encountered - note the callback will be executed on the filesystem task
  */
-void SynchronizedFS::list(const char *path, const std::function<void(const FileInfo&)> &callback) const {
+bool SynchronizedFS::list(const char *path, const std::function<void(void *)> &callback) const {
     auto *args = new fsOperationData {path, nullptr, callback};
     auto *msg = new fsTaskMessage{fsTaskMessage::LIST_FIlES, xTaskGetCurrentTaskHandle(), args};
 
@@ -360,18 +449,19 @@ void SynchronizedFS::list(const char *path, const std::function<void(const FileI
 
     delete msg;
     delete args;
+    return completed;
 }
 
 /**
  * Blocking function that retrieves file information from the file system if it exists. Can be called from any task
  * @param path path to get info for
+ * @param info file info object to populate
  * @return file information; if file doesn't exist the fields {@code size} and {@code modTime} are both 0
  */
-FileInfo SynchronizedFS::info(const char *path) const {
-    FileInfo fInfo{};
-    auto catchInfo = [&fInfo](const FileInfo& f) {fInfo = f;};
+bool SynchronizedFS::stat(const char *path, FileInfo& info) const {
+    auto catchInfo = [&info](void *f) {info = *static_cast<FileInfo*>(f);};
     auto *args = new fsOperationData {path, nullptr, catchInfo};
-    auto *msg = new fsTaskMessage{fsTaskMessage::FILE_INFO, xTaskGetCurrentTaskHandle(), args};
+    auto *msg = new fsTaskMessage{fsTaskMessage::INFO, xTaskGetCurrentTaskHandle(), args};
 
     const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     bool successful = false;
@@ -383,9 +473,58 @@ FileInfo SynchronizedFS::info(const char *path) const {
         Log.error(F("Failed to retrieve file info for path %s"), path);
     delete msg;
     delete args;
-    return fInfo;
+    return successful;
 }
 
+bool SynchronizedFS::stat(const char *path, FSStat *st) {
+    auto catchInfo = [&st](void *fs) {*st = *static_cast<FSStat*>(fs);};
+    auto *args = new fsOperationData {path, nullptr, catchInfo};
+    auto *msg = new fsTaskMessage{fsTaskMessage::INFO, xTaskGetCurrentTaskHandle(), args};
+
+    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    bool successful = false;
+    if (qResult == pdTRUE)
+        successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    else
+        Log.error(F("Error sending FILE_INFO message to filesystem task for path %s - error %d"), path, qResult);
+    if (!successful)
+        Log.error(F("Failed to retrieve file info for path %s"), path);
+    delete msg;
+    delete args;
+    return successful;
+}
+
+void SynchronizedFS::end() {
+    Scheduler.stopTask(fsTask);
+    if (fsPtr)
+        fsPtr->end();
+}
+
+bool SynchronizedFS::info(FSInfo &info) {
+    if (fsPtr)
+        return fsPtr->info(info);
+    return false;
+}
+
+bool SynchronizedFS::mkdir(const char *path) {
+    auto *args = new fsOperationData {path, nullptr, nullptr};
+    auto *msg = new fsTaskMessage{fsTaskMessage::MAKE_DIR, xTaskGetCurrentTaskHandle(), args};
+
+    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    bool success = false;
+    if (qResult == pdTRUE) {
+        success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    } else
+        Log.error(F("Error sending MAKE_DIR message to filesystem task for path name %s - error %d"), path, qResult);
+
+    delete msg;
+    delete args;
+    return success;
+}
+
+bool SynchronizedFS::rmdir(const char *path) {
+    return remove(path);
+}
 
 /**
  * Reads a text file - if it exists - into a string object. Private function, only to be called from the filesystem task
@@ -424,12 +563,29 @@ size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
     fSize = f.write(s->c_str());
     f.close();
     //get the current last write timestamp
-    f = fsPtr->open(fname, "r");
-    const time_t lastWrite = f.getLastWrite();
-    f.close();
+    FSStat fstat{};
+    fsPtr->stat(fname, &fstat);
+    // f = fsPtr->open(fname, "r");
+    // const time_t lastWrite = f.getLastWrite();
+    // f.close();
 
-    Log.info(F("File %s - %zu bytes - has been saved at %s"), fname, fSize, StringUtils::asString(lastWrite).c_str());
+    Log.info(F("File %s - %zu bytes - has been saved at %s"), fname, fSize, StringUtils::asString(fstat.atime).c_str());
     Log.trace(F("Saved file %s content [%zu]: %s"), fname, fSize, s->c_str());
+    return fSize;
+}
+
+size_t SynchronizedFS::prvAppendFile(const char *fname, const String *s) const {
+    size_t fSize = 0;
+    File f = fsPtr->open(fname, "a");
+    f.setTimeCallback(now);
+    fSize = f.write(s->c_str());
+    f.close();
+    //get the current last write timestamp
+    FSStat fstat{};
+    fsPtr->stat(fname, &fstat);
+
+    Log.info(F("File %s - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, fstat.size, StringUtils::asString(fstat.atime).c_str());
+    Log.trace(F("Appended file %s content [%zu]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
 
@@ -442,25 +598,39 @@ size_t SynchronizedFS::prvWriteFileAndFreeMem(const char *fname, const String *s
 
 /**
  * Deletes a file with given path. Private function, only to be called from the filesystem task
- * @param fname full file path to delete
+ * @param path full file path to delete
  * @return true if file exist and deletion was successful or file does not exist (wrong path?); false if the deletion attempt failed
  */
-bool SynchronizedFS::prvRemove(const char *fname) const {
-    if (!fsPtr->exists(fname)) {
+bool SynchronizedFS::prvRemove(const char *path) const {
+    if (!fsPtr->exists(path)) {
         //file does not exist - return true to the caller, the intent is already fulfilled
-        Log.info(F("File %s does not exist, no need to remove"), fname);
+        Log.info(F("File %s does not exist, no need to remove"), path);
         return true;
     }
-    const bool bDel = fsPtr->remove(fname);
+    //TODO: does remove succeeds if path is a folder and it is not empty?
+    const bool bDel = fsPtr->remove(path); //on LittleFS (core implementation of this filesystem) the remove dir and remove file are same call
     if (bDel)
-        Log.info(F("File %s successfully removed"), fname);
+        Log.info(F("File %s successfully removed"), path);
     else
-        Log.error(F("File %s can NOT be removed"), fname);
+        Log.error(F("File %s can NOT be removed"), path);
     return bDel;
 }
 
-bool SynchronizedFS::prvExists(const char *fname) const {
-    return fsPtr->exists(fname);
+bool SynchronizedFS::prvRename(const char *fromName, const String *toName) const {
+    if (!fsPtr->exists(fromName)) {
+        Log.error(F("File %s does not exist, no need to rename"), fromName);
+        return false;
+    }
+    const bool bRenamed = fsPtr->rename(fromName, toName->c_str());
+    if (bRenamed)
+        Log.info(F("File %s successfully renamed to %s"), fromName, toName);
+    else
+        Log.error(F("File %s can NOT be renamed to %s"), fromName, toName);
+    return bRenamed;
+}
+
+bool SynchronizedFS::prvExists(const char *path) const {
+    return fsPtr->exists(path);
 }
 
 bool SynchronizedFS::prvFormat() const {
@@ -470,14 +640,14 @@ bool SynchronizedFS::prvFormat() const {
     return formatted;
 }
 
-bool SynchronizedFS::prvList(const char *path, const std::function<void(const FileInfo&)> &callback) const {
+bool SynchronizedFS::prvList(const char *path, const std::function<void(FileInfo*)> &callback) const {
     Dir d = fsPtr->openDir(path);
     String dirPath = path;
     listFiles(d, dirPath, callback);
     return true;
 }
 
-bool SynchronizedFS::prvInfo(const char *path, const std::function<void(const FileInfo&)> &callback) const {
+bool SynchronizedFS::prvInfo(const char *path, const std::function<void(FileInfo*)> &callback) const {
     if (!fsPtr->exists(path)) {
         Log.error(F("File %s does not exist, no info retrieved"), path);
         return false;
@@ -490,7 +660,21 @@ bool SynchronizedFS::prvInfo(const char *path, const std::function<void(const Fi
     fInfo.size = fsStat.size;
     fInfo.modTime = fsStat.ctime;
     fInfo.isDir = fsStat.isDir;
-    callback(fInfo);
+    callback(&fInfo);
     return true;
 }
 
+bool SynchronizedFS::prvStat(const char *path, const std::function<void(FSStat *)> &callback) const {
+    if (!fsPtr->exists(path)) {
+        Log.error(F("Path %s does not exist, no stat retrieved"), path);
+        return false;
+    }
+    FSStat fsStat{};
+    fsPtr->stat(path, &fsStat);
+    callback(&fsStat);
+    return true;
+}
+
+bool SynchronizedFS::prvMakeDir(const char *path) const {
+    return fsPtr->mkdir(path);
+}

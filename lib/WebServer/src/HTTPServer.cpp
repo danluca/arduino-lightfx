@@ -28,29 +28,60 @@
 #include "FS.h"
 #include "detail/RequestHandlersImpl.h"
 #include <MD5Builder.h>
-#include "LogProxy.h"
+#include "../../PicoLog/src/LogProxy.h"
 
-static constexpr char AUTHORIZATION_HEADER[] = "Authorization";
 static constexpr char qop_auth[] PROGMEM = "qop=auth";
 static constexpr char qop_auth_quoted[] PROGMEM = "qop=\"auth\"";
 static constexpr char WWW_Authenticate[] = "WWW-Authenticate";
 static constexpr char Content_Length[] = "Content-Length";
 
-HTTPServer::HTTPServer() : _corsEnabled(false), _currentClient(nullptr), _currentMethod(HTTP_ANY), _currentVersion(0), _currentStatus(HC_NONE),
-    _statusChange(0), _nullDelay(true), _currentHandler(nullptr), _firstHandler(nullptr), _lastHandler(nullptr),
-    _currentArgCount(0), _currentArgs(nullptr), _postArgsLen(0), _postArgs(nullptr), _headerKeysCount(0), _currentHeaders(nullptr),
-    _contentLength(0), _clientContentLength(0), _chunked(false) {
+HTTPServer::HTTPServer() : _corsEnabled(false), _currentStatus(HC_NONE), _currentClient(NO_SOCKET_AVAIL), _currentMethod(HTTP_ANY),
+    _statusChangeTime(0), _nullDelay(true), _headersReqCount(0), _currentReqHeaders(nullptr), _clientContentLength(0),
+    _currentArgCount(0), _currentArgs(nullptr), _currentHandler(nullptr), _firstHandler(nullptr), _lastHandler(nullptr),
+    _currentUpload(nullptr), _currentRaw(nullptr), _contentLength(0), _chunked(false) {
     log_debug("HTTPServer::HTTPServer()");
 }
 
 HTTPServer::~HTTPServer() {
-    delete[]_currentHeaders;
+    delete[]_currentReqHeaders;
     const RequestHandler* handler = _firstHandler;
     while (handler) {
         const RequestHandler* next = handler->next();
         delete handler;
         handler = next;
     }
+}
+
+/**
+ * Resets the state between requests - keeps the routes, handlers and server global settings
+ */
+void HTTPServer::resetRequestHandling() {
+    _currentMethod = HTTP_ANY;
+    _statusChangeTime = 0;
+    _headersReqCount = 0;
+    delete[] _currentReqHeaders;
+    _currentReqHeaders = nullptr;
+    _clientContentLength = 0;
+    _currentArgCount = 0;
+    delete[] _currentArgs;
+    _currentArgs = nullptr;
+    _currentHandler = nullptr;
+    _currentUpload = nullptr;
+    _currentRaw = nullptr;
+    _contentLength = 0;
+    _chunked = false;
+    _currentUrl = "";
+    _currentUri = "";
+    _currentHttpVersion = "";
+    _statusChangeTime = 0;
+    _currentRequestBody = "";
+    _currentBoundaryStr = "";
+    _contentLength = 0;
+    _responseHeaders = "";
+    _hostHeader = "";
+    _snonce = "";
+    _sopaque = "";
+    _srealm = "";
 }
 
 String HTTPServer::_extractParam(const String& authReq, const String& param, const char delimit) {
@@ -76,6 +107,13 @@ static String md5str(const String &in) {
     return {out};
 }
 
+/**
+ * Revisit this code for security, robustness. A web server running on embedded platform is not expected to
+ * manage user credentials dynamically, perhaps the authentication needs can be met in a more robust manner.
+ * @param username username
+ * @param password password
+ * @return true if username/password match
+ */
 bool HTTPServer::authenticate(const char * username, const char * password) {
     if (hasHeader(FPSTR(AUTHORIZATION_HEADER))) {
         if (String authReq = header(FPSTR(AUTHORIZATION_HEADER)); authReq.startsWith(F("Basic"))) {
@@ -155,6 +193,12 @@ String HTTPServer::_getRandomHexString() {
     return {buffer};
 }
 
+/**
+ * Revisit the need for this alongside the authentication method above
+ * @param mode
+ * @param realm
+ * @param authFailMsg
+ */
 void HTTPServer::requestAuthentication(const HTTPAuthMethod mode, const char* realm, const String& authFailMsg) {
     if (realm == nullptr) {
         _srealm = String(F("Login Required"));
@@ -296,7 +340,7 @@ bool HTTPServer::_removeRequestHandler(const RequestHandler *handler) {
  * @param memRes
  * @param cache_header
  */
-void HTTPServer::serveStatic(const char* uri, SynchronizedFS& fs, const char* path, const std::map<std::string, const char*> *memRes, const char* cache_header) {
+void HTTPServer::serveStatic(const char* uri, const SynchronizedFS& fs, const char* path, const std::map<std::string, const char*> *memRes, const char* cache_header) {
     _addRequestHandler(new StaticSyncFileRequestHandler(fs, path, uri, cache_header));
     if (memRes)
         _addRequestHandler(new StaticInMemoryRequestHandler(*memRes, uri, cache_header));
@@ -310,8 +354,8 @@ void HTTPServer::serveStatic(const char *uri, FS &fs, const char *path, const st
 
 void HTTPServer::httpClose() {
     _currentStatus = HC_NONE;
-    if (!_headerKeysCount) {
-        collectHeaders(0, 0);
+    if (!_headersReqCount) {
+        collectHeaders();
     }
 }
 
@@ -345,7 +389,7 @@ void HTTPServer::enableCrossOrigin(const bool value) {
 }
 
 void HTTPServer::_prepareHeader(String& response, const int code, const char* content_type, const size_t contentLength) {
-    response = String(F("HTTP/1.")) + String(_currentVersion) + ' ';
+    response = String(F("HTTP/")) + _currentHttpVersion + ' ';
     response += String(code);
     response += ' ';
     response += _responseCodeToString(code);
@@ -360,13 +404,14 @@ void HTTPServer::_prepareHeader(String& response, const int code, const char* co
         sendHeader(F("Server"), _serverAgent);
     if (_contentLength == CONTENT_LENGTH_NOT_SET) {
         sendHeader(String(FPSTR(Content_Length)), String(contentLength));
-    } else if (_contentLength != CONTENT_LENGTH_UNKNOWN) {
-        sendHeader(String(FPSTR(Content_Length)), String(_contentLength));
-    } else if (_contentLength == CONTENT_LENGTH_UNKNOWN && _currentVersion) { //HTTP/1.1 or above client
-        //let's do chunked
-        _chunked = true;
-        sendHeader(String(F("Accept-Ranges")), String(F("none")));
-        sendHeader(String(F("Transfer-Encoding")), String(F("chunked")));
+    } else {
+        if (_contentLength == CONTENT_LENGTH_UNKNOWN) {
+            //let's do chunked - only applicable to HTTP/1.1 or above client, i.e. all today clients
+            _chunked = true;
+            sendHeader(String(F("Accept-Ranges")), String(F("none")));
+            sendHeader(String(F("Transfer-Encoding")), String(F("chunked")));
+        } else
+            sendHeader(String(FPSTR (Content_Length)), String(_contentLength));
     }
     if (_corsEnabled) {
         sendHeader(String(FPSTR("Access-Control-Allow-Origin")), String("*"));
@@ -400,12 +445,8 @@ size_t HTTPServer::send(const int code, const char *content_type, const String &
     return header.length() + content.length();
 }
 
-size_t HTTPServer::send(const int code, char *content_type, const String &content) {
-    return send(code, (const char*)content_type, content);
-}
-
 size_t HTTPServer::send(const int code, const String &content_type, const String &content) {
-    return send(code, (const char*)content_type.c_str(), content);
+    return send(code, content_type.c_str(), content);
 }
 
 size_t HTTPServer::send(const int code, const char *content_type, const char *content) {
@@ -458,7 +499,7 @@ size_t HTTPServer::sendContent(const char *content, const size_t contentLength) 
     }
     _currentClientWrite(content, contentLength);
     if (_chunked) {
-        _currentClient->write(footer, 2);
+        _currentClient.write(footer, 2);
         if (contentLength == 0) {
             _chunked = false;
         }
@@ -479,7 +520,7 @@ size_t HTTPServer::sendContent_P(PGM_P content, const size_t size) {
     }
     _currentClientWrite_P(content, size);
     if (_chunked) {
-        _currentClient->write(footer, 2);
+        _currentClient.write(footer, 2);
         if (size == 0) {
             _chunked = false;
         }
@@ -506,11 +547,6 @@ String HTTPServer::pathArg(const unsigned int i) const {
 }
 
 String HTTPServer::arg(const String& name) const {
-    for (int j = 0; j < _postArgsLen; ++j) {
-        if (_postArgs[j].key == name) {
-            return _postArgs[j].value;
-        }
-    }
     for (int i = 0; i < _currentArgCount; ++i) {
         if (_currentArgs[i].key == name) {
             return _currentArgs[i].value;
@@ -538,11 +574,6 @@ int HTTPServer::args() const {
 }
 
 bool HTTPServer::hasArg(const String&  name) const {
-    for (int j = 0; j < _postArgsLen; ++j) {
-        if (_postArgs[j].key == name) {
-            return true;
-        }
-    }
     for (int i = 0; i < _currentArgCount; ++i) {
         if (_currentArgs[i].key == name) {
             return true;
@@ -553,46 +584,46 @@ bool HTTPServer::hasArg(const String&  name) const {
 
 
 String HTTPServer::header(const String& name) const {
-    for (int i = 0; i < _headerKeysCount; ++i) {
-        if (_currentHeaders[i].key.equalsIgnoreCase(name)) {
-            return _currentHeaders[i].value;
+    for (int i = 0; i < _headersReqCount; ++i) {
+        if (_currentReqHeaders[i].key.equalsIgnoreCase(name)) {
+            return _currentReqHeaders[i].value;
         }
     }
     return "";
 }
 
-void HTTPServer::collectHeaders(const char* headerKeys[], const size_t headerKeysCount) {
-    _headerKeysCount = headerKeysCount + 1;
-    delete[] _currentHeaders;
-
-    _currentHeaders = new RequestArgument[_headerKeysCount];
-    _currentHeaders[0].key = FPSTR(AUTHORIZATION_HEADER);
-    for (int i = 1; i < _headerKeysCount; i++) {
-        _currentHeaders[i].key = headerKeys[i - 1];
-    }
-}
+// void HTTPServer::collectHeaders(const char* headerKeys[], const size_t headerKeysCount) {
+//     _headersReqCount = headerKeysCount + 1;
+//     delete[] _currentReqHeaders;
+//
+//     _currentReqHeaders = new RequestArgument[_headersReqCount];
+//     _currentReqHeaders[0].key = FPSTR(AUTHORIZATION_HEADER);
+//     for (int i = 1; i < _headersReqCount; i++) {
+//         _currentReqHeaders[i].key = headerKeys[i - 1];
+//     }
+// }
 
 String HTTPServer::header(const int i) const {
-    if (i < _headerKeysCount) {
-        return _currentHeaders[i].value;
+    if (i < _headersReqCount) {
+        return _currentReqHeaders[i].value;
     }
     return "";
 }
 
 String HTTPServer::headerName(const int i) const {
-    if (i < _headerKeysCount) {
-        return _currentHeaders[i].key;
+    if (i < _headersReqCount) {
+        return _currentReqHeaders[i].key;
     }
     return "";
 }
 
 int HTTPServer::headers() const {
-    return _headerKeysCount;
+    return _headersReqCount;
 }
 
 bool HTTPServer::hasHeader(const String& name) const {
-    for (int i = 0; i < _headerKeysCount; ++i) {
-        if ((_currentHeaders[i].key.equalsIgnoreCase(name)) && (_currentHeaders[i].value.length() > 0)) {
+    for (int i = 0; i < _headersReqCount; ++i) {
+        if ((_currentReqHeaders[i].key.equalsIgnoreCase(name)) && (_currentReqHeaders[i].value.length() > 0)) {
             return true;
         }
     }

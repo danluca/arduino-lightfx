@@ -430,7 +430,7 @@ static void deserializeCalibrationParams(CalibrationParams& obj, JsonObject& jso
 void readCalibrationInfo() {
     auto json = new String();
     json->reserve(512);  // approximation
-    if (const size_t calibSize = SyncFs.readFile(calibFileName, json); calibSize > 0) {
+    if (const size_t calibSize = SyncFsImpl.readFile(calibFileName, json); calibSize > 0) {
         JsonDocument doc;
         const DeserializationError error = deserializeJson(doc, *json);
         if (error) {
@@ -458,7 +458,7 @@ void saveCalibrationInfo() {
     auto str = new String();    //larger temporary string, put it on the heap
     str->reserve(measureJson(doc));
     const size_t sz = serializeJson(doc, *str);
-    if (SyncFs.writeFile(calibFileName, str))
+    if (SyncFsImpl.writeFile(calibFileName, str))
         Log.info(F("Successfully saved CPU temp calibration information file %s [%zd bytes]"), calibFileName, sz);
     else
         Log.error(F("Failed to create/write the CPU temp calibration information file %s"), calibFileName);

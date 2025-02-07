@@ -4,7 +4,7 @@
 namespace mime {
 
 // Table of extension->MIME strings stored in PROGMEM, needs to be global due to GCC section typing rules
-const Entry mimeTable[maxType] = {
+constexpr Entry mimeTable[maxType] = {
     { ".html", "text/html" },
     { ".htm", "text/html" },
     { ".css", "text/css" },
@@ -30,14 +30,13 @@ const Entry mimeTable[maxType] = {
     { "", "application/octet-stream" }
 };
 
-
-arduino::String getContentType(const arduino::String& path) {
-    for (size_t i = 0; i < maxType; i++) {
-        if (path.endsWith(FPSTR(mimeTable[i].endsWith))) {
-            return arduino::String(FPSTR(mimeTable[i].mimeType));
+String getContentType(const String& path) {
+    for (auto [endsWith, mimeType] : mimeTable) {
+        if (path.endsWith(endsWith)) {
+            return {mimeType};
         }
     }
     // Fall-through and just return default type
-    return arduino::String(FPSTR(mimeTable[none].mimeType));
+    return {(mimeTable[none].mimeType)};
 }
 }

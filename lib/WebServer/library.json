@@ -1,7 +1,7 @@
 {
   "name": "WebServer",
   "keywords": "web,server",
-  "description": "Simple web server library for RP2040, RP2350. The library supports HTTP(S) GET and POST requests, provides argument parsing, handles one client at a time. Derivation from arduino-pico version to work with WiFiNINA and avoid pulling in the lwip layer",
+  "description": "Simple REST web server library for RP2040, RP2350. The library supports HTTP(S) GET and POST requests, provides argument parsing, handles one client at a time. Derivation from arduino-pico version to work with WiFiNINA and avoid pulling in the lwip layer",
   "version": "2.0.0",
   "authors": [{
     "name": "Ivan Grokhotkov",
