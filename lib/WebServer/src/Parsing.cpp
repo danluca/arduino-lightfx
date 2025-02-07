@@ -81,7 +81,7 @@ void HTTPServer::_parseHttpHeaders(WiFiClient *client, String &boundaryStr) {
         String headerValue = req.substring(headerDiv + 1);
         headerValue.trim();
         bool hdCollected = _collectHeader(headerName.c_str(), headerValue.c_str());
-        log_debug(F("%c%s: %s"), hdCollected ? '':'!', headerName.c_str(), headerValue.c_str());
+        log_debug(F("%c%s: %s"), hdCollected ? ' ':'!', headerName.c_str(), headerValue.c_str());
 
         if (headerName.equalsIgnoreCase(FPSTR(Content_Type))) {
             if (headerValue.startsWith(F("multipart/"))) {
@@ -178,7 +178,7 @@ HTTPServer::ClientAction HTTPServer::_parseHandleRequest(WiFiClient* client) {
     }
     _currentMethod = method;
 
-    log_debug(F("Web Request data: URI: %s [%d] %s %s; content length: %d"), methodStr.c_str(), _currentMethod, url.c_str(), searchStr.c_str(), _clientContentLength);
+    log_debug(F("Web Request data: URI: %s [%d] %s %s; content length: %d"), methodStr.c_str(), _currentMethod, _currentUrl.c_str(), searchStr.c_str(), _clientContentLength);
 
     //attach handler
     RequestHandler* handler;
@@ -259,7 +259,7 @@ void HTTPServer::_parseArguments(const String& data) {
         const int equal_sign_index = data.indexOf('=', pos);
         const int next_arg_index = data.indexOf('&', pos);
         if (equal_sign_index < 0 || (equal_sign_index > next_arg_index && next_arg_index > -1)) {
-            log_debug("Request arg %d missing value, default to empty string/presence", iarg);
+            log_debug("Request arg %d missing value, default to empty string/presence", iArg);
             auto &[key, value] = _currentArgs[iArg++];
             key = urlDecode(next_arg_index < 0 ? data.substring(pos) : data.substring(pos, next_arg_index));
             value = "";
@@ -271,7 +271,7 @@ void HTTPServer::_parseArguments(const String& data) {
         auto &[key, value] = _currentArgs[iArg++];
         key = urlDecode(data.substring(pos, equal_sign_index));
         value = urlDecode(data.substring(equal_sign_index + 1, next_arg_index));
-        log_debug("Request arg %d key: %s value: %s", iarg, arg.key.c_str(), arg.value.c_str());
+        log_debug("Request arg %d key: %s value: %s", iArg, key.c_str(), value.c_str());
         if (next_arg_index < 0)
             break;
         pos = next_arg_index + 1;
