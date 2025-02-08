@@ -20,7 +20,36 @@
 
 #pragma once
 
-#include "WebServerTemplate.h"
+#include "HTTPServer.h"
 #include "detail/mimetable.h"
 
-using WebServer = WebServerTemplate<WiFiServer>;
+#define DEFAULT_HTTP_PORT 80
+
+class WebServer : public HTTPServer {
+public:
+    using ClientType = WiFiClient;
+    using ServerType = WiFiServer;
+
+    explicit WebServer(int port = DEFAULT_HTTP_PORT);
+    ~WebServer() override;
+
+    virtual void begin();
+    virtual void begin(uint16_t port);
+    virtual void handleClient();
+
+    virtual void close();
+    virtual void stop();
+
+    ServerType &getServer() {
+        return _server;
+    }
+
+    ClientType& client() override {
+        // _currentClient is always a WiFiClient, so we need to coerce to the proper type
+        return static_cast<ClientType &>(_currentClient);
+    }
+
+private:
+    ServerType _server;
+};
+
