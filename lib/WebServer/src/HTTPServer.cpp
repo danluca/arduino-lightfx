@@ -59,8 +59,10 @@ void HTTPServer::resetRequestHandling() {
     _currentMethod = HTTP_ANY;
     _statusChangeTime = 0;
     _headersReqCount = 0;
-    delete[] _currentReqHeaders;
-    _currentReqHeaders = nullptr;
+    for (int i = 0; i < _headersReqCount; i++) {
+        _currentReqHeaders[i].value = String();
+        _currentReqHeaders[i].value.reserve(64);
+    }
     _clientContentLength = 0;
     _currentArgCount = 0;
     delete[] _currentArgs;

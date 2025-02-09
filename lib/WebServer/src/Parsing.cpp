@@ -131,11 +131,6 @@ HTTPServer::ClientAction HTTPServer::_parseHandleRequest(WiFiClient* client) {
     // Read the first line of HTTP request
     const String req = client->readStringUntil('\r');
     client->readStringUntil('\n');
-    //reset header value
-    for (int i = 0; i < _headersReqCount; ++i) {
-        _currentReqHeaders[i].value = String();
-        _currentReqHeaders[i].value.reserve(64);
-    }
 
     // First line of HTTP request looks like "GET /path HTTP/1.1"
     // Retrieve the "/path" part by finding the spaces
@@ -235,10 +230,7 @@ bool HTTPServer::_collectHeader(const char* headerName, const char* headerValue)
 
 void HTTPServer::_parseArguments(const String& data) {
     log_debug("Request args: %s", data.c_str());
-    delete[] _currentArgs;
-    _currentArgs = nullptr;
     if (data.length() == 0) {
-        _currentArgCount = 0;
         return;
     }
     _currentArgCount = 1;   //we have at least 1 arg if the search data string has any length
