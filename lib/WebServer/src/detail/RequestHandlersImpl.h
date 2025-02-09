@@ -279,7 +279,7 @@ public:
     StaticSyncFileRequestHandler(const SynchronizedFS& fs, const char* path, const char* uri, const char* cache_header)
         : _fs(fs), _uri(uri), _path(path), _cache_header(cache_header) {
         FileInfo fi{};
-        fs.stat(path, fi);
+        fs.stat(path, &fi);
         _isFile = fi.size >0 && (!fi.isDir);
         log_debug("StaticFileRequestHandler: web uri=%s mapped to physical path=%s, isFile=%d, cache_header=%s", uri, path, _isFile, cache_header ? cache_header : "");
         _baseUriLength = _uri.length();

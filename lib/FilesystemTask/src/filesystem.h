@@ -8,6 +8,7 @@
 #include <FS.h>
 #include <FSImpl.h>
 #include <functional>
+#include <deque>
 #include "../../SchedulerExt/src/SchedulerExt.h"
 
 inline constexpr auto FS_PATH_SEPARATOR PROGMEM = "/";
@@ -56,13 +57,13 @@ public:
     bool mkdir(const char *path) override;
     bool rmdir(const char *path) override;
     bool stat(const char *path, FSStat *st) override;
-    bool stat(const char *path, FileInfo& info) const;
+    bool stat(const char *path, FileInfo *info) const;
 
     size_t readFile(const char *fname, String *s) const;
     size_t writeFile(const char *fname, String *s) const;
     size_t appendFile(const char *fname, String *s) const;
     bool writeFileAsync(const char *fname, String *s) const;
-    bool list(const char *path, const std::function<void(void *)> &callback) const;
+    bool list(const char *path, std::deque<FileInfo*> *list) const;
 
 protected:
     size_t prvReadFile(const char *fname, String *s) const;
@@ -73,9 +74,9 @@ protected:
     bool prvRename(const char *fromName, const String *toName) const;
     bool prvExists(const char *path) const;
     bool prvFormat() const;
-    bool prvList(const char *path, const std::function<void(FileInfo *)> &callback) const;
-    bool prvInfo(const char *path, const std::function<void(FileInfo *)> &callback) const;
-    bool prvStat(const char *path, const std::function<void(FSStat *)> &callback) const;
+    bool prvList(const char *path, std::deque<FileInfo *> *fiList) const;
+    bool prvInfo(const char *path, FileInfo *fileInfo) const;
+    bool prvStat(const char *path, FSStat *fs) const;
     bool prvMakeDir(const char *path) const;
 
     friend void fsInit();

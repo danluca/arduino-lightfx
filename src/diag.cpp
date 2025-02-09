@@ -209,7 +209,8 @@ void enqueueDiagInfo(TimerHandle_t xTimer) {
 void diagExecute() {
     DiagAction msg;
     //block indefinitely for a message to be received
-    if (pdFALSE == xQueueReceive(diagQueue, &msg, portMAX_DELAY))
+    // if (pdFALSE == xQueueReceive(diagQueue, &msg, portMAX_DELAY))
+    if (pdFALSE == xQueueReceive(diagQueue, &msg, 0))
         return;
     //the reception was successful, hence the msg is not null anymore
     switch (msg) {

@@ -96,7 +96,14 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     sz += printLevel(level, buf + sz);
     sz += vsnprintf(buf + sz, szMsg, format, args);
     buf[sz] = '\n'; //new line ending - no null terminator as we control exactly the number of characters written into the m_queue
+#if LOG_BYPASS_BUFFER
+    CoreMutex mtx(&m_mutex);
+    if (isStreamingEnabled())
+        m_stream->write(buf, sz + 1);
+#else
     m_queue.push_back(buf, sz + 1);
+#endif
+
     return sz;
 }
 

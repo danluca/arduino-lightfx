@@ -119,7 +119,6 @@ void alarm_misc_run() {
  * This function is intended to be invoked regularly to handle web communication and actions efficiently.
  */
 void web_run() {
-    web::webserver();
     commRun();
     //check for any additional actions to be performed
     CommAction action;
@@ -169,6 +168,7 @@ void setup() {
     bSetupOk = bSetupOk && timeSetup();
     stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
     commSetup();
+    web::server_setup();
 
     // notifies Core1 to start processing tasks that need WiFi
     const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
@@ -179,8 +179,7 @@ void setup() {
     enqueueAlarmSetup();
 
     //wait for the other core to finish all initializations before allowing web server to respond to requests
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    web::server_setup();
+    // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     watchdogSetup();
     Log.info(F("Main Core 0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
@@ -215,15 +214,17 @@ void setup1() {
     taskDelay(250);    // safety delay after priority bump
     diagSetup();
 
-    const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
-    const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
-    Log.info(F("Main Core 1 Setup completed, CORE0 notified of WebServer %d. System status: %#hX"), c0NtfStatus, sysInfo->getSysStatus());
+    // const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
+    // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
+    // Log.info(F("Main Core 1 Setup completed, CORE0 notified of WebServer %d. System status: %#hX"), c0NtfStatus, sysInfo->getSysStatus());
+    Log.info(F("Main Core 1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
 }
 
 /**
  * Core 1 Main loop - runs the communication tasks
  */
 void loop1() {
+    web::webserver();
     diagExecute();
 }
 

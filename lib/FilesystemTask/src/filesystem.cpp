@@ -33,7 +33,7 @@ TaskDef fsDef {fsInit, fsExecute, 1024, "FS", 1, CORE_0};
 struct fsOperationData {
     const char* const name;
     String* const content;
-    const std::function<void(void*)> &callback;
+    void* const data;
 };
 
 /**
@@ -187,15 +187,15 @@ void fsExecute() {
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::LIST_FIlES:
-            success = SyncFsImpl.prvList(msg->data->name, msg->data->callback);
+            success = SyncFsImpl.prvList(msg->data->name, static_cast<std::deque<FileInfo *> *>(msg->data->data));
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::INFO:
-            success = SyncFsImpl.prvInfo(msg->data->name, msg->data->callback);
+            success = SyncFsImpl.prvInfo(msg->data->name, static_cast<FileInfo *>(msg->data->data));
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::STAT:
-            success = SyncFsImpl.prvStat(msg->data->name, msg->data->callback);
+            success = SyncFsImpl.prvStat(msg->data->name, static_cast<FSStat *>(msg->data->data));
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::MAKE_DIR:
@@ -434,10 +434,10 @@ bool SynchronizedFS::format() {
  * Blocking function that traverses the file system entries recursively starting from a path, and calls
  * the given callback for each entry found (file and dir). Can be called from any task
  * @param path path to list files from (recursively)
- * @param callback callback for each file/dir encountered - note the callback will be executed on the filesystem task
+ * @param list list to collect all file info
  */
-bool SynchronizedFS::list(const char *path, const std::function<void(void *)> &callback) const {
-    auto *args = new fsOperationData {path, nullptr, callback};
+bool SynchronizedFS::list(const char *path, std::deque<FileInfo*> *list) const {
+    auto *args = new fsOperationData {path, nullptr, list};
     auto *msg = new fsTaskMessage{fsTaskMessage::LIST_FIlES, xTaskGetCurrentTaskHandle(), args};
 
     const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -456,11 +456,10 @@ bool SynchronizedFS::list(const char *path, const std::function<void(void *)> &c
  * Blocking function that retrieves file information from the file system if it exists. Can be called from any task
  * @param path path to get info for
  * @param info file info object to populate
- * @return file information; if file doesn't exist the fields {@code size} and {@code modTime} are both 0
+ * @return file information; if file doesn't exist the fields \code size\endcode and \code modTime\endcode are both 0
  */
-bool SynchronizedFS::stat(const char *path, FileInfo& info) const {
-    auto catchInfo = [&info](void *f) {info = *static_cast<FileInfo*>(f);};
-    auto *args = new fsOperationData {path, nullptr, catchInfo};
+bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
+    auto *args = new fsOperationData {path, nullptr, info};
     auto *msg = new fsTaskMessage{fsTaskMessage::INFO, xTaskGetCurrentTaskHandle(), args};
 
     const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -477,8 +476,7 @@ bool SynchronizedFS::stat(const char *path, FileInfo& info) const {
 }
 
 bool SynchronizedFS::stat(const char *path, FSStat *st) {
-    auto catchInfo = [&st](void *fs) {*st = *static_cast<FSStat*>(fs);};
-    auto *args = new fsOperationData {path, nullptr, catchInfo};
+    auto *args = new fsOperationData {path, nullptr, st};
     auto *msg = new fsTaskMessage{fsTaskMessage::INFO, xTaskGetCurrentTaskHandle(), args};
 
     const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -640,38 +638,35 @@ bool SynchronizedFS::prvFormat() const {
     return formatted;
 }
 
-bool SynchronizedFS::prvList(const char *path, const std::function<void(FileInfo*)> &callback) const {
+bool SynchronizedFS::prvList(const char *path, std::deque<FileInfo *> *fiList) const {
     Dir d = fsPtr->openDir(path);
     String dirPath = path;
-    listFiles(d, dirPath, callback);
+    auto captureFile = [&fiList](FileInfo *info) {fiList->push_back(info);};
+    listFiles(d, dirPath, captureFile);
     return true;
 }
 
-bool SynchronizedFS::prvInfo(const char *path, const std::function<void(FileInfo*)> &callback) const {
+bool SynchronizedFS::prvInfo(const char *path, FileInfo *fileInfo) const {
     if (!fsPtr->exists(path)) {
         Log.error(F("File %s does not exist, no info retrieved"), path);
         return false;
     }
-    FileInfo fInfo{};
-    fInfo.name = StringUtils::fileName(path);
-    fInfo.path = StringUtils::fileDir(path);
+    fileInfo->name = StringUtils::fileName(path);
+    fileInfo->path = StringUtils::fileDir(path);
     FSStat fsStat{};
     fsPtr->stat(path, &fsStat);
-    fInfo.size = fsStat.size;
-    fInfo.modTime = fsStat.ctime;
-    fInfo.isDir = fsStat.isDir;
-    callback(&fInfo);
+    fileInfo->size = fsStat.size;
+    fileInfo->modTime = fsStat.ctime;
+    fileInfo->isDir = fsStat.isDir;
     return true;
 }
 
-bool SynchronizedFS::prvStat(const char *path, const std::function<void(FSStat *)> &callback) const {
+bool SynchronizedFS::prvStat(const char *path, FSStat *fs) const {
     if (!fsPtr->exists(path)) {
         Log.error(F("Path %s does not exist, no stat retrieved"), path);
         return false;
     }
-    FSStat fsStat{};
-    fsPtr->stat(path, &fsStat);
-    callback(&fsStat);
+    fsPtr->stat(path, fs);
     return true;
 }
 

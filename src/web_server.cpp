@@ -342,8 +342,8 @@ void web::server_setup() {
         server.on("/fx", HTTP_PUT, handlePutConfig);
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
         server.onNotFound(handleNotFound);
-        server_handlers_configured = true;
         server.collectHeaders("Host", "Connection", "Accept", "Referer", "User-Agent");
+        server_handlers_configured = true;
     }
     server.begin();
     Log.info(F("Web server started"));

@@ -14,6 +14,7 @@
 #define CR "\n"
 #define PICO_LOG_VERSION_STR "1.0.0"
 #define LOG_BUFFER_SIZE 10240
+#define LOG_BYPASS_BUFFER false
 
 enum LogLevel:uint8_t {SILENT, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE};
 
@@ -64,6 +65,10 @@ private:
     size_t print(LogLevel level, const __FlashStringHelper *format, va_list args);
     static size_t printThread(char *msg) ;
     static size_t printLevel(LogLevel level, char *msg) ;
+#if LOG_BYPASS_BUFFER
+    mutex_t m_mutex{};
+#endif
+
 
     friend void flushData();
 };
