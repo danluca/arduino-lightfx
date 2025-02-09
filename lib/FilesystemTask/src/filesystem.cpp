@@ -467,7 +467,7 @@ bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
     if (qResult == pdTRUE)
         successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     else
-        Log.error(F("Error sending FILE_INFO message to filesystem task for path %s - error %d"), path, qResult);
+        Log.error(F("Error sending INFO message to filesystem task for path %s - error %d"), path, qResult);
     if (!successful)
         Log.error(F("Failed to retrieve file info for path %s"), path);
     delete msg;
@@ -477,14 +477,14 @@ bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
 
 bool SynchronizedFS::stat(const char *path, FSStat *st) {
     auto *args = new fsOperationData {path, nullptr, st};
-    auto *msg = new fsTaskMessage{fsTaskMessage::INFO, xTaskGetCurrentTaskHandle(), args};
+    auto *msg = new fsTaskMessage{fsTaskMessage::STAT, xTaskGetCurrentTaskHandle(), args};
 
     const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     bool successful = false;
     if (qResult == pdTRUE)
         successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     else
-        Log.error(F("Error sending FILE_INFO message to filesystem task for path %s - error %d"), path, qResult);
+        Log.error(F("Error sending STAT message to filesystem task for path %s - error %d"), path, qResult);
     if (!successful)
         Log.error(F("Failed to retrieve file info for path %s"), path);
     delete msg;
