@@ -81,7 +81,7 @@ void HTTPServer::_parseHttpHeaders(WiFiClient *client, String &boundaryStr) {
         String headerValue = req.substring(headerDiv + 1);
         headerValue.trim();
         bool hdCollected = _collectHeader(headerName.c_str(), headerValue.c_str());
-        log_debug(F("%c%s: %s"), hdCollected ? ' ':'!', headerName.c_str(), headerValue.c_str());
+        log_debug(F("%s%s: %s"), hdCollected ? "":"!", headerName.c_str(), headerValue.c_str());
 
         if (headerName.equalsIgnoreCase(FPSTR(Content_Type))) {
             if (headerValue.startsWith(F("multipart/"))) {
@@ -173,7 +173,7 @@ HTTPServer::ClientAction HTTPServer::_parseHandleRequest(WiFiClient* client) {
     }
     _currentMethod = method;
 
-    log_debug(F("Web Request data: URI: %s [%d] %s %s; content length: %d"), methodStr.c_str(), _currentMethod, _currentUrl.c_str(), searchStr.c_str(), _clientContentLength);
+    log_debug(F("Web Request data: originating from %s; URI: %s %s %s; content length: %zu"), client->remoteIP().toString().c_str(),  methodStr.c_str(), _currentUrl.c_str(), searchStr.c_str(), _clientContentLength);
 
     //attach handler
     RequestHandler* handler;

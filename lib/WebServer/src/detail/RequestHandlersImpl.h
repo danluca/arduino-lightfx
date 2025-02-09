@@ -281,7 +281,7 @@ public:
         FileInfo fi{};
         fs.stat(path, &fi);
         _isFile = fi.size >0 && (!fi.isDir);
-        log_debug("StaticFileRequestHandler: web uri=%s mapped to physical path=%s, isFile=%d, cache_header=%s", uri, path, _isFile, cache_header ? cache_header : "");
+        log_debug("StaticSyncFileRequestHandler: web uri=%s mapped to physical path=%s, isFile=%d, cache_header=%s", uri, path, _isFile, cache_header ? cache_header : "");
         _baseUriLength = _uri.length();
     }
 
@@ -321,7 +321,7 @@ public:
         String path;
         getPath(requestUri, path);
 
-        log_debug("StaticFileRequestHandler::handle: request=%s _uri=%s resolved path=%s, isFile=%d", requestUri.c_str(), _uri.c_str(), path.c_str(), _isFile);
+        log_debug("StaticSyncFileRequestHandler::handle: request=%s _uri=%s resolved path=%s, isFile=%d", requestUri.c_str(), _uri.c_str(), path.c_str(), _isFile);
 
         const String contentType = getContentType(path);
         bool pathExists = _fs.exists(path.c_str());
@@ -336,7 +336,7 @@ public:
         }
 
         if (!pathExists) {
-            log_error("StaticFileRequestHandler::handle: file not found: %s", path.c_str());
+            log_error("StaticSyncFileRequestHandler::handle: file not found: %s", path.c_str());
             return false;
         }
         const auto content = new String();

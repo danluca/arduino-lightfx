@@ -119,6 +119,7 @@ void alarm_misc_run() {
  * This function is intended to be invoked regularly to handle web communication and actions efficiently.
  */
 void web_run() {
+    web::webserver();
     commRun();
     //check for any additional actions to be performed
     CommAction action;
@@ -224,7 +225,7 @@ void setup1() {
  * Core 1 Main loop - runs the communication tasks
  */
 void loop1() {
-    web::webserver();
+    // web::webserver();
     diagExecute();
 }
 
