@@ -282,7 +282,7 @@ void WebClient::_parseHttpHeaders() {
         String headerValue = req.substring(headerDiv + 1);
         headerValue.trim();
         bool hdCollected = false;
-        for (const auto &h: _server->headersOfInterest()) {
+        for (const auto &h: _server->_headersOfInterest) {
             if (h.equalsIgnoreCase(headerName)) {
                 auto header = new NameValuePair();
                 header->key = headerName;
@@ -292,7 +292,7 @@ void WebClient::_parseHttpHeaders() {
                 break;
             }
         }
-        log_debug(F("%s%s: %s"), hdCollected ? "" : "!", headerName.c_str(), headerValue.c_str());
+        log_debug(F("%s%s: %s, %zu headers of interest"), hdCollected ? "" : "!", headerName.c_str(), headerValue.c_str(), _server->_headersOfInterest.size());
 
         if (headerName.equalsIgnoreCase(FPSTR (Content_Type))) {
             if (headerValue.startsWith(F("multipart/"))) {

@@ -56,7 +56,7 @@ public:
   void flush() override;
   void stop() override;
   uint8_t connected() override;
-  [[nodiscard]] uint8_t socket() const { return _socket; }
+  [[nodiscard]] uint8_t socket() const { return _sock; }
   operator bool() override;
 
   virtual IPAddress remoteIP();
