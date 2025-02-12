@@ -47,15 +47,15 @@ HTTPServer::~HTTPServer() {
     _server.close();
 }
 void HTTPServer::begin() {
-    close();
+    _server.close();
     _server.begin(_port);
     _server.setNoDelay(true);
     _state = IDLE;
 }
 
 void HTTPServer::begin(const uint16_t port) {
+    _server.close();
     _port = port;
-    close();
     _server.begin(_port);
     _server.setNoDelay(true);
     _state = IDLE;
@@ -163,6 +163,8 @@ void HTTPServer::serveStatic(const char *uri, FS &fs, const char *path, const st
 void HTTPServer::httpClose() {
     _state = CLOSED;
     _headersOfInterest.clear();
+    for (const auto& client : _clients)
+        client->close();
 }
 
 void HTTPServer::enableDelay(const bool value) {

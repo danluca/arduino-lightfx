@@ -40,6 +40,9 @@ WebClient::~WebClient() {
 
 void WebClient::close() {
     _rawWifiClient.stop();
+    _status = HC_COMPLETED;
+    _uploadBody.reset();
+    _rawBody.reset();
 }
 
 /**
@@ -619,10 +622,7 @@ HTTPClientStatus WebClient::handleRequest() {
     }
 
     if (!keepClient) {
-        _rawWifiClient.stop();
-        _status = HC_COMPLETED;
-        _uploadBody.reset();
-        _rawBody.reset();
+        close();
     }
     return _status;
 }
