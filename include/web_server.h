@@ -13,11 +13,11 @@ namespace web {
 
     void server_setup();
     void webserver();
-    void handleGetStatus();
-    void handlePutConfig();
-    void handleGetTasks();
-    void handleNotFound();
-    size_t marshalJson(const JsonDocument &doc, WebServer &srv);
+    void handleGetStatus(WebClient& client);
+    void handlePutConfig(WebClient& client);
+    void handleGetTasks(WebClient& client);
+    void handleNotFound(WebClient& client);
+    size_t marshalJson(const JsonDocument &doc, WebClient &client);
 }
 
 #endif //LIGHTFX_WEB_SERVER_H

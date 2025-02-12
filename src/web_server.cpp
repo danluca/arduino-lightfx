@@ -15,7 +15,6 @@
 #include "stringutils.h"
 #include "sysinfo.h"
 #include "util.h"
-
 #include "index_html.h"
 #include "pixel_css.h"
 #include "pixel_js.h"
@@ -23,22 +22,21 @@
 #include "stats_css.h"
 #include "stats_js.h"
 
+using namespace web;
+// using namespace colTheme;
 static constexpr auto hdCacheControl PROGMEM = "Cache-Control";
 static constexpr auto hdCacheStatic PROGMEM = "public, max-age=2592000, immutable";
 static constexpr auto hdCacheJson PROGMEM = "no-cache, no-store";
 static constexpr auto serverAgent PROGMEM = "rp2040-luca/1.0.0";
-
-using namespace web;
-// using namespace colTheme;
-
 static constexpr auto hdFmtDate PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d CST";
 static constexpr auto hdFmtContentDisposition PROGMEM = "inline; filename=\"%s\"";
 static constexpr auto msgRequestNotMapped PROGMEM = "URI not mapped to a handler on this server";
 static constexpr auto configJsonFilename PROGMEM = "config.json";
 static constexpr auto statusJsonFilename PROGMEM = "status.json";
 static constexpr auto tasksJsonFilename PROGMEM = "tasks.json";
+static constexpr uint16_t serverPort PROGMEM = 80;
 
-WebServer web::server(80);
+WebServer web::server;
 bool web::server_handlers_configured = false;
 
 /**
@@ -65,37 +63,38 @@ static const std::map<std::string, const char*> inFlashResources PROGMEM = {
 /**
  * Adds the current date as an HTTP header for the current outgoing response
  */
-void dateHeader() {
+void dateHeader(WebClient& client) {
     const time_t curTime = now();
     const int szBuf = snprintf(nullptr, 0, hdFmtDate, year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime)) + 1;
     char buf[szBuf];
     snprintf(buf, szBuf, hdFmtDate, year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
-    server.sendHeader(F("Date"), buf);
+    client.sendHeader(F("Date"), buf);
 }
 
 /**
  * Adds the content-disposition HTTP header - file name - for the current outgoing response
+ * @param client web client handling current request
  * @param fname file name
  */
-void contentDispositionHeader(const char *fname) {
+void contentDispositionHeader(WebClient& client, const char *fname) {
     const int szBuf = snprintf(nullptr, 0, hdFmtContentDisposition, fname) + 1;
     char buf[szBuf];
     snprintf(buf, szBuf, hdFmtContentDisposition, fname);
-    server.sendHeader(F("Content-Disposition"), buf);
+    client.sendHeader(F("Content-Disposition"), buf);
 }
 
 /**
  * Serializes a JSON document into string and sends it out to the current client awaiting response from the server
  * @param doc JSON document to marshal
- * @param srv web server to use for sending JSON out
+ * @param client web server to use for sending JSON out
  * @return number of bytes written in response
  */
-size_t web::marshalJson(const JsonDocument &doc, WebServer &srv) {
+size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
     //send it out
     const auto buf = new String();
     buf->reserve(5120);     // deemed enough for all/most json docs in this app (largest is the config file at 4800 bytes)
     serializeJson(doc, *buf);
-    const size_t sz = srv.send(200, mime::mimeTable[mime::json].mimeType, buf->c_str());
+    const size_t sz = client.send(200, mime::mimeTable[mime::json].mimeType, buf->c_str());
     delete buf;
     return sz;
 }
@@ -103,10 +102,10 @@ size_t web::marshalJson(const JsonDocument &doc, WebServer &srv) {
 /**
  * Web request handler - GET /status.json. Method invoked by the web server; response sent to current client awaiting response from the server
  */
-void web::handleGetStatus() {
-    dateHeader();
-    contentDispositionHeader(statusJsonFilename);
-    server.sendHeader(hdCacheControl, hdCacheJson);
+void web::handleGetStatus(WebClient& client) {
+    dateHeader(client);
+    contentDispositionHeader(client, statusJsonFilename);
+    client.sendHeader(hdCacheControl, hdCacheJson);
 
     // response body
     JsonDocument doc;
@@ -202,25 +201,23 @@ void web::handleGetStatus() {
     cpuTempCal["refTempTime"] = calibTempMeasurements.ref.time;
 
     //send it out
-    const size_t sz = marshalJson(doc, server);
-    Log.info(F("Handler handleGetStatus invoked for %s, response completed %zu bytes"), server.uri().c_str(), sz);
+    const size_t sz = marshalJson(doc, client);
+    Log.info(F("Handler handleGetStatus invoked for %s, response completed %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
  * Web request handler - PUT /fx. Method invoked by the web server; response sent to current client awaiting response from the server
  */
-void web::handlePutConfig() {
-    dateHeader();
-    server.sendHeader(hdCacheControl, hdCacheJson);
-    // String body = server2.arg(reqBodyArgName); OR ?
-    HTTPRaw &raw = server.raw();
-    String body(raw.buf, raw.currentSize);
+void web::handlePutConfig(WebClient& client) {
+    dateHeader(client);
+    client.sendHeader(hdCacheControl, hdCacheJson);
+    String body = client.request().body();
 
     //process the body - parse JSON body and react to inputs
     JsonDocument doc;
     const DeserializationError error = deserializeJson(doc, body);
     if (error) {
-        server.send(500, mime::mimeTable[mime::txt].mimeType, error.c_str());
+        client.send(500, mime::mimeTable[mime::txt].mimeType, error.c_str());
         return;
     }
     JsonDocument resp;
@@ -281,19 +278,19 @@ void web::handlePutConfig() {
     //main status and headers
     resp["status"] = true;
 
-    contentDispositionHeader(statusJsonFilename);
+    contentDispositionHeader(client, statusJsonFilename);
     //send it out
-    const size_t sz = marshalJson(resp, server);
-    Log.info(F("Handler handlePutConfig invoked for %s, response completed %zu bytes"), server.uri().c_str(), sz);
+    const size_t sz = marshalJson(resp, client);
+    Log.info(F("Handler handlePutConfig invoked for %s, response completed %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
  * Web request handler - GET /tasks.json. Method invoked by the web server; response sent to current client awaiting response from the server
  */
-void web::handleGetTasks() {
-    dateHeader();
-    contentDispositionHeader(tasksJsonFilename);
-    server.sendHeader(hdCacheControl, hdCacheJson);
+void web::handleGetTasks(WebClient& client) {
+    dateHeader(client);
+    contentDispositionHeader(client, tasksJsonFilename);
+    client.sendHeader(hdCacheControl, hdCacheJson);
 
     // response body
     JsonDocument doc;
@@ -317,16 +314,16 @@ void web::handleGetTasks() {
     doc["buildTime"] = sysInfo->getBuildTime();
 
     //send it out
-    const size_t sz = marshalJson(doc, server);
-    Log.info(F("Handler handleGetStatus invoked for %s, response completed %zu bytes"), server.uri().c_str(), sz);
+    const size_t sz = marshalJson(doc, client);
+    Log.info(F("Handler handleGetStatus invoked for %s, response completed %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
  * Special web request handler for resources not found on this server
  */
-void web::handleNotFound() {
-    const size_t sz = server.send(404, mime::mimeTable[mime::txt].mimeType, msgRequestNotMapped);
-    Log.info(F("Handler handleNotFound invoked for %s, response completed %zu bytes"), server.uri().c_str(), sz);
+void web::handleNotFound(WebClient& client) {
+    const size_t sz = client.send(404, mime::mimeTable[mime::txt].mimeType, msgRequestNotMapped);
+    Log.info(F("Handler handleNotFound invoked for %s, response completed %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -343,9 +340,10 @@ void web::server_setup() {
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
         server.onNotFound(handleNotFound);
         server.collectHeaders("Host", "Connection", "Accept", "Referer", "User-Agent");
+        server.enableDelay(false);      //the task that runs the web-server also runs other services, do not want to introduce unnecessary delays
         server_handlers_configured = true;
     }
-    server.begin();
+    server.begin(serverPort);
     Log.info(F("Web server started"));
 }
 

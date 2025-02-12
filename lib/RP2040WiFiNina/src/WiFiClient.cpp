@@ -275,7 +275,7 @@ uint8_t WiFiClient::connected() {
     const uint8_t s = status();
 
     const uint8_t result = !(s == LISTEN || s == CLOSED || s == FIN_WAIT_1 || s == FIN_WAIT_2 || s == TIME_WAIT ||
-                             s == SYN_SENT || s == SYN_RCVD || (s == CLOSE_WAIT));
+                             s == SYN_SENT || s == SYN_RCVD || s == CLOSE_WAIT);
 
     if (result == 0) {
         WiFiSocketBuffer.close(_sock);

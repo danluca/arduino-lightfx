@@ -12,7 +12,7 @@ public:
         return new UriBraces(_uri);
     };
 
-    void initPathArgs(std::vector<String> &pathArgs) override final {
+    void initPathArgs(std::vector<String> &pathArgs) const {
         int numParams = 0, start = 0;
         do {
             start = _uri.indexOf("{}", start);
@@ -24,10 +24,12 @@ public:
         pathArgs.resize(numParams);
     }
 
-    bool canHandle(const String &requestUri, std::vector<String> &pathArgs) override final {
+    bool canHandle(const String &requestUri, std::vector<String> &pathArgs) const override final {
         if (Uri::canHandle(requestUri, pathArgs)) {
             return true;
         }
+
+        initPathArgs(pathArgs);
 
         size_t uriLength = _uri.length();
         unsigned int pathArgIndex = 0;

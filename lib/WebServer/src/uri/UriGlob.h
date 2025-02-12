@@ -13,7 +13,7 @@ public:
         return new UriGlob(_uri);
     };
 
-    bool canHandle(const String &requestUri, __attribute__((unused)) std::vector<String> &pathArgs) override final {
+    bool canHandle(const String &requestUri, __attribute__((unused)) std::vector<String> &pathArgs) const override final {
         return fnmatch(_uri.c_str(), requestUri.c_str(), 0) == 0;
     }
 };
