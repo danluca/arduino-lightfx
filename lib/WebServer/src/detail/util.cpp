@@ -3,7 +3,6 @@
 
 #include "util.h"
 #include <Arduino.h>
-#include <rp2040.h>
 
 String Util::getRandomHexString() {
     char buffer[33];  // buffer to hold 32 Hex Digit + /0

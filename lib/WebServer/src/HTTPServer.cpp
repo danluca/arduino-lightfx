@@ -22,7 +22,7 @@
 */
 
 #include <Arduino.h>
-#include "WiFiClient.h"
+#include "../../RP2040WiFiNina/src/WiFiClient.h"
 #include "HTTPServer.h"
 #include "FS.h"
 #include "detail/RequestHandlers.h"
@@ -50,13 +50,15 @@ void HTTPServer::begin() {
     close();
     _server.begin(_port);
     _server.setNoDelay(true);
+    _state = IDLE;
 }
 
-void HTTPServer::begin(uint16_t port) {
+void HTTPServer::begin(const uint16_t port) {
     _port = port;
     close();
     _server.begin(_port);
     _server.setNoDelay(true);
+    _state = IDLE;
 }
 
 void HTTPServer::close() {
@@ -223,7 +225,7 @@ void HTTPServer::handleClient() {
             break;
         case CLOSED:
             //server is closed, no more clients handling
-            log_warn("HTTPServer::handleClient() - server is closed, no more clients handling");
+            //log_warn("HTTPServer::handleClient() - server is closed, no more clients handling");
             return;
     }
     if (delay)

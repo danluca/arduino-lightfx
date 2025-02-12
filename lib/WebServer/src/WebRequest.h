@@ -5,8 +5,8 @@
 #define WEBREQUEST_H
 
 #include <Arduino.h>
+#include "../../RP2040WiFiNina/src/WiFiNINA.h"
 #include "HTTP_Method.h"
-#include "WiFiNina.h"
 
 class WebClient;
 inline constexpr char AUTHORIZATION_HEADER[] PROGMEM = "Authorization";
