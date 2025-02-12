@@ -340,7 +340,6 @@ void web::server_setup() {
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
         server.onNotFound(handleNotFound);
         server.collectHeaders("Host", "Connection", "Accept", "Referer", "User-Agent");
-        Log.info("Server to collect %zu headers", server.headersOfInterest().size());
         server.enableDelay(false);      //the task that runs the web-server also runs other services, do not want to introduce unnecessary delays
         server_handlers_configured = true;
     }

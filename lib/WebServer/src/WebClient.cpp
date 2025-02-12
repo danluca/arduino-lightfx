@@ -218,9 +218,8 @@ size_t WebClient::sendContent_P(PGM_P content, const size_t size) {
     _currentClientWrite_P(content, size);
     if (_chunked) {
         _rawWifiClient.write(footer, 2);
-        if (size == 0) {
+        if (size == 0)
             _chunked = false;
-        }
     }
     return size;
 }
@@ -238,9 +237,8 @@ size_t WebClient::_streamFileCore(const size_t fileSize, const String &fileName,
 }
 
 void WebClient::_finalizeResponse() {
-    if (_chunked) {
+    if (_chunked)
         sendContent("");
-    }
     log_info(F("====="));
 }
 
@@ -295,7 +293,7 @@ void WebClient::_parseHttpHeaders() {
                 break;
             }
         }
-        log_debug(F("%s%s: %s, %zu headers of interest"), hdCollected ? "" : "!", headerName.c_str(), headerValue.c_str(), _server->_headersOfInterest.size());
+        log_debug(F("%s%s: %s"), hdCollected ? "" : "!", headerName.c_str(), headerValue.c_str());
 
         if (headerName.equalsIgnoreCase(FPSTR (Content_Type))) {
             if (headerValue.startsWith(F("multipart/"))) {
