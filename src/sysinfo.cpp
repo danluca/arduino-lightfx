@@ -87,7 +87,7 @@ void logTaskStats() {
         /* Generate raw status information about each task. */
         uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
         // ulTotalRunTime = (ulTotalRunTime >> 8) / (configRUN_TIME_COUNTER_TYPE)100U;    // For percentage calculations
-        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %lu]"), ulTotalRunTime);
+        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %lu, current time %lu, %s]"), ulTotalRunTime, millis(), StringUtils::asString(now()).c_str());
         strTaskInfo.concat(F("\nName      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
 
         uint64_t uxTotalRunTime = 0ul;  // Summing up times spent by ALL tasks (as reported by each task) should account for NUM_CORES - this value should be NUM_CORES*ulTotalRunTime

@@ -332,6 +332,7 @@ void web::handleNotFound(WebClient& client) {
  */
 void web::server_setup() {
     if (!server_handlers_configured) {
+        Log.info(F("Starting Web server setup"));
         server.setServerAgent(serverAgent);
         server.serveStatic("/", SyncFsImpl, "/status/", &inFlashResources, hdCacheStatic);
         server.serveStatic("/config.json", SyncFsImpl, "/status/sysconfig.json", nullptr, hdCacheJson);
@@ -342,6 +343,7 @@ void web::server_setup() {
         server.collectHeaders("Host", "Connection", "Accept", "Referer", "User-Agent");
         server.enableDelay(false);      //the task that runs the web-server also runs other services, do not want to introduce unnecessary delays
         server_handlers_configured = true;
+        Log.info(F("Completed Web server setup"));
     }
     server.begin(serverPort);
     Log.info(F("Web server started"));

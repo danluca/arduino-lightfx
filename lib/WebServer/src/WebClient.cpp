@@ -29,7 +29,9 @@ WebClient::WebClient(HTTPServer *server, const WiFiClient &client): _server(serv
     _requestHandler(nullptr), _contentLength(CONTENT_LENGTH_NOT_SET), _chunked(false) {
     _request = new WebRequest();
     _startHandlingTime = millis();
+    _startWaitTime = 0;
     _rawWifiClient.setTimeout(HTTP_MAX_SEND_WAIT);
+    _wifiClientSocket = _rawWifiClient.socket();
 }
 
 WebClient::~WebClient() {
@@ -43,6 +45,8 @@ void WebClient::close() {
     _status = HC_COMPLETED;
     _uploadBody.reset();
     _rawBody.reset();
+    log_info(F("=== Web Client for socket %d closed. Processed request %s %s in %ld ms"), _wifiClientSocket, _http_method_str[_request->method()],
+        _request->uri().c_str(), millis() - _startHandlingTime);
 }
 
 /**
@@ -239,7 +243,8 @@ size_t WebClient::_streamFileCore(const size_t fileSize, const String &fileName,
 void WebClient::_finalizeResponse() {
     if (_chunked)
         sendContent("");
-    log_info(F("====="));
+    _rawWifiClient.flush();
+    log_info(F("=========="));
 }
 
 void WebClient::_processRequest() {
@@ -361,7 +366,6 @@ WebClient::ClientAction WebClient::_parseRequest() {
         request()._reqUri = request().url().substring(0, hasSearch);
     } else
         request()._reqUri = request()._reqUrl;
-    _chunked = false;
     request()._contentLength = 0; // not known yet, or invalid
 
     if (_server->_hook) {
@@ -383,11 +387,12 @@ WebClient::ClientAction WebClient::_parseRequest() {
         return CLIENT_MUST_STOP;
     }
     request()._method = method;
+    request()._boundaryStr = "";
 
-    log_debug(
-        F("Web Request data: originating from %s; URI: %s %s %s; content length: %zu"),
-        _rawWifiClient.remoteIP().toString().c_str(), methodStr.c_str(), request()._reqUrl.c_str(),
-        searchStr.c_str(), request()._contentLength);
+    log_debug( F("Web Request data: originating from %s; URI: %s %s %s; content length: %zu"), _rawWifiClient.remoteIP().toString().c_str(),
+        methodStr.c_str(), request()._reqUrl.c_str(), searchStr.c_str(), request()._contentLength);
+    _parseArguments(searchStr);
+    _parseHttpHeaders();
 
     //attach handler
     for (const auto &reqHandler: _server->_requestHandlers) {
@@ -397,24 +402,20 @@ WebClient::ClientAction WebClient::_parseRequest() {
         }
     }
 
-    request()._boundaryStr = "";
-    _parseHttpHeaders();
-    _parseArguments(searchStr);
-
     if (_requestHandler && _requestHandler->canRaw(*this)) {
         const ClientAction rawAction = _handleRawData();
-        log_debug(F("====="));
-        _rawWifiClient.flush();
+        _finalizeResponse();
         return rawAction;
-    } else if (request()._contentLength > HTTP_MAX_POST_DATA_LENGTH) {
-        log_error(F("Web Request %s %s Content length %d exceeds maximum of %d"), methodStr, request().uri().c_str(), request()._contentLength, HTTP_MAX_POST_DATA_LENGTH);
-        log_debug(F("====="));
+    }
+    if (request()._contentLength > HTTP_MAX_POST_DATA_LENGTH) {
+        log_error(F("Web Request %s %s Content length %d exceeds maximum of %d"), methodStr.c_str(), request().uri().c_str(), request()._contentLength, HTTP_MAX_POST_DATA_LENGTH);
+        _finalizeResponse();
         return CLIENT_MUST_STOP;
     }
 
     if (request()._contentLength > 0) {
         if (request()._method == HTTP_GET || request()._method == HTTP_HEAD)
-            log_warn(F("Web Request %s %s Content length specified %d but not expected"), methodStr, request().uri().c_str(), request()._contentLength);
+            log_warn(F("Web Request %s %s Content length specified %d but not expected"), methodStr.c_str(), request().uri().c_str(), request()._contentLength);
         size_t leftToRead = request()._contentLength;
         request()._requestBody.reserve(request()._contentLength);
         while (_rawWifiClient.connected() && leftToRead > 0) {
@@ -426,16 +427,27 @@ WebClient::ClientAction WebClient::_parseRequest() {
         }
         if (request()._requestBody.length() != request()._contentLength)
             log_warn(F("Web Request %s %s Content length mismatch: read %d != header %d"),
-              methodStr, request().uri().c_str(), request()._requestBody.length(), request().contentLength());
+              methodStr.c_str(), request().uri().c_str(), request()._requestBody.length(), request().contentLength());
+        if (_rawWifiClient.connected()) {
+            if (const int avail = _rawWifiClient.available() > 0)
+                log_warn(F("Web Request %s %s Content length mismatch: read %d bytes but client still has %d bytes available"),
+                    methodStr.c_str(), request().uri().c_str(), request()._requestBody.length(), avail);
+        } else
+            log_warn(F("Web Request %s %s read content body %d bytes but client has disconnected"),
+                methodStr.c_str(), request().uri().c_str(), request()._requestBody.length());
 
         log_debug(F("=== Body ===\n%s====="), request()._requestBody.c_str());
     } else if (!(request().method() == HTTP_GET || request().method() == HTTP_HEAD))
-        log_warn(F("Web Request %s %s Content length not specified; body - if any - ignored"), methodStr, request().uri().c_str());
+        log_warn(F("Web Request %s %s Content length not specified; body - if any - ignored"), methodStr.c_str(), request().uri().c_str());
     log_debug(F("====="));
-    _rawWifiClient.flush();
     return CLIENT_REQUEST_CAN_CONTINUE;
 }
 
+/**
+ * Parses URI query string into argument name/value pairs and stores them in request's _requestArgs queue
+ * Does NOT consume data from WiFi client
+ * @param data URI query string to parse
+ */
 void WebClient::_parseArguments(const String &data) const {
     log_debug("Request args: %s", data.c_str());
     if (data.length() == 0) {
@@ -449,7 +461,7 @@ void WebClient::_parseArguments(const String &data) const {
         argCount++;
     }
     if (argCount > WEBSERVER_MAX_POST_ARGS) {
-        log_error("Too many arguments in request: %d; only parsing the first %d", argCount, WEBSERVER_MAX_POST_ARGS);
+        log_error(F("Too many arguments in request: %d; only parsing the first %d"), argCount, WEBSERVER_MAX_POST_ARGS);
         argCount = WEBSERVER_MAX_POST_ARGS;
     }
     int pos = 0;
@@ -461,7 +473,7 @@ void WebClient::_parseArguments(const String &data) const {
             arg->key = Uri::urlDecode(next_arg_index < 0 ? data.substring(pos) : data.substring(pos, next_arg_index));
             arg->value = "";
             request()._requestArgs.push_back(arg);
-            log_debug("Request arg %d key: %s, missing value - defaulting to empty string/presence", iArg, arg->key.c_str());
+            log_debug(F("Request arg %d key: %s, missing value - defaulting to empty string/presence"), iArg, arg->key.c_str());
             if (next_arg_index < 0)
                 break;
             pos = next_arg_index + 1;
@@ -475,7 +487,7 @@ void WebClient::_parseArguments(const String &data) const {
             break;
         pos = next_arg_index + 1;
     }
-    log_debug("Request args parsed %d arguments", request()._requestArgs.size());
+    log_debug(F("Request args parsed %d arguments"), request()._requestArgs.size());
 }
 
 //Update this to write a buffer not one byte at a time
@@ -579,49 +591,53 @@ HTTPClientStatus WebClient::handleRequest() {
                         case CLIENT_REQUEST_IS_HANDLED:
                             if (_rawWifiClient.connected() || _rawWifiClient.available()) {
                                 _status = HC_WAIT_CLOSE;
-                                _startHandlingTime = millis();
+                                _startWaitTime = millis();
                                 keepClient = true;
                             } else {
+                                _status = HC_COMPLETED;
                                 //Log.debug("webserver: peer has closed after served\n");
                             }
                             break;
                         case CLIENT_MUST_STOP:
                             //this is in response to bad inbound request - either from parsing it or handling its raw data
                             send(400, mime::mimeTable[mime::txt].mimeType, Util::responseCodeToString(400));
-                            _rawWifiClient.stop();
+                            _status = HC_COMPLETED;
                             break;
                         case CLIENT_IS_GIVEN:
                             // client must not be stopped but must not be handled here anymore
                             // (example: tcp connection given to websocket)
-                            // keepCurrentClient = true;
-                            //Log.debug("Give client\n");
+                            keepClient = true;
+                            //log_debug("Given client!");
                             break;
                     } // switch _parseRequest()
                 } else {
                     // !_currentClient.available(): waiting for more data
-                    // Use faster connection drop timeout if any other client has data
-                    // or the buffer of pending clients is full
-                    if (const unsigned long timeSinceChange = millis() - _startHandlingTime;
-                        timeSinceChange > HTTP_MAX_DATA_WAIT) {
-                        // log_debug("WebServer: closing after read timeout %d ms", HTTP_MAX_DATA_WAIT);
-                    } else
+                    // Use faster connection drop timeout if any other client has data or the buffer of pending clients is full
+                    if (millis() - _startHandlingTime <= HTTP_MAX_DATA_WAIT)
                         keepClient = true;
+                    else {
+                        _status = HC_COMPLETED;
+                        // log_debug("WebServer: closing after read timeout %d ms", HTTP_MAX_DATA_WAIT);
+                    }
                 }
                 break;
             case HC_WAIT_CLOSE:
                 // Wait for client to close the connection
-                if (millis() - _startHandlingTime <= HTTP_MAX_CLOSE_WAIT)
+                if (millis() - _startWaitTime <= HTTP_MAX_CLOSE_WAIT)
                     keepClient = true;
+                else
+                    _status = HC_COMPLETED;
                 break;
             case HC_COMPLETED:
-                log_warn("WebClient marked completed but WiFiClient still connected; closing it");
+                log_warn(F("WebClient marked completed but WiFiClient still connected; closing it"));
                 break;
         }
     }
 
-    if (!keepClient) {
+    if (!keepClient)
         close();
-    }
+    else
+        log_warn(F("WebClient finished handleRequest call but not closing the client; status %d"), _status);
     return _status;
 }
 

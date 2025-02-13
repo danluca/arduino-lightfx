@@ -40,10 +40,12 @@ HTTPServer::~HTTPServer() {
     for (const auto& handler : _requestHandlers) {
         delete handler;
     }
+    _requestHandlers.clear();
     //delete any clients left in the queue
     for (const auto& client : _clients) {
         delete client;
     }
+    _clients.clear();
     _server.close();
 }
 void HTTPServer::begin() {
@@ -203,24 +205,37 @@ void HTTPServer::handleClient() {
     bool delay = _nullDelay;
     switch (_state) {
         case HANDLING_CLIENT:
-            if (_clients.front()->handleRequest() == HC_COMPLETED) {
-                delete _clients.front();
-                _clients.pop_front();
-                _state = _clients.empty() ? IDLE : HANDLING_CLIENT;
+            for (auto it = _clients.begin(); it != _clients.end();) {
+                if (WebClient *client = *it; client->handleRequest() == HC_COMPLETED) {
+                    it = _clients.erase(it);
+                    delete client;
+                } else
+                    ++it;
             }
+            _state = _clients.empty() ? IDLE : HANDLING_CLIENT;
             //fall-through
         case IDLE:
             if (WiFiClient wifiClient = _server.available()) {
-                if (_clients.size() >= 10) {
-                    log_error("HTTPServer::handleClient() - server exceeded 10 clients and another one has arrived (IP %s, socket %d), rejecting the new client",
-                        wifiClient.remoteIP().toString().c_str(), wifiClient.socket());
-                    wifiClient.write(Canned503Response, strlen(Canned503Response));
-                    wifiClient.stop();
-                } else {
+                bool newClient = true;
+                //did we have this client before? check if same socket
+                for (const auto& client : _clients) {
+                    if (client->socket() == wifiClient.socket()) {
+                        newClient = false;  //same socket, so we have this client already
+                        break;
+                    }
+                }
+                if (newClient) {
                     _state = HANDLING_CLIENT;
-                    _clients.push_back(new WebClient(this, wifiClient));
-                    log_debug("HTTPServer::handleClient() - from IP %s through socket %d. WiFiServer state %d, total %zu clients",
-                        wifiClient.remoteIP().toString().c_str(), wifiClient.socket(), _server.status(), _clients.size());
+                    if (_clients.size() >= 10) {
+                        log_error("HTTPServer::handleClient() - server exceeded 10 clients and another one has arrived (IP %s, socket %d), rejecting the new client",
+                            wifiClient.remoteIP().toString().c_str(), wifiClient.socket());
+                        wifiClient.write(Canned503Response, strlen(Canned503Response));
+                        wifiClient.stop();
+                    } else {
+                        _clients.push_back(new WebClient(this, wifiClient));
+                        log_debug("HTTPServer::handleClient() - from IP %s through socket %d. WiFiServer state %d, total %zu clients",
+                            wifiClient.remoteIP().toString().c_str(), wifiClient.socket(), _server.status(), _clients.size());
+                    }
                 }
             } else
                 delay = delay && _state == IDLE;

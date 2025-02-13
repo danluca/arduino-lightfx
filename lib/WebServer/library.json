@@ -25,6 +25,8 @@
     "includeDir": "src"
   },
   "dependencies": {
-    "version": "PicoLog"
+    "RP2040WiFiNINA": "1.9.0-1",
+    "FilesystemTask": "1.0.0",
+    "PicoLog": "1.0.0"
   }
 }
