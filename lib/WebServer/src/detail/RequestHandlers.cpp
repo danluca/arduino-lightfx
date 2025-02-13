@@ -84,8 +84,9 @@ FunctionRequestHandler & FunctionRequestHandler::setFilter(const FilterFunction 
  */
 StaticFileRequestHandler::StaticFileRequestHandler(FS &fs, const char *path, const char *uri, const char *cache_header): _fs(fs), _uri(uri), _path(path),
     _cache_header(cache_header) {
-    const File f = fs.open(path, "r");
+    File f = fs.open(path, "r");
     _isFile = f && f.size() > 0 && (!f.isDirectory());
+    f.close();
     log_debug("StaticFileRequestHandler: web uri=%s mapped to physical path=%s, isFile=%d, cache_header=%s", uri, path, _isFile, cache_header ? cache_header : "");
     _baseUriLength = _uri.length();
 }
@@ -120,22 +121,7 @@ bool StaticFileRequestHandler::handle(WebClient &client) {
 
     log_debug("StaticFileRequestHandler::handle: request=%s _uri=%s resolved path=%s, isFile=%d", requestUri.c_str(), _uri.c_str(), path.c_str(), _isFile);
 
-    const String contentType = getContentType(path);
-    bool pathExists = _fs.exists(path.c_str());
-
-    // look for gz file, only if the original specified path is not a gz.  So part only works to send gzip via content encoding when a non-compressed is asked for
-    // if you point the path to gzip you will serve the gzip as content type "application/x-gzip", not text or javascript etc...
-    if (!path.endsWith(FPSTR(mime::mimeTable[mime::gz].endsWith)) && !pathExists)  {
-        if (const String pathWithGz = path + FPSTR(mime::mimeTable[mime::gz].endsWith); _fs.exists(pathWithGz.c_str())) {
-            path += FPSTR(mime::mimeTable[mime::gz].endsWith);
-            pathExists = true;
-        }
-    }
-
-    if (!pathExists) {
-        log_error("StaticFileRequestHandler::handle: file not found: %s", path.c_str());
-        return false;
-    }
+    const String contentType = mime::getContentType(path);
 
     if (_cache_header.length() != 0)
         client.sendHeader(F("Cache-Control"), _cache_header);
@@ -155,22 +141,6 @@ void StaticFileRequestHandler::getPath(const String &uri, String &path, const ch
     path += uri.substring(_baseUriLength);
     if (path.endsWith("/"))
         path += defaultPath;
-}
-
-String StaticFileRequestHandler::getContentType(const String &path) {
-    char buff[sizeof(mime::mimeTable[0].mimeType)];
-    // Check all entries but last one for match, return if found
-    constexpr size_t mimeSize = std::size(mime::mimeTable);
-    for (size_t i = 0; i < mimeSize - 1; i++) {
-        strcpy_P(buff, mime::mimeTable[i].endsWith);
-        if (path.endsWith(buff)) {
-            strcpy_P(buff, mime::mimeTable[i].mimeType);
-            return {buff};
-        }
-    }
-    // Fall-through and just return default type
-    strcpy_P(buff, mime::mimeTable[mimeSize - 1].mimeType);
-    return {buff};
 }
 
 /**
@@ -220,22 +190,8 @@ bool StaticSyncFileRequestHandler::handle(WebClient& client) {
 
     log_debug("StaticSyncFileRequestHandler::handle: request=%s _uri=%s resolved path=%s, isFile=%d", requestUri.c_str(), _uri.c_str(), path.c_str(), _isFile);
 
-    const String contentType = getContentType(path);
-    bool pathExists = _fs.exists(path.c_str());
+    const String contentType = mime::getContentType(path);
 
-    // look for gz file, only if the original specified path is not a gz.  So part only works to send gzip via content encoding when a non-compressed is asked for
-    // if you point the path to gzip you will serve the gzip as content type "application/x-gzip", not text or javascript etc...
-    if (!path.endsWith(FPSTR(mime::mimeTable[mime::gz].endsWith)) && !pathExists)  {
-        if (const String pathWithGz = path + FPSTR(mime::mimeTable[mime::gz].endsWith); _fs.exists(pathWithGz.c_str())) {
-            path += FPSTR(mime::mimeTable[mime::gz].endsWith);
-            pathExists = true;
-        }
-    }
-
-    if (!pathExists) {
-        log_error("StaticSyncFileRequestHandler::handle: file not found: %s", path.c_str());
-        return false;
-    }
     const auto content = new String();
     _fs.readFile(path.c_str(), content);
 
@@ -256,22 +212,6 @@ void StaticSyncFileRequestHandler::getPath(const String &uri, String &path, cons
     path += uri.substring(_baseUriLength);
     if (path.endsWith("/"))
         path += defaultPath;
-}
-
-String StaticSyncFileRequestHandler::getContentType(const String &path) {
-    char buff[sizeof(mime::mimeTable[0].mimeType)];
-    // Check all entries but last one for match, return if found
-    constexpr size_t mimeSize = std::size(mime::mimeTable);
-    for (size_t i = 0; i < mimeSize - 1; i++) {
-        strcpy_P(buff, mime::mimeTable[i].endsWith);
-        if (path.endsWith(buff)) {
-            strcpy_P(buff, mime::mimeTable[i].mimeType);
-            return {buff};
-        }
-    }
-    // Fall-through and just return default type
-    strcpy_P(buff, mime::mimeTable[mimeSize - 1].mimeType);
-    return {buff};
 }
 
 /**

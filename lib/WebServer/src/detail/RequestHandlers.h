@@ -74,13 +74,6 @@ public:
     bool handle(WebClient& client) override;
     void getPath(const String& uri, String& path, const char* defaultPath = "index.html") const;
 
-    /**
-     *
-     * @param path path to examine for determining content type
-     * @return the corresponding content type to the file extension of the path, falls back to application/octet-stream if none match
-     */
-    static String getContentType(const String& path);
-
     StaticFileRequestHandler& setFilter(const FilterFunction &filter) override {
         _filter = filter;
         return *this;
@@ -114,13 +107,6 @@ public:
     bool canHandle(WebClient& client) override;
     bool handle(WebClient& client) override;
     void getPath(const String& uri, String& path, const char* defaultPath = "index.html") const;
-
-    /**
-     *
-     * @param path path to examine for determining content type
-     * @return the corresponding content type to the file extension of the path, falls back to application/octet-stream if none match
-     */
-    static String getContentType(const String& path);
 
     StaticSyncFileRequestHandler& setFilter(const FilterFunction &filter) override {
         _filter = filter;
