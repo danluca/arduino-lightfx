@@ -219,7 +219,7 @@ void HTTPServer::handleClient() {
                 bool newClient = true;
                 //did we have this client before? check if same socket
                 for (const auto& client : _clients) {
-                    if (client->socket() == wifiClient.socket()) {
+                    if (client->clientID() == wifiClient.socket()) {
                         newClient = false;  //same socket, so we have this client already
                         break;
                     }

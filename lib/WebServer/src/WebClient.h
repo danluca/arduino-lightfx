@@ -51,7 +51,8 @@ class WebClient {
     [[nodiscard]] HTTPRaw& raw() const { return *_rawBody; }
     [[nodiscard]] WebRequest& request() const { return *_request; }
     [[nodiscard]] HTTPClientStatus status() const { return _status; }
-    [[nodiscard]] uint8_t socket() const { return _wifiClientSocket; }
+    // this client's (unique) identifier - usually leveraging underlying's WiFiClient socket number
+    [[nodiscard]] uint8_t clientID() const { return _clientID; }
     HTTPClientStatus handleRequest();
 
     // send response to the client
@@ -136,7 +137,7 @@ protected:
     HTTPServer* _server;
     WiFiClient  _rawWifiClient;
     HTTPClientStatus _status;
-    time_t      _startHandlingTime;
+    time_t      _startHandlingTime, _stopHandlingTime;
     time_t      _startWaitTime;
     RequestHandler*  _requestHandler;   //currently matched request handler; the other handlers (not found, file upload/download) are global per server
     std::unique_ptr<HTTPUpload> _uploadBody{};
@@ -146,9 +147,10 @@ protected:
 
     // http response elements
     size_t           _contentLength;
+    size_t           _contentWritten;
     String           _responseHeaders;
     bool             _chunked;
-    uint8_t          _wifiClientSocket;
+    uint8_t          _clientID;
 
 };
 

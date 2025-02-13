@@ -15,38 +15,82 @@
 
 #define __STR(a) #a
 #define _STR(a) __STR(a)
-static const char *_http_method_str[] = {
+static const char* httpMethodStr[] = {
 #define XX(num, name, string) _STR(name),
     HTTP_METHOD_MAP(XX)
 #undef XX
 };
-
+static constexpr size_t httpMethodsCount = std::size(httpMethodStr);
 static constexpr char Content_Type[] PROGMEM = "Content-Type";
 static constexpr char Content_Length[] PROGMEM = "Content-Length";
 static constexpr char WWW_Authenticate[] = "WWW-Authenticate";
 
-WebClient::WebClient(HTTPServer *server, const WiFiClient &client): _server(server), _rawWifiClient(client), _status(HC_WAIT_READ),
-    _requestHandler(nullptr), _contentLength(CONTENT_LENGTH_NOT_SET), _chunked(false) {
-    _request = new WebRequest();
-    _startHandlingTime = millis();
-    _startWaitTime = 0;
-    _rawWifiClient.setTimeout(HTTP_MAX_SEND_WAIT);
-    _wifiClientSocket = _rawWifiClient.socket();
+/**
+ * Safe lookup of HTTPMethod enum from a HTTP Method name
+ * @param httpName string name of the HTTP method (expected to be upper case)
+ * @return the HTTPMethod enum that matches the name provided, or HTTP_ANY otherwise
+ */
+static HTTPMethod httpMethodFromName(const char* httpName) {
+    auto method = HTTP_ANY;
+    const String strHttpName(httpName);
+    for (size_t i = 0; i < httpMethodsCount; i++) {
+        if (strHttpName.equals(httpMethodStr[i])) {
+            method = static_cast<HTTPMethod>(i);
+            break;
+        }
+    }
+    return method;
 }
 
+/**
+ * Safe lookup of HTTP method name from a HTTPMethod enum.
+ * @param method HTTPMethod to convert to a (name) string
+ * @return name of the HTTP method to use in logging
+ */
+static const char* httpMethodToString(const HTTPMethod method) {
+    if (method >= httpMethodsCount)
+        return "HTTP UNKNOWN";
+    return httpMethodStr[method];
+}
+
+/**
+ * Initializes the Web Server's client wrapper for current request
+ * @param server underlying WiFi server (NINA library)
+ * @param client underlying WiFi client (NINA library)
+ */
+WebClient::WebClient(HTTPServer *server, const WiFiClient &client): _server(server), _rawWifiClient(client), _status(HC_WAIT_READ),
+        _requestHandler(nullptr), _contentLength(CONTENT_LENGTH_NOT_SET), _contentWritten(0), _chunked(false) {
+    _request = new WebRequest();
+    _startHandlingTime = millis();
+    _startWaitTime = _startHandlingTime;
+    _stopHandlingTime = 0;
+    _rawWifiClient.setTimeout(HTTP_MAX_SEND_WAIT);
+    // the ID is relying on the WiFiClient's internal socket used; the ID is used in discriminating new clients from existing ones that the WiFiServer may report
+    _clientID = _rawWifiClient.socket();
+}
+
+/**
+ * Destructor - release resources
+ */
 WebClient::~WebClient() {
     close();
     delete _request;
     _request = nullptr;
 }
 
+/**
+ * Closes the underlying connection (WiFi client) and logs the metrics of processing this request
+ */
 void WebClient::close() {
+    if (_stopHandlingTime > 0)
+        return;     //already ran
     _rawWifiClient.stop();
     _status = HC_COMPLETED;
     _uploadBody.reset();
     _rawBody.reset();
-    log_info(F("=== Web Client for socket %d closed. Processed request %s %s in %ld ms"), _wifiClientSocket, _http_method_str[_request->method()],
-        _request->uri().c_str(), millis() - _startHandlingTime);
+    _stopHandlingTime = millis();
+    log_info(F("=== Web Client ID (socket#) %d closed. Processed request %s %s in %lld ms, written %zu bytes total"), _clientID, httpMethodToString(_request->method()),
+        _request->uri().c_str(), _stopHandlingTime - _startHandlingTime, _contentWritten);
 }
 
 /**
@@ -70,6 +114,12 @@ void WebClient::requestAuthentication(const HTTPAuthMethod mode, const char *rea
     send(401, String(FPSTR (mime::mimeTable[mime::html].mimeType)), authFailMsg);
 }
 
+/**
+ * Collects a header into response headers buffer in memory. NO data is transmitted to the underlying (WiFi) client in this method.
+ * @param name header name
+ * @param value header value
+ * @param first whether it should be the first header
+ */
 void WebClient::sendHeader(const String &name, const String &value, const bool first) {
     String headerLine = name;
     headerLine += F(": ");
@@ -83,10 +133,21 @@ void WebClient::sendHeader(const String &name, const String &value, const bool f
     }
 }
 
+/**
+ * Establishes the content-length value for the response
+ * @param contentLength response content length
+ */
 void WebClient::setContentLength(const size_t contentLength) {
     _contentLength = contentLength;
 }
 
+/**
+ * Collects all response headers and writes them to the \code response\endcode buffer. NO data is transmitted to the underlying (WiFi) client in this method.
+ * @param response response buffer
+ * @param code HTTP response code
+ * @param content_type response content-type
+ * @param contentLength response content-length
+ */
 void WebClient::_prepareHeader(String &response, const int code, const char *content_type, const size_t contentLength) {
     response = String(F("HTTP/")) + request().httpVersion() + ' ';
     response += String(code);
@@ -121,13 +182,19 @@ void WebClient::_prepareHeader(String &response, const int code, const char *con
 
     response += _responseHeaders;
     response += "\r\n";
-    log_info(
-        F("Web Response: status code %d (%s), content type %s, length %zu"), code,
-        Util::responseCodeToString(code).c_str(), content_type, _contentLength);
-    log_debug(F("=== Headers ===\n%s"), response.c_str());
+    log_info( F("Web Response: status code %d (%s), content type %s, length %zu"), code, Util::responseCodeToString(code).c_str(),
+      content_type, _contentLength);
+    log_debug(F("=== Headers ===\n%s=== Body Size %zu ===\n"), response.c_str(), _contentLength);
     _responseHeaders = "";
 }
 
+/**
+ * Sends a complete response to the underlying WiFi client - this method does transmit data to the WiFi client.
+ * @param code http response code
+ * @param content_type response content-type
+ * @param content response body content (may be empty)
+ * @return number of bytes written to underlying WiFi client
+ */
 size_t WebClient::send(const int code, const char *content_type, const String &content) {
     String headers;
     headers.reserve(256); //decent starting size of headers
@@ -135,77 +202,113 @@ size_t WebClient::send(const int code, const char *content_type, const String &c
     //if(code == 200 && content.length() == 0 && _contentLength == CONTENT_LENGTH_NOT_SET)
     //  _contentLength = CONTENT_LENGTH_UNKNOWN;
     if (content.length() == 0 && _contentLength == CONTENT_LENGTH_NOT_SET) {
-        log_warn("content length is zero or unknown (improper streaming?)");
+        log_warn("Web Response - Content length is zero or unknown (improper streaming?)");
         _contentLength = CONTENT_LENGTH_UNKNOWN;
     }
     _prepareHeader(headers, code, content_type, content.length());
-    _currentClientWrite(headers.c_str(), headers.length());
-    if (content.length()) {
-        sendContent(content);
-    }
-    return headers.length() + content.length();
+    size_t contentSent = _currentClientWrite(headers.c_str(), headers.length());
+    if (content.length())
+        contentSent += sendContent(content);
+    _contentWritten += contentSent;
+    return contentSent;
 }
 
+/**
+ * Sends a complete response to the underlying WiFi client - this method does transmit data to the WiFi client.
+ * @param code http response code
+ * @param content_type response content-type
+ * @param content response body content (may be empty)
+ * @return number of bytes written to underlying WiFi client
+ */
 size_t WebClient::send(const int code, const String &content_type, const String &content) {
     return send(code, content_type.c_str(), content);
 }
 
+/**
+ * Sends a complete response to the underlying WiFi client - this method does transmit data to the WiFi client.
+ * @param code http response code
+ * @param content_type response content-type (may be null - defaults to text/html)
+ * @param content response body content (may be null)
+ * @return number of bytes written to underlying WiFi client
+ */
 size_t WebClient::send(const int code, const char *content_type, const char *content) {
     return send(code, content_type, content, content ? strlen(content) : 0);
 }
 
+/**
+ * Sends a complete response to the underlying WiFi client - this method does transmit data to the WiFi client.
+ * @param code http response code
+ * @param content_type response content-type (may be null - defaults to text/html)
+ * @param content response body content (may be null)
+ * @param contentLength response body content length
+ * @return number of bytes written to underlying WiFi client
+ */
 size_t WebClient::send(const int code, const char *content_type, const char *content, const size_t contentLength) {
     String headers;
     headers.reserve(256);
     _prepareHeader(headers, code, content_type, contentLength);
-    _currentClientWrite(headers.c_str(), headers.length());
-    if (contentLength) {
-        sendContent(content, contentLength);
-    }
-    return headers.length() + contentLength;
+    size_t contentSent = _currentClientWrite(headers.c_str(), headers.length());
+    if (contentLength)
+        contentSent += sendContent(content, contentLength);
+    _contentWritten += contentSent;
+    return contentSent;
 }
 
 size_t WebClient::send_P(const int code, PGM_P content_type, PGM_P content) {
-    size_t contentLength = 0;
-
-    if (content != nullptr) {
-        contentLength = strlen_P(content);
-    }
-
+    const size_t contentLength = content ? strlen_P(content) : 0;
     String headers;
     headers.reserve(256);
     _prepareHeader(headers, code, content_type, contentLength);
-    _currentClientWrite(headers.c_str(), headers.length());
-    return sendContent_P(content) + headers.length();
+    size_t contentSent = _currentClientWrite(headers.c_str(), headers.length());
+    contentSent += sendContent_P(content, contentLength);
+    _contentWritten += contentSent;
+    return contentSent;
 }
 
 size_t WebClient::send_P(const int code, PGM_P content_type, PGM_P content, const size_t contentLength) {
     String headers;
     headers.reserve(256);
     _prepareHeader(headers, code, content_type, contentLength);
-    sendContent(headers);
-    return sendContent_P(content, contentLength) + headers.length();
+    size_t contentSent = sendContent(headers);
+    contentSent += sendContent_P(content, contentLength);
+    _contentWritten += contentSent;
+    return contentSent;
 }
 
+/**
+ * Sends content to the underlying WiFi client - this method does transmit data to the WiFi client.
+ * Chunks it if enabled (must be paired with proper http headers for chunking)
+ * @param content content to send
+ * @return number of bytes written to underlying WiFi client
+ */
 size_t WebClient::sendContent(const String &content) {
     return sendContent(content.c_str(), content.length());
 }
 
+/**
+ * Sends content to the underlying WiFi client - this method does transmit data to the WiFi client.
+ * Chunks it if enabled (must be paired with proper http headers for chunking)
+ * @param content content to send
+ * @param contentLength size of content to send
+ * @return number of bytes written to underlying WiFi client
+ */
 size_t WebClient::sendContent(const char *content, const size_t contentLength) {
     const auto footer = "\r\n";
+    size_t contentSent = 0;
     if (_chunked) {
         char chunkSize[11];
         sprintf(chunkSize, "%x%s", contentLength, footer);
-        _currentClientWrite(chunkSize, strlen(chunkSize));
+        contentSent += _currentClientWrite(chunkSize, strlen(chunkSize));
     }
-    _currentClientWrite(content, contentLength);
+    contentSent += _currentClientWrite(content, contentLength);
     if (_chunked) {
-        _rawWifiClient.write(footer, 2);
+        contentSent += _rawWifiClient.write(footer, 2);
         if (contentLength == 0) {
             _chunked = false;
         }
     }
-    return contentLength;
+    _contentWritten += contentSent;
+    return contentSent;
 }
 
 size_t WebClient::sendContent_P(PGM_P content) {
@@ -214,21 +317,30 @@ size_t WebClient::sendContent_P(PGM_P content) {
 
 size_t WebClient::sendContent_P(PGM_P content, const size_t size) {
     const auto footer = "\r\n";
+    size_t contentSent = 0;
     if (_chunked) {
         char chunkSize[11];
         sprintf(chunkSize, "%x%s", size, footer);
-        _currentClientWrite(chunkSize, strlen(chunkSize));
+        contentSent += _currentClientWrite(chunkSize, strlen(chunkSize));
     }
-    _currentClientWrite_P(content, size);
+    contentSent += _currentClientWrite_P(content, size);
     if (_chunked) {
-        _rawWifiClient.write(footer, 2);
+        contentSent += _rawWifiClient.write(footer, 2);
         if (size == 0)
             _chunked = false;
     }
-    return size;
+    _contentWritten += contentSent;
+    return contentSent;
 }
 
-
+/**
+ * Sends the response headers in preparation of streaming contents of a file. The headers are transmitted to the underlying WiFi client connection.
+ * @param fileSize size of file to send
+ * @param fileName name of the file to send
+ * @param contentType response content-type
+ * @param code http response code
+ * @return number of bytes written to the underlying WiFi client
+ */
 size_t WebClient::_streamFileCore(const size_t fileSize, const String &fileName, const String &contentType, const int code) {
     using namespace mime;
     setContentLength(fileSize);
@@ -240,13 +352,19 @@ size_t WebClient::_streamFileCore(const size_t fileSize, const String &fileName,
     return send(code, contentType, "");
 }
 
+/**
+ * Finalize the response - meaningful if chunked (otherwise, really a no-op as the WiFi client flush() method does nothing)
+ */
 void WebClient::_finalizeResponse() {
     if (_chunked)
         sendContent("");
     _rawWifiClient.flush();
-    log_info(F("=========="));
+    log_info(F("========== Web response completed for request %d %s"), request().method(), request().uri().c_str());
 }
 
+/**
+ * Processes the request with user supplied handlers. Equivalent with controller implementation in an MVC pattern.
+ */
 void WebClient::_processRequest() {
     bool handled = false;
     if (!_requestHandler) {
@@ -254,8 +372,7 @@ void WebClient::_processRequest() {
     } else {
         handled = _requestHandler->handle(*this);
         if (!handled) {
-            log_error("Web request handler failed to handle %d request %s", request().method(),
-                      request().uri().c_str());
+            log_error("Web request handler failed to handle %d request %s", request().method(), request().uri().c_str());
         }
     }
     if (!handled && _server->_notFoundHandler) {
@@ -270,6 +387,11 @@ void WebClient::_processRequest() {
     _finalizeResponse();
 }
 
+/**
+ * Parses inbound http headers into the \code WebRequest\endcode object.
+ * Only headers of interest configured into the server are retained; nonetheless the entire http headers section is consumed
+ * from the inbound request (WiFi client).
+ */
 void WebClient::_parseHttpHeaders() {
     log_debug(F("=== Headers ==="));
     while (true) {
@@ -369,19 +491,11 @@ WebClient::ClientAction WebClient::_parseRequest() {
     request()._contentLength = 0; // not known yet, or invalid
 
     if (_server->_hook) {
-        if (const auto whatNow = _server->_hook(this, mime::getContentType); whatNow != CLIENT_REQUEST_CAN_CONTINUE) {
+        if (const auto whatNow = _server->_hook(this, mime::getContentType); whatNow != CLIENT_REQUEST_CAN_CONTINUE)
             return whatNow;
-        }
     }
 
-    auto method = HTTP_ANY;
-    constexpr size_t num_methods = sizeof(_http_method_str) / sizeof(const char *);
-    for (size_t i = 0; i < num_methods; i++) {
-        if (methodStr == _http_method_str[i]) {
-            method = static_cast<HTTPMethod>(i);
-            break;
-        }
-    }
+    const auto method = httpMethodFromName(methodStr.c_str());
     if (method == HTTP_ANY) {
         log_error("Unknown HTTP Method: %s", methodStr.c_str());
         return CLIENT_MUST_STOP;
@@ -439,7 +553,7 @@ WebClient::ClientAction WebClient::_parseRequest() {
         log_debug(F("=== Body ===\n%s====="), request()._requestBody.c_str());
     } else if (!(request().method() == HTTP_GET || request().method() == HTTP_HEAD))
         log_warn(F("Web Request %s %s Content length not specified; body - if any - ignored"), methodStr.c_str(), request().uri().c_str());
-    log_debug(F("====="));
+    log_info(F("===== Web Request %s %s parsed"), methodStr.c_str(), request().uri().c_str());
     return CLIENT_REQUEST_CAN_CONTINUE;
 }
 
@@ -576,8 +690,13 @@ size_t WebClient::_uploadReadBytes(uint8_t *buf, const size_t len) {
     return readLength;
 }
 
+/**
+ * Handles the incoming request and possible outcomes of underlying WiFi client connection. May be called multiple times by the server,
+ * until client's status becomes \code HC_COMPLETED\endcode
+ * @return current client status - informs the server whether to keep invoking this client or dispose it
+ * @see HTTPServer::handleClient
+ */
 HTTPClientStatus WebClient::handleRequest() {
-    bool keepClient = false;
     if (_rawWifiClient.connected()) {
         switch (_status) {
             case HC_WAIT_READ:
@@ -592,7 +711,6 @@ HTTPClientStatus WebClient::handleRequest() {
                             if (_rawWifiClient.connected() || _rawWifiClient.available()) {
                                 _status = HC_WAIT_CLOSE;
                                 _startWaitTime = millis();
-                                keepClient = true;
                             } else {
                                 _status = HC_COMPLETED;
                                 //Log.debug("webserver: peer has closed after served\n");
@@ -606,16 +724,13 @@ HTTPClientStatus WebClient::handleRequest() {
                         case CLIENT_IS_GIVEN:
                             // client must not be stopped but must not be handled here anymore
                             // (example: tcp connection given to websocket)
-                            keepClient = true;
                             //log_debug("Given client!");
                             break;
                     } // switch _parseRequest()
                 } else {
                     // !_currentClient.available(): waiting for more data
                     // Use faster connection drop timeout if any other client has data or the buffer of pending clients is full
-                    if (millis() - _startHandlingTime <= HTTP_MAX_DATA_WAIT)
-                        keepClient = true;
-                    else {
+                    if (millis() - _startHandlingTime > HTTP_MAX_DATA_WAIT) {
                         _status = HC_COMPLETED;
                         // log_debug("WebServer: closing after read timeout %d ms", HTTP_MAX_DATA_WAIT);
                     }
@@ -623,9 +738,7 @@ HTTPClientStatus WebClient::handleRequest() {
                 break;
             case HC_WAIT_CLOSE:
                 // Wait for client to close the connection
-                if (millis() - _startWaitTime <= HTTP_MAX_CLOSE_WAIT)
-                    keepClient = true;
-                else
+                if (millis() - _startWaitTime > HTTP_MAX_CLOSE_WAIT)
                     _status = HC_COMPLETED;
                 break;
             case HC_COMPLETED:
@@ -634,10 +747,8 @@ HTTPClientStatus WebClient::handleRequest() {
         }
     }
 
-    if (!keepClient)
+    if (_status == HC_COMPLETED)
         close();
-    else
-        log_warn(F("WebClient finished handleRequest call but not closing the client; status %d"), _status);
     return _status;
 }
 

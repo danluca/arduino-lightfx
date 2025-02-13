@@ -38,6 +38,6 @@ struct Entry {
 
 extern const Entry mimeTable[maxType];
 
-arduino::String getContentType(const arduino::String& path);
+String getContentType(const String& path);
 
 }
