@@ -22,11 +22,11 @@
 */
 
 #include <Arduino.h>
-#include "../../RP2040WiFiNina/src/WiFiClient.h"
+#include "WiFiClient.h"
 #include "HTTPServer.h"
 #include "FS.h"
 #include "detail/RequestHandlers.h"
-#include "../../PicoLog/src/LogProxy.h"
+#include "LogProxy.h"
 
 static constexpr auto Canned503Response PROGMEM = "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n";
 

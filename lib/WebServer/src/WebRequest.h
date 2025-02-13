@@ -5,7 +5,7 @@
 #define WEBREQUEST_H
 
 #include <Arduino.h>
-#include "../../RP2040WiFiNina/src/WiFiNINA.h"
+#include "WiFiNINA.h"
 #include "HTTP_Method.h"
 
 class WebClient;

@@ -9,7 +9,7 @@
 #include <FSImpl.h>
 #include <functional>
 #include <deque>
-#include "../../SchedulerExt/src/SchedulerExt.h"
+#include "SchedulerExt.h"
 
 inline constexpr auto FS_PATH_SEPARATOR PROGMEM = "/";
 using namespace fs;

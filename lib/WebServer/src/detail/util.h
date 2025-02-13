@@ -4,7 +4,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 #include <Arduino.h>
-#include "../../../RP2040WiFiNina/src/WiFiClient.h"
+#include "WiFiClient.h"
 
 class Util {
   public:

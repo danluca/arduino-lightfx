@@ -8,8 +8,8 @@
 #include <TimeLib.h>
 #include "SchedulerExt.h"
 #include "filesystem.h"
-#include "../../PicoLog/src/PicoLog.h"
-#include "../../StringUtils/src/stringutils.h"
+#include "PicoLog.h"
+#include "stringutils.h"
 
 #define FILE_BUF_SIZE   256
 #define MAX_DIR_LEVELS  10          // maximum number of directory levels to list (limits the recursion in the list function)

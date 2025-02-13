@@ -2,7 +2,7 @@
 //
 
 #include "PicoLog.h"
-#include "../../SchedulerExt/src/SchedulerExt.h"
+#include "SchedulerExt.h"
 
 #define SECS_PER_MIN  ((time_t)(60UL))
 #define SECS_PER_HOUR ((time_t)(3600UL))
