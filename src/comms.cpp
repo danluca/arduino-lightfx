@@ -234,7 +234,7 @@ void timeUpdate() {
         //log the current drift
         const time_t from = timeSyncs.end()[-2].unixSeconds;
         const time_t to = now();
-        Log.info(F("Current drift between %s and %s (%u s) measured as %d ms"), StringUtils::asString(from).c_str(), StringUtils::asString(to).c_str(), (long)(to-from), getLastTimeDrift());
+        Log.info(F("Current drift between %s and %s (%lld s) measured as %d ms"), StringUtils::asString(from).c_str(), StringUtils::asString(to).c_str(), to-from, getLastTimeDrift());
     }
 }
 
@@ -247,9 +247,15 @@ void timeSetupCheck() {
         return;
     }
     if (!timeClient.isTimeSet()) {
-        bool result = ntp_sync();
+        const bool result = ntp_sync();
         result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
         updateStateLED((result ? CLR_ALL_OK : CLR_SETUP_ERROR).as_uint32_t());
+        if (result && Log.getTimebase() == 0) {
+            const time_t curTime = now();
+            const time_t curMs = millis();
+            Log.warn(F("Logging time reference updated from %llu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
+            Log.setTimebase(curTime * 1000 - curMs);
+        }
         Log.info(F("System status: %#hX"), sysInfo->getSysStatus());
     } else
         Log.info(F("Time was already properly setup, event fired in excess. System status: %#hX"), sysInfo->getSysStatus());
