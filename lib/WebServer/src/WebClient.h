@@ -90,20 +90,25 @@ class WebClient {
         return _currentClientWrite(file);
     }
     size_t streamData(const String& data, const String& contentType, const int code = 200) {
-        _streamFileCore(data.length(), "", contentType, code);
+        size_t contentSent = _streamFileCore(data.length(), "", contentType, code);
         StringStream ss(data);
-        return _currentClientWrite(ss);
+        contentSent += _currentClientWrite(ss);
+        _contentWritten += contentSent;
+        return contentSent;
     }
     size_t streamData(const char* data, const size_t length, const String& contentType, const int code = 200) {
-        _streamFileCore(length, "", contentType, code);
+        size_t contentSent = _streamFileCore(length, "", contentType, code);
         StringStream ss(data, length);
-        return _currentClientWrite(ss);
+        contentSent += _currentClientWrite(ss);
+        _contentWritten += contentSent;
+        return contentSent;
     }
     size_t streamData(const __FlashStringHelper* data, const size_t length, const String& contentType, const int code = 200) {
-        _streamFileCore(length, "", contentType, code);
-        const String strData(data);
-        StringStream ss(strData);
-        return _currentClientWrite(ss);
+        size_t contentSent =_streamFileCore(length, "", contentType, code);
+        StringStream ss(data);
+        contentSent += _currentClientWrite(ss);
+        _contentWritten += contentSent;
+        return contentSent;
     }
 
 protected:

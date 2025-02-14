@@ -145,7 +145,6 @@ void filesystem_setup() {
  */
 void setup() {
     taskDelay(2000);    //safety delay
-    vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
     setupStateLED();
     log_setup();
 
@@ -174,15 +173,17 @@ void setup() {
     // notifies Core1 to start processing tasks that need WiFi
     const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
 
-    Scheduler.startTask(&alarmTasks);
+    watchdogSetup();
+
+    vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
     taskDelay(250);         // leave reasonable time to alarm task to setup
+    Scheduler.startTask(&alarmTasks);
     //enqueues the alarm setup event
     enqueueAlarmSetup();
 
     //wait for the other core to finish all initializations before allowing web server to respond to requests
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    watchdogSetup();
     Log.info(F("Main Core 0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
 }
@@ -205,16 +206,16 @@ void setup1() {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     Scheduler.startTask(&fxTasks);
-    taskDelay(250);         // leave reasonable time to FX task to setup
-    Scheduler.startTask(&micTasks);
+    // taskDelay(250);         // leave reasonable time to FX task to setup
 
     //wait for the main core to notify us that WiFi is ready, not interested in the notification value
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)+1);    //raise the priority of the diag task to allow uninterrupted I2C interactions
-    taskDelay(250);    // safety delay after priority bump
+    Scheduler.startTask(&micTasks);
     diagSetup();
 
+    vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)+1);    //raise the priority of the diag task to allow uninterrupted I2C interactions
+    taskDelay(250);    // safety delay after priority bump
     // const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
     // Log.info(F("Main Core 1 Setup completed, CORE0 notified of WebServer %d. System status: %#hX"), c0NtfStatus, sysInfo->getSysStatus());
