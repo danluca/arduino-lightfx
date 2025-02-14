@@ -82,16 +82,13 @@ public:
     [[nodiscard]] const std::deque<String>& headersOfInterest() const { return _headersOfInterest; }
     // Hook
     typedef String(*ContentTypeFunction)(const String&);
-    using HookFunction = std::function<WebClient::ClientAction(WebClient* client, ContentTypeFunction contentType)>;
+    using HookFunction = std::function<bool(WebClient* client, ContentTypeFunction contentType)>;
     void addHook(const HookFunction& hook) {
         if (_hook) {
             auto previousHook = _hook;
             _hook = [previousHook, hook](WebClient* client, const ContentTypeFunction contentType) {
                 const auto whatNow = previousHook(client, contentType);
-                if (whatNow == WebClient::CLIENT_REQUEST_CAN_CONTINUE) {
-                    return hook(client, contentType);
-                }
-                return whatNow;
+                return whatNow ? hook(client, contentType) : whatNow;
             };
         } else {
             _hook = hook;

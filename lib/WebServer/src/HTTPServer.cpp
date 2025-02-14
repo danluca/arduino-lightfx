@@ -206,7 +206,7 @@ void HTTPServer::handleClient() {
     switch (_state) {
         case HANDLING_CLIENT:
             for (auto it = _clients.begin(); it != _clients.end();) {
-                if (WebClient *client = *it; client->handleRequest() == HC_COMPLETED) {
+                if (WebClient *client = *it; client->handleRequest() == HC_CLOSED) {
                     it = _clients.erase(it);
                     delete client;
                 } else

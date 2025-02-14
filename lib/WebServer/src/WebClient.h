@@ -31,7 +31,7 @@
 #define CONTENT_LENGTH_UNKNOWN ((size_t) -1)
 #define CONTENT_LENGTH_NOT_SET ((size_t) -2)
 
-enum HTTPClientStatus { HC_WAIT_READ, HC_WAIT_CLOSE, HC_COMPLETED };
+enum HTTPClientStatus { HC_READING, HC_PROCESSING, HC_ERROR, HC_DISCONNECTED, HC_CLOSING, HC_CLOSED };
 enum HTTPAuthMethod { BASIC_AUTH, DIGEST_AUTH };
 
 class HTTPServer;
@@ -44,14 +44,12 @@ class WebClient {
     void close();
     void requestAuthentication(HTTPAuthMethod mode = BASIC_AUTH, const char* realm = nullptr, const String& authFailMsg = String(""));
 
-    enum ClientAction { CLIENT_REQUEST_CAN_CONTINUE, CLIENT_REQUEST_IS_HANDLED, CLIENT_MUST_STOP, CLIENT_IS_GIVEN };
-
     WiFiClient& rawClient() { return _rawWifiClient; }
     [[nodiscard]] HTTPUpload& upload() const { return *_uploadBody; }
     [[nodiscard]] HTTPRaw& raw() const { return *_rawBody; }
     [[nodiscard]] WebRequest& request() const { return *_request; }
     [[nodiscard]] HTTPClientStatus status() const { return _status; }
-    // this client's (unique) identifier - usually leveraging underlying's WiFiClient socket number
+    // this client's (unique) identifier - usually leveraging underlying WiFiClient socket number
     [[nodiscard]] uint8_t clientID() const { return _clientID; }
     HTTPClientStatus handleRequest();
 
@@ -122,8 +120,8 @@ protected:
     // this method employs buffering due to implementation in WiFiClient
     virtual size_t _currentClientWrite(Stream& s) { return _rawWifiClient.write(s); }
     void _finalizeResponse();
-    ClientAction _handleRawData();
-    ClientAction _parseRequest();
+    bool _handleRawData();
+    bool _parseRequest();
     void _processRequest();
     void _parseHttpHeaders();
     void _parseArguments(const String& data) const;

@@ -35,6 +35,8 @@ int StringStream::available() {
 // Read characters into a buffer
 size_t StringStream::readBytes(char *buffer, const size_t length) {
     const size_t availableLength = _length - _position;
+    if (availableLength == 0)
+        return 0;
     const size_t readLength = (length < availableLength) ? length : availableLength;
     memcpy(buffer, _buffer + _position, readLength);
     _position += readLength;
