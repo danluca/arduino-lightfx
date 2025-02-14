@@ -94,7 +94,7 @@ size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
     const auto buf = new String();
     buf->reserve(5120);     // deemed enough for all/most json docs in this app (largest is the config file at 4800 bytes)
     serializeJson(doc, *buf);
-    const size_t sz = client.send(200, mime::mimeTable[mime::json].mimeType, buf->c_str());
+    const size_t sz = client.send(200, mime::mimeTable[mime::json].mimeType, *buf);
     delete buf;
     return sz;
 }
@@ -202,7 +202,7 @@ void web::handleGetStatus(WebClient& client) {
 
     //send it out
     const size_t sz = marshalJson(doc, client);
-    Log.info(F("Handler handleGetStatus invoked for %s, response completed %zu bytes"), client.request().uri().c_str(), sz);
+    Log.info(F("Handler handleGetStatus invoked for %s, response body %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -281,7 +281,7 @@ void web::handlePutConfig(WebClient& client) {
     contentDispositionHeader(client, statusJsonFilename);
     //send it out
     const size_t sz = marshalJson(resp, client);
-    Log.info(F("Handler handlePutConfig invoked for %s, response completed %zu bytes"), client.request().uri().c_str(), sz);
+    Log.info(F("Handler handlePutConfig invoked for %s, response body %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -315,7 +315,7 @@ void web::handleGetTasks(WebClient& client) {
 
     //send it out
     const size_t sz = marshalJson(doc, client);
-    Log.info(F("Handler handleGetStatus invoked for %s, response completed %zu bytes"), client.request().uri().c_str(), sz);
+    Log.info(F("Handler handleGetStatus invoked for %s, response body %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -323,7 +323,7 @@ void web::handleGetTasks(WebClient& client) {
  */
 void web::handleNotFound(WebClient& client) {
     const size_t sz = client.send(404, mime::mimeTable[mime::txt].mimeType, msgRequestNotMapped);
-    Log.info(F("Handler handleNotFound invoked for %s, response completed %zu bytes"), client.request().uri().c_str(), sz);
+    Log.info(F("Handler handleNotFound invoked for %s, response body %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**

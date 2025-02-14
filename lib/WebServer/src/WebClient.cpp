@@ -164,6 +164,7 @@ void WebClient::_prepareHeader(String &response, const int code, const char *con
         sendHeader(F("Server"), _server->serverAgent());
     if (_contentLength == CONTENT_LENGTH_NOT_SET) {
         sendHeader(String(FPSTR (Content_Length)), String(contentLength));
+        _contentLength = contentLength;
     } else {
         if (_contentLength == CONTENT_LENGTH_UNKNOWN) {
             //let's do chunked - only applicable to HTTP/1.1 or above client, i.e. all today clients
@@ -201,9 +202,12 @@ size_t WebClient::send(const int code, const char *content_type, const String &c
     // Can we assume the following?
     //if(code == 200 && content.length() == 0 && _contentLength == CONTENT_LENGTH_NOT_SET)
     //  _contentLength = CONTENT_LENGTH_UNKNOWN;
-    if (content.length() == 0 && _contentLength == CONTENT_LENGTH_NOT_SET) {
-        log_warn("Web Response - Content length is zero or unknown (improper streaming?)");
-        _contentLength = CONTENT_LENGTH_UNKNOWN;
+    if (_contentLength == CONTENT_LENGTH_NOT_SET) {
+        if (content.length() == 0) {
+            log_warn("Web Response - Content length is zero or unknown (improper streaming?)");
+            _contentLength = CONTENT_LENGTH_UNKNOWN;
+        } else
+            _contentLength = content.length();
     }
     _prepareHeader(headers, code, content_type, content.length());
     size_t contentSent = _currentClientWrite(headers.c_str(), headers.length());
@@ -359,7 +363,7 @@ void WebClient::_finalizeResponse() {
     if (_chunked)
         sendContent("");
     _rawWifiClient.flush();
-    log_info(F("========== Web response completed for request %d %s"), request().method(), request().uri().c_str());
+    log_info(F("========== Web response completed for request %s %s"), httpMethodToString(request().method()), request().uri().c_str());
 }
 
 /**
@@ -367,13 +371,12 @@ void WebClient::_finalizeResponse() {
  */
 void WebClient::_processRequest() {
     bool handled = false;
-    if (!_requestHandler) {
-        log_error("Web request handler not found for %d request %s", request().method(), request().uri().c_str());
-    } else {
+    if (!_requestHandler)
+        log_error("Web request handler not found for %s request %s", httpMethodToString(request().method()), request().uri().c_str());
+    else {
         handled = _requestHandler->handle(*this);
-        if (!handled) {
-            log_error("Web request handler failed to handle %d request %s", request().method(), request().uri().c_str());
-        }
+        if (!handled)
+            log_error("Web request handler failed to handle %s request %s", httpMethodToString(request().method()), request().uri().c_str());
     }
     if (!handled && _server->_notFoundHandler) {
         (_server->_notFoundHandler)(*this);
@@ -697,6 +700,7 @@ size_t WebClient::_uploadReadBytes(uint8_t *buf, const size_t len) {
  * @see HTTPServer::handleClient
  */
 HTTPClientStatus WebClient::handleRequest() {
+    bool keepClient = false;
     if (_rawWifiClient.connected()) {
         switch (_status) {
             case HC_WAIT_READ:
@@ -711,6 +715,7 @@ HTTPClientStatus WebClient::handleRequest() {
                             if (_rawWifiClient.connected() || _rawWifiClient.available()) {
                                 _status = HC_WAIT_CLOSE;
                                 _startWaitTime = millis();
+                                keepClient = true;
                             } else {
                                 _status = HC_COMPLETED;
                                 //Log.debug("webserver: peer has closed after served\n");
@@ -724,13 +729,16 @@ HTTPClientStatus WebClient::handleRequest() {
                         case CLIENT_IS_GIVEN:
                             // client must not be stopped but must not be handled here anymore
                             // (example: tcp connection given to websocket)
+                            keepClient = true;
                             //log_debug("Given client!");
                             break;
                     } // switch _parseRequest()
                 } else {
                     // !_currentClient.available(): waiting for more data
                     // Use faster connection drop timeout if any other client has data or the buffer of pending clients is full
-                    if (millis() - _startHandlingTime > HTTP_MAX_DATA_WAIT) {
+                    if (millis() - _startHandlingTime <= HTTP_MAX_DATA_WAIT)
+                        keepClient = true;
+                    else {
                         _status = HC_COMPLETED;
                         // log_debug("WebServer: closing after read timeout %d ms", HTTP_MAX_DATA_WAIT);
                     }
@@ -738,7 +746,9 @@ HTTPClientStatus WebClient::handleRequest() {
                 break;
             case HC_WAIT_CLOSE:
                 // Wait for client to close the connection
-                if (millis() - _startWaitTime > HTTP_MAX_CLOSE_WAIT)
+                if (millis() - _startWaitTime <= HTTP_MAX_CLOSE_WAIT)
+                    keepClient = true;
+                else
                     _status = HC_COMPLETED;
                 break;
             case HC_COMPLETED:
@@ -747,7 +757,7 @@ HTTPClientStatus WebClient::handleRequest() {
         }
     }
 
-    if (_status == HC_COMPLETED)
+    if (!keepClient)
         close();
     return _status;
 }
