@@ -511,7 +511,11 @@ void wifi_temp() {
     //read the ESP32 WiFi chip's temperature
     const Measurement wifiTemp {WiFi.getTemperature(), now(), Deg_C};
     //add the measurement if the jump from previous measurement is reasonable
-    //I've noticed a suspect Fahrenheit value of 0x80 (128) that is not real (by feeling the chip) - this seems to be some sort the error value
+    //I've noticed a suspect Fahrenheit value of 0x80 (128) that is not real (by feeling the chip) - this seems to be some sort of error/NA value
+    if (wifiTempRange.current.time == 0 && fabs(toFahrenheit(wifiTemp.value) - 128.0f) < TEMP_NA_COMPARE_EPSILON) {
+        Log.warn( F("Discarding initial WiFi temperature measurement of %.2f 'C (128 'F error value detected)"), wifiTemp.value);
+        return;
+    }
     if (const float wifiTempJump = wifiTemp.value - wifiTempRange.current.value; fabs(wifiTempJump) < 10.0f || wifiTempRange.current.time == 0)
         wifiTempRange.setMeasurement(wifiTemp);
     else
