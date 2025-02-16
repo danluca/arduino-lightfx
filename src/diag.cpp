@@ -512,7 +512,7 @@ void wifi_temp() {
     const Measurement wifiTemp {WiFi.getTemperature(), now(), Deg_C};
     //add the measurement if the jump from previous measurement is reasonable
     //I've noticed a suspect Fahrenheit value of 0x80 (128) that is not real (by feeling the chip) - this seems to be some sort the error value
-    if (const float wifiTempJump = wifiTemp.value - wifiTempRange.current.value; fabs(wifiTempJump) < 10.0f)
+    if (const float wifiTempJump = wifiTemp.value - wifiTempRange.current.value; fabs(wifiTempJump) < 10.0f || wifiTempRange.current.time == 0)
         wifiTempRange.setMeasurement(wifiTemp);
     else
         Log.warn(F("WiFi temperature jump too big %.2f 'C for measurement %.2f 'C (%.2f 'F) - ignoring"), wifiTempJump, wifiTemp.value, toFahrenheit(wifiTemp.value));
