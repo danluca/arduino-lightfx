@@ -24,6 +24,7 @@ const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;
 const CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
 const CRGB CLR_SETUP_ERROR = CRGB::Red;
 static uint16_t tmrWifiEnsure = 40;
+static uint16_t tmrWifiTemp = 41;
 
 
 /**
@@ -84,7 +85,13 @@ bool wifi_connect() {
 void enqueueWifiEnsure(TimerHandle_t xTimer) {
     constexpr CommAction action = WIFI_ENSURE;
     if (const BaseType_t qResult = xQueueSend(webQueue, &action, 0); qResult != pdTRUE)
-        Log.error(F("Error sending WIFI_ENSURE message to core1 queue for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
+        Log.error(F("Error sending WIFI_ENSURE message to Web queue for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
+}
+
+void enqueueWifiTempRead(TimerHandle_t xTimer) {
+    constexpr CommAction action = WIFI_TEMP;
+    if (const BaseType_t qResult = xQueueSend(webQueue, &action, 0); qResult != pdTRUE)
+        Log.error(F("Error sending WIFI_TEMP message to Web queue for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
 }
 
 bool wifi_setup() {
@@ -102,12 +109,18 @@ bool wifi_setup() {
 
     const bool connStatus = wifi_connect();
 
-    // create timer to re-check WiFi and ensure connectivity
+    // create timer to re-check WiFi and ensure connectivity - every 7 minutes
     const TimerHandle_t thWifiEnsure = xTimerCreate("wifiEnsure", pdMS_TO_TICKS(7*60*1000), pdTRUE, &tmrWifiEnsure, enqueueWifiEnsure);
     if (thWifiEnsure == nullptr)
         Log.error(F("Cannot create wifiEnsure timer - Ignored. There is NO wifi re-check scheduled"));
     else if (xTimerStart(thWifiEnsure, 0) != pdPASS)
         Log.error(F("Cannot start the wifiEnsure timer - Ignored."));
+    //create timer to take WiFi temperature - every 33s, 1s off from the diagnostic thread temp read, to avoid overlap
+    const TimerHandle_t thWifiTempRead = xTimerCreate("wifiTempRead", pdMS_TO_TICKS(33*1000), pdTRUE, &tmrWifiTemp, enqueueWifiTempRead);
+    if (thWifiTempRead == nullptr)
+        Log.error(F("Cannot create wifiTempRead timer - Ignored. There is NO wifi temperature read scheduled"));
+    else if (xTimerStart(thWifiTempRead, 0) != pdPASS)
+        Log.error(F("Cannot start the wifiTempRead timer - Ignored."));
 
     return connStatus;
 }

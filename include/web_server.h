@@ -5,7 +5,7 @@
 #define LIGHTFX_WEB_SERVER_H
 
 #include <ArduinoJson.h>
-#include <WebServer.h>
+#include <RestWebServer.h>
 
 namespace web {
     extern WebServer server;

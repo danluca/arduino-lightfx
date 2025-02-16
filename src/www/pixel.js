@@ -141,6 +141,8 @@ function getStatus() {
             }
             //approximately undo the dimming rules in FastLED library where dimming raw is equivalent with x*x/256
             let brPerc = Math.round(Math.sqrt(data.fx.brightness * 256)*100/256);
+            //approximate brPerc to the closest 10% step
+            brPerc = brPerc < 10 ? 10 : Math.round(brPerc/10)*10;
             $('#fxBrightness').html(`${brPerc}% (${data.fx.brightness}${data.fx.brightnessLocked?' fixed':' auto'})`)
             let brList = $('#brightList');
             brList.val(brPerc);

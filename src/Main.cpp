@@ -126,6 +126,7 @@ void web_run() {
     if (pdTRUE == xQueueReceive(webQueue, &action, 0)) {
         switch (action) {
             case WIFI_ENSURE: wifi_ensure(); break;
+            case WIFI_TEMP: wifi_temp(); break;
             default:
                 Log.error(F("Comm Action %hu not supported"), action);
         }

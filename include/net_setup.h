@@ -20,4 +20,6 @@ void printSuccessfulWifiStatus();
 void checkFirmwareVersion();
 uint8_t barSignalLevel(int32_t rssi);
 
+
+
 #endif //LIGHTFX_NET_SETUP_H

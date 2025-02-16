@@ -13,28 +13,18 @@ public:
         return new UriRegex(_uri);
     };
 
-    void initPathArgs(std::vector<String> &pathArgs) const {
-        std::regex rgx((_uri + "|").c_str());
-        std::smatch matches;
-        std::string s{""};
-        std::regex_search(s, matches, rgx);
-        pathArgs.resize(matches.size() - 1);
-    }
-
     bool canHandle(const String &requestUri, std::vector<String> &pathArgs) const override final {
         if (Uri::canHandle(requestUri, pathArgs)) {
             return true;
         }
-        initPathArgs(pathArgs);
-
         unsigned int pathArgIndex = 0;
         std::regex rgx(_uri.c_str());
         std::smatch matches;
         std::string s(requestUri.c_str());
         if (std::regex_search(s, matches, rgx)) {
+            pathArgs.resize(matches.size() - 1);
             for (size_t i = 1; i < matches.size(); ++i) {  // skip first
-                pathArgs[pathArgIndex] = String(matches[i].str().c_str());
-                pathArgIndex++;
+                pathArgs[pathArgIndex++] = String(matches[i].str().c_str());
             }
             return true;
         }

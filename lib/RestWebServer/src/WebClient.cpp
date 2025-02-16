@@ -20,6 +20,7 @@ static const char* httpMethodStr[] = {
     HTTP_METHOD_MAP(XX)
 #undef XX
 };
+#define INITIAL_HEADERS_BUFFER_SIZE 256
 static constexpr size_t httpMethodsCount = std::size(httpMethodStr);
 static constexpr char Content_Type[] PROGMEM = "Content-Type";
 static constexpr char Content_Length[] PROGMEM = "Content-Length";
@@ -67,6 +68,7 @@ WebClient::WebClient(HTTPServer *server, const WiFiClient &client): _server(serv
     _rawWifiClient.setTimeout(HTTP_MAX_SEND_WAIT);
     // the ID is relying on the WiFiClient's internal socket used; the ID is used in discriminating new clients from existing ones that the WiFiServer may report
     _clientID = _rawWifiClient.socket();
+    _responseHeaders.reserve(INITIAL_HEADERS_BUFFER_SIZE);
 }
 
 /**
@@ -126,11 +128,10 @@ void WebClient::sendHeader(const String &name, const String &value, const bool f
     headerLine += value;
     headerLine += "\r\n";
 
-    if (first) {
+    if (first)
         _responseHeaders = headerLine + _responseHeaders;
-    } else {
+    else
         _responseHeaders += headerLine;
-    }
 }
 
 /**
@@ -198,7 +199,7 @@ void WebClient::_prepareHeader(String &response, const int code, const char *con
  */
 size_t WebClient::send(const int code, const char *content_type, const String &content) {
     String headers;
-    headers.reserve(256); //decent starting size of headers
+    headers.reserve(INITIAL_HEADERS_BUFFER_SIZE); //decent starting size of headers
     // Can we assume the following?
     //if(code == 200 && content.length() == 0 && _contentLength == CONTENT_LENGTH_NOT_SET)
     //  _contentLength = CONTENT_LENGTH_UNKNOWN;
@@ -249,7 +250,7 @@ size_t WebClient::send(const int code, const char *content_type, const char *con
  */
 size_t WebClient::send(const int code, const char *content_type, const char *content, const size_t contentLength) {
     String headers;
-    headers.reserve(256);
+    headers.reserve(INITIAL_HEADERS_BUFFER_SIZE);
     _prepareHeader(headers, code, content_type, contentLength);
     size_t contentSent = _currentClientWrite(headers.c_str(), headers.length());
     if (contentLength)
@@ -261,7 +262,7 @@ size_t WebClient::send(const int code, const char *content_type, const char *con
 size_t WebClient::send_P(const int code, PGM_P content_type, PGM_P content) {
     const size_t contentLength = content ? strlen_P(content) : 0;
     String headers;
-    headers.reserve(256);
+    headers.reserve(INITIAL_HEADERS_BUFFER_SIZE);
     _prepareHeader(headers, code, content_type, contentLength);
     size_t contentSent = _currentClientWrite(headers.c_str(), headers.length());
     contentSent += sendContent_P(content, contentLength);
@@ -271,7 +272,7 @@ size_t WebClient::send_P(const int code, PGM_P content_type, PGM_P content) {
 
 size_t WebClient::send_P(const int code, PGM_P content_type, PGM_P content, const size_t contentLength) {
     String headers;
-    headers.reserve(256);
+    headers.reserve(INITIAL_HEADERS_BUFFER_SIZE);
     _prepareHeader(headers, code, content_type, contentLength);
     size_t contentSent = sendContent(headers);
     contentSent += sendContent_P(content, contentLength);

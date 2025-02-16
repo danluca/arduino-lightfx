@@ -169,7 +169,7 @@ void web::handleGetStatus(WebClient& client) {
     //System
     doc["boardTemp"] = imuTempRange.current.value;
     doc["chipTemp"] = cpuTempRange.current.value;
-    doc["wifiTemp"] = WiFi.getTemperature();
+    doc["wifiTemp"] = wifiTempRange.current.value;
     doc["vcc"] = lineVoltage.current.value;
     doc["minVcc"] = lineVoltage.min.value;
     doc["maxVcc"] = lineVoltage.max.value;
@@ -200,9 +200,9 @@ void web::handleGetStatus(WebClient& client) {
     cpuTempCal["refTempADC"] = calibTempMeasurements.ref.adcRaw;
     cpuTempCal["refTempTime"] = calibTempMeasurements.ref.time;
 
-    //send it out
+    //send it out - the size returned is http headers + response body (does not include the HTTP protocol header)
     const size_t sz = marshalJson(doc, client);
-    Log.info(F("Handler handleGetStatus invoked for %s, response body %zu bytes"), client.request().uri().c_str(), sz);
+    Log.info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -281,7 +281,7 @@ void web::handlePutConfig(WebClient& client) {
     contentDispositionHeader(client, statusJsonFilename);
     //send it out
     const size_t sz = marshalJson(resp, client);
-    Log.info(F("Handler handlePutConfig invoked for %s, response body %zu bytes"), client.request().uri().c_str(), sz);
+    Log.info(F("Handler handlePutConfig invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -315,7 +315,7 @@ void web::handleGetTasks(WebClient& client) {
 
     //send it out
     const size_t sz = marshalJson(doc, client);
-    Log.info(F("Handler handleGetStatus invoked for %s, response body %zu bytes"), client.request().uri().c_str(), sz);
+    Log.info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -323,7 +323,7 @@ void web::handleGetTasks(WebClient& client) {
  */
 void web::handleNotFound(WebClient& client) {
     const size_t sz = client.send(404, mime::mimeTable[mime::txt].mimeType, msgRequestNotMapped);
-    Log.info(F("Handler handleNotFound invoked for %s, response body %zu bytes"), client.request().uri().c_str(), sz);
+    Log.info(F("Handler handleNotFound invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**

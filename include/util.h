@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_UTIL_H
@@ -14,7 +14,7 @@
 #define SYS_STATUS_DIAG    0x40
 
 enum MiscAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO};
-enum CommAction:uint8_t {WIFI_ENSURE};
+enum CommAction:uint8_t {WIFI_ENSURE, WIFI_TEMP};
 
 ulong adcRandom();
 

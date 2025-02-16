@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 
 #pragma once
@@ -112,9 +112,11 @@ extern CalibrationParams calibCpuTemp;
 void readCalibrationInfo();
 void saveCalibrationInfo();
 // end self-calibration support
+void wifi_temp();
 
 extern volatile MeasurementRange imuTempRange;
 extern volatile MeasurementRange cpuTempRange;
+extern volatile MeasurementRange wifiTempRange;
 extern volatile MeasurementRange lineVoltage;
 
 
