@@ -181,18 +181,6 @@ void HTTPServer::enableCrossOrigin(const bool value) {
     enableCORS(value);
 }
 
-
-// void HTTPServer::collectHeaders(const char* headerKeys[], const size_t headerKeysCount) {
-//     _headersReqCount = headerKeysCount + 1;
-//     delete[] _currentReqHeaders;
-//
-//     _currentReqHeaders = new RequestArgument[_headersReqCount];
-//     _currentReqHeaders[0].key = FPSTR(AUTHORIZATION_HEADER);
-//     for (int i = 1; i < _headersReqCount; i++) {
-//         _currentReqHeaders[i].key = headerKeys[i - 1];
-//     }
-// }
-
 void HTTPServer::onFileUpload(const THandlerFunction &ufn) {
     _fileUploadHandler = ufn;
 }
@@ -246,6 +234,6 @@ void HTTPServer::handleClient() {
             return;
     }
     if (delay)
-        vTaskDelay(pdMS_TO_TICKS(100));     //this makes sense if there is nothing else going on in the task where the server runs
+        SchedulerClassExt::delay(100);     //this makes sense if there is nothing else going on in the task where the server runs
 }
 

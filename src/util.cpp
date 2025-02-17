@@ -51,7 +51,7 @@ ulong adcRandom() {
  * @return (a*b)/256
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
-uint8_t bmul8(uint8_t a, uint8_t b) {
+uint8_t bmul8(const uint8_t a, const uint8_t b) {
     if (a==255)
         return b;
     if (b==255)
@@ -67,7 +67,7 @@ uint8_t bmul8(uint8_t a, uint8_t b) {
  * @return 255-bmul8(255-a, 255-b)
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
-uint8_t bscr8(uint8_t a, uint8_t b) {
+uint8_t bscr8(const uint8_t a, const uint8_t b) {
     return 255-bmul8(255-a, 255-b);
 }
 
@@ -79,7 +79,7 @@ uint8_t bscr8(uint8_t a, uint8_t b) {
  * @return the 8 bit value per formula above
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
-uint8_t bovl8(uint8_t a, uint8_t b) {
+uint8_t bovl8(const uint8_t a, const uint8_t b) {
     if (a < 128)
         return bmul8(a, b)*2;
     return 255-bmul8(255-a, 255-b)*2;
@@ -93,7 +93,7 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
  * @return a high quality random number in the range specified
  * @see secRandom(uint32_t, uint32_t)
  */
- uint8_t secRandom8(uint8_t minLim, uint8_t maxLim) {
+ uint8_t secRandom8(const uint8_t minLim, const uint8_t maxLim) {
     return secRandom(minLim, maxLim > 0 ? maxLim : UINT8_MAX);
 }
 
@@ -117,8 +117,8 @@ uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
  * @return a high quality random number in the range specified
  */
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
-    long low = (long)minLim;
-    long high = maxLim > 0 ? (long)maxLim : INT32_MAX;
+    const long low = (long)minLim;
+    const long high = maxLim > 0 ? (long)maxLim : INT32_MAX;
     return sysInfo->isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
 }
 
@@ -179,7 +179,7 @@ void watchdogPing() {
  * differently on FastLED, or collide with the RP2040 port implementation
  * @param ms number of milliseconds to delay
  */
-void taskDelay(uint32_t ms) {
+void taskDelay(const uint32_t ms) {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 

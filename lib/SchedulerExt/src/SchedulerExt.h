@@ -121,6 +121,7 @@ public:
     [[nodiscard]] uint16_t availableThreads() const;
 
     static void yield() { ::yield(); };
+    static void delay(const uint32_t ms) { ::vTaskDelay(pdMS_TO_TICKS(ms)); };
 private:
     TaskWrapper *tasks[MAX_THREADS_NUMBER] = {};
     static bool scheduleTask(TaskWrapper *taskJob);

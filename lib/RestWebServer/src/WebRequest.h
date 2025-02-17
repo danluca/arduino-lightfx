@@ -77,9 +77,6 @@ class WebRequest {
       version.replace(".", "");
       return version.toInt();
     }
-    bool authenticate(const char * username, const char * password) const;
-    // for extracting Auth parameters
-    static String extractParam(const String& authReq, const String& param, char delimit = '"');
 
 protected:
     HTTPMethod  _method{};
@@ -92,9 +89,9 @@ protected:
     String           _boundaryStr;   //we're not handling multipart/form-data, but keeping it in case we need to start parsing forms
     std::vector<String> _pathArgs{};
     std::deque<NameValuePair*> _requestArgs{};
-    String           _sNonce;  // Store nonce and opaque for future comparison
-    String           _sOpaque;
-    String           _sRealm;  // Store the Auth realm between Calls
+    // String           _sNonce;  // Store nonce and opaque for future comparison
+    // String           _sOpaque;
+    // String           _sRealm;  // Store the Auth realm between Calls
 
     friend class WebClient;
 };

@@ -24,8 +24,8 @@ struct Measurement {
     time_t time;
     const Unit unit;
 
-    explicit Measurement(float v, time_t t, Unit u) : value(v), time(t), unit(u) {};
-    explicit Measurement(Unit u) : Measurement(0.0f, 0, u) {};
+    explicit Measurement(const float v, const time_t t, const Unit u) : value(v), time(t), unit(u) {};
+    explicit Measurement(const Unit u) : Measurement(0.0f, 0, u) {};
 
     void copy(const Measurement& msmt) volatile;
 
@@ -96,7 +96,7 @@ struct CalibrationParams {
     float refDelta; //the amount of temperature variation that was used for last calibration; meaningful only if valid is true
     time_t time;    //last calibration time; also used to determine whether this params set is valid
     CalibrationParams(): refTemp(0.0f), vtref(0.0f), slope(0.0f), refDelta(0.0f), time(0) {};
-    bool isValid() const { return time > 0; }
+    [[nodiscard]] bool isValid() const { return time > 0; }
 
     void reset() {
         refTemp = 0.0f;

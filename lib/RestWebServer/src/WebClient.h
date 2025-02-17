@@ -42,7 +42,6 @@ class WebClient {
     virtual ~WebClient();
 
     void close();
-    void requestAuthentication(HTTPAuthMethod mode = BASIC_AUTH, const char* realm = nullptr, const String& authFailMsg = String(""));
 
     WiFiClient& rawClient() { return _rawWifiClient; }
     [[nodiscard]] HTTPUpload& upload() const { return *_uploadBody; }
@@ -154,9 +153,6 @@ protected:
     String           _responseHeaders;
     bool             _chunked;
     uint8_t          _clientID;
-
 };
-
-
 
 #endif //WEBCLIENT_H

@@ -227,7 +227,6 @@ void setup1() {
  * Core 1 Main loop - runs the communication tasks
  */
 void loop1() {
-    // web::webserver();
     diagExecute();
 }
 

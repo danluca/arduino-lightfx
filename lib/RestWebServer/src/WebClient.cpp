@@ -95,26 +95,26 @@ void WebClient::close() {
         _request->uri().c_str(), _stopHandlingTime - _startHandlingTime, _contentWritten);
 }
 
-/**
- * Revisit the need for this alongside the authentication method in WebRequest
- * @param mode
- * @param realm
- * @param authFailMsg
- */
-void WebClient::requestAuthentication(const HTTPAuthMethod mode, const char *realm, const String &authFailMsg) {
-    request()._sRealm = realm == nullptr ? String(F("Login Required")) : String(realm);
-    const String &sRealm = request()._sRealm;
-    if (mode == BASIC_AUTH) {
-        sendHeader(String(FPSTR (WWW_Authenticate)), String(F("Basic realm=\"")) + sRealm + String(F("\"")));
-    } else {
-        request()._sNonce = Util::getRandomHexString();
-        request()._sOpaque = Util::getRandomHexString();
-        sendHeader(String(FPSTR (WWW_Authenticate)),
-                   String(F("Digest realm=\"")) + sRealm + String(F("\", qop=\"auth\", nonce=\"")) + request()._sNonce +
-                   String(F("\", opaque=\"")) + request()._sOpaque + String(F("\"")));
-    }
-    send(401, String(FPSTR (mime::mimeTable[mime::html].mimeType)), authFailMsg);
-}
+// /**
+//  * Revisit the need for this alongside the authentication method in WebRequest
+//  * @param mode
+//  * @param realm
+//  * @param authFailMsg
+//  */
+// void WebClient::requestAuthentication(const HTTPAuthMethod mode, const char *realm, const String &authFailMsg) {
+//     request()._sRealm = realm == nullptr ? String(F("Login Required")) : String(realm);
+//     const String &sRealm = request()._sRealm;
+//     if (mode == BASIC_AUTH) {
+//         sendHeader(String(WWW_Authenticate), String(F("Basic realm=\"")) + sRealm + String(F("\"")));
+//     } else {
+//         request()._sNonce = Util::getRandomHexString();
+//         request()._sOpaque = Util::getRandomHexString();
+//         sendHeader(String(WWW_Authenticate),
+//                    String(F("Digest realm=\"")) + sRealm + String(F("\", qop=\"auth\", nonce=\"")) + request()._sNonce +
+//                    String(F("\", opaque=\"")) + request()._sOpaque + String(F("\"")));
+//     }
+//     send(401, String(mime::mimeTable[mime::html].mimeType), authFailMsg);
+// }
 
 /**
  * Collects a header into response headers buffer in memory. NO data is transmitted to the underlying (WiFi) client in this method.
@@ -425,7 +425,7 @@ void WebClient::_parseHttpHeaders() {
         }
         log_debug(F("%s%s: %s"), hdCollected ? "" : "!", headerName.c_str(), headerValue.c_str());
 
-        if (headerName.equalsIgnoreCase(FPSTR (Content_Type))) {
+        if (headerName.equalsIgnoreCase(Content_Type)) {
             if (headerValue.startsWith(F("multipart/"))) {
                 _request->_boundaryStr = headerValue.substring(headerValue.indexOf('=') + 1);
                 _request->_boundaryStr.replace("\"", "");
@@ -606,18 +606,32 @@ void WebClient::_parseArguments(const String &data) const {
     log_debug(F("Request args parsed %d arguments"), request()._requestArgs.size());
 }
 
-//Update this to write a buffer not one byte at a time
+/**
+ * Accumulates one more byte into the \code _uploadBody\endcode, triggers the upload method of
+ * the request handler if we're going over the buffer size.
+ * Note: caller is responsible to ensure the request handler can - in fact - process the request as upload
+ * e.g. \code _requestHandler->canUpload(*this)\endcode, this method will not check as it becomes very inefficient.
+ * Note: prefer using the buffered method overload instead, more efficient in transferring data than one byte at a time
+ * @param b byte to accumulate in the uploadBody
+ * @see WebClient::_uploadWriteBytes(const uint8_t *b, const size_t len)
+ */
 void WebClient::_uploadWriteByte(const uint8_t b) {
     if (_uploadBody->currentSize == HTTP_UPLOAD_BUFLEN) {
-        if (_requestHandler && _requestHandler->canUpload(*this)) {
-            _requestHandler->upload(*this);
-        }
+        _requestHandler->upload(*this);
         _uploadBody->totalSize += _uploadBody->currentSize;
         _uploadBody->currentSize = 0;
     }
     _uploadBody->buf[_uploadBody->currentSize++] = b;
 }
 
+/**
+ * Accumulates a byte array into the \code _uploadBody\endcode, triggers the upload method of
+ * the request handler if we're going over the buffer size.
+ * Note: caller is responsible to ensure the request handler can - in fact - process the request as upload
+ * e.g. \code _requestHandler->canUpload(*this)\endcode, this method will not check as it becomes very inefficient.
+ * @param b byte array to accumulate in the uploadBody
+ * @param len length of the byte array
+ */
 void WebClient::_uploadWriteBytes(const uint8_t *b, const size_t len) {
     size_t leftToWrite = len;
     while (leftToWrite > 0) {
@@ -626,16 +640,18 @@ void WebClient::_uploadWriteBytes(const uint8_t *b, const size_t len) {
         _uploadBody->currentSize += toWrite;
         leftToWrite -= toWrite;
         if (_uploadBody->currentSize == HTTP_UPLOAD_BUFLEN) {
-            if (_requestHandler && _requestHandler->canUpload(*this)) {
-                _requestHandler->upload(*this);
-            }
+            _requestHandler->upload(*this);
             _uploadBody->totalSize += _uploadBody->currentSize;
             _uploadBody->currentSize = 0;
         }
     }
 }
 
-//Update this to read buffered not one byte at a time
+/**
+ * Read a single byte from the underlying WiFi client connection, with timeout
+ * Note: prefer using the buffered overload _uploadReadBytes instead, more efficient in transferring data than one byte at a time
+ * @return the byte read as integer. If negative value it means we timed out reading or client disconnected
+ */
 int WebClient::_uploadReadByte() {
     int res = _rawWifiClient.read();
 
@@ -643,14 +659,14 @@ int WebClient::_uploadReadByte() {
         // keep trying until you either read a valid byte or timeout
         const unsigned long timeoutMillis = millis() + _rawWifiClient.getTimeout();
         bool timedOut = false;
-        for (;;) {
-            if (!_rawWifiClient.connected()) {
-                return -1;
-            }
+        while (!timedOut) {
             // loosely modeled after blinkWithoutDelay pattern
-            while (!timedOut && !_rawWifiClient.available() && _rawWifiClient.connected()) {
-                delay(2);
-                timedOut = millis() >= timeoutMillis;
+            while (!timedOut && !_rawWifiClient.available()) {
+                if (_rawWifiClient.connected()) {
+                    SchedulerClassExt::delay(5); // wait for data to become available
+                    timedOut = millis() >= timeoutMillis;
+                } else
+                    return -1;  //we're disconnected - game over
             }
 
             res = _rawWifiClient.read();
@@ -664,26 +680,26 @@ int WebClient::_uploadReadByte() {
             //       -- client.connected == true
             //       -- res == -1
             //
-            //       a simple retry strategy overcomes this which is to say the
-            //       assertion is not permanent, but the reason that this works
-            //       is elusive, and possibly indicative of a more subtle underlying
-            //       issue
-
-            timedOut = millis() >= timeoutMillis;
-            if (timedOut)
-                return res; // exit on a timeout
+            //       a simple retry strategy overcomes this which is to say the assertion is not permanent, but the
+            //       reason that this works is elusive, and possibly indicative of a more subtle underlying issue
         }
     }
     return res;
 }
 
+/**
+ * Read up to \code len\endcode bytes from the underlying WiFi client connection into the buffer provided, with timeout
+ * @param buf byte array to fill
+ * @param len max size of the byte array
+ * @return number of bytes read (between 0 and len)
+ */
 size_t WebClient::_uploadReadBytes(uint8_t *buf, const size_t len) {
     size_t readLength = 0;
     while (readLength < len) {
         const unsigned long timeout = millis() + _rawWifiClient.getTimeout();
         int availToRead = 0;
         while ((availToRead = _rawWifiClient.available()) == 0 && timeout > millis())
-            delay(10);
+            SchedulerClassExt::delay(10);
         if (!availToRead)
             break;
         const size_t toRead = min(len - readLength, availToRead);
@@ -709,7 +725,7 @@ HTTPClientStatus WebClient::handleRequest() {
             case HC_READING:
                 if (!_rawWifiClient.available()) {
                     if (millis() - _startHandlingTime <= HTTP_MAX_DATA_WAIT)
-                        vTaskDelay(pdMS_TO_TICKS(25));
+                        SchedulerClassExt::delay(25);
                     else {
                         send(408, mime::mimeTable[mime::txt].mimeType, Util::responseCodeToString(408));
                         _status = HC_CLOSING;
@@ -743,7 +759,7 @@ HTTPClientStatus WebClient::handleRequest() {
             case HC_CLOSING:
                 // Give the client a chance to close the connection (the client has initiated it) - we always send the connection: close header
                 if (startClosing > 0 && millis() - startClosing <= HTTP_MAX_CLOSE_WAIT) {
-                    vTaskDelay(pdMS_TO_TICKS(50));
+                    SchedulerClassExt::delay(50);
                     _status = _rawWifiClient.connected() ? HC_CLOSING : HC_DISCONNECTED;
                 } else
                     _status = HC_DISCONNECTED;
