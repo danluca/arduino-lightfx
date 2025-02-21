@@ -3,6 +3,7 @@
 #include <LittleFS.h>
 #include <PicoLog.h>
 #include <TimeLib.h>
+#include <ArduinoMDNS.h>
 #include "filesystem.h"
 #include "web_server.h"
 #include "comms.h"
@@ -347,13 +348,13 @@ void web::server_setup() {
     }
     server.begin(serverPort);
     Log.info(F("Web server started"));
+    
 }
 
 /**
  * Web Server client handling - one at a time
  */
 void web::webserver() {
-    // if (WiFi.status() != WL_CONNECTED)
-        // return;
     server.handleClient();
+    mdns->run();
 }

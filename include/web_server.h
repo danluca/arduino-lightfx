@@ -6,7 +6,9 @@
 
 #include <ArduinoJson.h>
 #include <RestWebServer.h>
+#include "ArduinoMDNS.h"
 
+extern MDNS* mdns;
 namespace web {
     extern WebServer server;
     extern bool server_handlers_configured;

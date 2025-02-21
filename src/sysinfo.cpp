@@ -205,17 +205,17 @@ uint SysInfo::get_flash_capacity() const {
     return PICO_FLASH_SIZE_BYTES;
 }
 
-uint8_t SysInfo::setSysStatus(uint8_t bitMask) {
+uint8_t SysInfo::setSysStatus(const uint8_t bitMask) {
     status |= bitMask;
     return status;
 }
 
-uint8_t SysInfo::resetSysStatus(uint8_t bitMask) {
+uint8_t SysInfo::resetSysStatus(const uint8_t bitMask) {
     status &= (~bitMask);
     return status;
 }
 
-bool SysInfo::isSysStatus(uint8_t bitMask) const {
+bool SysInfo::isSysStatus(const uint8_t bitMask) const {
     return (status & bitMask);
 }
 
@@ -415,7 +415,7 @@ void saveSysInfo() {
     doc[csStatus] = sysInfo->status;
     const auto reboots = doc[csWdReboots].to<JsonArray>();
     for (auto & t : sysInfo->wdReboots)
-        reboots.add(t);
+        (void)reboots.add(t);
 
     auto str = new String();    //larger temporary string, put it on the heap
     str->reserve(measureJson(doc));

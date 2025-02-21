@@ -192,16 +192,4 @@ void alarm_check() {
         Log.error(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
     else if (xTimerStart(thAlarmCheck, 0) != pdPASS)
         Log.error(F("Cannot start the alarmCheck timer - Ignored."));
-
-
-    //        for (size_t x = 0; x < scheduledAlarms.size(); x++) {
-//            AlarmData *al = scheduledAlarms.front();
-//            scheduledAlarms.pop_front();
-//            if (al->value <= time) {
-//                Log.infoln("Alarm %X type %d triggered at %y for scheduled time %y; handler %X", (long)al, al->type, time, al->value, (long)al->onEventHandler);
-//                al->onEventHandler();
-//                delete al;
-//            } else
-//                scheduledAlarms.push_back(al);
-//        }
 }

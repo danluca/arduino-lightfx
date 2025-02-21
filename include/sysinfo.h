@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef ARDUINO_LIGHTFX_SYSINFO_H
@@ -41,7 +41,7 @@ private:
     IPAddress ipGateway;
     uint8_t status {0};
     bool cleanBoot {true};
-    WatchdogQueue wdReboots;   // keep only the last 10 watchdog reboots
+    WatchdogQueue wdReboots{};   // keep only the last 10 watchdog reboots
 
 public:
     uint32_t freeHeap {0}, heapSize {0};

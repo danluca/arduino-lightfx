@@ -54,6 +54,10 @@ void enqueueDiagInfo(TimerHandle_t xTimer);
 // TaskDef diagDef {deviceSetup, diagExecute, 3072, "Diag", 1, CORE_1};
 enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO} event;
 
+/**
+ * Initializes the Inertial Measurement Unit - IMU
+ * @return true if inertial unit was setup ok, false otherwise
+ */
 bool imu_setup() {
     // initialize the IMU (Inertial Measurement Unit)
     if (!IMU.begin()) {
@@ -69,6 +73,9 @@ bool imu_setup() {
     return true;
 }
 
+/**
+ * Initializes the RP2040 chip internal Analog-Digital Converter
+ */
 void adc_setup() {
     //disable ADC
     //hw_clear_bits(&adc_hw->cs, ADC_CS_EN_BITS);
@@ -80,6 +87,9 @@ void adc_setup() {
     Log.info("ADC OK %u bit resolution", ADC_RESOLUTION);
 }
 
+/**
+ * Setup of devices supporting diagnostics
+ */
 void deviceSetup() {
     adc_setup();
 
@@ -264,11 +274,19 @@ void MeasurementRange::setMeasurement(const Measurement &msmt) volatile {
 MeasurementRange::MeasurementRange(const Unit unit) : min(unit), max(unit), current(unit) {
 }
 
+/**
+ * Copy a measurement pair into current pair
+ * @param msmt measurement pair to copy
+ */
 void MeasurementPair::copy(const MeasurementPair &msmt) {
     Measurement::copy(msmt);
     adcRaw = msmt.adcRaw;
 }
 
+/**
+ * Sets the current measurement into the calibration instance. Handles updating the min/max relative to the incoming reading
+ * @param msmt measurement pair to set
+ */
 void CalibrationMeasurement::setMeasurement(const MeasurementPair &msmt) {
     if (msmt < min || !min.time)
         min.copy(msmt);
@@ -384,18 +402,34 @@ MeasurementPair chipTemperature() {
     return result;
 }
 
-
+/**
+ * Serializes the MeasurementPair instance into the JSON object provided
+ * @param obj measurement pair object to serialize
+ * @param json receiving JSON object
+ */
 static void serializeMeasurementPair(const MeasurementPair& obj, JsonObject& json) {
     json["value"] = obj.value;
     json["time"] = obj.time;
     json["adc"] = obj.adcRaw;
     json["unit"] = obj.unit;
 }
+
+/**
+ * Deserializes & updates a measurement pair (instance provided by reference) from the data in the JSON object
+ * @param obj measurement pair to update with deserialized data
+ * @param json JSON object containing data to deserialize
+ */
 void static deserializeMeasurementPair(MeasurementPair& obj, JsonObject& json) {
     obj.value = json["value"];
     obj.time = json["time"];
     obj.adcRaw = json["adc"];
 }
+
+/**
+ * Serializes the calibration measurement object into the JSON object provided
+ * @param obj calibration measurement to serialize
+ * @param json receiving JSON object
+ */
 static void serializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonObject& json) {
     JsonObject jsMin = json["min"].to<JsonObject>();
     serializeMeasurementPair(obj.min, jsMin);
@@ -404,6 +438,12 @@ static void serializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonObj
     JsonObject jsRef = json["ref"].to<JsonObject>();
     serializeMeasurementPair(obj.ref, jsRef);
 }
+
+/**
+ * Deserializes & updates a calibration measurement object (instance provided by reference) from the data in the JSON object
+ * @param obj calibration measurement object to update from deserialized data
+ * @param json JSON object containing data to deserialize
+ */
 static void deserializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonObject& json) {
     auto jsMin = json["min"].as<JsonObject>();
     deserializeMeasurementPair(obj.min, jsMin);
@@ -412,6 +452,12 @@ static void deserializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonO
     auto jsRef = json["ref"].as<JsonObject>();
     deserializeMeasurementPair(obj.ref, jsRef);
 }
+
+/**
+ * Serializes the calibration parameters object into the JSON object provided
+ * @param obj calibration parameters object to serialize
+ * @param json receiving JSON object
+ */
 static void serializeCalibrationParams(const CalibrationParams& obj, JsonObject& json) {
     json["ref33"] = CalibrationParams::ref33;
     json["refTemp"] = obj.refTemp;
@@ -420,6 +466,12 @@ static void serializeCalibrationParams(const CalibrationParams& obj, JsonObject&
     json["refDelta"] = obj.refDelta;
     json["time"] = obj.time;
 }
+
+/**
+ * Deserializes & updates a calibration parameters object (instance provided by reference) from the data in the JSON object
+ * @param obj calibration parameters object to update from deserialized data
+ * @param json JSON object containing data to deserialize
+ */
 static void deserializeCalibrationParams(CalibrationParams& obj, JsonObject& json) {
     //obj.ref33 = json["ref33"];
     obj.refTemp = json["refTemp"];
@@ -429,6 +481,9 @@ static void deserializeCalibrationParams(CalibrationParams& obj, JsonObject& jso
     obj.time = json["time"];
 }
 
+/**
+ * Read calibration information from the file system
+ */
 void readCalibrationInfo() {
     auto json = new String();
     json->reserve(512);  // approximation
@@ -451,6 +506,9 @@ void readCalibrationInfo() {
     delete json;
 }
 
+/**
+ * Save the calibration information into the file system as JSON file
+ */
 void saveCalibrationInfo() {
     JsonDocument doc;
     auto msmt = doc["measurements"].to<JsonObject>();
@@ -467,11 +525,19 @@ void saveCalibrationInfo() {
     delete str;
 }
 
+/**
+ * Take a measurement of the power supply voltage of the LightFx system and updates the holding object
+ */
 void updateLineVoltage() {
     lineVoltage.setMeasurement(controllerVoltage());
     Log.info(F("Board Vcc voltage %.2f V"), lineVoltage.current.value);
 }
 
+/**
+ * Take temperature measurements from two sources:
+ *   - IMU module - has a built-in temperature sensor, more precise
+ *   - RP2040 chip through channel 4 of the ADC, less precise and in need of calibration
+ */
 void updateSystemTemp() {
     MeasurementPair chipTemp = chipTemperature();
     Measurement msmt = boardTemperature();
@@ -493,18 +559,29 @@ void updateSystemTemp() {
                imuTempRange.min.value, imuTempRange.max.value);
 }
 
+/**
+ * Adds entropy to the FastLED's random16 implementation from the ECC608 security chip
+ */
 void updateSecEntropy() {
     const uint16_t rnd = secRandom16();
     random16_add_entropy(rnd);
     Log.info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
 }
 
+/**
+ * Logs the diagnostic information of current tasks and memory
+ */
 void logDiagInfo() {
     //log task and RAM metrics
     logTaskStats();
     //logSystemInfo();
 }
 
+/**
+ * Gets the temperature of the WiFi submodule from its CPU ESP32 temperature sensor
+ * Note: This method is called by the task than handles WiFi communication (CORE0 currently) in order to keep all WiFi module interactions
+ * in the same task.
+ */
 void wifi_temp() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI))
         return;
