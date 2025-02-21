@@ -85,6 +85,9 @@ bool wifi_connect() {
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
     mdns->begin({IP_ADDR}, hostname);
+    String srvName(hostname);
+    srvName += "._http";
+    mdns->addServiceRecord(srvName.c_str(), 80, MDNSServiceTCP);
 
     return result;
 }
