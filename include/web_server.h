@@ -8,6 +8,7 @@
 #include <RestWebServer.h>
 #include "ArduinoMDNS.h"
 
+extern UDP* mUdp;
 extern MDNS* mdns;
 namespace web {
     extern WebServer server;

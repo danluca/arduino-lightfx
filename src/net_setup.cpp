@@ -26,6 +26,7 @@ const CRGB CLR_SETUP_ERROR = CRGB::Red;
 static uint16_t tmrWifiEnsure = 40;
 static uint16_t tmrWifiTemp = 41;
 
+UDP* mUdp = nullptr;  // mDNS UDP instance
 MDNS* mdns = nullptr;
 
 /**
@@ -81,7 +82,8 @@ bool wifi_connect() {
     }
 
     // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
-    mdns = new MDNS(Udp);
+    mUdp = new WiFiUDP();
+    mdns = new MDNS(*mUdp);
     mdns->begin({IP_ADDR}, hostname);
 
     return result;
@@ -165,6 +167,7 @@ void wifi_reconnect() {
     web::server.stop();
     Udp.stop();
     delete mdns;
+    delete mUdp;
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     taskDelay(2000);    //let disconnect state settle
