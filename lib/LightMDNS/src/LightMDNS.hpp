@@ -40,12 +40,12 @@ public:
     static constexpr size_t KEY_LENGTH_MAX = 9;        // RFC recommendation
     static constexpr size_t TOTAL_LENGTH_MAX = 255;    // Per TXT string
 
-    struct _Entry {
+    struct Entry {
         String key;
         std::vector<uint8_t> value;
         bool binary;
     };
-    using Entries = std::vector<_Entry>;
+    using Entries = std::vector<Entry>;
 
     using Builder = MDNSTXTBuilder;
 
@@ -154,8 +154,8 @@ private:
     Status _announce();
     Status _conflicted();
 
-    Services _services;
-    ServiceTypes _serviceTypes;
+    Services _services{};
+    ServiceTypes _serviceTypes{};
     void _writeAddressRecord(uint32_t ttl) const;
     void _writeReverseRecord(uint32_t ttl) const;
     void _writeServiceRecord(const Service& service, uint32_t ttl) const;
@@ -177,7 +177,7 @@ public:
     virtual ~MDNS();
 
     Status begin();
-    Status start(const IPAddress& addr, const String& name = String(), bool checkForConflicts = false);
+    Status start(const IPAddress& addr, const String& name, bool checkForConflicts = false);
     Status process();
     Status stop();
 
@@ -199,9 +199,7 @@ public:
 // -----------------------------------------------------------------------------------------------
 
 class MDNSTXTBuilder {
-private:
     MDNSTXT _record;
-
     MDNSTXTBuilder& _add(const String& key, const void* value, const size_t length, const bool is_binary) {
         if (!_record.insert(key, value, length, is_binary))
             log_error("MDNSTXTBuilder::add: TXT insert failed for key: %s, binary %d", key.c_str(), is_binary);
@@ -241,18 +239,16 @@ public:
 // -----------------------------------------------------------------------------------------------
 
 class MDNSServiceBuilder {
-private:
     using Service = MDNS::Service;
 
-    Service _service;
-
+    Service _service{};
     bool _hasName{ false }, _hasPort{ false }, _hasProtocol{ false };
     [[nodiscard]] bool validate() const {
         return (_hasName && _hasPort && _hasProtocol);
     }
 
 public:
-    MDNSServiceBuilder() : _service{} {}
+    MDNSServiceBuilder() = default;
 
     [[nodiscard]] MDNS::Service build() const {
         if (!validate())
@@ -268,12 +264,12 @@ public:
         _hasName = true;
         return *this;
     }
-    MDNSServiceBuilder& withPort(uint16_t port) {
+    MDNSServiceBuilder& withPort(const uint16_t port) {
         _service.port = port;
         _hasPort = true;
         return *this;
     }
-    MDNSServiceBuilder& withProtocol(Service::Protocol proto) {
+    MDNSServiceBuilder& withProtocol(const Service::Protocol proto) {
         _service.proto = proto;
         _hasProtocol = true;
         return *this;
@@ -282,11 +278,11 @@ public:
         _service.config = config;
         return *this;
     }
-    MDNSServiceBuilder& withPriority(uint16_t priority) {
+    MDNSServiceBuilder& withPriority(const uint16_t priority) {
         _service.config.priority = priority;
         return *this;
     }
-    MDNSServiceBuilder& withWeight(uint16_t weight) {
+    MDNSServiceBuilder& withWeight(const uint16_t weight) {
         _service.config.weight = weight;
         return *this;
     }

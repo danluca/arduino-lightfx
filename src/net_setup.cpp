@@ -81,20 +81,26 @@ bool wifi_connect() {
         printSuccessfulWifiStatus();  // you're connected now, so print out the status
     }
 
-    // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local' on *nix systems (Win11 has troubles with this broadcast)
+    // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
+    String mdnsSvcName(hostname);
+    mdnsSvcName.concat("-webserver._http");
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
     mdns->begin();
-    mdns->serviceInsert(MDNS::Service::Builder()
-        .withName("webserver._http")
+    MDNS::Status mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
+        .withName(mdnsSvcName)
         .withPort(80)
         .withProtocol(MDNS::Service::Protocol::TCP)
         .withTXT(MDNS::Service::TXT::Builder()
-            .add("model", "Nano Connect RP2040")
+            .add("model", "NanoConnect RP2040")
             .build())
         .build()
     );
-    mdns->start({IP_ADDR}, hostname);
+    (void)mdnsStatus;
+    log_info(F("mDNS adding service status: %d (%s)"), svcStatus, MDNS::toString(svcStatus));
+    mdnsStatus = mdns->start({IP_ADDR}, hostname);
+    (void)mdnsStatus;
+    log_info(F("mDNS start status: %d (%s)"), svcStatus, MDNS::toString(svcStatus));
     return result;
 }
 
@@ -175,6 +181,7 @@ void wifi_reconnect() {
     stateLed(CLR_SETUP_IN_PROGRESS);
     web::server.stop();
     Udp.stop();
+    mdns->stop();
     delete mdns;
     delete mUdp;
     WiFi.disconnect();
