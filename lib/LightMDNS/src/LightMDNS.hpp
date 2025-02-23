@@ -25,7 +25,6 @@
 #define LIGHTMDNS_H
 
 #include <Arduino.h>
-
 #include <vector>
 #include <set>
 #include <LogProxy.h>
@@ -41,9 +40,9 @@ public:
     static constexpr size_t TOTAL_LENGTH_MAX = 255;    // Per TXT string
 
     struct Entry {
-        String key;
-        std::vector<uint8_t> value;
-        bool binary;
+        String key{};
+        std::vector<uint8_t> value{};
+        bool binary{};
     };
     using Entries = std::vector<Entry>;
 
@@ -90,9 +89,9 @@ struct MDNSService {
         return "Unknown";
     }
 
-    uint16_t port;
-    Protocol proto;
-    String name;
+    uint16_t port{};
+    Protocol proto{};
+    String name{};
     Config config{};
     TXT text{};
     String _serv{}, _fqsn{};
@@ -148,7 +147,7 @@ private:
     bool _enabled{ false };
 
     Status _messageRecv();
-    Status _messageSend(uint16_t xid, int type, const Service* service = nullptr);
+    Status _messageSend(uint16_t xid, int type, const Service* service = nullptr) const;
 
     unsigned long _announced{ 0 };
     Status _announce();

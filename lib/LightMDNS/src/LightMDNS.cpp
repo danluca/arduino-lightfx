@@ -261,7 +261,7 @@ __attribute__((unused)) static String parseDNSType(const uint16_t type) {
 
 __attribute__((unused)) static String parseDNSFlags(const uint8_t flagsByte) {
     if (flagsByte & 0x80) return "FLUSH";
-    return String("NO_FLUSH");
+    return {"NO_FLUSH"};
 }
 
 __attribute__((unused)) static String parseDNSClassOrEDNS(const uint8_t classByte1, const uint8_t classByte2, const uint16_t type) {
@@ -1188,7 +1188,7 @@ MDNS::Status MDNS::_messageRecv() {
 #endif
                 recordsMatcherEach = recordsMatcherTop;
             };
-            void end() {
+            void end() const {
                 // XXX should coaescle into single response(s)
                 // XXX should only have unique service names and match from that
                 if (recordsMatcherTop[0].unsupported || recordsMatcherTop[1].unsupported || recordsMatcherTop[2].unsupported) {
@@ -1259,7 +1259,7 @@ static constexpr uint16_t DNS_COUNT_PER_SERVICE = 3;    // SRV + TXT + PTR per s
 static constexpr uint16_t DNS_COUNT_DNS_SD_PTR = 1;     // DNS-SD PTR record
 static constexpr uint16_t DNS_COUNT_NSEC_RECORD = 1;    // NSEC record with bitmap
 
-MDNS::Status MDNS::_messageSend(const uint16_t xid, const int type, const Service* service) {
+MDNS::Status MDNS::_messageSend(const uint16_t xid, const int type, const Service* service) const {
 
     UDP_WRITE_BEGIN();
 
@@ -1586,14 +1586,14 @@ void MDNS::_writeCompleteRecord(const uint32_t ttl) const {
 static size_t sizeofCompleteRecord(const MDNS::Services& services, const MDNS::ServiceTypes& serviceTypes, const String& fqhn) {
     size_t size = 0;
     size += sizeofDNSName(fqhn) + DNS_RECORD_HEADER_SIZE + 4;    // PTR IP
-    size += services.empty() ? 0 : std::accumulate(services.begin(), services.end(), static_cast<size_t>(0), [&](size_t size, const MDNS::Service& service) {
-        size += sizeofDNSName(service._fqsn) + DNS_RECORD_HEADER_SIZE + DNS_SRV_DETAILS_SIZE + sizeofDNSName(fqhn);    // SRV
-        size += sizeofDNSName(service._fqsn) + DNS_RECORD_HEADER_SIZE + service.text.length();                          // TXT
-        size += sizeofDNSName(service._serv) + DNS_RECORD_HEADER_SIZE + sizeofDNSName(service._fqsn);                  // PTR SRV
-        return size;
+    size += services.empty() ? 0 : std::accumulate(services.begin(), services.end(), static_cast<size_t>(0), [&fqhn](size_t sz, const MDNS::Service& service) {
+        sz += sizeofDNSName(service._fqsn) + DNS_RECORD_HEADER_SIZE + DNS_SRV_DETAILS_SIZE + sizeofDNSName(fqhn);    // SRV
+        sz += sizeofDNSName(service._fqsn) + DNS_RECORD_HEADER_SIZE + service.text.length();                          // TXT
+        sz += sizeofDNSName(service._serv) + DNS_RECORD_HEADER_SIZE + sizeofDNSName(service._fqsn);                  // PTR SRV
+        return sz;
     });
-    size += serviceTypes.empty() ? 0 : std::accumulate(serviceTypes.begin(), serviceTypes.end(), static_cast<size_t>(0), [&](size_t size, const String& serviceType) {
-        return size + sizeofDNSName(SERVICE_SD_fqsn) + DNS_RECORD_HEADER_SIZE + sizeofDNSName(serviceType);    // PTR SD
+    size += serviceTypes.empty() ? 0 : std::accumulate(serviceTypes.begin(), serviceTypes.end(), static_cast<size_t>(0), [](const size_t sz, const String& serviceType) {
+        return sz + sizeofDNSName(SERVICE_SD_fqsn) + DNS_RECORD_HEADER_SIZE + sizeofDNSName(serviceType);    // PTR SD
     });
     return size;
 }

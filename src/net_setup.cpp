@@ -86,7 +86,7 @@ bool wifi_connect() {
     mdnsSvcName.concat("-webserver._http");
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
-    mdns->begin();
+    mdns->begin();      //this should not be needed - implementation is a no-op
     MDNS::Status mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
         .withName(mdnsSvcName)
         .withPort(80)
