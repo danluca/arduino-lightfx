@@ -12,6 +12,7 @@ using namespace colTheme;
 
 //~ Effect description strings stored in flash
 constexpr auto fxi1Desc PROGMEM = "FXI1: Ping Pong";
+constexpr auto fxi2Desc PROGMEM = "FXI2: Three overlay segments";
 
 /**
  * Register FxI effects
@@ -137,4 +138,6 @@ void FxI1::run() {
 uint8_t FxI1::selectionWeight() const {
     return 7;
 }
+
+//FXI2 - three segments running at different speeds & directions in sawtooth style (allows motion to look contiguous in segments)
 

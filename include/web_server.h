@@ -6,7 +6,7 @@
 
 #include <ArduinoJson.h>
 #include <RestWebServer.h>
-#include "ArduinoMDNS.h"
+#include "LightMDNS.hpp"
 
 extern UDP* mUdp;
 extern MDNS* mdns;

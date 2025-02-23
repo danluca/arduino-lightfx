@@ -81,14 +81,20 @@ bool wifi_connect() {
         printSuccessfulWifiStatus();  // you're connected now, so print out the status
     }
 
-    // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
+    // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local' on *nix systems (Win11 has troubles with this broadcast)
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
-    mdns->begin({IP_ADDR}, hostname);
-    String srvName(hostname);
-    srvName += "._http";
-    mdns->addServiceRecord(srvName.c_str(), 80, MDNSServiceTCP);
-
+    mdns->begin();
+    mdns->serviceInsert(MDNS::Service::Builder()
+        .withName("webserver._http")
+        .withPort(80)
+        .withProtocol(MDNS::Service::Protocol::TCP)
+        .withTXT(MDNS::Service::TXT::Builder()
+            .add("model", "Nano Connect RP2040")
+            .build())
+        .build()
+    );
+    mdns->start({IP_ADDR}, hostname);
     return result;
 }
 

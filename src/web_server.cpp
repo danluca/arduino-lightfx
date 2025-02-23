@@ -3,7 +3,6 @@
 #include <LittleFS.h>
 #include <PicoLog.h>
 #include <TimeLib.h>
-#include <ArduinoMDNS.h>
 #include "filesystem.h"
 #include "web_server.h"
 #include "comms.h"
@@ -356,5 +355,5 @@ void web::server_setup() {
  */
 void web::webserver() {
     server.handleClient();
-    mdns->run();
+    mdns->process();
 }
