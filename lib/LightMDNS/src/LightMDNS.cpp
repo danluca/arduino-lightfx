@@ -871,7 +871,10 @@ MDNS::Status MDNS::process() {
 
     auto status = Status::Success;
     if (_enabled) {
-        status = _messageRecv();
+        auto count = 0;
+        do {
+            count++;
+        } while ((status = _messageRecv()) == Status::Success);
 
         if (status == Status::NameConflict)
             return _conflicted();
@@ -879,6 +882,8 @@ MDNS::Status MDNS::process() {
             log_error(F("MDNS: process: failed _messageRecv error=%s"), toString(status).c_str());
         else if ((status = _announce()) != Status::Success)
             log_error(F("MDNS: process: failed _announce error=%s"), toString(status).c_str());
+        if (count > 1)
+            log_debug(F("MDNS: process [%d]"), count - 1);
     }
 
     return status;
