@@ -611,17 +611,27 @@ MDNS::Status MDNS::process() {
     auto status = Status::TryLater;
     if (_enabled) {
         status = _announce();
+#if LOGGING_ENABLED == 1
         if (status != Status::Success && status != Status::TryLater)
             log_error(F("MDNS: process: failed _announce error=%s"), toString(status).c_str());
+        else
+            log_debug(F("MDNS: process: _announce status %s"), toString(status).c_str());
+#endif
 
+        const auto msgTimeout = millis() + 500;     //hard-coded 500ms of processing mDNS messages
         auto count = 0;
-        while ((status = _messageRecv()) == Status::Success)
+        while ((status = _messageRecv()) == Status::Success && millis() < msgTimeout)  //limit the time to handle dns messages
             count++;
 
         if (status == Status::NameConflict)
             return _conflicted();
+#if LOGGING_ENABLED == 1
         if (status != Status::Success && status != Status::TryLater)
             log_error(F("MDNS: process: failed _messageRecv error=%s (%d processed successfully)"), toString(status).c_str(), count);
+        else
+            log_debug(F("MDNS: process: %d messages successfully received"), count);
+#endif
+
     }
 
     return status;
