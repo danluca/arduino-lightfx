@@ -816,7 +816,7 @@ MDNS::Status MDNS::_messageRecv() {
         for (const auto& name : collector.names(DNSSection::Answer | DNSSection::Authority | DNSSection::Additional)) {
             if (name.equalsIgnoreCase(_fqhn))    // XXX should check against services
                 if ((header.authorityCount > 0 && UDP_READ_PEER_ADDR() != _addr) || (header.authorityCount == 0 && header.queryResponse == DNS_QR_RESPONSE)) {
-                    log_debug(F("MDNS: conflict detected in probe: %s from %s"), _fqhn.c_str(), UDP_READ_PEER_ADDR().toString().c_str());
+                    log_error(F("MDNS: conflict detected in probe: %s from %s"), _fqhn.c_str(), UDP_READ_PEER_ADDR().toString().c_str());
                     return Status::NameConflict;    // should throw
                 }
         }
