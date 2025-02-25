@@ -355,5 +355,7 @@ void web::server_setup() {
  */
 void web::webserver() {
     server.handleClient();
-    mdns->process();
+    EVERY_N_SECONDS(500) {
+        mdns->process();
+    }
 }

@@ -102,7 +102,6 @@ struct MDNSService {
 // -----------------------------------------------------------------------------------------------
 
 class MDNS {
-
 public:
     struct TTLConfig {
         uint32_t announce = 120;     // Default announcement TTL
@@ -163,13 +162,14 @@ private:
     void _writeNextSecureRecord(const String& name, const std::initializer_list<uint8_t>& types, uint32_t ttl, bool includeAdditional = false) const;
 
     [[nodiscard]] uint32_t _announceTime() const {
-        return ((_ttls.announce / 2) + (_ttls.announce / 4)) * static_cast<uint32_t>(1000);
+        return (_ttls.announce / 2 + _ttls.announce / 4) * static_cast<uint32_t>(1000);
     }
 
-    Status serviceRecordInsert(Service::Protocol proto, uint16_t port, const String& name, const Service::Config& config = Service::Config(), const Service::TXT& text = Service::TXT());    // deprecated
-    Status serviceRecordRemove(Service::Protocol proto, uint16_t port, const String& name);                                                                                                  // deprecated
-    Status serviceRecordRemove(const String& name);                                                                                                                                                      // deprecated
-    Status serviceRecordClear();                                                                                                                                                                     // deprecated
+    Status _serviceRecordInsert(Service::Protocol proto, uint16_t port, const String& name, const Service::Config& config = Service::Config(), const Service::TXT& text = Service::TXT());    // deprecated
+    Status _serviceRecordRemove(Service::Protocol proto, uint16_t port, const String& name);                                                                                                  // deprecated
+    Status _serviceRecordRemove(const String& name);                                                                                                                                                      // deprecated
+    Status _serviceRecordClear();                                                                                                                                                                     // deprecated
+    friend struct Responder;
 
 public:
     explicit MDNS(UDP& udp);
@@ -181,20 +181,19 @@ public:
     Status stop();
 
     Status serviceInsert(const Service& service) {
-        return serviceRecordInsert(service.proto, service.port, service.name, service.config, service.text);
+        return _serviceRecordInsert(service.proto, service.port, service.name, service.config, service.text);
     }
     Status serviceRemove(const Service& service) {
-        return serviceRecordRemove(service.proto, service.port, service.name);
+        return _serviceRecordRemove(service.proto, service.port, service.name);
     }
     Status serviceRemove(const String& name) {
-        return name.isEmpty () ? Status::InvalidArgument : serviceRecordRemove(name);
+        return name.isEmpty () ? Status::InvalidArgument : _serviceRecordRemove(name);
     }
     Status serviceClear() {
-        return serviceRecordClear();
+        return _serviceRecordClear();
     }
 };
 
-// -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 
 class MDNSTXTBuilder {

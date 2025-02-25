@@ -82,7 +82,9 @@ bool wifi_connect() {
     }
 
     // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
-    String mdnsSvcName(hostname);
+    String dnsHostname(hostname);
+    dnsHostname.toLowerCase();
+    String mdnsSvcName(dnsHostname);
     mdnsSvcName.concat("-webserver._http");
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
@@ -97,10 +99,10 @@ bool wifi_connect() {
         .build()
     );
     (void)mdnsStatus;
-    log_info(F("mDNS adding service status: %d (%s)"), svcStatus, MDNS::toString(svcStatus));
-    mdnsStatus = mdns->start({IP_ADDR}, hostname);
+    log_info(F("mDNS adding service %s status: %d (%s)"), mdnsSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus));
+    mdnsStatus = mdns->start({IP_ADDR}, dnsHostname);
     (void)mdnsStatus;
-    log_info(F("mDNS start status: %d (%s)"), svcStatus, MDNS::toString(svcStatus));
+    log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus));
     return result;
 }
 
