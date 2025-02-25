@@ -611,6 +611,7 @@ MDNS::Status MDNS::process() {
     auto status = Status::TryLater;
     if (_enabled) {
         status = _announce();
+        (void)status;
 #if LOGGING_ENABLED == 1
         if (status != Status::Success && status != Status::TryLater)
             log_error(F("MDNS: process: failed _announce error=%s"), toString(status).c_str());
