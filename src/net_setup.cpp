@@ -99,10 +99,10 @@ bool wifi_connect() {
         .build()
     );
     (void)mdnsStatus;
-    log_info(F("mDNS adding service %s status: %d (%s)"), mdnsSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus));
+    log_info(F("mDNS adding service %s status: %d (%s)"), mdnsSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
     mdnsStatus = mdns->start({IP_ADDR}, dnsHostname);
     (void)mdnsStatus;
-    log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus));
+    log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
     return result;
 }
 
