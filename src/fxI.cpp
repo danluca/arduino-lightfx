@@ -29,6 +29,7 @@ FxI1::FxI1() : LedEffect(fxi1Desc) {
     prevWallStart = wallStart;
     prevWallEnd = wallEnd;
     currentPos = 0;
+    midPointOfs = 0;
     segmentLength = 5;
     forward = true;
     fgColor = 0;
@@ -45,6 +46,7 @@ void FxI1::setup() {
     prevWallStart = 0;
     prevWallEnd = FRAME_SIZE;
     currentPos = wallStart;
+    midPointOfs = 0;
     segmentLength = random8(1, 11);
     fgColor = random8();
     bgColor = -random8();
@@ -65,6 +67,7 @@ void FxI1::reWall() {
     } else {
         wallStart = random8(1, FRAME_SIZE/4);
     }
+    midPointOfs = random8(0, (wallEnd - wallStart) / 4) - (wallEnd - wallStart) / 8;
 }
 
 static void updateWall(uint16_t &prevWall, const uint16_t wallLimit, const CRGB color, const CRGB bg) {
@@ -108,9 +111,19 @@ void FxI1::run() {
             }
         }
 
-        // adjust the speed
-        if (random8() < 96)
-            speed = forward ? csub8(speed, 1, 20) : cadd8(speed, 3, 250);
+        // adjust the speed - increase in first half, decrease in second half
+        const uint16_t midPoint = (wallEnd - wallStart)/2;
+        if (forward) {
+            if (currentPos < midPoint + midPointOfs)
+                speed = csub8(speed, 1, 20);
+            else
+                speed = cadd8(speed, 3, 250);
+        } else {
+            if (currentPos > midPoint - midPointOfs)
+                speed = csub8(speed, 1, 20);
+            else
+                speed = cadd8(speed, 3, 250);
+        }
 
         // Update the position of the segment
         if (forward) {
@@ -124,7 +137,7 @@ void FxI1::run() {
             currentPos--;
             if (currentPos <= wallStart) {
                 forward = true; // Reverse direction at the wall
-                speed = random8(80, 160);
+                //speed = random8(80, 160);
                 reWall();
             }
         }

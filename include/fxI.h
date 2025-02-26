@@ -22,6 +22,7 @@ namespace FxI {
     private:
         uint16_t wallStart, wallEnd, prevWallStart, prevWallEnd;
         uint16_t currentPos;
+        int16_t midPointOfs;
         uint16_t segmentLength;
         bool forward;
         uint8_t fgColor, bgColor;
