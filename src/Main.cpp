@@ -14,7 +14,6 @@
 #include "diag.h"
 #include "comms.h"
 #include "FxSchedule.h"
-#include "ledstate.h"
 #include "log.h"
 #include "mic.h"
 #include "util.h"
@@ -25,7 +24,7 @@
  * First Core
  *   - CORE0 (default task - setup, loop) - Web and communications, lowered priority (5)
  *   - ALM - alarm processing and some misc actions (inherited priority - 5)
- *   - FS - filesystem interaction (inherited priority - 5)
+ *   - FS - filesystem interaction (raised priority from calling task - 7)
  *   - IdleCore0, USB - default kernel tasks
  *
  * Second Core
@@ -146,10 +145,9 @@ void filesystem_setup() {
  */
 void setup() {
     taskDelay(2000);    //safety delay
-    setupStateLED();
+    SysInfo::setupStateLED();
     log_setup();
 
-    stateLED(CLR_SETUP_IN_PROGRESS);    //Setup in progress
     RP2040::enableDoubleResetBootloader();   //that's just good idea overall
 
     sysInfo = new SysInfo();    //system information object built once per run
@@ -164,10 +162,9 @@ void setup() {
 
     webQueue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE0 task for communication between cores
     almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for ALM task for communication between cores
-    bool bSetupOk = wifi_setup();
+    wifi_setup();
     taskDelay(2500);    //let the WiFi settle
-    bSetupOk = bSetupOk && timeSetup();
-    stateLED(bSetupOk ? CLR_ALL_OK : CLR_SETUP_ERROR);
+    timeSetup();
     commSetup();
     web::server_setup();
 
@@ -185,6 +182,7 @@ void setup() {
     //wait for the other core to finish all initializations before allowing web server to respond to requests
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
+    sysInfo->setSysStatus(SYS_STATUS_SETUP0);
     Log.info(F("Main Core 0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
 }
@@ -219,7 +217,7 @@ void setup1() {
     taskDelay(250);    // safety delay after priority bump
     // const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
-    // Log.info(F("Main Core 1 Setup completed, CORE0 notified of WebServer %d. System status: %#hX"), c0NtfStatus, sysInfo->getSysStatus());
+    sysInfo->setSysStatus(SYS_STATUS_SETUP1);
     Log.info(F("Main Core 1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
 }
 

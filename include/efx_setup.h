@@ -63,9 +63,6 @@ extern volatile bool fxBroadcastEnabled;
 extern volatile uint16_t speed;
 extern volatile uint16_t curPos;
 
-
-void stateLED(CRGB color);
-
 void ledStripInit();
 
 void shiftRight(CRGBSet &set, CRGB feedLeft, Viewport vwp = (Viewport)0, uint16_t pos = 1);

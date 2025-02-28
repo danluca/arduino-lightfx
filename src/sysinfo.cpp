@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <SchedulerExt.h>
+#include <FastLED.h>
 #include "filesystem.h"
 #include "util.h"
 #include "sysinfo.h"
@@ -20,6 +21,10 @@ static constexpr auto unknown PROGMEM = "N/A";
 static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Total Stack:: ptr=%#X free=%d;\n  Total Heap :: size=%d free=%d used=%d\n";
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
+constexpr CRGB CLR_ALL_OK = CRGB::Indigo;
+constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Yellow;
+constexpr CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
+constexpr CRGB CLR_SETUP_ERROR = CRGB::Red;
 
 //#define STORAGE_CMD_TOTAL_BYTES 32
 
@@ -205,21 +210,25 @@ uint SysInfo::get_flash_capacity() const {
     return PICO_FLASH_SIZE_BYTES;
 }
 
-uint8_t SysInfo::setSysStatus(const uint8_t bitMask) {
+uint16_t SysInfo::setSysStatus(const uint16_t bitMask) {
+    CoreMutex coreMutex(&mutex);
     status |= bitMask;
+    updateStateLED();
     return status;
 }
 
-uint8_t SysInfo::resetSysStatus(const uint8_t bitMask) {
+uint16_t SysInfo::resetSysStatus(const uint16_t bitMask) {
+    CoreMutex coreMutex(&mutex);
     status &= (~bitMask);
+    updateStateLED();
     return status;
 }
 
-bool SysInfo::isSysStatus(const uint8_t bitMask) const {
+bool SysInfo::isSysStatus(const uint16_t bitMask) const {
     return (status & bitMask);
 }
 
-uint8_t SysInfo::getSysStatus() const {
+uint16_t SysInfo::getSysStatus() const {
     return status;
 }
 
@@ -423,4 +432,46 @@ void saveSysInfo() {
     if (!SyncFsImpl.writeFile(sysFileName, str))
         Log.error(F("Failed to create/write the system information file %s"), sysFileName);
     delete str;
+}
+
+/**
+ * Setup the on-board status LED
+ */
+void SysInfo::setupStateLED() {
+    pinMode(LEDR, OUTPUT);
+    pinMode(LEDG, OUTPUT);
+    pinMode(LEDB, OUTPUT);
+    updateStateLED(0, 0, 0);    //black, turned off
+}
+/**
+ * Controls the on-board status LED
+ * @param colorCode
+ */
+void SysInfo::updateStateLED(const uint32_t colorCode) {
+    const uint8_t r = (colorCode >> 16) & 0xFF;
+    const uint8_t g = (colorCode >>  8) & 0xFF;
+    const uint8_t b = (colorCode >>  0) & 0xFF;
+    updateStateLED(r, g, b);
+}
+
+/**
+ * Controls the onboard LED using individual values for R, G, B
+ * @param red red value
+ * @param green green value
+ * @param blue blue value
+ */
+void SysInfo::updateStateLED(const uint8_t red, const uint8_t green, const uint8_t blue) {
+    analogWrite(LEDR, 255 - red);
+    analogWrite(LEDG, 255 - green);
+    analogWrite(LEDB, 255 - blue);
+}
+
+/**
+ * Adjusts the LED state (color, illumination style) in response to overall system's state
+ */
+void SysInfo::updateStateLED() const {
+    const bool inSetup = isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1);
+    const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
+    const CRGB colorCode = isOk ? CLR_ALL_OK : inSetup ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
+    updateStateLED(colorCode.red, colorCode.green, colorCode.blue);
 }

@@ -5,13 +5,15 @@
 #ifndef ARDUINO_LIGHTFX_UTIL_H
 #define ARDUINO_LIGHTFX_UTIL_H
 
-#define SYS_STATUS_WIFI    0x01
-#define SYS_STATUS_NTP     0x02
-#define SYS_STATUS_DST     0x04
-#define SYS_STATUS_MIC     0x08
-#define SYS_STATUS_FILESYSTEM     0x10
-#define SYS_STATUS_ECC     0x20
-#define SYS_STATUS_DIAG    0x40
+#define SYS_STATUS_SETUP0       0x0001
+#define SYS_STATUS_SETUP1       0x0002
+#define SYS_STATUS_FILESYSTEM   0x0004
+#define SYS_STATUS_WIFI         0x0008
+#define SYS_STATUS_NTP          0x0010
+#define SYS_STATUS_ECC          0x0020
+#define SYS_STATUS_MIC          0x0040
+#define SYS_STATUS_DST          0x0080
+#define SYS_STATUS_DIAG         0x0100
 
 enum MiscAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO};
 enum CommAction:uint8_t {WIFI_ENSURE, WIFI_TEMP};

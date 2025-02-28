@@ -19,10 +19,6 @@ constexpr auto ssid PROGMEM = WF_SSID;
 constexpr auto pass PROGMEM = WF_PSW;
 constexpr auto hostname PROGMEM = "lightfx-" DEVICE_NAME;
 
-const CRGB CLR_ALL_OK = CRGB::Indigo;
-const CRGB CLR_SETUP_IN_PROGRESS = CRGB::Orange;
-const CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
-const CRGB CLR_SETUP_ERROR = CRGB::Red;
 static uint16_t tmrWifiEnsure = 40;
 static uint16_t tmrWifiTemp = 41;
 
@@ -48,10 +44,6 @@ uint8_t barSignalLevel(const int32_t rssi) {
     return (uint8_t) ((float) (rssi - minRSSI) * outRange / inRange);
 }
 
-void stateLed(const CRGB& clr) {
-    updateStateLED(clr.as_uint32_t());
-}
-
 bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
     WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
@@ -61,8 +53,6 @@ bool wifi_connect() {
     uint attCount = 0;
     uint8_t wifiStatus = WiFi.status();
     while (wifiStatus != WL_CONNECTED) {
-        if (attCount > 60)
-            stateLed(CLR_SETUP_ERROR);
         Log.info(F("Attempting to connect..."));
 
         // Connect to WPA/WPA2 network
@@ -180,7 +170,6 @@ bool wifi_check() {
  */
 void wifi_reconnect() {
     sysInfo->resetSysStatus(SYS_STATUS_WIFI);
-    stateLed(CLR_SETUP_IN_PROGRESS);
     web::server.stop();
     Udp.stop();
     mdns->stop();
@@ -189,14 +178,12 @@ void wifi_reconnect() {
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     taskDelay(2000);    //let disconnect state settle
-    if (wifi_connect())
-        stateLed(CLR_ALL_OK);
+    wifi_connect();
     //NVIC_SystemReset();
 }
 
 void wifi_ensure() {
     if (!wifi_check()) {
-        stateLed(CLR_SETUP_ERROR);
         Log.warn(F("WiFi connection unusable/lost - reconnecting..."));
         wifi_reconnect();
         web::server_setup();

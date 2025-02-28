@@ -573,9 +573,10 @@ MDNS::Status MDNS::start(const IPAddress& addr, const String& name, const bool c
 
     auto status = Status::Success;
     if (!_enabled) {
-        if (!UDP_READ_START())
+        if (UDP_READ_START())
+            _enabled = true;
+        else
             status = Status::Failure;
-        else _enabled = true;
     }
 
     if (status != Status::Success)
@@ -723,12 +724,12 @@ MDNS::Status MDNS::_serviceRecordClear() {
 
 MDNS::Status MDNS::_announce() {
     auto status = Status::TryLater;
-    if (_enabled && (millis() - _announced) > _announceTime()) {
+    if (const time_t tNow = millis(); _enabled && (tNow - _announced) > _announceTime()) {
         log_debug(F("MDNS: announce: services (%d)"), _services.size());
 
         status = _messageSend(XID_DEFAULT, PacketTypeCompleteRecord);
 
-        _announced = millis();
+        _announced = tNow;
     }
     return status;
 }

@@ -61,10 +61,6 @@ void ledStripInit() {
     FastLED.clear(true);
 }
 
-void stateLED(CRGB color) {
-    updateStateLED(color.r, color.g, color.b);
-}
-
 void readFxState() {
     const auto json = new String();
     json->reserve(256);  // approximation - currently at 150 bytes

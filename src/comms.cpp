@@ -249,7 +249,6 @@ void timeSetupCheck() {
     if (!timeClient.isTimeSet()) {
         const bool result = ntp_sync();
         result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
-        updateStateLED((result ? CLR_ALL_OK : CLR_SETUP_ERROR).as_uint32_t());
         if (result && Log.getTimebase() == 0) {
             const time_t curTime = now();
             const time_t curMs = millis();

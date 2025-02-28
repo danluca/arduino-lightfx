@@ -7,10 +7,6 @@
 #include "PaletteFactory.h"
 #include "secrets.h"
 
-extern const CRGB CLR_ALL_OK;
-extern const CRGB CLR_SETUP_IN_PROGRESS;
-extern const CRGB CLR_UPGRADE_PROGRESS;
-extern const CRGB CLR_SETUP_ERROR;
 extern QueueHandle_t webQueue;
 
 bool wifi_setup();

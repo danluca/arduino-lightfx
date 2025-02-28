@@ -24,7 +24,6 @@ void saveSysInfo();
  * Overall System information, covers both static (board/chip IDs) and dynamic (free memory, WiFi, status)
  */
 class SysInfo {
-private:
     const String boardName;
     const String buildVersion;          // includes the commit sha
     const String buildTime;
@@ -39,9 +38,15 @@ private:
     String ssid;
     IPAddress ipAddress;
     IPAddress ipGateway;
-    uint8_t status {0};
+    uint16_t status {0};
     bool cleanBoot {true};
     WatchdogQueue wdReboots{};   // keep only the last 10 watchdog reboots
+    mutex_t mutex{};
+
+protected:
+    static void updateStateLED(uint32_t colorCode);
+    static void updateStateLED(uint8_t red, uint8_t green, uint8_t blue);
+    void updateStateLED() const;
 
 public:
     uint32_t freeHeap {0}, heapSize {0};
@@ -68,15 +73,16 @@ public:
 
     void fillBoardId();
     [[nodiscard]] uint get_flash_capacity() const;
-    uint8_t setSysStatus(uint8_t bitMask);
-    uint8_t resetSysStatus(uint8_t bitMask);
-    [[nodiscard]] bool isSysStatus(uint8_t bitMask) const;
-    [[nodiscard]] uint8_t getSysStatus() const;
+    uint16_t setSysStatus(uint16_t bitMask);
+    uint16_t resetSysStatus(uint16_t bitMask);
+    [[nodiscard]] bool isSysStatus(uint16_t bitMask) const;
+    [[nodiscard]] uint16_t getSysStatus() const;
     void setWiFiInfo(nina::WiFiClass & wifi);
     void setSecureElementId(const String & secId);
     static void sysConfig(JsonDocument &doc);
     static void heapStats(JsonObject &doc);
     static void taskStats(JsonObject &doc);
+    static void setupStateLED();
 
     // JSON marshalling methods
     friend void readSysInfo();
