@@ -152,6 +152,7 @@ void setup() {
 
     sysInfo = new SysInfo();    //system information object built once per run
     filesystem_setup();
+    sysInfo->begin();           //starts the LED status task
 
     readSysInfo();
     secElement_setup();

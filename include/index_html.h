@@ -83,15 +83,15 @@ inline constexpr auto index_html PROGMEM = R"~~~(
                 <dd>UID: <span id="boardUid"></span><div>[vendor: 0x2341, model: 0x5E]</div></dd>
                 <dd>Device Name: <span id="deviceName"></span></dd>
                 <dd>Arduino Pico: <span id="osVersion"></span></dd>
-                <dd>Up Time: <span id="upTime"></span> </dd>
                 <dd>Clean Boot: <span id="cleanBoot"></span></dd>
                 <dd>Status code: <span id="overallStatus"></span></dd>
                 <dd>Watchdog Reboots: <span id="wdReboots"></span></dd>
                 <dt>Time</dt>
+                <dd>Up Time: <span id="upTime"></span> </dd>
                 <dd>NTP sync: <span id="timeNtp"></span></dd>
                 <dd>Current time: <span id="timeCurrent"></span></dd>
                 <dd>Holiday: <span id="timeHoliday"></span></dd>
-                <dd>Clock drift: cur <span id="lastDrift">; avg <span id="avgDrift"></span></span></dd>
+                <dd>Clock drift: cur <span id="lastDrift"></span>; avg <span id="avgDrift"></span></dd>
                 <dd>Total drift: <span id="totalDrift"></span></dd>
                 <dd>Next Alarms: <span id="schAlarms"></span></dd>
                 </div>

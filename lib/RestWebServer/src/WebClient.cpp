@@ -398,8 +398,8 @@ void WebClient::_processRequest() {
 void WebClient::_parseHttpHeaders() {
     log_debug(F("=== Headers ==="));
     while (true) {
-        String req = _rawWifiClient.readStringUntil('\r');
-        _rawWifiClient.readStringUntil('\n');
+        String req = _rawWifiClient.readStringUntil('\n');
+        req.trim();
         if (req.length() == 0) {
             break; //no more headers
         }
@@ -470,8 +470,8 @@ bool WebClient::_handleRawData() {
  */
 bool WebClient::_parseRequest() {
     // Read the first line of HTTP request
-    const String req = _rawWifiClient.readStringUntil('\r');
-    _rawWifiClient.readStringUntil('\n');
+    String req = _rawWifiClient.readStringUntil('\n');
+    req.trim();
 
     // First line of HTTP request looks like "GET /path HTTP/1.1"
     // Retrieve the "/path" part by finding the spaces
@@ -485,6 +485,11 @@ bool WebClient::_parseRequest() {
     const String methodStr = req.substring(0, addr_start);
     request()._reqUrl = req.substring(addr_start + 1, addr_end);
     request()._httpVersion = req.substring(addr_end + 6);
+    if (request()._httpVersion.length() == 0) {
+        sendHeader("x-orig-req", req);
+        log_error("Invalid HTTP request, can't parse HTTP version: %s", req.c_str());
+        return false;
+    }
     String searchStr = "";
     if (const int hasSearch = request().url().indexOf('?'); hasSearch != -1) {
         searchStr = request().url().substring(hasSearch + 1);
@@ -498,6 +503,7 @@ bool WebClient::_parseRequest() {
 
     const auto method = httpMethodFromName(methodStr.c_str());
     if (method == HTTP_ANY) {
+        sendHeader("x-orig-req", req);
         log_error("Unknown HTTP Method: %s", methodStr.c_str());
         return false;
     }
@@ -524,6 +530,7 @@ bool WebClient::_parseRequest() {
         return rawAction;
     }
     if (request()._contentLength > HTTP_MAX_POST_DATA_LENGTH) {
+        sendHeader("x-error", "Content length exceeds maximum of " + String(HTTP_MAX_POST_DATA_LENGTH));
         log_error(F("Web Request %s %s Content length %d exceeds maximum of %d"), methodStr.c_str(), request().uri().c_str(), request()._contentLength, HTTP_MAX_POST_DATA_LENGTH);
         _finalizeResponse();
         return false;

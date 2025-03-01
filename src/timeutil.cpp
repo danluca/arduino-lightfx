@@ -62,7 +62,7 @@ bool timeSetup() {
 }
 
 /**
- * Formats the time component of the timestamp, using a standard pattern - @see #fmtTime
+ * Formats the time component of the timestamp, using a standard pattern - \see ::fmtTime
  * @param buf buffer to write to. If not null, it must have space for 9 characters
  * @param time the time to format, if not specified defaults to @see now()
  * @return number of characters written to the buffer for given time value
@@ -76,9 +76,9 @@ uint8_t formatTime(char *buf, time_t time) {
 }
 
 /**
- * Formats the date component of the timestamp, using a standard pattern - @see #fmtDate
+ * Formats the date component of the timestamp, using a standard pattern - \ref ::fmtDate
  * @param buf buffer to write to. If not null, it must have space for 11 characters
- * @param time the time to format, if not specified defaults to @see now()
+ * @param time the time to format, if not specified defaults to \code now()\endcode
  * @return number of characters written to the buffer for given time value
  */
 uint8_t formatDate(char *buf, time_t time) {
@@ -108,7 +108,7 @@ time_t curUnixTime() {
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time telling purpose
         //determine what offset to use
-        time_t wifiTime = WiFi.getTime();
+        const time_t wifiTime = WiFi.getTime();
         time_t localTime = wifiTime + CST_OFFSET_SECONDS;
         if (isDST(localTime))
             localTime = wifiTime + CDT_OFFSET_SECONDS;
@@ -263,7 +263,7 @@ const char *holidayToString(const Holiday hday) {
  * @return 2 byte encoded month and day
  */
 uint16_t encodeMonthDay(const time_t time) {
-    time_t theTime = time == 0 ? now() : time;
+    const time_t theTime = time == 0 ? now() : time;
     return ((month(theTime) & 0xFF) << 8) + (day(theTime) & 0xFF);
 }
 
@@ -274,8 +274,8 @@ uint16_t encodeMonthDay(const time_t time) {
  * @return time drift in ms - positive means local time is faster, negative means local time is slower than the official time
  */
 int getDrift(const TimeSync &from, const TimeSync &to) {
-    time_t localDelta = (time_t)to.localMillis - (time_t)from.localMillis;
-    time_t unixDelta = (to.unixSeconds - from.unixSeconds)*1000l;
+    const time_t localDelta = (time_t)to.localMillis - (time_t)from.localMillis;
+    const time_t unixDelta = (to.unixSeconds - from.unixSeconds)*1000l;
     return (int)(localDelta-unixDelta);
 }
 
@@ -287,7 +287,7 @@ int getTotalDrift() {
     if (timeSyncs.size() < 2)
         return 0;
     int drift = 0;
-    TimeSync *prevSync = nullptr;
+    const TimeSync *prevSync = nullptr;
     for (auto &ts: timeSyncs) {
         if (prevSync == nullptr)
             prevSync = &ts;
@@ -304,8 +304,8 @@ int getTotalDrift() {
 int getAverageTimeDrift() {
     if (timeSyncs.size() < 2)
         return 0;
-    time_t start = timeSyncs.begin()->unixSeconds;
-    time_t end = timeSyncs.end()[-1].unixSeconds;       // end() is past the last element, -1 for last element
+    const time_t start = timeSyncs.begin()->unixSeconds;
+    const time_t end = timeSyncs.end()[-1].unixSeconds;       // end() is past the last element, -1 for last element
     return getTotalDrift() * 3600 / (int)(end-start);
 }
 
@@ -316,8 +316,8 @@ int getAverageTimeDrift() {
 int getLastTimeDrift() {
     if (timeSyncs.size() < 2)
         return 0;
-    TimeSync &lastSync = timeSyncs.back();
-    TimeSync &prevSync = timeSyncs.end()[-2];   // end() is past the last element, -1 for last element, -2 for second-last
+    const TimeSync &lastSync = timeSyncs.back();
+    const TimeSync &prevSync = timeSyncs.end()[-2];   // end() is past the last element, -1 for last element, -2 for second-last
     return getDrift(prevSync, lastSync);
 }
 

@@ -68,7 +68,9 @@ function getTasks() {
             memList.append(`<li>Free Stack: <span>${data.heap.freeStack.toLocaleString()} bytes [stack pointer: #${data.heap.stackPointer.toString(16)}]</span></li>`);
             memList.append(`<li>Total Heap: <span>${data.heap.totalHeap.toLocaleString()} bytes</span></li>`);
             memList.append(`<li>Free Heap: <span>${data.heap.freeHeap.toLocaleString()} bytes</span></li>`);
-            memList.append(`<li>Logging buffer space: <span>${data.heap.logMinBufferSpace.toLocaleString()} bytes</span></li>`);
+            if (data.heap.logMinBufferSpace) {
+                memList.append(`<li>Logging buffer space: <span>${data.heap.logMinBufferSpace.toLocaleString()} bytes</span></li>`);
+            }
             let miscArea = $('#miscDetailArea');
             miscArea.empty();
             miscArea.append(`<p>System reported runtime: <span>${data.tasks.sysTotalRunTime.toLocaleString()}</span></p>`);

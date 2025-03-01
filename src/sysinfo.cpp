@@ -27,11 +27,12 @@ constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Yellow;
 constexpr CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
 constexpr CRGB CLR_SETUP_ERROR = CRGB::Red;
 
-//#define STORAGE_CMD_TOTAL_BYTES 32
-
 unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
+
+void state_led_run();
+constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_1};
 
 const char *taskStatusToString(const eTaskState state) {
     switch (state) {
@@ -483,4 +484,22 @@ void SysInfo::updateStateLED() const {
     const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
     const CRGB colorCode = isOk ? CLR_ALL_OK : inSetup ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
     updateStateLED(colorCode.red, colorCode.green, colorCode.blue);
+}
+
+void state_led_run() {
+    while (!sysInfo->isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1)) {
+        sysInfo->updateStateLED();
+        taskDelay(640);
+        SysInfo::updateStateLED(CRGB::Black);
+        taskDelay(640);
+    }
+    sysInfo->updateStateLED();
+    taskDelay(750);
+}
+
+void SysInfo::begin() {
+    const auto stLedTask = Scheduler.startTask(&stLedTasks);
+    TaskStatus_t tStat;
+    vTaskGetTaskInfo(stLedTask->getTaskHandle(), &tStat, pdFALSE, eReady);
+    log_info(F("System LED task [%s] - priority %d - has been setup id %u. System status is monitored."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
 }

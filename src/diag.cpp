@@ -189,13 +189,13 @@ void enqueueSysVoltage(TimerHandle_t xTimer) {
 }
 
 /**
- * Callback for saveSysInfo timer - this is called from Timer task. Enqueues a SAVE_SYS_INFO message for the diagnostic task.
+ * Callback for saveSysInfo timer - this is called from Timer task. Enqueues a SAVE_SYS_INFO message for the alarm task.
  * @param xTimer the saveSysInfo timer that fired the callback
  */
 void enqueueSaveSysInfo(TimerHandle_t xTimer) {
     constexpr MiscAction msg = SAVE_SYS_INFO;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
-        log_error(F("Error sending SAVE_SYS_INFO message to core0 queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending SAVE_SYS_INFO message to ALM queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     log_info(F("Sent SAVE_SYS_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }

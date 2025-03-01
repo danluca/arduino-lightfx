@@ -79,6 +79,7 @@ public:
     [[nodiscard]] uint16_t getSysStatus() const;
     void setWiFiInfo(nina::WiFiClass & wifi);
     void setSecureElementId(const String & secId);
+    void begin();
     static void sysConfig(JsonDocument &doc);
     static void heapStats(JsonObject &doc);
     static void taskStats(JsonObject &doc);
@@ -87,6 +88,7 @@ public:
     // JSON marshalling methods
     friend void readSysInfo();
     friend void saveSysInfo();
+    friend void state_led_run();
 };
 
 extern SysInfo *sysInfo;
