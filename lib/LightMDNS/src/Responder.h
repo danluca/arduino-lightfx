@@ -29,7 +29,7 @@ struct Responder {
     uint16_t _starting{};
     uint8_t _control[4]{};
 
-    int matchStringPart(const char** pCmpStr, int* pCmpLen, const uint8_t* data, int dataLen);;
+    int matchStringPart(const char** pCmpStr, int* pCmpLen, const uint8_t* data, int dataLen);
     [[nodiscard]] String name() const {
         return "UNSUPPORTED";
     }

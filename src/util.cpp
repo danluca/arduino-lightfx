@@ -124,29 +124,29 @@ uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
 
 bool secElement_setup() {
     if (!ECCX08.begin()) {
-        Log.error(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
+        log_error(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
         return false;
     }
     sysInfo->setSecureElementId(ECCX08.serialNumber());
     const char* eccSerial = sysInfo->getSecureElementId().c_str();
     if (!ECCX08.locked()) {
-        Log.warn(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
+        log_warn(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
         if (!ECCX08.writeConfiguration(ECCX08_DEFAULT_TLS_CONFIG)) {
-            Log.error(F("Writing ECCX08 default TLS configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
+            log_error(F("Writing ECCX08 default TLS configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
             return false;
         }
         if (!ECCX08.lock()) {
-            Log.error(F("Locking ECCX08 configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
+            log_error(F("Locking ECCX08 configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
             return false;
         }
-        Log.info(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
+        log_info(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
     }
-    Log.info(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
+    log_info(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
     sysInfo->setSysStatus(SYS_STATUS_ECC);
     //update entropy - the timing of this call allows us to interact with I2C without other contenders
-    uint16_t rnd = secRandom16();
+    const uint16_t rnd = secRandom16();
     random16_add_entropy(rnd);
-    Log.info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
+    log_info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
     return true;
 }
 
@@ -156,8 +156,8 @@ bool secElement_setup() {
  */
 void watchdogSetup() {
     if (watchdog_caused_reboot()) {
-        time_t rebootTime = now();
-        Log.warn(F("A watchdog caused reboot has occurred at %s"), StringUtils::asString(rebootTime).c_str());
+        const time_t rebootTime = now();
+        log_warn(F("A watchdog caused reboot has occurred at %s"), StringUtils::asString(rebootTime).c_str());
         sysInfo->watchdogReboots().push(rebootTime);
         sysInfo->markDirtyBoot();
     }

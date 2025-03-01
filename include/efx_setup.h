@@ -13,6 +13,7 @@
 #include "global.h"
 #include "PaletteFactory.h"
 #include "constants.hpp"
+#include "log.h"
 
 typedef void (*setupFunc)();
 

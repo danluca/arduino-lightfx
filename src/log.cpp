@@ -14,9 +14,9 @@ void log_setup() {
         }
         Serial.println(F("================================================================================"));
     }
-#endif
     Log.begin(&Serial, INFO);
     taskDelay(500);
     Log.info(F("Logging system setup OK"));
+#endif
 }
 

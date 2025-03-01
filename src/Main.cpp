@@ -68,7 +68,7 @@ QueueHandle_t webQueue;
 void enqueueAlarmSetup() {
     constexpr MiscAction msg = ALARM_SETUP;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, pdMS_TO_TICKS(2000)); qResult != pdTRUE)
-        Log.error(F("Error sending ALARM_SETUP message to CORE0 task - error %d"), qResult);
+        log_error(F("Error sending ALARM_SETUP message to CORE0 task - error %d"), qResult);
 }
 
 /**
@@ -103,7 +103,7 @@ void alarm_misc_run() {
         case ALARM_CHECK: alarm_check(); break;
         case SAVE_SYS_INFO: saveSysInfo(); break;
         default:
-            Log.error(F("Misc Action %hu not supported"), action);
+            log_error(F("Misc Action %hu not supported"), action);
     }
 }
 
@@ -127,14 +127,14 @@ void web_run() {
             case WIFI_ENSURE: wifi_ensure(); break;
             case WIFI_TEMP: wifi_temp(); break;
             default:
-                Log.error(F("Comm Action %hu not supported"), action);
+                log_error(F("Comm Action %hu not supported"), action);
         }
     }
 }
 
 void filesystem_setup() {
     SyncFsImpl.begin(LittleFS);
-    Log.info(F("Filesystem setup completed"));
+    log_info(F("Filesystem setup completed"));
     sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
 }
 
@@ -158,7 +158,7 @@ void setup() {
 
     const TaskHandle_t core1 = xTaskGetHandle("CORE1");    //retrieve a task handle for the second core
     const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
-    Log.info(F("Basic components ok - Core 1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
+    log_info(F("Basic components ok - Core 1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
 
     webQueue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE0 task for communication between cores
     almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for ALM task for communication between cores
@@ -183,7 +183,7 @@ void setup() {
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     sysInfo->setSysStatus(SYS_STATUS_SETUP0);
-    Log.info(F("Main Core 0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
+    log_info(F("Main Core 0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
 }
 
@@ -218,7 +218,7 @@ void setup1() {
     // const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
     sysInfo->setSysStatus(SYS_STATUS_SETUP1);
-    Log.info(F("Main Core 1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
+    log_info(F("Main Core 1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
 }
 
 /**

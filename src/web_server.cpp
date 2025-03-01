@@ -202,7 +202,7 @@ void web::handleGetStatus(WebClient& client) {
 
     //send it out - the size returned is http headers + response body (does not include the HTTP protocol header)
     const size_t sz = marshalJson(doc, client);
-    Log.info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
+    log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -271,7 +271,7 @@ void web::handlePutConfig(WebClient& client) {
         if (masterEnabled)
             postFxChangeEvent(fxRegistry.curEffectPos());   //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
     }
-    Log.info(F("FX: Current config updated effect %hu, autoswitch %s, holiday %s, brightness %hu, brightness adjustment %s"),
+    log_info(F("FX: Current config updated effect %hu, autoswitch %s, holiday %s, brightness %hu, brightness adjustment %s"),
                fxRegistry.curEffectPos(), StringUtils::asString(fxRegistry.isAutoRoll()), holidayToString(paletteFactory.getHoliday()),
                stripBrightness, stripBrightnessLocked?"fixed":"automatic");
 
@@ -281,7 +281,7 @@ void web::handlePutConfig(WebClient& client) {
     contentDispositionHeader(client, statusJsonFilename);
     //send it out
     const size_t sz = marshalJson(resp, client);
-    Log.info(F("Handler handlePutConfig invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
+    log_info(F("Handler handlePutConfig invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -315,7 +315,7 @@ void web::handleGetTasks(WebClient& client) {
 
     //send it out
     const size_t sz = marshalJson(doc, client);
-    Log.info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
+    log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -323,7 +323,7 @@ void web::handleGetTasks(WebClient& client) {
  */
 void web::handleNotFound(WebClient& client) {
     const size_t sz = client.send(404, mime::mimeTable[mime::txt].mimeType, msgRequestNotMapped);
-    Log.info(F("Handler handleNotFound invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
+    log_info(F("Handler handleNotFound invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -332,7 +332,7 @@ void web::handleNotFound(WebClient& client) {
  */
 void web::server_setup() {
     if (!server_handlers_configured) {
-        Log.info(F("Starting Web server setup"));
+        log_info(F("Starting Web server setup"));
         server.setServerAgent(serverAgent);
         server.serveStatic("/", SyncFsImpl, "/status/", &inFlashResources, hdCacheStatic);
         server.serveStatic("/config.json", SyncFsImpl, "/status/sysconfig.json", nullptr, hdCacheJson);
@@ -343,10 +343,10 @@ void web::server_setup() {
         server.collectHeaders("Host", "Connection", "Accept", "Referer", "User-Agent");
         server.enableDelay(false);      //the task that runs the web-server also runs other services, do not want to introduce unnecessary delays
         server_handlers_configured = true;
-        Log.info(F("Completed Web server setup"));
+        log_info(F("Completed Web server setup"));
     }
     server.begin(serverPort);
-    Log.info(F("Web server started"));
+    log_info(F("Web server started"));
     
 }
 

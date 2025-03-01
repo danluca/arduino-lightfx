@@ -66,7 +66,7 @@ bool EffectTransition::offSpots() {
     EVERY_N_MILLIS(30) {
         uint8_t ledsOn = 0;
         for (uint16_t x = 0; x < offSpotSegSize; x++) {
-            uint16_t xled = stripShuffleIndex[(offSpotShuffleOffset + x) % NUM_PIXELS];
+            const uint16_t xled = stripShuffleIndex[(offSpotShuffleOffset + x) % NUM_PIXELS];
             FastLED.leds()[xled].fadeToBlackBy(fade);
             if (FastLED.leds()[xled].getLuma() < 4)
                 FastLED.leds()[xled] = BKG;

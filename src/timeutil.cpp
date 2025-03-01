@@ -20,7 +20,7 @@ bool timeSetup() {
     //read the time
     setSyncProvider(curUnixTime);
     const bool ntpTimeAvailable = ntp_sync();
-    Log.warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
+    log_warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     Holiday hday;
     if (ntpTimeAvailable) {
         const bool bDST = isDST(timeClient.getEpochTime());
@@ -32,17 +32,19 @@ bool timeSetup() {
             timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
         setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
         hday = paletteFactory.adjustHoliday();    //update the holiday for new time
+#if LOGGING_ENABLED == 1
         if (Log.getTimebase() == 0) {
             const time_t curTime = now();
             const time_t curMs = millis();
-            Log.warn(F("Logging time reference updated from %llu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
+            log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
             Log.setTimebase(curTime * 1000 - curMs);                //capture current time into the log offset, such that log statements use current time
         }
-        Log.info(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
+#endif
+        log_info(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
                    bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
         char timeBuf[20];
         formatDateTime(timeBuf, now());
-        Log.info(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
+        log_info(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
     } else {
         sysInfo->resetSysStatus(SYS_STATUS_NTP);
         paletteFactory.setHoliday(Party);  //setting it explicitly to avoid defaulting to none when there is no wifi altogether
@@ -52,10 +54,10 @@ bool timeSetup() {
             sysInfo->setSysStatus(SYS_STATUS_DST);
         char timeBuf[20];
         formatDateTime(timeBuf, now());
-        Log.warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"),
+        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"),
               timeBuf, bDST?"CDT":"CST", holidayToString(hday));
     }
-    Log.info(F("Current holiday is %s"), holidayToString(hday));
+    log_info(F("Current holiday is %s"), holidayToString(hday));
     return ntpTimeAvailable;
 }
 
@@ -117,7 +119,7 @@ time_t curUnixTime() {
 
 bool ntp_sync() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        Log.warn(F("NTP sync failed. No WiFi connection available."));
+        log_warn(F("NTP sync failed. No WiFi connection available."));
         return false;
     }
     timeClient.begin();

@@ -9,7 +9,7 @@
 // ************************************************************************
 // #define LOGGING_ENABLED     1
 
-#include <PicoLog.h>
+#include <LogProxy.h>
 
 void log_setup();
 
