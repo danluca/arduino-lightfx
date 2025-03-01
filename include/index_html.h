@@ -91,8 +91,7 @@ inline constexpr auto index_html PROGMEM = R"~~~(
                 <dd>NTP sync: <span id="timeNtp"></span></dd>
                 <dd>Current time: <span id="timeCurrent"></span></dd>
                 <dd>Holiday: <span id="timeHoliday"></span></dd>
-                <dd>Current drift: <span id="lastDrift"></span></dd>
-                <dd>Average drift: <span id="avgDrift"></span></dd>
+                <dd>Clock drift: cur <span id="lastDrift">; avg <span id="avgDrift"></span></span></dd>
                 <dd>Total drift: <span id="totalDrift"></span></dd>
                 <dd>Next Alarms: <span id="schAlarms"></span></dd>
                 </div>

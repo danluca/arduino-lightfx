@@ -150,7 +150,7 @@ void alarm_setup() {
     //at this point we should have a next alarm
     time_t nextAlarmCheck = 15*60; //default 15 minutes
     if (const AlarmData *nextAlarm = findNextAlarm())
-        nextAlarmCheck = max((nextAlarm->value-now())/10, 60);  // set timer at minimum 1 minute or 10% of time to next alarm
+        nextAlarmCheck = max(min(nextAlarm->value-now(), 12*SECS_PER_HOUR)/10, 60);  // set timer at minimum 1 minute or 10% of time to next alarm, but no more than 5% of day (72 minutes)
     else
         log_error(F("There are no alarms scheduled - checking alarms in 15 min, by default"));
     const TimerHandle_t thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
@@ -164,7 +164,7 @@ void alarm_setup() {
 void alarm_check() {
     const time_t time = now();
     for (auto it = scheduledAlarms.begin(); it != scheduledAlarms.end();) {
-        if (auto al = *it; al->value <= time) {
+        if (const auto al = *it; al->value <= time) {
             log_info(F("Alarm %p type %d triggered at %s for scheduled time %s; handler %p"), al, al->type, StringUtils::asString(time).c_str(),
                 StringUtils::asString(al->value).c_str(), al->onEventHandler);
              al->onEventHandler();
@@ -183,9 +183,14 @@ void alarm_check() {
     }
     //at this point we should have a next alarm
     time_t nextAlarmCheck = 15*60; //default 15 minutes
-    if (const AlarmData *nextAlarm = findNextAlarm())
-        nextAlarmCheck = max((nextAlarm->value - now()) / 10, 60); // set timer at minimum 1 minute or 10% of time to next alarm
-    else
+    if (const AlarmData *nextAlarm = findNextAlarm()) {
+        if (nextAlarm->value - now() > 24*SECS_PER_HOUR) {
+            log_warn(F("Time was way off (a proper NTP sync may have occurred later) and alarms were improperly scheduled - re-scheduling"));
+            setupAlarmSchedule();
+            nextAlarm = findNextAlarm();
+        }
+        nextAlarmCheck = max(min(nextAlarm->value-now(), 12*SECS_PER_HOUR)/10, 60);  // set timer at minimum 1 minute or 10% of time to next alarm, but no more than 5% of day (72 minutes)
+    } else
         log_error(F("There are no alarms scheduled - checking alarms in 15 min, by default"));
     const TimerHandle_t thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
     if (thAlarmCheck == nullptr)
