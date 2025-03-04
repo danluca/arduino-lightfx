@@ -8,7 +8,7 @@
 #include "config.h"
 
 #define IMU_TEMPERATURE_NOT_AVAILABLE   0.001f
-#define TEMP_NA_COMPARE_EPSILON      0.0001f
+#define TEMP_NA_COMPARE_EPSILON      0.001f
 
 void diagSetup();
 void diagExecute();

@@ -478,6 +478,7 @@ bool WebClient::_parseRequest() {
     const int addr_start = req.indexOf(' ');
     const int addr_end = req.indexOf(' ', addr_start + 1);
     if (addr_start == -1 || addr_end == -1) {
+        sendHeader("x-error", "Can't parse URI from request line: " + req);
         log_error("Invalid HTTP request: %s", req.c_str());
         return false;
     }
@@ -486,7 +487,7 @@ bool WebClient::_parseRequest() {
     request()._reqUrl = req.substring(addr_start + 1, addr_end);
     request()._httpVersion = req.substring(addr_end + 6);
     if (request()._httpVersion.length() == 0) {
-        sendHeader("x-orig-req", req);
+        sendHeader("x-error", "Can't parse HTTP version from request line: " + req);
         log_error("Invalid HTTP request, can't parse HTTP version: %s", req.c_str());
         return false;
     }
@@ -503,7 +504,7 @@ bool WebClient::_parseRequest() {
 
     const auto method = httpMethodFromName(methodStr.c_str());
     if (method == HTTP_ANY) {
-        sendHeader("x-orig-req", req);
+        sendHeader("x-error", "Can't extract HTTP method from request line: " + req);
         log_error("Unknown HTTP Method: %s", methodStr.c_str());
         return false;
     }
