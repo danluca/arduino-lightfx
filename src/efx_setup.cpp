@@ -8,6 +8,9 @@
 #include "FxSchedule.h"
 #include "transition.h"
 #include "util.h"
+#if LOGGING_ENABLED == 1
+#include "stringutils.h"
+#endif
 
 //~ Global variables definition
 constexpr setupFunc categorySetup[] = {FxA::fxRegister, FxB::fxRegister, FxC::fxRegister, FxD::fxRegister, FxE::fxRegister, FxF::fxRegister, FxH::fxRegister, FxI::fxRegister, FxJ::fxRegister, FxK::fxRegister};

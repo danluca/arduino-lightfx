@@ -11,7 +11,10 @@
 #include "net_setup.h"
 #include "sysinfo.h"
 #include "util.h"
+#if LOGGING_ENABLED == 1
+#include "stringutils.h"
 #include "log.h"
+#endif
 
 #define BCAST_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 

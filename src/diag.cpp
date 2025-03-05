@@ -18,6 +18,9 @@
 #include "sysinfo.h"
 #include "constants.hpp"
 #include "log.h"
+#if LOGGING_ENABLED == 1
+#include "stringutils.h"
+#endif
 
 #define DIAG_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 

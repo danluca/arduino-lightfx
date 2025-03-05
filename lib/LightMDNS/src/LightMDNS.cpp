@@ -616,7 +616,7 @@ MDNS::Status MDNS::process() {
 #if LOGGING_ENABLED == 1
         if (status != Status::Success && status != Status::TryLater)
             log_error(F("MDNS: process: failed _announce error=%s"), toString(status).c_str());
-        else
+        else if (status == Status::Success)
             log_debug(F("MDNS: process: _announce status %s"), toString(status).c_str());
 #endif
 
@@ -630,7 +630,7 @@ MDNS::Status MDNS::process() {
 #if LOGGING_ENABLED == 1
         if (status != Status::Success && status != Status::TryLater)
             log_error(F("MDNS: process: failed _messageRecv error=%s (%d processed successfully)"), toString(status).c_str(), count);
-        else
+        else if (count > 0)
             log_debug(F("MDNS: process: %d messages successfully received"), count);
 #endif
 

@@ -92,21 +92,18 @@ class WebClient {
         size_t contentSent = _streamFileCore(data.length(), "", contentType, code);
         StringStream ss(data);
         contentSent += _currentClientWrite(ss);
-        _contentWritten += contentSent;
         return contentSent;
     }
     size_t streamData(const char* data, const size_t length, const String& contentType, const int code = 200) {
         size_t contentSent = _streamFileCore(length, "", contentType, code);
         StringStream ss(data, length);
         contentSent += _currentClientWrite(ss);
-        _contentWritten += contentSent;
         return contentSent;
     }
     size_t streamData(const __FlashStringHelper* data, const size_t length, const String& contentType, const int code = 200) {
         size_t contentSent =_streamFileCore(length, "", contentType, code);
         StringStream ss(data);
         contentSent += _currentClientWrite(ss);
-        _contentWritten += contentSent;
         return contentSent;
     }
 
@@ -122,7 +119,7 @@ protected:
         return _currentClientWrite(ss);
     }
     // this method employs buffering due to implementation in WiFiClient
-    virtual size_t _currentClientWrite(Stream& s) { return _rawWifiClient.write(s); }
+    virtual size_t _currentClientWrite(Stream& s) { const size_t written = _rawWifiClient.write(s); _contentWritten += written; return written; }
     void _finalizeResponse();
     bool _handleRawData();
     bool _parseRequest();

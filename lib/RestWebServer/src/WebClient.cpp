@@ -213,8 +213,7 @@ size_t WebClient::send(const int code, const char *content_type, const String &c
     _prepareHeader(headers, code, content_type, content.length());
     size_t contentSent = _currentClientWrite(headers.c_str(), headers.length());
     if (content.length())
-        contentSent += sendContent(content);
-    _contentWritten += contentSent;
+        contentSent += sendContent(content);    //sendContent updates _contentWritten on its own
     return contentSent;
 }
 
@@ -254,8 +253,7 @@ size_t WebClient::send(const int code, const char *content_type, const char *con
     _prepareHeader(headers, code, content_type, contentLength);
     size_t contentSent = _currentClientWrite(headers.c_str(), headers.length());
     if (contentLength)
-        contentSent += sendContent(content, contentLength);
-    _contentWritten += contentSent;
+        contentSent += sendContent(content, contentLength);    //sendContent updates _contentWritten on its own
     return contentSent;
 }
 
@@ -265,8 +263,7 @@ size_t WebClient::send_P(const int code, PGM_P content_type, PGM_P content) {
     headers.reserve(INITIAL_HEADERS_BUFFER_SIZE);
     _prepareHeader(headers, code, content_type, contentLength);
     size_t contentSent = _currentClientWrite(headers.c_str(), headers.length());
-    contentSent += sendContent_P(content, contentLength);
-    _contentWritten += contentSent;
+    contentSent += sendContent_P(content, contentLength);    //sendContent_P updates _contentWritten on its own
     return contentSent;
 }
 
@@ -274,9 +271,8 @@ size_t WebClient::send_P(const int code, PGM_P content_type, PGM_P content, cons
     String headers;
     headers.reserve(INITIAL_HEADERS_BUFFER_SIZE);
     _prepareHeader(headers, code, content_type, contentLength);
-    size_t contentSent = sendContent(headers);
+    size_t contentSent = sendContent(headers);    //sendContent updates _contentWritten on its own
     contentSent += sendContent_P(content, contentLength);
-    _contentWritten += contentSent;
     return contentSent;
 }
 
@@ -307,12 +303,12 @@ size_t WebClient::sendContent(const char *content, const size_t contentLength) {
     }
     contentSent += _currentClientWrite(content, contentLength);
     if (_chunked) {
-        contentSent += _rawWifiClient.write(footer, 2);
-        if (contentLength == 0) {
+        const size_t rawWritten = _rawWifiClient.write(footer, 2);
+        contentSent += rawWritten;
+        _contentWritten += rawWritten;
+        if (contentLength == 0)
             _chunked = false;
-        }
     }
-    _contentWritten += contentSent;
     return contentSent;
 }
 
@@ -330,11 +326,12 @@ size_t WebClient::sendContent_P(PGM_P content, const size_t size) {
     }
     contentSent += _currentClientWrite_P(content, size);
     if (_chunked) {
-        contentSent += _rawWifiClient.write(footer, 2);
+        const size_t rawWritten = _rawWifiClient.write(footer, 2);
+        contentSent += rawWritten;
+        _contentWritten += rawWritten;
         if (size == 0)
             _chunked = false;
     }
-    _contentWritten += contentSent;
     return contentSent;
 }
 

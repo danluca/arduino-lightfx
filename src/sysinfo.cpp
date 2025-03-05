@@ -12,6 +12,9 @@
 #include "version.h"
 #include "constants.hpp"
 #include "log.h"
+#if LOGGING_ENABLED == 1
+#include "stringutils.h"
+#endif
 
 #define BUF_ID_SIZE  20
 
@@ -23,7 +26,7 @@ static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz]
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
 #endif
 constexpr CRGB CLR_ALL_OK = CRGB::Indigo;
-constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Yellow;
+constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Green;
 constexpr CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
 constexpr CRGB CLR_SETUP_ERROR = CRGB::Red;
 
@@ -32,7 +35,7 @@ unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
 
 void state_led_run();
-constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_1};
+constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
 
 const char *taskStatusToString(const eTaskState state) {
     switch (state) {
@@ -480,7 +483,7 @@ void SysInfo::updateStateLED(const uint8_t red, const uint8_t green, const uint8
  * Adjusts the LED state (color, illumination style) in response to overall system's state
  */
 void SysInfo::updateStateLED() const {
-    const bool inSetup = isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1);
+    const bool inSetup = !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1);
     const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
     const CRGB colorCode = isOk ? CLR_ALL_OK : inSetup ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
     updateStateLED(colorCode.red, colorCode.green, colorCode.blue);
