@@ -34,8 +34,8 @@ unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
 
-void state_led_run();
-constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
+// void state_led_run();
+// constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
 
 const char *taskStatusToString(const eTaskState state) {
     switch (state) {
@@ -496,8 +496,8 @@ void state_led_run() {
 }
 
 void SysInfo::begin() {
-    const auto stLedTask = Scheduler.startTask(&stLedTasks);
-    TaskStatus_t tStat;
-    vTaskGetTaskInfo(stLedTask->getTaskHandle(), &tStat, pdFALSE, eReady);
-    log_info(F("System LED task [%s] - priority %d - has been setup id %u. System status is monitored."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
+    // const auto stLedTask = Scheduler.startTask(&stLedTasks);
+    // TaskStatus_t tStat;
+    // vTaskGetTaskInfo(stLedTask->getTaskHandle(), &tStat, pdFALSE, eReady);
+    // log_info(F("System LED task [%s] - priority %d - has been setup id %u. System status is monitored."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
 }
