@@ -236,7 +236,7 @@ uint16_t SysInfo::resetSysStatus(const uint16_t bitMask) {
 }
 
 bool SysInfo::isSysStatus(const uint16_t bitMask) const {
-    return (status & bitMask);
+    return (status & bitMask) == bitMask;
 }
 
 uint16_t SysInfo::getSysStatus() const {
@@ -454,29 +454,24 @@ void SysInfo::setupStateLED() {
     pinMode(LEDR, OUTPUT);
     pinMode(LEDG, OUTPUT);
     pinMode(LEDB, OUTPUT);
-    updateStateLED(0, 0, 0);    //black, turned off
+    updateStateLED(CRGB::Black);    //black, turned off
 }
 /**
  * Controls the on-board status LED
  * @param colorCode
  */
 void SysInfo::updateStateLED(const uint32_t colorCode) {
-    const uint8_t r = (colorCode >> 16) & 0xFF;
-    const uint8_t g = (colorCode >>  8) & 0xFF;
-    const uint8_t b = (colorCode >>  0) & 0xFF;
-    updateStateLED(r, g, b);
+    updateStateLED(CRGB(colorCode));
 }
 
 /**
  * Controls the onboard LED using individual values for R, G, B
- * @param red red value
- * @param green green value
- * @param blue blue value
+ * @param rgb RGB value
  */
-void SysInfo::updateStateLED(const uint8_t red, const uint8_t green, const uint8_t blue) {
-    analogWrite(LEDR, 255 - red);
-    analogWrite(LEDG, 255 - green);
-    analogWrite(LEDB, 255 - blue);
+void SysInfo::updateStateLED(const CRGB rgb) {
+    analogWrite(LEDR, 255 - rgb.red);
+    analogWrite(LEDG, 255 - rgb.green);
+    analogWrite(LEDB, 255 - rgb.blue);
 }
 
 /**
@@ -486,7 +481,7 @@ void SysInfo::updateStateLED() const {
     const bool inSetup = !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1);
     const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
     const CRGB colorCode = isOk ? CLR_ALL_OK : inSetup ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
-    updateStateLED(colorCode.red, colorCode.green, colorCode.blue);
+    updateStateLED(colorCode);
 }
 
 void state_led_run() {

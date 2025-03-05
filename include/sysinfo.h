@@ -20,6 +20,8 @@ void logSystemState();
 void readSysInfo();
 void saveSysInfo();
 
+struct CRGB;
+
 /**
  * Overall System information, covers both static (board/chip IDs) and dynamic (free memory, WiFi, status)
  */
@@ -45,7 +47,7 @@ class SysInfo {
 
 protected:
     static void updateStateLED(uint32_t colorCode);
-    static void updateStateLED(uint8_t red, uint8_t green, uint8_t blue);
+    static void updateStateLED(CRGB rgb);
     void updateStateLED() const;
 
 public:
