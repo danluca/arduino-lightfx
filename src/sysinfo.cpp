@@ -34,8 +34,8 @@ unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
 
-// void state_led_run();
-// constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
+void state_led_run();
+constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
 
 const char *taskStatusToString(const eTaskState state) {
     switch (state) {

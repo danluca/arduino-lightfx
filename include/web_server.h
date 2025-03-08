@@ -6,10 +6,13 @@
 
 #include <ArduinoJson.h>
 #include <RestWebServer.h>
+#if MDNS_ENABLED==1
 #include "LightMDNS.hpp"
 
 extern UDP* mUdp;
 extern MDNS* mdns;
+#endif
+
 namespace web {
     extern WebServer server;
     extern bool server_handlers_configured;

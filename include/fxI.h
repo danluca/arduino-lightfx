@@ -28,5 +28,22 @@ namespace FxI {
         uint8_t fgColor, bgColor;
     };
 
+    class FxI2 : public LedEffect {
+    public:
+        FxI2();
+        void setup() override;
+        void run() override;
+        [[nodiscard]] inline uint8_t selectionWeight() const override;
+
+    private:
+        void pacifica_loop();
+        void pacifica_one_layer(const CRGBPalette16& p, uint16_t ciStart, uint16_t waveScale, uint8_t bri, uint16_t ioff);
+        void pacifica_add_whitecaps();
+        void pacifica_deepen_colors();
+
+        uint16_t sCIStart1{}, sCIStart2{}, sCIStart3{}, sCIStart4{};
+        uint32_t sLastMs = 0;
+    };
+
 }
 #endif //ARDUINO_LIGHTFX_FXI_H

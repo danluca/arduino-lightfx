@@ -20,9 +20,10 @@ constexpr auto hostname PROGMEM = "lightfx-" DEVICE_NAME;
 
 static uint16_t tmrWifiEnsure = 40;
 static uint16_t tmrWifiTemp = 41;
-
+#if MDNS_ENABLED==1
 UDP* mUdp = nullptr;  // mDNS UDP instance
 MDNS* mdns = nullptr;
+#endif
 
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from \code WiFi.RSSI() \endcode
@@ -69,7 +70,7 @@ bool wifi_connect() {
             log_warn(F("Failed pinging the gateway (ping result %d) - will retry later"), resPing);
         printSuccessfulWifiStatus();  // you're connected now, so print out the status
     }
-
+#if MDNS_ENABLED==1
     // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
     String dnsHostname(hostname);
     dnsHostname.toLowerCase();
@@ -92,6 +93,8 @@ bool wifi_connect() {
     mdnsStatus = mdns->start({IP_ADDR}, dnsHostname);
     (void)mdnsStatus;
     log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
+#endif
+
     return result;
 }
 
@@ -171,9 +174,12 @@ void wifi_reconnect() {
     sysInfo->resetSysStatus(SYS_STATUS_WIFI);
     web::server.stop();
     Udp.stop();
+#if MDNS_ENABLED==1
     mdns->stop();
     delete mdns;
     delete mUdp;
+#endif
+
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     taskDelay(2000);    //let disconnect state settle
