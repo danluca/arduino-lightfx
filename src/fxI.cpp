@@ -20,6 +20,7 @@ constexpr auto fxi3Desc PROGMEM = "FXI3: Three overlay segments";
  */
 void FxI::fxRegister() {
     static FxI1 fxI1;
+    static FxI2 fxI2;
 }
 
 //FXI1
