@@ -20,6 +20,6 @@
     "includeDir": "src"
   },
   "dependencies": {
-    "version": "SchedulerExt"
+    "SchedulerExt": "0.4.4.1"
   }
 }

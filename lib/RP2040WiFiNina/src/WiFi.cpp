@@ -37,11 +37,11 @@ namespace nina {
         return WiFiDrv::getFwVersion();
     }
 
-    int WiFiClass::begin(const char *ssid) {
+    int WiFiClass::begin(const char *ssid) const {
         uint8_t status = WL_IDLE_STATUS;
 
         if (WiFiDrv::wifiSetNetwork(ssid, strlen(ssid)) != WL_FAILURE) {
-            for (unsigned long start = millis(); (millis() - start) < _timeout;) {
+            for (const unsigned long start = millis(); (millis() - start) < _timeout;) {
                 feedWatchdog();
                 delay(WL_DELAY_START_CONNECTION);
                 status = WiFiDrv::getConnectionStatus();
@@ -55,12 +55,12 @@ namespace nina {
         return status;
     }
 
-    int WiFiClass::begin(const char *ssid, uint8_t key_idx, const char *key) {
+    int WiFiClass::begin(const char *ssid, uint8_t key_idx, const char *key) const {
         uint8_t status = WL_IDLE_STATUS;
 
         // set encryption key
         if (WiFiDrv::wifiSetKey(ssid, strlen(ssid), key_idx, key, strlen(key)) != WL_FAILURE) {
-            for (unsigned long start = millis(); (millis() - start) < _timeout;) {
+            for (const unsigned long start = millis(); (millis() - start) < _timeout;) {
                 feedWatchdog();
                 delay(WL_DELAY_START_CONNECTION);
                 status = WiFiDrv::getConnectionStatus();
@@ -74,12 +74,12 @@ namespace nina {
         return status;
     }
 
-    int WiFiClass::begin(const char *ssid, const char *passphrase) {
+    int WiFiClass::begin(const char *ssid, const char *passphrase) const {
         uint8_t status = WL_IDLE_STATUS;
 
         // set passphrase
         if (WiFiDrv::wifiSetPassphrase(ssid, strlen(ssid), passphrase, strlen(passphrase)) != WL_FAILURE) {
-            for (unsigned long start = millis(); (millis() - start) < _timeout;) {
+            for (const unsigned long start = millis(); (millis() - start) < _timeout;) {
                 feedWatchdog();
                 delay(WL_DELAY_START_CONNECTION);
                 status = WiFiDrv::getConnectionStatus();
@@ -97,11 +97,11 @@ namespace nina {
         return beginAP(ssid, 1);
     }
 
-    uint8_t WiFiClass::beginAP(const char *ssid, uint8_t channel) const {
+    uint8_t WiFiClass::beginAP(const char *ssid, const uint8_t channel) const {
         uint8_t status = WL_IDLE_STATUS;
 
         if (WiFiDrv::wifiSetApNetwork(ssid, strlen(ssid), channel) != WL_FAILURE) {
-            for (unsigned long start = millis(); (millis() - start) < _timeout;) {
+            for (const unsigned long start = millis(); (millis() - start) < _timeout;) {
                 delay(WL_DELAY_START_CONNECTION);
                 status = WiFiDrv::getConnectionStatus();
                 if ((status != WL_IDLE_STATUS) && (status != WL_NO_SSID_AVAIL) && (status != WL_SCAN_COMPLETED)) {
@@ -114,11 +114,11 @@ namespace nina {
         return status;
     }
 
-    uint8_t WiFiClass::beginAP(const char *ssid, const char *passphrase) {
+    uint8_t WiFiClass::beginAP(const char *ssid, const char *passphrase) const {
         return beginAP(ssid, passphrase, 1);
     }
 
-    uint8_t WiFiClass::beginAP(const char *ssid, const char *passphrase, uint8_t channel) {
+    uint8_t WiFiClass::beginAP(const char *ssid, const char *passphrase, const uint8_t channel) const {
         uint8_t status = WL_IDLE_STATUS;
 
         // set passphrase
@@ -136,12 +136,12 @@ namespace nina {
         return status;
     }
 
-    uint8_t WiFiClass::beginEnterprise(const char *ssid, const char *username, const char *password) {
+    uint8_t WiFiClass::beginEnterprise(const char *ssid, const char *username, const char *password) const {
         return beginEnterprise(ssid, username, password, "");
     }
 
     uint8_t WiFiClass::beginEnterprise(const char *ssid, const char *username, const char *password,
-                                       const char *identity) {
+                                       const char *identity) const {
         return beginEnterprise(ssid, username, password, identity, "");
     }
 
@@ -167,24 +167,17 @@ namespace nina {
     }
 
     void WiFiClass::config(IPAddress local_ip) {
-        // Assume the DNS server will be the machine on the same network as the local IP
-        // but with last octet being '1'
-        IPAddress dns = local_ip;
-        dns[3] = 1;
-        config(local_ip, dns);
+        WiFiDrv::config(1, (uint32_t) local_ip, 0, 0);
     }
 
     void WiFiClass::config(IPAddress local_ip, IPAddress dns_server) {
-        // Assume the gateway will be the machine on the same network as the local IP
-        // but with last octet being '1'
-        IPAddress gateway = local_ip;
-        gateway[3] = 1;
-        config(local_ip, dns_server, gateway);
+        WiFiDrv::config(1, (uint32_t) local_ip, 0, 0);
+        WiFiDrv::setDNS(1, (uint32_t) dns_server, 0);
     }
 
     void WiFiClass::config(IPAddress local_ip, IPAddress dns_server, IPAddress gateway) {
-        IPAddress subnet(255, 255, 255, 0);
-        config(local_ip, dns_server, gateway, subnet);
+        WiFiDrv::config(2, (uint32_t) local_ip, (uint32_t) gateway, 0);
+        WiFiDrv::setDNS(1, (uint32_t) dns_server, 0);
     }
 
     void WiFiClass::config(IPAddress local_ip, IPAddress dns_server, IPAddress gateway, IPAddress subnet) {
@@ -236,9 +229,9 @@ namespace nina {
         return ret;
     }
 
-    IPAddress WiFiClass::dnsIP(int n) {
+    IPAddress WiFiClass::dnsIP(const int n) {
         if (n > 1)
-            return IPAddress(0, 0, 0, 0);
+            return {0, 0, 0, 0};
         IPAddress dnsip0;
         IPAddress dnsip1;
         WiFiDrv::getDNS(dnsip0, dnsip1);
@@ -273,28 +266,28 @@ namespace nina {
         do {
             delay(2000);
             numOfNetworks = WiFiDrv::getScanNetworks();
-        } while ((numOfNetworks == 0) && (--attempts > 0));
+        } while (numOfNetworks == 0 && --attempts > 0);
         return numOfNetworks;
     }
 
-    const char *WiFiClass::SSID(uint8_t networkItem) {
-        return WiFiDrv::getSSIDNetoworks(networkItem);
+    const char *WiFiClass::SSID(const uint8_t networkItem) {
+        return WiFiDrv::getSSIDNetworks(networkItem);
     }
 
-    int32_t WiFiClass::RSSI(uint8_t networkItem) {
-        return WiFiDrv::getRSSINetoworks(networkItem);
+    int32_t WiFiClass::RSSI(const uint8_t networkItem) {
+        return WiFiDrv::getRSSINetworks(networkItem);
     }
 
-    uint8_t WiFiClass::encryptionType(uint8_t networkItem) {
-        return WiFiDrv::getEncTypeNetowrks(networkItem);
+    uint8_t WiFiClass::encryptionType(const uint8_t networkItem) {
+        return WiFiDrv::getEncTypeNetworks(networkItem);
     }
 
-    uint8_t *WiFiClass::BSSID(uint8_t networkItem, uint8_t *bssid) {
-        return WiFiDrv::getBSSIDNetowrks(networkItem, bssid);
+    uint8_t *WiFiClass::BSSID(const uint8_t networkItem, uint8_t *bssid) {
+        return WiFiDrv::getBSSIDNetworks(networkItem, bssid);
     }
 
-    uint8_t WiFiClass::channel(uint8_t networkItem) {
-        return WiFiDrv::getChannelNetowrks(networkItem);
+    uint8_t WiFiClass::channel(const uint8_t networkItem) {
+        return WiFiDrv::getChannelNetworks(networkItem);
     }
 
     uint8_t WiFiClass::status() {
@@ -321,7 +314,7 @@ namespace nina {
         WiFiDrv::setPowerMode(0);
     }
 
-    int WiFiClass::ping(const char *hostname, uint8_t ttl) {
+    int WiFiClass::ping(const char *hostname, const uint8_t ttl) {
         IPAddress ip;
 
         if (!hostByName(hostname, ip)) {
@@ -331,11 +324,11 @@ namespace nina {
         return ping(ip, ttl);
     }
 
-    int WiFiClass::ping(const String &hostname, uint8_t ttl) {
+    int WiFiClass::ping(const String &hostname, const uint8_t ttl) {
         return ping(hostname.c_str(), ttl);
     }
 
-    int WiFiClass::ping(IPAddress host, uint8_t ttl) {
+    int WiFiClass::ping(IPAddress host, const uint8_t ttl) {
         return WiFiDrv::ping(host, ttl);
     }
 
@@ -343,11 +336,11 @@ namespace nina {
         _timeout = timeout;
     }
 
-    void WiFiClass::setFeedWatchdogFunc(FeedHostProcessorWatchdogFuncPointer func) {
+    void WiFiClass::setFeedWatchdogFunc(const FeedHostProcessorWatchdogFuncPointer func) {
         _feed_watchdog_func = func;
     }
 
-    void WiFiClass::feedWatchdog() {
+    void WiFiClass::feedWatchdog() const {
         if (_feed_watchdog_func)
             _feed_watchdog_func();
     }
@@ -356,4 +349,5 @@ namespace nina {
         return WiFiDrv::getTemperature();
     }
 }
+
 nina::WiFiClass WiFi;

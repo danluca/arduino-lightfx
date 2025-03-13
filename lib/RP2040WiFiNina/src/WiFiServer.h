@@ -30,25 +30,30 @@ extern "C" {
 class WiFiClient;
 
 class WiFiServer : public Server {
-private:
   uint8_t _sock;
   uint8_t _lastSock;
   uint16_t _port;
-  void*     pcb;
+  void*     pcb{};
+
 public:
   WiFiServer();
-  WiFiServer(uint16_t);
-  WiFiClient available(uint8_t* status = NULL);
-  WiFiClient accept();
-  void begin();
+  virtual ~WiFiServer() = default;
+  explicit WiFiServer(uint16_t);
+  WiFiClient available(uint8_t* status = nullptr);
+  [[nodiscard]] WiFiClient accept() const;
+  void begin() override;
   void begin(uint16_t port);
   void end();
-  virtual size_t write(uint8_t);
-  virtual size_t write(const uint8_t *buf, size_t size);
-  uint8_t status();
-  explicit operator bool();
+  void close();
+  void stop();
+  void setNoDelay(bool nodelay) {};
+  size_t write(uint8_t) override;
+  size_t write(const uint8_t *buf, size_t size) override;
+  [[nodiscard]] uint8_t status() const;
+  explicit operator bool() const;
 
   using Print::write;
+  using ClientType = WiFiClient;
 };
 
 #endif

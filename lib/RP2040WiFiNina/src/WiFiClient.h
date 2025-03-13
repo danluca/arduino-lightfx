@@ -25,33 +25,39 @@
 #include "Client.h"
 #include "IPAddress.h"
 
+#define WL_STREAM_BUFFER_SIZE 1024
+
 class WiFiClient : public Client {
 
 public:
+  virtual ~WiFiClient() = default;
+
   WiFiClient();
-  WiFiClient(uint8_t sock);
+  explicit WiFiClient(uint8_t sock);
 
-  uint8_t status();
-  void setConnectionTimeout(uint16_t timeout) {_connTimeout = timeout;}
+  [[nodiscard]] uint8_t status() const;
+  void setConnectionTimeout(const uint16_t timeout) {_connTimeout = timeout;}
 
-  virtual int connect(IPAddress ip, uint16_t port);
-  virtual int connect(const char *host, uint16_t port);
+  int connect(IPAddress ip, uint16_t port) override;
+  int connect(const char *host, uint16_t port) override;
   virtual int connectSSL(IPAddress ip, uint16_t port);
   virtual int connectSSL(const char *host, uint16_t port);
   virtual int connectBearSSL(IPAddress ip, uint16_t port);
   virtual int connectBearSSL(const char *host, uint16_t port);
-  virtual size_t write(uint8_t);
-  virtual size_t write(const uint8_t *buf, size_t size);
+  size_t write(uint8_t) override;
+  size_t write(const uint8_t *buf, size_t size) override;
+  size_t write(Stream &stream);
   virtual size_t retry(const uint8_t *buf, size_t size, bool write);
-  virtual int available();
-  virtual int read();
-  virtual int read(uint8_t *buf, size_t size);
-  virtual int peek();
+  int available() override;
+  int read() override;
+  int read(uint8_t *buf, size_t size) override;
+  int peek() override;
   virtual void setRetry(bool retry);
-  virtual void flush();
-  virtual void stop();
-  virtual uint8_t connected();
-  virtual operator bool();
+  void flush() override;
+  void stop() override;
+  uint8_t connected() override;
+  [[nodiscard]] uint8_t socket() const { return _sock; }
+  operator bool() override;
 
   virtual IPAddress remoteIP();
   virtual uint16_t remotePort();
@@ -63,7 +69,8 @@ public:
 
 private:
   static uint16_t _srcport;
-  uint8_t _sock;
+  uint8_t _sock;   //not used
+  uint16_t  _socket;
   uint16_t  _connTimeout = 0;
   bool _retrySend;
 };

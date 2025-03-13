@@ -18,7 +18,7 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <string.h>
+#include <cstring>
 
 extern "C" {
   #include "utility/debug.h"
@@ -32,22 +32,19 @@ extern "C" {
 #include "WiFi.h"
 #include "WiFiUdp.h"
 #include "WiFiClient.h"
-#include "WiFiServer.h"
 
 
-/* Constructor */
-WiFiUDP::WiFiUDP() : _sock(NO_SOCKET_AVAIL), _parsed(0) {}
+/* Constructor - default UDP port for DS lookups, 53 */
+WiFiUDP::WiFiUDP() : _sock(NO_SOCKET_AVAIL), _port(53), _parsed(0) {
+}
 
 /* Start WiFiUDP socket, listening at local port PORT */
-uint8_t WiFiUDP::begin(uint16_t port) {
-    if (_sock != NO_SOCKET_AVAIL)
-    {
+uint8_t WiFiUDP::begin(const uint16_t port) {
+    if (_sock != NO_SOCKET_AVAIL) {
         stop();
     }
 
-    uint8_t sock = ServerDrv::getSocket();
-    if (sock != NO_SOCKET_AVAIL)
-    {
+    if (const uint8_t sock = ServerDrv::getSocket(); sock != NO_SOCKET_AVAIL) {
         ServerDrv::startServer(port, sock, UDP_MODE);
         _sock = sock;
         _port = port;
@@ -57,15 +54,12 @@ uint8_t WiFiUDP::begin(uint16_t port) {
     return 0;
 }
 
-uint8_t WiFiUDP::beginMulticast(IPAddress ip, uint16_t port) {
-    if (_sock != NO_SOCKET_AVAIL)
-    {
+uint8_t WiFiUDP::beginMulticast(IPAddress ip, const uint16_t port) {
+    if (_sock != NO_SOCKET_AVAIL) {
         stop();
     }
 
-    uint8_t sock = ServerDrv::getSocket();
-    if (sock != NO_SOCKET_AVAIL)
-    {
+    if (const uint8_t sock = ServerDrv::getSocket(); sock != NO_SOCKET_AVAIL) {
         ServerDrv::startServer(ip, port, sock, UDP_MULTICAST_MODE);
         _sock = sock;
         _port = port;
@@ -93,50 +87,41 @@ void WiFiUDP::stop()
 	  _sock = NO_SOCKET_AVAIL;
 }
 
-int WiFiUDP::beginPacket(const char *host, uint16_t port)
-{
+int WiFiUDP::beginPacket(const char *host, const uint16_t port) {
 	// Look up the host first
-	int ret = 0;
-	IPAddress remote_addr;
-	if (WiFi.hostByName(host, remote_addr))
+	const int ret = 0;
+	if (IPAddress remote_addr; WiFi.hostByName(host, remote_addr))
 	{
 		return beginPacket(remote_addr, port);
 	}
 	return ret;
 }
 
-int WiFiUDP::beginPacket(IPAddress ip, uint16_t port)
-{
+int WiFiUDP::beginPacket(IPAddress ip, const uint16_t port) {
   if (_sock == NO_SOCKET_AVAIL)
 	  _sock = ServerDrv::getSocket();
-  if (_sock != NO_SOCKET_AVAIL)
-  {
+  if (_sock != NO_SOCKET_AVAIL) {
 	  ServerDrv::startClient(uint32_t(ip), port, _sock, UDP_MODE);
 	  return 1;
   }
   return 0;
 }
 
-int WiFiUDP::endPacket()
-{
+int WiFiUDP::endPacket() {
 	return ServerDrv::sendUdpData(_sock);
 }
 
-size_t WiFiUDP::write(uint8_t byte)
-{
+size_t WiFiUDP::write(const uint8_t byte) {
   return write(&byte, 1);
 }
 
-size_t WiFiUDP::write(const uint8_t *buffer, size_t size)
-{
+size_t WiFiUDP::write(const uint8_t *buffer, const size_t size) {
 	ServerDrv::insertDataBuf(_sock, buffer, size);
 	return size;
 }
 
-int WiFiUDP::parsePacket()
-{
-	while (_parsed--)
-	{
+int WiFiUDP::parsePacket() {
+	while (_parsed--) {
 	  // discard previously parsed packet data
 	  uint8_t b;
 
@@ -148,10 +133,8 @@ int WiFiUDP::parsePacket()
 	return _parsed;
 }
 
-int WiFiUDP::read()
-{
-  if (_parsed < 1)
-  {
+int WiFiUDP::read() {
+  if (_parsed < 1) {
     return -1;
   }
 
@@ -163,40 +146,33 @@ int WiFiUDP::read()
   return b;
 }
 
-int WiFiUDP::read(unsigned char* buffer, size_t len)
-{
-  if (_parsed < 1)
-  {
+int WiFiUDP::read(unsigned char* buffer, const size_t len) {
+  if (_parsed < 1) {
     return 0;
   }
 
-  int result = WiFiSocketBuffer.read(_sock, buffer, len);
+  const int result = WiFiSocketBuffer.read(_sock, buffer, len);
 
-  if (result > 0)
-  {
+  if (result > 0) {
     _parsed -= result;
   }
 
   return result;
 }
 
-int WiFiUDP::peek()
-{
-  if (_parsed < 1)
-  {
+int WiFiUDP::peek() {
+  if (_parsed < 1) {
     return -1;
   }
 
   return WiFiSocketBuffer.peek(_sock);
 }
 
-void WiFiUDP::flush()
-{
+void WiFiUDP::flush() {
   // TODO: a real check to ensure transmission has been completed
 }
 
-IPAddress  WiFiUDP::remoteIP()
-{
+IPAddress  WiFiUDP::remoteIP() {
 	uint8_t _remoteIp[4] = {0};
 	uint8_t _remotePort[2] = {0};
 
@@ -205,13 +181,12 @@ IPAddress  WiFiUDP::remoteIP()
 	return ip;
 }
 
-uint16_t  WiFiUDP::remotePort()
-{
+uint16_t  WiFiUDP::remotePort() {
 	uint8_t _remoteIp[4] = {0};
 	uint8_t _remotePort[2] = {0};
 
 	WiFiDrv::getRemoteData(_sock, _remoteIp, _remotePort);
-	uint16_t port = (_remotePort[0]<<8)+_remotePort[1];
+	const uint16_t port = (_remotePort[0]<<8)+_remotePort[1];
 	return port;
 }
 

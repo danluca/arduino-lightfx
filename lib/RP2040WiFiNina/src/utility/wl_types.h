@@ -28,8 +28,6 @@
 #ifndef	_WL_TYPES_H_
 #define	_WL_TYPES_H_
 
-#include <inttypes.h>
-
 typedef enum {
         WL_FAILURE = -1,
         WL_SUCCESS = 1,

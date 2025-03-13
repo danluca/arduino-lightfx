@@ -32,7 +32,7 @@ extern "C" {
 
 
 // Start server TCP on port specified
-void ServerDrv::startServer(uint16_t port, uint8_t sock, uint8_t protMode)
+void ServerDrv::startServer(const uint16_t port, uint8_t sock, uint8_t protMode)
 {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
@@ -59,7 +59,7 @@ void ServerDrv::startServer(uint16_t port, uint8_t sock, uint8_t protMode)
     SpiDrv::spiSlaveDeselect();
 }
 
-void ServerDrv::startServer(uint32_t ipAddress, uint16_t port, uint8_t sock, uint8_t protMode)
+void ServerDrv::startServer(uint32_t ipAddress, const uint16_t port, uint8_t sock, uint8_t protMode)
 {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
@@ -107,7 +107,7 @@ void ServerDrv::stopServer(uint8_t sock)
 }
 
 // Start server TCP on port specified
-void ServerDrv::startClient(uint32_t ipAddress, uint16_t port, uint8_t sock, uint8_t protMode)
+void ServerDrv::startClient(uint32_t ipAddress, const uint16_t port, uint8_t sock, uint8_t protMode)
 {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
@@ -132,7 +132,7 @@ void ServerDrv::startClient(uint32_t ipAddress, uint16_t port, uint8_t sock, uin
     SpiDrv::spiSlaveDeselect();
 }
 
-void ServerDrv::startClient(const char* host, uint8_t host_len, uint32_t ipAddress, uint16_t port, uint8_t sock, uint8_t protMode, uint16_t timeout)
+void ServerDrv::startClient(const char* host, const uint8_t host_len, uint32_t ipAddress, const uint16_t port, uint8_t sock, uint8_t protMode, const uint16_t timeout)
 {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
@@ -307,7 +307,7 @@ uint8_t ServerDrv::availServer(uint8_t sock, uint8_t accept)
     return socket;
 }
 
-bool ServerDrv::getData(uint8_t sock, uint8_t *data, uint8_t peek)
+bool ServerDrv::getData(uint8_t sock, uint8_t *data, const uint8_t peek)
 {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
@@ -341,11 +341,11 @@ bool ServerDrv::getData(uint8_t sock, uint8_t *data, uint8_t peek)
     return false;
 }
 
-bool ServerDrv::getDataBuf(uint8_t sock, uint8_t *_data, uint16_t *_dataLen)
+bool ServerDrv::getDataBuf(uint8_t sock, uint8_t *data, uint16_t *len)
 {
     if (!SpiDrv::available())
     {
-        *_dataLen = 0;
+        *len = 0;
         return false;
     }
     
@@ -353,7 +353,7 @@ bool ServerDrv::getDataBuf(uint8_t sock, uint8_t *_data, uint16_t *_dataLen)
     // Send Command
     SpiDrv::sendCmd(GET_DATABUF_TCP_CMD, PARAM_NUMS_2);
     SpiDrv::sendBuffer(&sock, sizeof(sock));
-    SpiDrv::sendBuffer((uint8_t *)_dataLen, sizeof(*_dataLen), LAST_PARAM);
+    SpiDrv::sendBuffer((uint8_t *)len, sizeof(*len), LAST_PARAM);
 
     // pad to multiple of 4
     SpiDrv::readChar();
@@ -364,28 +364,28 @@ bool ServerDrv::getDataBuf(uint8_t sock, uint8_t *_data, uint16_t *_dataLen)
     SpiDrv::spiSlaveSelect();
 
     // Wait for reply
-    if (!SpiDrv::waitResponseData16(GET_DATABUF_TCP_CMD, _data, _dataLen))
+    if (!SpiDrv::waitResponseData16(GET_DATABUF_TCP_CMD, data, len))
     {
         WARN("error waitResponse");
     }
     SpiDrv::spiSlaveDeselect();
-    if (*_dataLen!=0)
+    if (*len!=0)
     {
         return true;
     }
     return false;
 }
 
-bool ServerDrv::insertDataBuf(uint8_t sock, const uint8_t *data, uint16_t _len)
+bool ServerDrv::insertDataBuf(uint8_t sock, const uint8_t *data, const uint16_t len)
 {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(INSERT_DATABUF_CMD, PARAM_NUMS_2);
     SpiDrv::sendBuffer(&sock, sizeof(sock));
-    SpiDrv::sendBuffer((uint8_t *)data, _len, LAST_PARAM);
+    SpiDrv::sendBuffer((uint8_t *)data, len, LAST_PARAM);
 
     // pad to multiple of 4
-    int commandSize = 9 + _len;
+    int commandSize = 9 + len;
     while (commandSize % 4) {
         SpiDrv::readChar();
         commandSize++;
@@ -443,7 +443,7 @@ bool ServerDrv::sendUdpData(uint8_t sock)
 }
 
 
-uint16_t ServerDrv::sendData(uint8_t sock, const uint8_t *data, uint16_t len)
+uint16_t ServerDrv::sendData(uint8_t sock, const uint8_t *data, const uint16_t len)
 {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
@@ -478,7 +478,7 @@ uint16_t ServerDrv::sendData(uint8_t sock, const uint8_t *data, uint16_t len)
 
 uint8_t ServerDrv::checkDataSent(uint8_t sock)
 {
-	const uint16_t TIMEOUT_DATA_SENT = 25;
+    constexpr uint16_t TIMEOUT_DATA_SENT = 25;
     uint16_t timeout = 0;
 	uint8_t _data = 0;
 	uint8_t _dataLen = 0;
@@ -505,14 +505,15 @@ uint8_t ServerDrv::checkDataSent(uint8_t sock)
 		}
 		SpiDrv::spiSlaveDeselect();
 
-		if (_data) timeout = 0;
-		else{
+		if (_data)
+		    timeout = 0;
+		else {
 			++timeout;
 			delay(100);
 		}
 
-	}while((_data==0)&&(timeout<TIMEOUT_DATA_SENT));
-    return (timeout==TIMEOUT_DATA_SENT)?0:1;
+	} while(_data==0 && timeout<TIMEOUT_DATA_SENT);
+    return timeout==TIMEOUT_DATA_SENT ? 0:1;
 }
 
 uint8_t ServerDrv::getSocket()

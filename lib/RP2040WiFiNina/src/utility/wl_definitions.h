@@ -62,7 +62,7 @@ typedef enum {
 } wl_status_t;
 
 /* Encryption modes */
-enum wl_enc_type {  /* Values map to 802.11 Cipher Algorithm Identifier */
+enum wl_enc_type {  /* Values map to 802.11 encryption suites... */
         ENC_TYPE_WEP  = 5,
         ENC_TYPE_TKIP = 2,
         ENC_TYPE_WPA = ENC_TYPE_TKIP,

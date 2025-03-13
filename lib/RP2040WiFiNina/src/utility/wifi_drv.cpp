@@ -18,15 +18,15 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdint.h>
+#include <cstdio>
+#include <cstring>
+#include <cstdint>
 
 #include "Arduino.h"
 #include "utility/spi_drv.h"
 #include "utility/wifi_drv.h"
 
-#define _DEBUG_
+// #define _DEBUG_
 
 extern "C" {
 #include "utility/wifi_spi.h"
@@ -50,8 +50,7 @@ char    WiFiDrv::fwVersion[] = {0};
 
 // Private Methods
 
-void WiFiDrv::getNetworkData(uint8_t *ip, uint8_t *mask, uint8_t *gwip)
-{
+void WiFiDrv::getNetworkData(uint8_t *ip, uint8_t *mask, uint8_t *gwip) {
     tParam params[PARAM_NUMS_3] = { {0, (char*)ip}, {0, (char*)mask}, {0, (char*)gwip}};
 
     WAIT_FOR_SLAVE_SELECT();
@@ -59,7 +58,7 @@ void WiFiDrv::getNetworkData(uint8_t *ip, uint8_t *mask, uint8_t *gwip)
     // Send Command
     SpiDrv::sendCmd(GET_IPADDR_CMD, PARAM_NUMS_1);
 
-    uint8_t _dummy = DUMMY_DATA;
+    const uint8_t _dummy = DUMMY_DATA;
     SpiDrv::sendParam(&_dummy, sizeof(_dummy), LAST_PARAM);
 
     // pad to multiple of 4
@@ -77,8 +76,7 @@ void WiFiDrv::getNetworkData(uint8_t *ip, uint8_t *mask, uint8_t *gwip)
     SpiDrv::spiSlaveDeselect();
 }
 
-void WiFiDrv::getRemoteData(uint8_t sock, uint8_t *ip, uint8_t *port)
-{
+void WiFiDrv::getRemoteData(uint8_t sock, uint8_t *ip, uint8_t *port) {
     tParam params[PARAM_NUMS_2] = { {0, (char*)ip}, {0, (char*)port} };
 
     WAIT_FOR_SLAVE_SELECT();
@@ -106,18 +104,15 @@ void WiFiDrv::getRemoteData(uint8_t sock, uint8_t *ip, uint8_t *port)
 // Public Methods
 
 
-void WiFiDrv::wifiDriverInit()
-{
+void WiFiDrv::wifiDriverInit() {
     SpiDrv::begin();
 }
 
-void WiFiDrv::wifiDriverDeinit()
-{
+void WiFiDrv::wifiDriverDeinit() {
     SpiDrv::end();
 }
 
-int8_t WiFiDrv::wifiSetNetwork(const char* ssid, uint8_t ssid_len)
-{
+int8_t WiFiDrv::wifiSetNetwork(const char* ssid, const uint8_t ssid_len) {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_NET_CMD, PARAM_NUMS_1);
@@ -148,8 +143,7 @@ int8_t WiFiDrv::wifiSetNetwork(const char* ssid, uint8_t ssid_len)
     return(_data == WIFI_SPI_ACK) ? WL_SUCCESS : WL_FAILURE;
 }
 
-int8_t WiFiDrv::wifiSetPassphrase(const char* ssid, uint8_t ssid_len, const char *passphrase, const uint8_t len)
-{
+int8_t WiFiDrv::wifiSetPassphrase(const char* ssid, const uint8_t ssid_len, const char *passphrase, const uint8_t len) {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_PASSPHRASE_CMD, PARAM_NUMS_2);
@@ -171,8 +165,7 @@ int8_t WiFiDrv::wifiSetPassphrase(const char* ssid, uint8_t ssid_len, const char
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_PASSPHRASE_CMD, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_PASSPHRASE_CMD, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
@@ -181,8 +174,7 @@ int8_t WiFiDrv::wifiSetPassphrase(const char* ssid, uint8_t ssid_len, const char
 }
 
 
-int8_t WiFiDrv::wifiSetKey(const char* ssid, uint8_t ssid_len, uint8_t key_idx, const void *key, const uint8_t len)
-{
+int8_t WiFiDrv::wifiSetKey(const char* ssid, const uint8_t ssid_len, const uint8_t key_idx, const void *key, const uint8_t len) {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_KEY_CMD, PARAM_NUMS_3);
@@ -205,8 +197,7 @@ int8_t WiFiDrv::wifiSetKey(const char* ssid, uint8_t ssid_len, uint8_t key_idx, 
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_KEY_CMD, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_KEY_CMD, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
@@ -214,8 +205,7 @@ int8_t WiFiDrv::wifiSetKey(const char* ssid, uint8_t ssid_len, uint8_t key_idx, 
     return _data;
 }
 
-void WiFiDrv::config(uint8_t validParams, uint32_t local_ip, uint32_t gateway, uint32_t subnet)
-{
+void WiFiDrv::config(uint8_t validParams, uint32_t local_ip, uint32_t gateway, uint32_t subnet) {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_IP_CONFIG_CMD, PARAM_NUMS_4);
@@ -237,16 +227,14 @@ void WiFiDrv::config(uint8_t validParams, uint32_t local_ip, uint32_t gateway, u
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_IP_CONFIG_CMD, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_IP_CONFIG_CMD, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
     SpiDrv::spiSlaveDeselect();
 }
 
-void WiFiDrv::setDNS(uint8_t validParams, uint32_t dns_server1, uint32_t dns_server2)
-{
+void WiFiDrv::setDNS(uint8_t validParams, uint32_t dns_server1, uint32_t dns_server2) {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_DNS_CONFIG_CMD, PARAM_NUMS_3);
@@ -262,16 +250,14 @@ void WiFiDrv::setDNS(uint8_t validParams, uint32_t dns_server1, uint32_t dns_ser
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_DNS_CONFIG_CMD, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_DNS_CONFIG_CMD, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
     SpiDrv::spiSlaveDeselect();
 }
 
-void WiFiDrv::setHostname(const char* hostname)
-{
+void WiFiDrv::setHostname(const char* hostname) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_HOSTNAME_CMD, PARAM_NUMS_1);
@@ -292,21 +278,19 @@ void WiFiDrv::setHostname(const char* hostname)
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_HOSTNAME_CMD, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_HOSTNAME_CMD, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
     SpiDrv::spiSlaveDeselect();
 }
                         
-int8_t WiFiDrv::disconnect()
-{
+int8_t WiFiDrv::disconnect() {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(DISCONNECT_CMD, PARAM_NUMS_1);
 
-    uint8_t _dummy = DUMMY_DATA;
+    const uint8_t _dummy = DUMMY_DATA;
     SpiDrv::sendParam(&_dummy, 1, LAST_PARAM);
 
     // pad to multiple of 4
@@ -321,15 +305,14 @@ int8_t WiFiDrv::disconnect()
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    int8_t result = SpiDrv::waitResponseCmd(DISCONNECT_CMD, PARAM_NUMS_1, &_data, &_dataLen);
+    const int8_t result = SpiDrv::waitResponseCmd(DISCONNECT_CMD, PARAM_NUMS_1, &_data, &_dataLen);
 
     SpiDrv::spiSlaveDeselect();
 
     return result;
 }
 
-uint8_t WiFiDrv::getReasonCode()
-{
+uint8_t WiFiDrv::getReasonCode() {
     WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
@@ -350,8 +333,7 @@ uint8_t WiFiDrv::getReasonCode()
     return _data;
 }
 
-uint8_t WiFiDrv::getConnectionStatus()
-{
+uint8_t WiFiDrv::getConnectionStatus() {
 	WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
@@ -372,14 +354,13 @@ uint8_t WiFiDrv::getConnectionStatus()
     return _data;
 }
 
-uint8_t* WiFiDrv::getMacAddress()
-{
+uint8_t* WiFiDrv::getMacAddress() {
 	WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
     SpiDrv::sendCmd(GET_MACADDR_CMD, PARAM_NUMS_1);
 
-    uint8_t _dummy = DUMMY_DATA;
+    const uint8_t _dummy = DUMMY_DATA;
     SpiDrv::sendParam(&_dummy, 1, LAST_PARAM);
     
     // pad to multiple of 4
@@ -400,34 +381,30 @@ uint8_t* WiFiDrv::getMacAddress()
     return _mac;
 }
 
-void WiFiDrv::getIpAddress(IPAddress& ip)
-{
+void WiFiDrv::getIpAddress(IPAddress& ip) {
     //first byte of the IP address is never 0 - use it to check if we've cached these values before
     if (_localIp[0] == 0)
 	    getNetworkData(_localIp, _subnetMask, _gatewayIp);
 	ip = _localIp;
 }
 
- void WiFiDrv::getSubnetMask(IPAddress& mask)
- {
+ void WiFiDrv::getSubnetMask(IPAddress& mask) {
     //first byte of the IP address is never 0 - use it to check if we've cached these values before
     if (_localIp[0] == 0)
 	    getNetworkData(_localIp, _subnetMask, _gatewayIp);
 	mask = _subnetMask;
  }
 
- void WiFiDrv::getGatewayIP(IPAddress& ip)
- {
+ void WiFiDrv::getGatewayIP(IPAddress& ip) {
     //first byte of the IP address is never 0 - use it to check if we've cached these values before
     if (_localIp[0] == 0)
-        getNetworkData(_localIp, _subnetMask, _gatewayIp);
+	    getNetworkData(_localIp, _subnetMask, _gatewayIp);
 	ip = _gatewayIp;
  }
 
- void WiFiDrv::getDNS(IPAddress& dnsip0, IPAddress& dnsip1)
- {
-   uint8_t ip0[WL_IPV4_LENGTH] = {0};
-   uint8_t ip1[WL_IPV4_LENGTH] = {0};
+ void WiFiDrv::getDNS(IPAddress& dnsip0, IPAddress& dnsip1) {
+   const uint8_t ip0[WL_IPV4_LENGTH] = {0};
+   const uint8_t ip1[WL_IPV4_LENGTH] = {0};
 
    tParam params[PARAM_NUMS_2] = { {0, (char*)ip0}, {0, (char*)ip1}};
 
@@ -436,7 +413,7 @@ void WiFiDrv::getIpAddress(IPAddress& ip)
    // Send Command
    SpiDrv::sendCmd(GET_DNS_CONFIG_CMD, PARAM_NUMS_1);
 
-   uint8_t _dummy = DUMMY_DATA;
+   const uint8_t _dummy = DUMMY_DATA;
    SpiDrv::sendParam(&_dummy, sizeof(_dummy), LAST_PARAM);
 
    // pad to multiple of 4
@@ -457,14 +434,13 @@ void WiFiDrv::getIpAddress(IPAddress& ip)
    dnsip1 = ip1;
  }
 
-const char* WiFiDrv::getCurrentSSID()
-{
+const char* WiFiDrv::getCurrentSSID() {
 	WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
     SpiDrv::sendCmd(GET_CURR_SSID_CMD, PARAM_NUMS_1);
 
-    uint8_t _dummy = DUMMY_DATA;
+    const uint8_t _dummy = DUMMY_DATA;
     SpiDrv::sendParam(&_dummy, 1, LAST_PARAM);
 
     // pad to multiple of 4
@@ -487,14 +463,13 @@ const char* WiFiDrv::getCurrentSSID()
     return _ssid;
 }
 
-uint8_t* WiFiDrv::getCurrentBSSID()
-{
+uint8_t* WiFiDrv::getCurrentBSSID() {
 	WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
     SpiDrv::sendCmd(GET_CURR_BSSID_CMD, PARAM_NUMS_1);
 
-    uint8_t _dummy = DUMMY_DATA;
+    const uint8_t _dummy = DUMMY_DATA;
     SpiDrv::sendParam(&_dummy, 1, LAST_PARAM);
 
     // pad to multiple of 4
@@ -515,14 +490,13 @@ uint8_t* WiFiDrv::getCurrentBSSID()
     return _bssid;
 }
 
-int32_t WiFiDrv::getCurrentRSSI()
-{
+int32_t WiFiDrv::getCurrentRSSI() {
 	WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
     SpiDrv::sendCmd(GET_CURR_RSSI_CMD, PARAM_NUMS_1);
 
-    uint8_t _dummy = DUMMY_DATA;
+    const uint8_t _dummy = DUMMY_DATA;
     SpiDrv::sendParam(&_dummy, 1, LAST_PARAM);
 
     // pad to multiple of 4
@@ -544,14 +518,13 @@ int32_t WiFiDrv::getCurrentRSSI()
     return rssi;
 }
 
-uint8_t WiFiDrv::getCurrentEncryptionType()
-{
+uint8_t WiFiDrv::getCurrentEncryptionType() {
 	WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
     SpiDrv::sendCmd(GET_CURR_ENCT_CMD, PARAM_NUMS_1);
 
-    uint8_t _dummy = DUMMY_DATA;
+    const uint8_t _dummy = DUMMY_DATA;
     SpiDrv::sendParam(&_dummy, 1, LAST_PARAM);
 
     // pad to multiple of 4
@@ -573,8 +546,7 @@ uint8_t WiFiDrv::getCurrentEncryptionType()
     return encType;
 }
 
-int8_t WiFiDrv::startScanNetworks()
-{
+int8_t WiFiDrv::startScanNetworks() {
 	WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
@@ -589,20 +561,18 @@ int8_t WiFiDrv::startScanNetworks()
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
 
-    if (!SpiDrv::waitResponseCmd(START_SCAN_NETWORKS, PARAM_NUMS_1, &_data, &_dataLen))
-     {
+    if (!SpiDrv::waitResponseCmd(START_SCAN_NETWORKS, PARAM_NUMS_1, &_data, &_dataLen)) {
          WARN("error waitResponse");
          _data = WL_FAILURE;
      }
 
     SpiDrv::spiSlaveDeselect();
 
-    return ((int8_t)_data == WL_FAILURE)? _data : (int8_t)WL_SUCCESS;
+    return (int8_t)_data == WL_FAILURE ? _data : (int8_t)WL_SUCCESS;
 }
 
 
-uint8_t WiFiDrv::getScanNetworks()
-{
+uint8_t WiFiDrv::getScanNetworks() {
 	WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
@@ -622,16 +592,14 @@ uint8_t WiFiDrv::getScanNetworks()
     return ssidListNum;
 }
 
-const char* WiFiDrv::getSSIDNetoworks(uint8_t networkItem)
-{
+const char* WiFiDrv::getSSIDNetworks(const uint8_t networkItem) {
 	if (networkItem >= WL_NETWORKS_LIST_MAXNUM)
-		return (char*)NULL;
+		return (char*)nullptr;
 
 	return _networkSsid[networkItem];
 }
 
-uint8_t WiFiDrv::getEncTypeNetowrks(uint8_t networkItem)
-{
+uint8_t WiFiDrv::getEncTypeNetworks(const uint8_t networkItem) {
 	if (networkItem >= WL_NETWORKS_LIST_MAXNUM)
 		return ENC_TYPE_UNKNOWN;
 
@@ -661,10 +629,9 @@ uint8_t WiFiDrv::getEncTypeNetowrks(uint8_t networkItem)
     return encType;
 }
 
-uint8_t* WiFiDrv::getBSSIDNetowrks(uint8_t networkItem, uint8_t* bssid)
-{
+uint8_t* WiFiDrv::getBSSIDNetworks(const uint8_t networkItem, uint8_t* bssid) {
     if (networkItem >= WL_NETWORKS_LIST_MAXNUM)
-        return NULL;
+        return nullptr;
 
     WAIT_FOR_SLAVE_SELECT();
 
@@ -691,8 +658,7 @@ uint8_t* WiFiDrv::getBSSIDNetowrks(uint8_t networkItem, uint8_t* bssid)
     return bssid;  
 }
 
-uint8_t WiFiDrv::getChannelNetowrks(uint8_t networkItem)
-{
+uint8_t WiFiDrv::getChannelNetworks(const uint8_t networkItem) {
     if (networkItem >= WL_NETWORKS_LIST_MAXNUM)
         return 0;
 
@@ -722,8 +688,7 @@ uint8_t WiFiDrv::getChannelNetowrks(uint8_t networkItem)
     return channel;  
 }
 
-int32_t WiFiDrv::getRSSINetoworks(uint8_t networkItem)
-{
+int32_t WiFiDrv::getRSSINetworks(const uint8_t networkItem) {
 	if (networkItem >= WL_NETWORKS_LIST_MAXNUM)
 		return 0;
 	int32_t	networkRssi = 0;
@@ -753,8 +718,7 @@ int32_t WiFiDrv::getRSSINetoworks(uint8_t networkItem)
 	return networkRssi;
 }
 
-uint8_t WiFiDrv::reqHostByName(const char* aHostname)
-{
+uint8_t WiFiDrv::reqHostByName(const char* aHostname) {
 	WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
@@ -787,10 +751,8 @@ uint8_t WiFiDrv::reqHostByName(const char* aHostname)
     return result;
 }
 
-int WiFiDrv::getHostByName(IPAddress& aResult)
-{
-	uint8_t  _ipAddr[WL_IPV4_LENGTH];
-	IPAddress dummy(0xFF,0xFF,0xFF,0xFF);
+int WiFiDrv::getHostByName(IPAddress& aResult) {
+    const IPAddress dummy(0xFF,0xFF,0xFF,0xFF);
 	int result = 0;
 
 	WAIT_FOR_SLAVE_SELECT();
@@ -804,10 +766,9 @@ int WiFiDrv::getHostByName(IPAddress& aResult)
 
     // Wait for reply
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(GET_HOST_BY_NAME_CMD, PARAM_NUMS_1, _ipAddr, &_dataLen))
-    {
+    if (uint8_t _ipAddr[WL_IPV4_LENGTH]; !SpiDrv::waitResponseCmd(GET_HOST_BY_NAME_CMD, PARAM_NUMS_1, _ipAddr, &_dataLen)) {
         WARN("error waitResponse");
-    }else{
+    } else {
     	aResult = _ipAddr;
     	result = (aResult != dummy);
     }
@@ -815,18 +776,14 @@ int WiFiDrv::getHostByName(IPAddress& aResult)
     return result;
 }
 
-int WiFiDrv::getHostByName(const char* aHostname, IPAddress& aResult)
-{
-	if (reqHostByName(aHostname))
-	{
+int WiFiDrv::getHostByName(const char* aHostname, IPAddress& aResult) {
+	if (reqHostByName(aHostname)) {
 		return getHostByName(aResult);
-	}else{
-		return 0;
 	}
+    return 0;
 }
 
-const char*  WiFiDrv::getFwVersion()
-{
+const char*  WiFiDrv::getFwVersion() {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(GET_FW_VERSION_CMD, PARAM_NUMS_0);
@@ -838,16 +795,14 @@ const char*  WiFiDrv::getFwVersion()
 
     // Wait for reply
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(GET_FW_VERSION_CMD, PARAM_NUMS_1, (uint8_t*)fwVersion, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(GET_FW_VERSION_CMD, PARAM_NUMS_1, (uint8_t*)fwVersion, &_dataLen)) {
         WARN("error waitResponse");
     }
     SpiDrv::spiSlaveDeselect();
     return fwVersion;
 }
 
-uint32_t WiFiDrv::getTime()
-{
+uint32_t WiFiDrv::getTime() {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(GET_TIME_CMD, PARAM_NUMS_0);
@@ -860,16 +815,14 @@ uint32_t WiFiDrv::getTime()
     // Wait for reply
     uint8_t _dataLen = 0;
     uint32_t _data = 0;
-    if (!SpiDrv::waitResponseCmd(GET_TIME_CMD, PARAM_NUMS_1, (uint8_t*)&_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(GET_TIME_CMD, PARAM_NUMS_1, (uint8_t*)&_data, &_dataLen)) {
         WARN("error waitResponse");
     }
     SpiDrv::spiSlaveDeselect();
     return _data;
 }
 
-void WiFiDrv::setPowerMode(uint8_t mode)
-{
+void WiFiDrv::setPowerMode(const uint8_t mode) {
     WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
@@ -894,8 +847,7 @@ void WiFiDrv::setPowerMode(uint8_t mode)
     SpiDrv::spiSlaveDeselect();
 }
 
-int8_t WiFiDrv::wifiSetApNetwork(const char* ssid, uint8_t ssid_len, uint8_t channel)
-{
+int8_t WiFiDrv::wifiSetApNetwork(const char* ssid, const uint8_t ssid_len, const uint8_t channel) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_AP_NET_CMD, PARAM_NUMS_2);
@@ -917,8 +869,7 @@ int8_t WiFiDrv::wifiSetApNetwork(const char* ssid, uint8_t ssid_len, uint8_t cha
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_AP_NET_CMD, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_AP_NET_CMD, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
@@ -927,8 +878,7 @@ int8_t WiFiDrv::wifiSetApNetwork(const char* ssid, uint8_t ssid_len, uint8_t cha
     return(_data == WIFI_SPI_ACK) ? WL_SUCCESS : WL_FAILURE;
 }
 
-int8_t WiFiDrv::wifiSetApPassphrase(const char* ssid, uint8_t ssid_len, const char *passphrase, const uint8_t len, uint8_t channel)
-{
+int8_t WiFiDrv::wifiSetApPassphrase(const char* ssid, const uint8_t ssid_len, const char *passphrase, const uint8_t len, const uint8_t channel) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_AP_PASSPHRASE_CMD, PARAM_NUMS_3);
@@ -951,8 +901,7 @@ int8_t WiFiDrv::wifiSetApPassphrase(const char* ssid, uint8_t ssid_len, const ch
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_AP_PASSPHRASE_CMD, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_AP_PASSPHRASE_CMD, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
@@ -960,8 +909,8 @@ int8_t WiFiDrv::wifiSetApPassphrase(const char* ssid, uint8_t ssid_len, const ch
     return _data;
 }
 
-int8_t WiFiDrv::wifiSetEnterprise(uint8_t eapType, const char* ssid, uint8_t ssid_len, const char *username, const uint8_t username_len, const char *password, const uint8_t password_len, const char *identity, const uint8_t identity_len, const char* ca_cert, uint16_t ca_cert_len)
-{
+int8_t WiFiDrv::wifiSetEnterprise(const uint8_t eapType, const char* ssid, const uint8_t ssid_len, const char *username, const uint8_t username_len,
+    const char *password, const uint8_t password_len, const char *identity, const uint8_t identity_len, const char* ca_cert, const uint16_t ca_cert_len) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_ENT_CMD, PARAM_NUMS_6);
@@ -987,8 +936,7 @@ int8_t WiFiDrv::wifiSetEnterprise(uint8_t eapType, const char* ssid, uint8_t ssi
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_ENT_CMD, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_ENT_CMD, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
@@ -996,8 +944,7 @@ int8_t WiFiDrv::wifiSetEnterprise(uint8_t eapType, const char* ssid, uint8_t ssi
     return _data;
 }
 
-int16_t WiFiDrv::ping(uint32_t ipAddress, uint8_t ttl)
-{
+int16_t WiFiDrv::ping(uint32_t ipAddress, uint8_t ttl) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(PING_CMD, PARAM_NUMS_2);
@@ -1015,8 +962,7 @@ int16_t WiFiDrv::ping(uint32_t ipAddress, uint8_t ttl)
     // Wait for reply
     uint16_t _data;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(PING_CMD, PARAM_NUMS_1, (uint8_t*)&_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(PING_CMD, PARAM_NUMS_1, (uint8_t*)&_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_PING_ERROR;
     }
@@ -1024,8 +970,7 @@ int16_t WiFiDrv::ping(uint32_t ipAddress, uint8_t ttl)
     return _data;  
 }
 
-void WiFiDrv::debug(uint8_t on)
-{
+void WiFiDrv::debug(const uint8_t on) {
     WAIT_FOR_SLAVE_SELECT();
 
     // Send Command
@@ -1050,8 +995,7 @@ void WiFiDrv::debug(uint8_t on)
     SpiDrv::spiSlaveDeselect(); 
 }
 
-float WiFiDrv::getTemperature()
-{
+float WiFiDrv::getTemperature() {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(GET_TEMPERATURE_CMD, PARAM_NUMS_0);
@@ -1064,16 +1008,14 @@ float WiFiDrv::getTemperature()
     // Wait for reply
     uint8_t _dataLen = 0;
     float _data = 0;
-    if (!SpiDrv::waitResponseCmd(GET_TEMPERATURE_CMD, PARAM_NUMS_1, (uint8_t*)&_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(GET_TEMPERATURE_CMD, PARAM_NUMS_1, (uint8_t*)&_data, &_dataLen)) {
         WARN("error waitResponse");
     }
     SpiDrv::spiSlaveDeselect();
     return _data;
 }
 
-void WiFiDrv::pinMode(uint8_t pin, uint8_t mode)
-{
+void WiFiDrv::pinMode(uint8_t pin, uint8_t mode) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_PIN_MODE, PARAM_NUMS_2);
@@ -1091,16 +1033,14 @@ void WiFiDrv::pinMode(uint8_t pin, uint8_t mode)
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_PIN_MODE, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_PIN_MODE, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
     SpiDrv::spiSlaveDeselect();
 }
 
-PinStatus WiFiDrv::digitalRead(uint8_t pin)
-{
+PinStatus WiFiDrv::digitalRead(uint8_t pin) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(GET_DIGITAL_READ, PARAM_NUMS_1);
@@ -1118,8 +1058,7 @@ PinStatus WiFiDrv::digitalRead(uint8_t pin)
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(GET_DIGITAL_READ, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(GET_DIGITAL_READ, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
@@ -1127,12 +1066,10 @@ PinStatus WiFiDrv::digitalRead(uint8_t pin)
 
     if (_data == 1)
         return HIGH;
-    else
-        return LOW;
+    return LOW;
 }
 
-void WiFiDrv::digitalWrite(uint8_t pin, uint8_t value)
-{
+void WiFiDrv::digitalWrite(uint8_t pin, uint8_t value) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_DIGITAL_WRITE, PARAM_NUMS_2);
@@ -1150,16 +1087,14 @@ void WiFiDrv::digitalWrite(uint8_t pin, uint8_t value)
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_DIGITAL_WRITE, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_DIGITAL_WRITE, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
     SpiDrv::spiSlaveDeselect();
 }
 
-uint16_t WiFiDrv::analogRead(uint8_t adc_channel)
-{
+uint16_t WiFiDrv::analogRead(uint8_t adc_channel) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(GET_ANALOG_READ, PARAM_NUMS_1);
@@ -1177,8 +1112,7 @@ uint16_t WiFiDrv::analogRead(uint8_t adc_channel)
     // Wait for reply
     uint16_t adc_raw = 0;
     uint8_t adc_raw_len = 0;
-    if (!SpiDrv::waitResponseCmd(GET_ANALOG_READ, PARAM_NUMS_1, (uint8_t*)&adc_raw, &adc_raw_len))
-    {
+    if (!SpiDrv::waitResponseCmd(GET_ANALOG_READ, PARAM_NUMS_1, (uint8_t*)&adc_raw, &adc_raw_len)) {
         WARN("error waitResponse");
     }
     SpiDrv::spiSlaveDeselect();
@@ -1186,8 +1120,7 @@ uint16_t WiFiDrv::analogRead(uint8_t adc_channel)
     return adc_raw;
 }
 
-void WiFiDrv::analogWrite(uint8_t pin, uint8_t value)
-{
+void WiFiDrv::analogWrite(uint8_t pin, uint8_t value) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(SET_ANALOG_WRITE, PARAM_NUMS_2);
@@ -1205,16 +1138,14 @@ void WiFiDrv::analogWrite(uint8_t pin, uint8_t value)
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(SET_ANALOG_WRITE, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(SET_ANALOG_WRITE, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
     SpiDrv::spiSlaveDeselect();
 }
 
-int8_t WiFiDrv::downloadFile(const char* url, uint8_t url_len, const char *filename, uint8_t filename_len)
-{
+int8_t WiFiDrv::downloadFile(const char* url, const uint8_t url_len, const char *filename, const uint8_t filename_len) {
 	WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(DOWNLOAD_FILE, PARAM_NUMS_2);
@@ -1236,8 +1167,7 @@ int8_t WiFiDrv::downloadFile(const char* url, uint8_t url_len, const char *filen
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(DOWNLOAD_FILE, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(DOWNLOAD_FILE, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
@@ -1245,8 +1175,7 @@ int8_t WiFiDrv::downloadFile(const char* url, uint8_t url_len, const char *filen
     return _data;
 }
 
-int8_t WiFiDrv::downloadOTA(const char* url, uint8_t url_len)
-{
+int8_t WiFiDrv::downloadOTA(const char* url, const uint8_t url_len) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     SpiDrv::sendCmd(DOWNLOAD_OTA, PARAM_NUMS_1);
@@ -1267,8 +1196,7 @@ int8_t WiFiDrv::downloadOTA(const char* url, uint8_t url_len)
     // Wait for reply
     uint8_t _data = 0;
     uint8_t _dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(DOWNLOAD_OTA, PARAM_NUMS_1, &_data, &_dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(DOWNLOAD_OTA, PARAM_NUMS_1, &_data, &_dataLen)) {
         WARN("error waitResponse");
         _data = WL_FAILURE;
     }
@@ -1276,8 +1204,7 @@ int8_t WiFiDrv::downloadOTA(const char* url, uint8_t url_len)
     return _data;
 }
 
-int8_t WiFiDrv::renameFile(const char * old_file_name, uint8_t const old_file_name_len, const char * new_file_name, uint8_t const new_file_name_len)
-{
+int8_t WiFiDrv::renameFile(const char * old_file_name, uint8_t const old_file_name_len, const char * new_file_name, uint8_t const new_file_name_len) {
 	WAIT_FOR_SLAVE_SELECT();
     /* Send Command */
     SpiDrv::sendCmd(RENAME_FILE, PARAM_NUMS_2);
@@ -1299,8 +1226,7 @@ int8_t WiFiDrv::renameFile(const char * old_file_name, uint8_t const old_file_na
     /* Wait for reply */
     uint8_t data = 0;
     uint8_t dataLen = 0;
-    if (!SpiDrv::waitResponseCmd(RENAME_FILE, PARAM_NUMS_1, &data, &dataLen))
-    {
+    if (!SpiDrv::waitResponseCmd(RENAME_FILE, PARAM_NUMS_1, &data, &dataLen)) {
         WARN("error waitResponse");
         data = WL_FAILURE;
     }
@@ -1308,8 +1234,7 @@ int8_t WiFiDrv::renameFile(const char * old_file_name, uint8_t const old_file_na
     return data;
 }
 
-int8_t WiFiDrv::fileOperation(uint8_t operation, const char *filename, uint8_t filename_len, uint32_t offset, uint8_t* buffer, uint32_t len)
-{
+int8_t WiFiDrv::fileOperation(const uint8_t operation, const char *filename, const uint8_t filename_len, uint32_t offset, uint8_t* buffer, uint32_t len) {
     WAIT_FOR_SLAVE_SELECT();
     // Send Command
     uint8_t numParams = PARAM_NUMS_3;
@@ -1356,6 +1281,5 @@ void WiFiDrv::applyOTA() {
 
     // don't wait for return; OTA operation should be fire and forget :)
 }
-
 
 WiFiDrv wiFiDrv;

@@ -1,11 +1,9 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 
 #pragma once
 #ifndef ARDUINO_LIGHTFX_BROADCAST_H
 #define ARDUINO_LIGHTFX_BROADCAST_H
-
-#include "log.h"
 
 enum BroadcastState:uint8_t {Uninitialized, Configured, Broadcasting, Waiting};
 

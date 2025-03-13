@@ -19,42 +19,28 @@
 
 #include "WiFiSSLClient.h"
 
-WiFiSSLClient::WiFiSSLClient() : 
-	WiFiClient()
-{
+WiFiSSLClient::WiFiSSLClient() = default;
+
+WiFiSSLClient::WiFiSSLClient(const uint8_t sock) : WiFiClient(sock) {
 }
 
-WiFiSSLClient::WiFiSSLClient(uint8_t sock) :
-	WiFiClient(sock)
-{  
+int WiFiSSLClient::connect(const IPAddress ip, const uint16_t port) {
+    return WiFiClient::connectSSL(ip, port);
 }
 
-int WiFiSSLClient::connect(IPAddress ip, uint16_t port)
-{
-	return WiFiClient::connectSSL(ip, port);
+int WiFiSSLClient::connect(const char *host, const uint16_t port) {
+    return WiFiClient::connectSSL(host, port);
 }
 
-int WiFiSSLClient::connect(const char* host, uint16_t port)
-{
-	return WiFiClient::connectSSL(host, port);
+WiFiBearSSLClient::WiFiBearSSLClient() = default;
+
+WiFiBearSSLClient::WiFiBearSSLClient(const uint8_t sock) : WiFiClient(sock) {
 }
 
-WiFiBearSSLClient::WiFiBearSSLClient() :
-	WiFiClient()
-{
+int WiFiBearSSLClient::connect(const IPAddress ip, const uint16_t port) {
+    return WiFiClient::connectBearSSL(ip, port);
 }
 
-WiFiBearSSLClient::WiFiBearSSLClient(uint8_t sock) :
-	WiFiClient(sock)
-{
-}
-
-int WiFiBearSSLClient::connect(IPAddress ip, uint16_t port)
-{
-	return WiFiClient::connectBearSSL(ip, port);
-}
-
-int WiFiBearSSLClient::connect(const char* host, uint16_t port)
-{
-	return WiFiClient::connectBearSSL(host, port);
+int WiFiBearSSLClient::connect(const char *host, const uint16_t port) {
+    return WiFiClient::connectBearSSL(host, port);
 }

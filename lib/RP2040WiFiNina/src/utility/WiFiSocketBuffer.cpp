@@ -17,8 +17,8 @@
   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "utility/server_drv.h"
 
@@ -32,23 +32,20 @@
 #define WIFI_SOCKET_BUFFER_SIZE 1500
 #endif
 
-WiFiSocketBufferClass::WiFiSocketBufferClass()
-{
+WiFiSocketBufferClass::WiFiSocketBufferClass() {
   memset(&_buffers, 0x00, sizeof(_buffers));
 }
 
-WiFiSocketBufferClass::~WiFiSocketBufferClass()
-{
+WiFiSocketBufferClass::~WiFiSocketBufferClass() {
   for (unsigned int i = 0; i < WIFI_SOCKET_NUM_BUFFERS; i++) {
     close(i);
   }
 }
 
-void WiFiSocketBufferClass::close(int socket)
-{
+void WiFiSocketBufferClass::close(const int socket) {
   if (_buffers[socket].data) {
     free(_buffers[socket].data);
-    _buffers[socket].data = _buffers[socket].head = NULL;
+    _buffers[socket].data = _buffers[socket].head = nullptr;
     _buffers[socket].length = 0;
   }
 }
@@ -56,7 +53,7 @@ void WiFiSocketBufferClass::close(int socket)
 int WiFiSocketBufferClass::available(int socket)
 {
   if (_buffers[socket].length == 0) {
-    if (_buffers[socket].data == NULL) {
+    if (_buffers[socket].data == nullptr) {
       _buffers[socket].data = _buffers[socket].head = (uint8_t*)malloc(WIFI_SOCKET_BUFFER_SIZE);
       _buffers[socket].length = 0;
     }
@@ -73,8 +70,7 @@ int WiFiSocketBufferClass::available(int socket)
   return _buffers[socket].length;
 }
 
-int WiFiSocketBufferClass::peek(int socket)
-{
+int WiFiSocketBufferClass::peek(const int socket) {
   if (!available(socket)) {
     return -1;
   }
@@ -82,9 +78,8 @@ int WiFiSocketBufferClass::peek(int socket)
   return *_buffers[socket].head;
 }
 
-int WiFiSocketBufferClass::read(int socket, uint8_t* data, size_t length)
-{
-  int avail = available(socket);
+int WiFiSocketBufferClass::read(const int socket, uint8_t* data, size_t length) {
+  const int avail = available(socket);
 
   if (!avail) {
     return 0;

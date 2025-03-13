@@ -1,0 +1,26 @@
+{
+  "name": "LightMDNS",
+  "keywords": "mDNS",
+  "description": "Light Multicast DNS Library for Arduino. RFC 6762 compliant supporting Services and DNS-SD, announce/answer only. Deviation from original: compiled without exceptions handling.",
+  "version": "1.0.5",
+  "authors": [{
+    "name": "Matthew Gream",
+    "email": "matthew.gream@pobox.com",
+    "maintainer": true
+  }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/matthewgream/LightMDNS"
+  },
+  "homepage": "https://github.com/matthewgream/LightMDNS",
+  "frameworks": ["arduino"],
+  "platforms": "raspberrypi",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
+  },
+  "dependencies": {
+    "PicoLog": "1.0.0"
+  }
+}

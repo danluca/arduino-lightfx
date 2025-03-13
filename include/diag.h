@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 
 #pragma once
@@ -6,10 +6,9 @@
 #define ARDUINO_LIGHTFX_DIAG_H
 
 #include "config.h"
-#include "log.h"
 
 #define IMU_TEMPERATURE_NOT_AVAILABLE   0.001f
-#define TEMP_NA_COMPARE_EPSILON      0.0001f
+#define TEMP_NA_COMPARE_EPSILON      0.001f
 
 void diagSetup();
 void diagExecute();
@@ -24,8 +23,8 @@ struct Measurement {
     time_t time;
     const Unit unit;
 
-    explicit Measurement(float v, time_t t, Unit u) : value(v), time(t), unit(u) {};
-    explicit Measurement(Unit u) : Measurement(0.0f, 0, u) {};
+    explicit Measurement(const float v, const time_t t, const Unit u) : value(v), time(t), unit(u) {};
+    explicit Measurement(const Unit u) : Measurement(0.0f, 0, u) {};
 
     void copy(const Measurement& msmt) volatile;
 
@@ -96,7 +95,7 @@ struct CalibrationParams {
     float refDelta; //the amount of temperature variation that was used for last calibration; meaningful only if valid is true
     time_t time;    //last calibration time; also used to determine whether this params set is valid
     CalibrationParams(): refTemp(0.0f), vtref(0.0f), slope(0.0f), refDelta(0.0f), time(0) {};
-    bool isValid() const { return time > 0; }
+    [[nodiscard]] bool isValid() const { return time > 0; }
 
     void reset() {
         refTemp = 0.0f;
@@ -112,9 +111,11 @@ extern CalibrationParams calibCpuTemp;
 void readCalibrationInfo();
 void saveCalibrationInfo();
 // end self-calibration support
+void wifi_temp();
 
 extern volatile MeasurementRange imuTempRange;
 extern volatile MeasurementRange cpuTempRange;
+extern volatile MeasurementRange wifiTempRange;
 extern volatile MeasurementRange lineVoltage;
 
 

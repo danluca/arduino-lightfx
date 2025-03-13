@@ -33,7 +33,7 @@
 // Board specific configurations
 #if BOARD_ID == 1
 
-#define NUM_PIXELS  164      //number of pixels on the office window edge
+#define NUM_PIXELS  170      //number of pixels on the office window edge is 166
 #define FRAME_SIZE  76
 #define PIXEL_BUFFER_SPACE  4*FRAME_SIZE    //number of pixels to reserve for secondary buffer (used for effects data maneuvering)
 

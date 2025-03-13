@@ -20,8 +20,7 @@
 #ifndef WiFiSocketBuffer_h
 #define WiFiSocketBuffer_h
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cstdint>
 
 extern "C" {
   #include "utility/wl_definitions.h"

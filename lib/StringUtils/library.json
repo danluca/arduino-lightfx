@@ -1,0 +1,22 @@
+{
+  "name": "StringUtils",
+  "keywords": "string, utils",
+  "description": "Various string utilities",
+  "version": "1.0.0",
+  "authors": {
+    "name": "Dan Luca",
+    "url": "https://github.com/danluca",
+    "maintainer": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danluca/arduino-lightfx"
+  },
+  "homepage": "https://github.com/danluca/arduino-lightfx",
+  "frameworks": ["arduino"],
+  "platforms": "raspberrypi",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
+  }
+}

@@ -13,6 +13,7 @@
 #include "global.h"
 #include "PaletteFactory.h"
 #include "constants.hpp"
+#include "log.h"
 
 typedef void (*setupFunc)();
 
@@ -62,9 +63,6 @@ extern volatile bool fxBump;
 extern volatile bool fxBroadcastEnabled;
 extern volatile uint16_t speed;
 extern volatile uint16_t curPos;
-
-
-void stateLED(CRGB color);
 
 void ledStripInit();
 

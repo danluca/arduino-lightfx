@@ -30,7 +30,7 @@ public:
 	static bool begin();
 
 	static WiFiStorageFile open(const char *filename);
-	static WiFiStorageFile open(String filename);
+	static WiFiStorageFile open(const String& filename);
 
 	static bool exists(const char *filename) {
 		uint32_t len;
@@ -46,11 +46,11 @@ public:
 	static bool rename(const char * old_file_name, const char * new_file_name) {
 		return (WiFiDrv::renameFile(old_file_name, strlen(old_file_name), new_file_name, strlen(new_file_name)) == 0);
 	}
-	static bool read(const char *filename, uint32_t offset, uint8_t* buffer, uint32_t buffer_len) {
+	static bool read(const char *filename, uint32_t offset, uint8_t* buffer, const uint32_t buffer_len) {
 		WiFiDrv::readFile(filename, strlen(filename), offset, buffer, buffer_len);
 		return true;
 	}
-	static bool write(const char *filename, uint32_t offset, uint8_t* buffer, uint32_t buffer_len) {
+	static bool write(const char *filename, uint32_t offset, uint8_t* buffer, const uint32_t buffer_len) {
 		WiFiDrv::writeFile(filename, strlen(filename), offset, buffer, buffer_len);
 		return true;
 	}
@@ -58,7 +58,7 @@ public:
 		WiFiDrv::downloadFile(url, strlen(url), filename, strlen(filename));
 		return true;
 	}
-    static bool downloadOTA(const char * url, uint8_t * res_ota_download = NULL) {
+    static bool downloadOTA(const char * url, uint8_t * res_ota_download = nullptr) {
 		/* The buffer within the NINA firmware allows a maximum
 		 * url size of 128 bytes. It's better to prevent the
 		 * transmission of over-sized URL as soon as possible.
@@ -74,22 +74,22 @@ public:
     }
 
 
-    static bool remove(String filename) {
+    static bool remove(const String& filename) {
     	return remove(filename.c_str());
 	}
-	static bool rename(String old_file_name, String new_file_name) {
+	static bool rename(const String& old_file_name, const String& new_file_name) {
 		return rename(old_file_name.c_str(), new_file_name.c_str());
 	}
-	static bool read(String filename, uint32_t offset, uint8_t* buffer, uint32_t buffer_len) {
+	static bool read(const String& filename, const uint32_t offset, uint8_t* buffer, const uint32_t buffer_len) {
 		return read(filename.c_str(), offset, buffer, buffer_len);
 	}
-	static bool write(String filename, uint32_t offset, uint8_t* buffer, uint32_t buffer_len) {
+	static bool write(const String& filename, const uint32_t offset, uint8_t* buffer, const uint32_t buffer_len) {
 		return write(filename.c_str(), offset, buffer, buffer_len);
 	}
-    static bool download(String url, String filename) {
+    static bool download(const String& url, const String& filename) {
     	return download(url.c_str(), filename.c_str());
     }
-    static bool download(String url, uint8_t * res_ota_download = NULL) {
+    static bool download(const String& url, uint8_t * res_ota_download = nullptr) {
         return downloadOTA(url.c_str(), res_ota_download);
     }
 };
@@ -100,42 +100,42 @@ extern WiFiStorageClass WiFiStorage;
 class WiFiStorageFile
 {
 public:
-	constexpr WiFiStorageFile(const char* _filename) : filename(_filename) { }
+	constexpr explicit WiFiStorageFile(const char* _filename) : filename(_filename) { }
 
 	operator bool() {
-		return WiFiStorage.exists(filename, &length);
+		return WiFiStorageClass::exists(filename, &length);
 	}
 	uint32_t read(void *buf, uint32_t rdlen) {
 		if (offset + rdlen > length) {
 			if (offset >= length) return 0;
 			rdlen = length - offset;
 		}
-		WiFiStorage.read(filename, offset, (uint8_t*)buf, rdlen);
+		WiFiStorageClass::read(filename, offset, (uint8_t*)buf, rdlen);
 		offset += rdlen;
 		return rdlen;
 	}
-	uint32_t write(const void *buf, uint32_t wrlen) {
-		WiFiStorage.write(filename, offset, (uint8_t*)buf, wrlen);
+	uint32_t write(const void *buf, const uint32_t wrlen) {
+		WiFiStorageClass::write(filename, offset, (uint8_t*)buf, wrlen);
 		offset += wrlen;
 		return wrlen;
 	}
-	void seek(uint32_t n) {
+	void seek(const uint32_t n) {
 		offset = n;
 	}
-	uint32_t position() {
+	[[nodiscard]] uint32_t position() const {
 		return offset;
 	}
 	uint32_t size() {
-		WiFiStorage.exists(filename, &length);
+		WiFiStorageClass::exists(filename, &length);
 		return length;
 	}
 	uint32_t available() {
-		WiFiStorage.exists(filename, &length);
+		WiFiStorageClass::exists(filename, &length);
 		return length - offset;
 	}
 	void erase() {
 		offset = 0;
-		WiFiStorage.remove(filename);
+		WiFiStorageClass::remove(filename);
 	}
 	void flush();
 	void close() {

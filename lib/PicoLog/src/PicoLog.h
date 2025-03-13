@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef PICOLOG_H
@@ -13,7 +13,8 @@
 
 #define CR "\n"
 #define PICO_LOG_VERSION_STR "1.0.0"
-#define LOG_BUFFER_SIZE 8192
+#define LOG_BUFFER_SIZE 10240
+#define LOG_BYPASS_BUFFER false
 
 enum LogLevel:uint8_t {SILENT, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE};
 
@@ -64,10 +65,40 @@ private:
     size_t print(LogLevel level, const __FlashStringHelper *format, va_list args);
     static size_t printThread(char *msg) ;
     static size_t printLevel(LogLevel level, char *msg) ;
+#if LOG_BYPASS_BUFFER
+    mutex_t m_mutex{};
+#endif
+
 
     friend void flushData();
 };
 
-extern PicoLog Log;
+class DummyLog {
+    public:
+    DummyLog() = default;
+    ~DummyLog() = default;
+    void begin(SerialUSB* serial, LogLevel level = INFO) {};
+    void setTimebase(time_t time) {};
+    time_t getTimebase() const { return 0; }
+    void setLevel(const LogLevel level) { };
+    LogLevel getLevel() const { return SILENT; }
+    bool isEnabled(const LogLevel level) const { return false; }
+    size_t getMinBufferSpace() const { return LOG_BUFFER_SIZE; }
 
+    template<class T> size_t log(LogLevel level, const T format, ...) const { return 0; }
+    template<class T> size_t silent(const T format, ...) const { return 0; }
+    template<class T> size_t fatal(const T format, ...) const { return 0; }
+    template<class T> size_t error(const T format, ...) const { return 0; }
+    template<class T> size_t warn(const T format, ...) const { return 0; }
+    template<class T> size_t info(const T format, ...) const { return 0; }
+    template<class T> size_t debug(const T format, ...) const { return 0; }
+    template<class T> size_t trace(const T format, ...) const { return 0; }
+};
+
+
+#if LOGGING_ENABLED == 1
+extern PicoLog Log;
+#else
+extern DummyLog Log;
+#endif
 #endif //PICOLOG_H

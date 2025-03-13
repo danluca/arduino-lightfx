@@ -2,7 +2,7 @@
 ## Functions
 #######################################
 function makeHeaderFile([System.IO.FileInfo]$file) {
-    pushd ../../include
+    pushd ../include
 
     $fname = $file.Name -replace '-|\.','_'
     $constStrStart = "#pragma once`ninline constexpr auto $fname PROGMEM = R`"~~~("
@@ -19,7 +19,7 @@ function makeHeaderFile([System.IO.FileInfo]$file) {
 ## Main
 #######################################
 pushd $PSScriptRoot
-pushd ../src/www
+pushd ../www
 
 Get-ChildItem * -Attributes !D -Exclude *.json | ForEach-Object {makeHeaderFile $_}
 

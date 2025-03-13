@@ -119,7 +119,7 @@ function getStatus() {
             let strAlarms = "";
             data.time.alarms.sort((a, b) => a.timeLong - b.timeLong);
             data.time.alarms.forEach(al =>  strAlarms += `<li>${al.timeFmt} (${al.type})</li>`);
-            let strAlarmsEnabled = data.fx.sleepEnabled ? "" : "<i>(alarms disabled)</i>"
+            let strAlarmsEnabled = data.fx.sleepEnabled ? (data.fx.asleep ? "Asleep" : "") : "<i>(alarms disabled)</i>"
             $('#schAlarms').html(`${strAlarmsEnabled}${strAlarms.length > 0 ? "<br/><ul>"+strAlarms+"</ul>" : ": None"}`);
 
             //update the current effect tiles as well
@@ -143,6 +143,8 @@ function getStatus() {
             }
             //approximately undo the dimming rules in FastLED library where dimming raw is equivalent with x*x/256
             let brPerc = Math.round(Math.sqrt(data.fx.brightness * 256)*100/256);
+            //approximate brPerc to the closest 10% step
+            brPerc = brPerc < 10 ? 10 : Math.round(brPerc/10)*10;
             $('#fxBrightness').html(`${brPerc}% (${data.fx.brightness}${data.fx.brightnessLocked?' fixed':' auto'})`)
             let brList = $('#brightList');
             brList.val(brPerc);

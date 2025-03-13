@@ -21,7 +21,7 @@
 #ifndef WiFi_Spi_h
 #define WiFi_Spi_h
 
-#include <inttypes.h>
+#include <cinttypes>
 #include "utility/wl_definitions.h"
 
 #define CMD_FLAG        0

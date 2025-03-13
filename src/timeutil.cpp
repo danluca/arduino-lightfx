@@ -20,7 +20,7 @@ bool timeSetup() {
     //read the time
     setSyncProvider(curUnixTime);
     const bool ntpTimeAvailable = ntp_sync();
-    Log.warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
+    log_warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     Holiday hday;
     if (ntpTimeAvailable) {
         const bool bDST = isDST(timeClient.getEpochTime());
@@ -32,17 +32,19 @@ bool timeSetup() {
             timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
         setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
         hday = paletteFactory.adjustHoliday();    //update the holiday for new time
+#if LOGGING_ENABLED == 1
         if (Log.getTimebase() == 0) {
             const time_t curTime = now();
             const time_t curMs = millis();
-            Log.warn(F("Logging time reference updated from %llu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
+            log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
             Log.setTimebase(curTime * 1000 - curMs);                //capture current time into the log offset, such that log statements use current time
         }
-        Log.info(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
+#endif
+        log_info(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
                    bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
         char timeBuf[20];
         formatDateTime(timeBuf, now());
-        Log.info(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
+        log_info(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
     } else {
         sysInfo->resetSysStatus(SYS_STATUS_NTP);
         paletteFactory.setHoliday(Party);  //setting it explicitly to avoid defaulting to none when there is no wifi altogether
@@ -52,15 +54,15 @@ bool timeSetup() {
             sysInfo->setSysStatus(SYS_STATUS_DST);
         char timeBuf[20];
         formatDateTime(timeBuf, now());
-        Log.warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"),
+        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"),
               timeBuf, bDST?"CDT":"CST", holidayToString(hday));
     }
-    Log.info(F("Current holiday is %s"), holidayToString(hday));
+    log_info(F("Current holiday is %s"), holidayToString(hday));
     return ntpTimeAvailable;
 }
 
 /**
- * Formats the time component of the timestamp, using a standard pattern - @see #fmtTime
+ * Formats the time component of the timestamp, using a standard pattern - \see ::fmtTime
  * @param buf buffer to write to. If not null, it must have space for 9 characters
  * @param time the time to format, if not specified defaults to @see now()
  * @return number of characters written to the buffer for given time value
@@ -74,9 +76,9 @@ uint8_t formatTime(char *buf, time_t time) {
 }
 
 /**
- * Formats the date component of the timestamp, using a standard pattern - @see #fmtDate
+ * Formats the date component of the timestamp, using a standard pattern - \ref ::fmtDate
  * @param buf buffer to write to. If not null, it must have space for 11 characters
- * @param time the time to format, if not specified defaults to @see now()
+ * @param time the time to format, if not specified defaults to \code now()\endcode
  * @return number of characters written to the buffer for given time value
  */
 uint8_t formatDate(char *buf, time_t time) {
@@ -106,7 +108,7 @@ time_t curUnixTime() {
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time telling purpose
         //determine what offset to use
-        time_t wifiTime = WiFi.getTime();
+        const time_t wifiTime = WiFi.getTime();
         time_t localTime = wifiTime + CST_OFFSET_SECONDS;
         if (isDST(localTime))
             localTime = wifiTime + CDT_OFFSET_SECONDS;
@@ -117,7 +119,7 @@ time_t curUnixTime() {
 
 bool ntp_sync() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        Log.warn(F("NTP sync failed. No WiFi connection available."));
+        log_warn(F("NTP sync failed. No WiFi connection available."));
         return false;
     }
     timeClient.begin();
@@ -141,10 +143,10 @@ bool isDST(const time_t time) {
     // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
     // to the transition, such that we don't need to implement complex Sunday counting rules
 //    return md > 0x030C && md < 0x0B05;
-    int mo = month(time);
-    int dy = day(time);
-    int hr = hour(time);
-    int dow = weekday(time);
+    const int mo = month(time);
+    const int dy = day(time);
+    const int hr = hour(time);
+    const int dow = weekday(time);
     // DST runs from second Sunday of March to first Sunday of November
     // Never in January, February or December
     if (mo < 3 || mo > 11)
@@ -154,7 +156,7 @@ bool isDST(const time_t time) {
         return true;
     // In March, DST if previous Sunday was on or after the 8th.
     // Begins at 2am on second Sunday in March
-    int previousSunday = dy - dow;
+    const int previousSunday = dy - dow;
     if (mo == 3)
         return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
     // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
@@ -261,7 +263,7 @@ const char *holidayToString(const Holiday hday) {
  * @return 2 byte encoded month and day
  */
 uint16_t encodeMonthDay(const time_t time) {
-    time_t theTime = time == 0 ? now() : time;
+    const time_t theTime = time == 0 ? now() : time;
     return ((month(theTime) & 0xFF) << 8) + (day(theTime) & 0xFF);
 }
 
@@ -272,8 +274,8 @@ uint16_t encodeMonthDay(const time_t time) {
  * @return time drift in ms - positive means local time is faster, negative means local time is slower than the official time
  */
 int getDrift(const TimeSync &from, const TimeSync &to) {
-    time_t localDelta = (time_t)to.localMillis - (time_t)from.localMillis;
-    time_t unixDelta = (to.unixSeconds - from.unixSeconds)*1000l;
+    const time_t localDelta = (time_t)to.localMillis - (time_t)from.localMillis;
+    const time_t unixDelta = (to.unixSeconds - from.unixSeconds)*1000l;
     return (int)(localDelta-unixDelta);
 }
 
@@ -285,7 +287,7 @@ int getTotalDrift() {
     if (timeSyncs.size() < 2)
         return 0;
     int drift = 0;
-    TimeSync *prevSync = nullptr;
+    const TimeSync *prevSync = nullptr;
     for (auto &ts: timeSyncs) {
         if (prevSync == nullptr)
             prevSync = &ts;
@@ -302,8 +304,8 @@ int getTotalDrift() {
 int getAverageTimeDrift() {
     if (timeSyncs.size() < 2)
         return 0;
-    time_t start = timeSyncs.begin()->unixSeconds;
-    time_t end = timeSyncs.end()[-1].unixSeconds;       // end() is past the last element, -1 for last element
+    const time_t start = timeSyncs.begin()->unixSeconds;
+    const time_t end = timeSyncs.end()[-1].unixSeconds;       // end() is past the last element, -1 for last element
     return getTotalDrift() * 3600 / (int)(end-start);
 }
 
@@ -314,8 +316,8 @@ int getAverageTimeDrift() {
 int getLastTimeDrift() {
     if (timeSyncs.size() < 2)
         return 0;
-    TimeSync &lastSync = timeSyncs.back();
-    TimeSync &prevSync = timeSyncs.end()[-2];   // end() is past the last element, -1 for last element, -2 for second-last
+    const TimeSync &lastSync = timeSyncs.back();
+    const TimeSync &prevSync = timeSyncs.end()[-2];   // end() is past the last element, -1 for last element, -2 for second-last
     return getDrift(prevSync, lastSync);
 }
 

@@ -177,10 +177,10 @@ void TaskWrapper::run() {
 }
 
 /**
- * Notifies the task to stop running. Returns when the notification was received and fnLoop execution finished, or the timeout expired
+ * Notifies the task to stop running. Returns when the notification was received, fnLoop execution finished or the timeout expired, and task was deleted.
  * The timeout is rounded up to nearest 100ms. Default timeout is 1000ms = 1s.
  */
-bool TaskWrapper::waitToEnd(uint16_t msTimeOut) const {
+bool TaskWrapper::waitToEnd(const uint16_t msTimeOut) const {
     xTaskNotify(handle, 1, eIncrement);
     //wait for the task to finish a fnLoop execution or timeout
     uint16_t nbrLoops = msTimeOut/100 + 1;      //ensure we have at least 1 loop as well as round up the timeout to nearest 100ms
@@ -188,6 +188,7 @@ bool TaskWrapper::waitToEnd(uint16_t msTimeOut) const {
         vTaskDelay(pdMS_TO_TICKS(100));
         nbrLoops--;
     }
+    vTaskDelete(handle);
     return state == TERMINATED;
 }
 

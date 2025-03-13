@@ -1,0 +1,36 @@
+#######################################
+# Syntax Coloring Map FilesystemTask library
+#######################################
+
+#######################################
+#	Instances	(KEYWORD1)
+#######################################
+Filesystem	KEYWORD1
+LittleFS	    KEYWORD1
+#######################################
+#	Datatypes	(KEYWORD1)
+#######################################
+SynchronizedFS  KEYWORD1
+
+#######################################
+#	Methods	and	Functions	(KEYWORD2)
+#######################################
+begin	KEYWORD2
+readFile	KEYWORD2
+writeFile	KEYWORD2
+remove	KEYWORD2
+exists	KEYWORD2
+format	KEYWORD2
+list	KEYWORD2
+info	KEYWORD2
+
+#######################################
+#	Instances	(KEYWORD2)
+#######################################
+SyncFS	KEYWORD2
+
+#######################################
+#	Constants	(LITERAL1)
+#######################################
+
+

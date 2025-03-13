@@ -1,9 +1,10 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
 #include <ArduinoECCX08.h>
 #include "utility/ECCX08DefaultTLSConfig.h"
 #include <FreeRTOS.h>
+#include <task.h>
 #include "timeutil.h"
 #include "hardware/watchdog.h"
 #include "FastLED.h"
@@ -50,7 +51,7 @@ ulong adcRandom() {
  * @return (a*b)/256
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
-uint8_t bmul8(uint8_t a, uint8_t b) {
+uint8_t bmul8(const uint8_t a, const uint8_t b) {
     if (a==255)
         return b;
     if (b==255)
@@ -66,7 +67,7 @@ uint8_t bmul8(uint8_t a, uint8_t b) {
  * @return 255-bmul8(255-a, 255-b)
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
-uint8_t bscr8(uint8_t a, uint8_t b) {
+uint8_t bscr8(const uint8_t a, const uint8_t b) {
     return 255-bmul8(255-a, 255-b);
 }
 
@@ -78,7 +79,7 @@ uint8_t bscr8(uint8_t a, uint8_t b) {
  * @return the 8 bit value per formula above
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
-uint8_t bovl8(uint8_t a, uint8_t b) {
+uint8_t bovl8(const uint8_t a, const uint8_t b) {
     if (a < 128)
         return bmul8(a, b)*2;
     return 255-bmul8(255-a, 255-b)*2;
@@ -92,7 +93,7 @@ uint8_t bovl8(uint8_t a, uint8_t b) {
  * @return a high quality random number in the range specified
  * @see secRandom(uint32_t, uint32_t)
  */
- uint8_t secRandom8(uint8_t minLim, uint8_t maxLim) {
+ uint8_t secRandom8(const uint8_t minLim, const uint8_t maxLim) {
     return secRandom(minLim, maxLim > 0 ? maxLim : UINT8_MAX);
 }
 
@@ -116,36 +117,36 @@ uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
  * @return a high quality random number in the range specified
  */
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
-    long low = (long)minLim;
-    long high = maxLim > 0 ? (long)maxLim : INT32_MAX;
+    const long low = (long)minLim;
+    const long high = maxLim > 0 ? (long)maxLim : INT32_MAX;
     return sysInfo->isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
 }
 
 bool secElement_setup() {
     if (!ECCX08.begin()) {
-        Log.error(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
+        log_error(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
         return false;
     }
     sysInfo->setSecureElementId(ECCX08.serialNumber());
     const char* eccSerial = sysInfo->getSecureElementId().c_str();
     if (!ECCX08.locked()) {
-        Log.warn(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
+        log_warn(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
         if (!ECCX08.writeConfiguration(ECCX08_DEFAULT_TLS_CONFIG)) {
-            Log.error(F("Writing ECCX08 default TLS configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
+            log_error(F("Writing ECCX08 default TLS configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
             return false;
         }
         if (!ECCX08.lock()) {
-            Log.error(F("Locking ECCX08 configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
+            log_error(F("Locking ECCX08 configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
             return false;
         }
-        Log.info(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
+        log_info(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
     }
-    Log.info(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
+    log_info(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
     sysInfo->setSysStatus(SYS_STATUS_ECC);
     //update entropy - the timing of this call allows us to interact with I2C without other contenders
-    uint16_t rnd = secRandom16();
+    const uint16_t rnd = secRandom16();
     random16_add_entropy(rnd);
-    Log.info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
+    log_info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
     return true;
 }
 
@@ -155,13 +156,13 @@ bool secElement_setup() {
  */
 void watchdogSetup() {
     if (watchdog_caused_reboot()) {
-        time_t rebootTime = now();
-        Log.warn(F("A watchdog caused reboot has occurred at %s"), StringUtils::asString(rebootTime).c_str());
+        const time_t rebootTime = now();
+        log_warn(F("A watchdog caused reboot has occurred at %s"), StringUtils::asString(rebootTime).c_str());
         sysInfo->watchdogReboots().push(rebootTime);
         sysInfo->markDirtyBoot();
     }
-    //if no ping in 3 seconds, reboot
-    watchdog_enable(3000, true);
+    //if no ping in 4 seconds, reboot
+    watchdog_enable(4096, true);
     //rp2040.wdt_begin(3000);
 }
 
@@ -178,7 +179,7 @@ void watchdogPing() {
  * differently on FastLED, or collide with the RP2040 port implementation
  * @param ms number of milliseconds to delay
  */
-void taskDelay(uint32_t ms) {
+void taskDelay(const uint32_t ms) {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 

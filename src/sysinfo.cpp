@@ -3,29 +3,39 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <SchedulerExt.h>
+#include <FastLED.h>
 #include "filesystem.h"
 #include "util.h"
 #include "sysinfo.h"
 #include "config.h"
 #include "timeutil.h"
 #include "version.h"
-#include "stringutils.h"
 #include "constants.hpp"
 #include "log.h"
+#if LOGGING_ENABLED == 1
+#include "stringutils.h"
+#endif
 
 #define BUF_ID_SIZE  20
 
 static constexpr auto unknown PROGMEM = "N/A";
+#if LOGGING_ENABLED == 1
 // static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
 static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Total Stack:: ptr=%#X free=%d;\n  Total Heap :: size=%d free=%d used=%d\n";
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
-
-//#define STORAGE_CMD_TOTAL_BYTES 32
+#endif
+constexpr CRGB CLR_ALL_OK = CRGB::Indigo;
+constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Green;
+constexpr CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
+constexpr CRGB CLR_SETUP_ERROR = CRGB::Red;
 
 unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
+
+void state_led_run();
+constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
 
 const char *taskStatusToString(const eTaskState state) {
     switch (state) {
@@ -73,6 +83,7 @@ const char *taskStatusToString(const eTaskState state) {
  * overhead does not impact the system performance significantly.
  */
 void logTaskStats() {
+#if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
     // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
@@ -87,8 +98,8 @@ void logTaskStats() {
         /* Generate raw status information about each task. */
         uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
         // ulTotalRunTime = (ulTotalRunTime >> 8) / (configRUN_TIME_COUNTER_TYPE)100U;    // For percentage calculations
-        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %lu]"), ulTotalRunTime);
-        strTaskInfo.concat(F("\nName      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
+        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, current time %lu, %s]\n"), ulTotalRunTime, millis(), StringUtils::asString(now()).c_str());
+        strTaskInfo.concat(F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
 
         uint64_t uxTotalRunTime = 0ul;  // Summing up times spent by ALL tasks (as reported by each task) should account for NUM_CORES - this value should be NUM_CORES*ulTotalRunTime
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
@@ -110,16 +121,17 @@ void logTaskStats() {
         }
         /* The array is no longer needed, free the memory it consumes. */
         vPortFree( pxTaskStatusArray );
-        Log.info(strTaskInfo.c_str());
+        log_info(strTaskInfo.c_str());
         delay(12);
     }
     // Simple heap stats - the HeapStats_t and vPortGetHeapStats is only available with heap_4 and heap_5 memory management solutions; the current one for arduino-pico is heap_3
     String strHeapInfo;
     strHeapInfo.reserve(256);  //ensure enough space to avoid reallocations
     StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap(), rp2040.getUsedHeap());
-    Log.info(strHeapInfo.c_str());
-    Log.info(F("Minimum log buffer free space %zu bytes"), Log.getMinBufferSpace());
-    // Log.info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
+    log_info(strHeapInfo.c_str());
+    log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinBufferSpace());
+    // log_info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
+#endif
 }
 
 /**
@@ -151,23 +163,27 @@ const char *resetReasonToString(const RP2040::resetReason_t reason) {
  * - System reset reason with detailed status codes
  */
 void logSystemInfo() {
+#if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
-    Log.info(sysInfoFmt, rp2040_rom_version(), RP2040::f_cpu()/1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
+    log_info(sysInfoFmt, rp2040_rom_version(), RP2040::f_cpu()/1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
                sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->get_flash_capacity());
-    Log.info(F("System reset reason %s"), resetReasonToString(rp2040.getResetReason()));
+    log_info(F("System reset reason %s"), resetReasonToString(rp2040.getResetReason()));
+#endif
 }
 
 /**
  * Logs the current system state, including system status and formatted uptime.
  */
 void logSystemState() {
+#if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
     char buf[20];
     const unsigned long uptime = millis();
     snprintf(buf, 16, "%3luD %2luH %2lum", uptime/86400000l, (uptime/3600000l%24), (uptime/60000%60));
-    Log.info(F("System state: %#hX; uptime %s"), sysInfo->getSysStatus(), buf);
+    log_info(F("System state: %#hX; uptime %s"), sysInfo->getSysStatus(), buf);
+#endif
 }
 
 // SysInfo
@@ -205,21 +221,25 @@ uint SysInfo::get_flash_capacity() const {
     return PICO_FLASH_SIZE_BYTES;
 }
 
-uint8_t SysInfo::setSysStatus(uint8_t bitMask) {
+uint16_t SysInfo::setSysStatus(const uint16_t bitMask) {
+    CoreMutex coreMutex(&mutex);
     status |= bitMask;
+    updateStateLED();
     return status;
 }
 
-uint8_t SysInfo::resetSysStatus(uint8_t bitMask) {
+uint16_t SysInfo::resetSysStatus(const uint16_t bitMask) {
+    CoreMutex coreMutex(&mutex);
     status &= (~bitMask);
+    updateStateLED();
     return status;
 }
 
-bool SysInfo::isSysStatus(uint8_t bitMask) const {
-    return (status & bitMask);
+bool SysInfo::isSysStatus(const uint16_t bitMask) const {
+    return (status & bitMask) == bitMask;
 }
 
-uint8_t SysInfo::getSysStatus() const {
+uint16_t SysInfo::getSysStatus() const {
     return status;
 }
 
@@ -300,7 +320,9 @@ void SysInfo::heapStats(JsonObject &doc) {
     doc["totalHeap"] = rp2040.getTotalHeap();
     doc["freeHeap"] = rp2040.getFreeHeap();
     doc["usedHeap"] = rp2040.getUsedHeap();
+#if LOGGING_ENABLED == 1
     doc["logMinBufferSpace"] = Log.getMinBufferSpace();
+#endif
     //doc["watchdogRemaining"] = watchdog_get_time_remaining_ms();
 }
 
@@ -317,7 +339,7 @@ void SysInfo::taskStats(JsonObject &doc) {
     if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
         // General counts
         doc["count"] = uxArraySize;
-        auto jsArray = doc["items"].to<JsonArray>();
+        const auto jsArray = doc["items"].to<JsonArray>();
         /* Generate raw status information about each task. */
         uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
         doc["sysTotalRunTime"] = ulTotalRunTime;
@@ -352,27 +374,27 @@ void SysInfo::taskStats(JsonObject &doc) {
  * Note the time this is performed, the WiFi is not ready, nor other fields even populated yet
  */
 void readSysInfo() {
-    auto json = new String();
+    const auto json = new String();
     json->reserve(512);  // approximation
-    if (const size_t sysSize = readTextFile(sysFileName, json); sysSize > 0) {
+    if (const size_t sysSize = SyncFsImpl.readFile(sysFileName, json); sysSize > 0) {
         JsonDocument doc;
         const DeserializationError error = deserializeJson(doc, *json);
         if (error) {
-            Log.error(F("Error reading the system information JSON file %s [%zu bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
+            log_error(F("Error reading the system information JSON file %s [%zu bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
             delete json;
             return;
         }
         //const fields
-        String bldVersion = doc[csBuildVersion];
-        String brdName = doc[csBoardName];
-        String bldTime = doc[csBuildTime];
-        auto gitBranch = doc[csScmBranch].as<String>();
+        const String bldVersion = doc[csBuildVersion];
+        const String brdName = doc[csBoardName];
+        const String bldTime = doc[csBuildTime];
+        const auto gitBranch = doc[csScmBranch].as<String>();
         if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {
-            auto wdReboots = doc[csWdReboots].as<JsonArray>();
+            const auto wdReboots = doc[csWdReboots].as<JsonArray>();
             for (JsonVariant i: wdReboots)
                 sysInfo->wdReboots.push(i.as<time_t>());
         } else
-            Log.warn(F("Build version change detected - previous watchdog reboot timestamps %s have been discarded"), doc[csWdReboots].as<String>().c_str());
+            log_warn(F("Build version change detected - previous watchdog reboot timestamps %s have been discarded"), doc[csWdReboots].as<String>().c_str());
         sysInfo->boardId = doc[csBoardId].as<String>();
         sysInfo->secElemId = doc[csSecElemId].as<String>();
         sysInfo->macAddress = doc[csMacAddress].as<String>();
@@ -384,11 +406,12 @@ void readSysInfo() {
         sysInfo->stackSize = doc[csStackSize];
         sysInfo->freeStack = doc[csFreeStack];
         //do not override current status (in progress of populating) with last run status
-        uint8_t lastStatus = doc[csStatus];
-        Log.info(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
+        const uint8_t lastStatus = doc[csStatus];
+        log_info(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status, lastStatus,
                    sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
-    }
+    } else
+        log_info(F("System information file %s not found - system information will be re-built"), sysFileName);
     delete json;
 }
 
@@ -414,12 +437,67 @@ void saveSysInfo() {
     doc[csStatus] = sysInfo->status;
     const auto reboots = doc[csWdReboots].to<JsonArray>();
     for (auto & t : sysInfo->wdReboots)
-        reboots.add(t);
+        (void)reboots.add(t);
 
     auto str = new String();    //larger temporary string, put it on the heap
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
-    if (!writeTextFile(sysFileName, str))
-        Log.error(F("Failed to create/write the system information file %s"), sysFileName);
+    if (!SyncFsImpl.writeFile(sysFileName, str))
+        log_error(F("Failed to create/write the system information file %s"), sysFileName);
     delete str;
+}
+
+/**
+ * Setup the on-board status LED
+ */
+void SysInfo::setupStateLED() {
+    pinMode(LEDR, OUTPUT);
+    pinMode(LEDG, OUTPUT);
+    pinMode(LEDB, OUTPUT);
+    updateStateLED(CRGB::Black);    //black, turned off
+}
+/**
+ * Controls the on-board status LED
+ * @param colorCode
+ */
+void SysInfo::updateStateLED(const uint32_t colorCode) {
+    updateStateLED(CRGB(colorCode));
+}
+
+/**
+ * Controls the onboard LED using individual values for R, G, B
+ * @param rgb RGB value
+ */
+void SysInfo::updateStateLED(const CRGB rgb) {
+    analogWrite(LEDR, 255 - rgb.red);
+    analogWrite(LEDG, 255 - rgb.green);
+    analogWrite(LEDB, 255 - rgb.blue);
+}
+
+/**
+ * Adjusts the LED state (color, illumination style) in response to overall system's state
+ */
+void SysInfo::updateStateLED() const {
+    const bool inSetup = !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1);
+    const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
+    const CRGB colorCode = isOk ? CLR_ALL_OK : inSetup ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
+    updateStateLED(colorCode);
+}
+
+void state_led_run() {
+    while (!sysInfo->isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1)) {
+        sysInfo->updateStateLED();
+        taskDelay(640);
+        SysInfo::updateStateLED(CRGB::Black);
+        taskDelay(640);
+    }
+    sysInfo->updateStateLED();
+    taskDelay(750);
+}
+
+void SysInfo::begin() {
+    // const auto stLedTask = Scheduler.startTask(&stLedTasks);
+    // TaskStatus_t tStat;
+    // vTaskGetTaskInfo(stLedTask->getTaskHandle(), &tStat, pdFALSE, eReady);
+    // log_info(F("System LED task [%s] - priority %d - has been setup id %u. System status is monitored."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
 }

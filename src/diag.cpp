@@ -15,9 +15,12 @@
 #include "util.h"
 #include "filesystem.h"
 #include "FxSchedule.h"
-#include "stringutils.h"
 #include "sysinfo.h"
 #include "constants.hpp"
+#include "log.h"
+#if LOGGING_ENABLED == 1
+#include "stringutils.h"
+#endif
 
 #define DIAG_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 
@@ -25,6 +28,7 @@ static constexpr uint maxAdc = 1 << ADC_RESOLUTION;
 
 volatile MeasurementRange imuTempRange(Unit::Deg_C);
 volatile MeasurementRange cpuTempRange(Unit::Deg_C);
+volatile MeasurementRange wifiTempRange(Unit::Deg_C);
 volatile MeasurementRange lineVoltage(Unit::Volts);
 CalibrationMeasurement calibTempMeasurements;
 CalibrationParams calibCpuTemp;
@@ -53,21 +57,28 @@ void enqueueDiagInfo(TimerHandle_t xTimer);
 // TaskDef diagDef {deviceSetup, diagExecute, 3072, "Diag", 1, CORE_1};
 enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO} event;
 
+/**
+ * Initializes the Inertial Measurement Unit - IMU
+ * @return true if inertial unit was setup ok, false otherwise
+ */
 bool imu_setup() {
     // initialize the IMU (Inertial Measurement Unit)
     if (!IMU.begin()) {
-        Log.error(F("Failed to initialize IMU!"));
-        Log.error(F("IMU NOT AVAILABLE - TERMINATING THIS THREAD"));
+        log_error(F("Failed to initialize IMU!"));
+        log_error(F("IMU NOT AVAILABLE - TERMINATING THIS THREAD"));
         vTaskSuspend(xTaskGetCurrentTaskHandle());
         //while (true) yield();
     }
-    Log.info(F("IMU sensor OK"));
+    log_info(F("IMU sensor OK"));
     // print the board temperature
     const Measurement temp = boardTemperature();
-    Log.info(F("Board temperature %.2f 'C (%.2f 'F) at %s"), temp.value, toFahrenheit(temp.value), StringUtils::asString(temp.time).c_str());
+    log_info(F("Board temperature %.2f 'C (%.2f 'F) at %s"), temp.value, toFahrenheit(temp.value), StringUtils::asString(temp.time).c_str());
     return true;
 }
 
+/**
+ * Initializes the RP2040 chip internal Analog-Digital Converter
+ */
 void adc_setup() {
     //disable ADC
     //hw_clear_bits(&adc_hw->cs, ADC_CS_EN_BITS);
@@ -76,9 +87,12 @@ void adc_setup() {
     adc_gpio_init(A0);  //this is the controller voltage pin
     adc_set_temp_sensor_enabled(true);
     analogReadResolution(ADC_RESOLUTION);   //get us the higher resolution of the ADC
-    Log.info("ADC OK %u bit resolution", ADC_RESOLUTION);
+    log_info("ADC OK %u bit resolution", ADC_RESOLUTION);
 }
 
+/**
+ * Setup of devices supporting diagnostics
+ */
 void deviceSetup() {
     adc_setup();
 
@@ -92,7 +106,7 @@ void deviceSetup() {
 
     taskDelay(250);
 
-    Log.info(F("Diagnostic devices initialized - system status: %#hX"), sysInfo->getSysStatus());
+    log_info(F("Diagnostic devices initialized - system status: %#hX"), sysInfo->getSysStatus());
 }
 
 /**
@@ -102,35 +116,35 @@ void diagSetup() {
     //add secure strength entropy event to pseudo-random number generator - repeated each 6 minutes
     const TimerHandle_t thRndEntropy = xTimerCreate("rndEntropy", pdMS_TO_TICKS(6*60*1000), pdTRUE, &tmrRndEntropyId, enqueueRndEntropy);
     if (thRndEntropy == nullptr)
-        Log.error(F("Cannot create rndEntropy timer - Ignored."));
+        log_error(F("Cannot create rndEntropy timer - Ignored."));
     else if (xTimerStart(thRndEntropy, 0) != pdPASS)
-        Log.error(F("Cannot start the rndEntropy timer - Ignored."));
+        log_error(F("Cannot start the rndEntropy timer - Ignored."));
 
     //read system temperature event - both the IMU chip and the CPU internal ADC based temp sensor - repeated each 32 seconds
     const TimerHandle_t thSysTemp = xTimerCreate("sysTemp", pdMS_TO_TICKS(32*1000), pdTRUE, &tmrSysTempId, enqueueSysTemp);
     if (thSysTemp == nullptr)
-        Log.error(F("Cannot create sysTemp timer - Ignored."));
+        log_error(F("Cannot create sysTemp timer - Ignored."));
     else if (xTimerStart(thSysTemp, 0) != pdPASS)
-        Log.error(F("Cannot start the sysTemp timer - Ignored."));
+        log_error(F("Cannot start the sysTemp timer - Ignored."));
 
     //read the system's line voltage event - uses ADC - repeated each 34 seconds
     const TimerHandle_t thSysVoltage = xTimerCreate("sysVoltage", pdMS_TO_TICKS(34 * 1000), pdTRUE, &tmrSysVoltageId, enqueueSysVoltage);
     if (thSysVoltage == nullptr)
-        Log.error(F("Cannot create sysVoltage timer - Ignored."));
+        log_error(F("Cannot create sysVoltage timer - Ignored."));
     else if (xTimerStart(thSysVoltage, 0) != pdPASS)
-        Log.error(F("Cannot start the sysVoltage timer - Ignored."));
+        log_error(F("Cannot start the sysVoltage timer - Ignored."));
     //log the thread, memory and diagnostic measurements info event - no-op if logging is disabled - repeated each 27 seconds
     const TimerHandle_t thDiagInfo = xTimerCreate("diagInfo", pdMS_TO_TICKS(27 * 1000), pdTRUE, &tmrDiagInfoId, enqueueDiagInfo);
     if (thDiagInfo == nullptr)
-        Log.error(F("Cannot create diagInfo timer - Ignored."));
+        log_error(F("Cannot create diagInfo timer - Ignored."));
     else if (xTimerStart(thDiagInfo, 0) != pdPASS)
-        Log.error(F("Cannot start the diagInfo timer - Ignored."));
+        log_error(F("Cannot start the diagInfo timer - Ignored."));
     //save the current system info event to filesystem - repeated each 90 seconds
     const TimerHandle_t thSaveSysInfo = xTimerCreate("saveSysInfo", pdMS_TO_TICKS(90 * 1000), pdTRUE, &tmrSaveSysInfoId, enqueueSaveSysInfo);
     if (thSaveSysInfo == nullptr)
-        Log.error(F("Cannot create saveSysInfo timer - Ignored."));
+        log_error(F("Cannot create saveSysInfo timer - Ignored."));
     else if (xTimerStart(thSaveSysInfo, 0) != pdPASS)
-        Log.error(F("Cannot start the saveSysInfo timer - Ignored."));
+        log_error(F("Cannot start the saveSysInfo timer - Ignored."));
 
     //setup the diagnostic thread, higher priority to avoid interruption during I2C communication
     diagQueue = xQueueCreate(20, sizeof(DiagAction));
@@ -138,7 +152,7 @@ void diagSetup() {
     // diagDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle()) + 1;
     // diagTask = Scheduler.startTask(&diagDef);
     const TaskHandle_t diagTask = xTaskGetCurrentTaskHandle();
-    Log.info(F("Diagnostic thread [%s] - priority %lu - has been setup. Events are dispatching."), pcTaskGetName(diagTask), uxTaskPriorityGet(diagTask));
+    log_info(F("Diagnostic thread [%s] - priority %lu - has been setup. Events are dispatching."), pcTaskGetName(diagTask), uxTaskPriorityGet(diagTask));
 }
 
 /**
@@ -148,9 +162,9 @@ void diagSetup() {
 void enqueueRndEntropy(TimerHandle_t xTimer) {
     constexpr DiagAction msg = RND_ENTROPY;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending RND_ENTROPY message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending RND_ENTROPY message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
-    //     Log.info(F("Sent RND_ENTROPY event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    //     log_info(F("Sent RND_ENTROPY event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -160,9 +174,9 @@ void enqueueRndEntropy(TimerHandle_t xTimer) {
 void enqueueSysTemp(TimerHandle_t xTimer) {
     constexpr DiagAction msg = SYS_TEMP;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending SYS_TEMP message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending SYS_TEMP message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
-    //     Log.info(F("Sent SYS_TEMP event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    //     log_info(F("Sent SYS_TEMP event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -172,21 +186,21 @@ void enqueueSysTemp(TimerHandle_t xTimer) {
 void enqueueSysVoltage(TimerHandle_t xTimer) {
     constexpr DiagAction msg = SYS_VOLTAGE;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending SYS_VOLTAGE message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending SYS_VOLTAGE message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
-    //     Log.info(F("Sent SYS_VOLTAGE event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    //     log_info(F("Sent SYS_VOLTAGE event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
- * Callback for saveSysInfo timer - this is called from Timer task. Enqueues a SAVE_SYS_INFO message for the diagnostic task.
+ * Callback for saveSysInfo timer - this is called from Timer task. Enqueues a SAVE_SYS_INFO message for the alarm task.
  * @param xTimer the saveSysInfo timer that fired the callback
  */
 void enqueueSaveSysInfo(TimerHandle_t xTimer) {
     constexpr MiscAction msg = SAVE_SYS_INFO;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending SAVE_SYS_INFO message to core0 queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending SAVE_SYS_INFO message to ALM queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
-    //     Log.info(F("Sent SAVE_SYS_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    //     log_info(F("Sent SAVE_SYS_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -197,9 +211,9 @@ void enqueueSaveSysInfo(TimerHandle_t xTimer) {
 void enqueueDiagInfo(TimerHandle_t xTimer) {
     constexpr DiagAction msg = DIAG_INFO;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        Log.error(F("Error sending DIAG_INFO message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending DIAG_INFO message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
-    //     Log.info(F("Sent DIAG_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    //     log_info(F("Sent DIAG_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -210,6 +224,7 @@ void diagExecute() {
     DiagAction msg;
     //block indefinitely for a message to be received
     if (pdFALSE == xQueueReceive(diagQueue, &msg, portMAX_DELAY))
+    // if (pdFALSE == xQueueReceive(diagQueue, &msg, 0))
         return;
     //the reception was successful, hence the msg is not null anymore
     switch (msg) {
@@ -220,7 +235,7 @@ void diagExecute() {
         case DIAG_INFO: logDiagInfo(); break;
 #endif
         default:
-            Log.error(F("Event type %d not supported"), msg);
+            log_error(F("Event type %d not supported"), msg);
             break;
     }
 }
@@ -234,7 +249,7 @@ void Measurement::copy(const Measurement &msmt) volatile {
         value = msmt.value;
         time = msmt.time;
     } else
-        Log.warn(F("Measurement::copy - incompatible units, cannot copy %f unit %d at %s into current %.2f unit %d measurement"), msmt.value, msmt.unit, StringUtils::asString(msmt.time).c_str(), value, unit);
+        log_warn(F("Measurement::copy - incompatible units, cannot copy %f unit %d at %s into current %.2f unit %d measurement"), msmt.value, msmt.unit, StringUtils::asString(msmt.time).c_str(), value, unit);
 }
 
 /**
@@ -245,7 +260,7 @@ void Measurement::copy(const Measurement &msmt) volatile {
  */
 void MeasurementRange::setMeasurement(const Measurement &msmt) volatile {
     if (current.unit != msmt.unit) {
-        Log.warn(F("MeasurementRange::setMeasurement - incompatible units, cannot set %f unit %d at %s into range of unit %d"), msmt.value, msmt.unit, StringUtils::asString(msmt.time).c_str(), current.unit);
+        log_warn(F("MeasurementRange::setMeasurement - incompatible units, cannot set %f unit %d at %s into range of unit %d"), msmt.value, msmt.unit, StringUtils::asString(msmt.time).c_str(), current.unit);
         return;
     }
     if (msmt < min || !min.time)
@@ -262,11 +277,19 @@ void MeasurementRange::setMeasurement(const Measurement &msmt) volatile {
 MeasurementRange::MeasurementRange(const Unit unit) : min(unit), max(unit), current(unit) {
 }
 
+/**
+ * Copy a measurement pair into current pair
+ * @param msmt measurement pair to copy
+ */
 void MeasurementPair::copy(const MeasurementPair &msmt) {
     Measurement::copy(msmt);
     adcRaw = msmt.adcRaw;
 }
 
+/**
+ * Sets the current measurement into the calibration instance. Handles updating the min/max relative to the incoming reading
+ * @param msmt measurement pair to set
+ */
 void CalibrationMeasurement::setMeasurement(const MeasurementPair &msmt) {
     if (msmt < min || !min.time)
         min.copy(msmt);
@@ -333,7 +356,7 @@ Measurement boardTemperature() {
         IMU.readTemperatureFloat(tempC);
         return Measurement {tempC, now(), Deg_C};
     } else
-        Log.warn(F("IMU temperature not available - using %f 'C for board temperature value"), IMU_TEMPERATURE_NOT_AVAILABLE);
+        log_warn(F("IMU temperature not available - using %f 'C for board temperature value"), IMU_TEMPERATURE_NOT_AVAILABLE);
     return Measurement {IMU_TEMPERATURE_NOT_AVAILABLE, now(), Deg_C};
 }
 
@@ -346,7 +369,7 @@ Measurement controllerVoltage() {
     uint valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += analogRead(A0);
-    Log.trace(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
+    log_debug(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
     valSum = valSum*MV3_3/avgSize;
     valSum = valSum/VCC_DIV_R5*(VCC_DIV_R5+VCC_DIV_R4)/maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
     return Measurement {(float)valSum/1000.0f, now(), Volts};
@@ -366,7 +389,7 @@ MeasurementPair chipTemperature() {
     for (uint x = 0; x < avgSize; x++)
         valSum += adc_read();
     adc_select_input(curAdc);   //restore the ADC input selection
-    Log.trace(F("Internal temperature value: %u; average reading: %u"), avgSize, valSum/avgSize);
+    log_debug(F("Internal temperature value: %u; average reading: %u"), avgSize, valSum/avgSize);
     const uint adcRaw = valSum/avgSize;
     const auto tV = (float)valSum*MV3_3/avgSize/maxAdc;   //voltage in mV
     MeasurementPair result;
@@ -382,18 +405,34 @@ MeasurementPair chipTemperature() {
     return result;
 }
 
-
+/**
+ * Serializes the MeasurementPair instance into the JSON object provided
+ * @param obj measurement pair object to serialize
+ * @param json receiving JSON object
+ */
 static void serializeMeasurementPair(const MeasurementPair& obj, JsonObject& json) {
     json["value"] = obj.value;
     json["time"] = obj.time;
     json["adc"] = obj.adcRaw;
     json["unit"] = obj.unit;
 }
+
+/**
+ * Deserializes & updates a measurement pair (instance provided by reference) from the data in the JSON object
+ * @param obj measurement pair to update with deserialized data
+ * @param json JSON object containing data to deserialize
+ */
 void static deserializeMeasurementPair(MeasurementPair& obj, JsonObject& json) {
     obj.value = json["value"];
     obj.time = json["time"];
     obj.adcRaw = json["adc"];
 }
+
+/**
+ * Serializes the calibration measurement object into the JSON object provided
+ * @param obj calibration measurement to serialize
+ * @param json receiving JSON object
+ */
 static void serializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonObject& json) {
     JsonObject jsMin = json["min"].to<JsonObject>();
     serializeMeasurementPair(obj.min, jsMin);
@@ -402,6 +441,12 @@ static void serializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonObj
     JsonObject jsRef = json["ref"].to<JsonObject>();
     serializeMeasurementPair(obj.ref, jsRef);
 }
+
+/**
+ * Deserializes & updates a calibration measurement object (instance provided by reference) from the data in the JSON object
+ * @param obj calibration measurement object to update from deserialized data
+ * @param json JSON object containing data to deserialize
+ */
 static void deserializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonObject& json) {
     auto jsMin = json["min"].as<JsonObject>();
     deserializeMeasurementPair(obj.min, jsMin);
@@ -410,6 +455,12 @@ static void deserializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonO
     auto jsRef = json["ref"].as<JsonObject>();
     deserializeMeasurementPair(obj.ref, jsRef);
 }
+
+/**
+ * Serializes the calibration parameters object into the JSON object provided
+ * @param obj calibration parameters object to serialize
+ * @param json receiving JSON object
+ */
 static void serializeCalibrationParams(const CalibrationParams& obj, JsonObject& json) {
     json["ref33"] = CalibrationParams::ref33;
     json["refTemp"] = obj.refTemp;
@@ -418,6 +469,12 @@ static void serializeCalibrationParams(const CalibrationParams& obj, JsonObject&
     json["refDelta"] = obj.refDelta;
     json["time"] = obj.time;
 }
+
+/**
+ * Deserializes & updates a calibration parameters object (instance provided by reference) from the data in the JSON object
+ * @param obj calibration parameters object to update from deserialized data
+ * @param json JSON object containing data to deserialize
+ */
 static void deserializeCalibrationParams(CalibrationParams& obj, JsonObject& json) {
     //obj.ref33 = json["ref33"];
     obj.refTemp = json["refTemp"];
@@ -427,14 +484,17 @@ static void deserializeCalibrationParams(CalibrationParams& obj, JsonObject& jso
     obj.time = json["time"];
 }
 
+/**
+ * Read calibration information from the file system
+ */
 void readCalibrationInfo() {
     auto json = new String();
     json->reserve(512);  // approximation
-    if (const size_t calibSize = readTextFile(calibFileName, json); calibSize > 0) {
+    if (const size_t calibSize = SyncFsImpl.readFile(calibFileName, json); calibSize > 0) {
         JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, *json);
+        const DeserializationError error = deserializeJson(doc, *json);
         if (error) {
-            Log.error(F("Error reading the CPU temp calibration information JSON file %s [%zd bytes]: %s - calibration information state NOT restored. Content read:\n%s"), calibFileName, calibSize, error.c_str(), json->c_str());
+            log_error(F("Error reading the CPU temp calibration information JSON file %s [%zd bytes]: %s - calibration information state NOT restored. Content read:\n%s"), calibFileName, calibSize, error.c_str(), json->c_str());
             delete json;
             return;
         }
@@ -442,13 +502,16 @@ void readCalibrationInfo() {
         deserializeCalibrationMeasurement(calibTempMeasurements, msmt);
         auto cbparams = doc["calibParams"].as<JsonObject>();
         deserializeCalibrationParams(calibCpuTemp, cbparams);
-        Log.info(F("CPU temp calibration Information restored from %s [%d bytes]: min %.2f 'C, max %.2f 'C; params: tempRange=%.2f, refTemp=%.2f, VTref=%f, slope=%f, time=%s"),
+        log_info(F("CPU temp calibration Information restored from %s [%d bytes]: min %.2f 'C, max %.2f 'C; params: tempRange=%.2f, refTemp=%.2f, VTref=%f, slope=%f, time=%s"),
                    calibFileName, calibSize, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
                    calibCpuTemp.slope, StringUtils::asString(calibCpuTemp.time).c_str());
     }
     delete json;
 }
 
+/**
+ * Save the calibration information into the file system as JSON file
+ */
 void saveCalibrationInfo() {
     JsonDocument doc;
     auto msmt = doc["measurements"].to<JsonObject>();
@@ -458,18 +521,26 @@ void saveCalibrationInfo() {
     auto str = new String();    //larger temporary string, put it on the heap
     str->reserve(measureJson(doc));
     const size_t sz = serializeJson(doc, *str);
-    if (writeTextFile(calibFileName, str))
-        Log.info(F("Successfully saved CPU temp calibration information file %s [%zd bytes]"), calibFileName, sz);
+    if (SyncFsImpl.writeFile(calibFileName, str))
+        log_info(F("Successfully saved CPU temp calibration information file %s [%zd bytes]"), calibFileName, sz);
     else
-        Log.error(F("Failed to create/write the CPU temp calibration information file %s"), calibFileName);
+        log_error(F("Failed to create/write the CPU temp calibration information file %s"), calibFileName);
     delete str;
 }
 
+/**
+ * Take a measurement of the power supply voltage of the LightFx system and updates the holding object
+ */
 void updateLineVoltage() {
     lineVoltage.setMeasurement(controllerVoltage());
-    Log.info(F("Board Vcc voltage %.2f V"), lineVoltage.current.value);
+    log_info(F("Board Vcc voltage %.2f V"), lineVoltage.current.value);
 }
 
+/**
+ * Take temperature measurements from two sources:
+ *   - IMU module - has a built-in temperature sensor, more precise
+ *   - RP2040 chip through channel 4 of the ADC, less precise and in need of calibration
+ */
 void updateSystemTemp() {
     MeasurementPair chipTemp = chipTemperature();
     Measurement msmt = boardTemperature();
@@ -484,22 +555,53 @@ void updateSystemTemp() {
         if (calibrate())
             saveCalibrationInfo();
     }
-    Log.info(F("CPU internal temperature %.2f 'C (%.2f 'F) (ADC %u)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value), chipTemp.adcRaw);
-    Log.info(F("CPU temperature calibration parameters valid=%s, refTemp=%f, vtRef=%f, slope=%f, refDelta=%f, time=%s"), StringUtils::asString(calibCpuTemp.isValid()), calibCpuTemp.refTemp,
+    log_info(F("CPU internal temperature %.2f 'C (%.2f 'F) (ADC %u)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value), chipTemp.adcRaw);
+    log_info(F("CPU temperature calibration parameters valid=%s, refTemp=%f, vtRef=%f, slope=%f, refDelta=%f, time=%s"), StringUtils::asString(calibCpuTemp.isValid()), calibCpuTemp.refTemp,
                calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta, StringUtils::asString(calibCpuTemp.time).c_str());
-    Log.info(F("Board temperature %.2f (last %.2f) 'C (%.2f 'F); range [%.2f - %.2f] 'C"), msmt.value, imuTempRange.current.value, toFahrenheit(imuTempRange.current.value),
+    log_info(F("Board temperature %.2f (last %.2f) 'C (%.2f 'F); range [%.2f - %.2f] 'C"), msmt.value, imuTempRange.current.value, toFahrenheit(imuTempRange.current.value),
                imuTempRange.min.value, imuTempRange.max.value);
 }
 
+/**
+ * Adds entropy to the FastLED's random16 implementation from the ECC608 security chip
+ */
 void updateSecEntropy() {
     const uint16_t rnd = secRandom16();
     random16_add_entropy(rnd);
-    Log.info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
+    log_info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
 }
 
+/**
+ * Logs the diagnostic information of current tasks and memory
+ */
 void logDiagInfo() {
     //log task and RAM metrics
     logTaskStats();
     //logSystemInfo();
+}
+
+/**
+ * Gets the temperature of the WiFi submodule from its CPU ESP32 temperature sensor
+ * Note: This method is called by the task than handles WiFi communication (CORE0 currently) in order to keep all WiFi module interactions
+ * in the same task.
+ */
+void wifi_temp() {
+    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI))
+        return;
+    //read the ESP32 WiFi chip's temperature
+    const Measurement wifiTemp {WiFi.getTemperature(), now(), Deg_C};
+    //add the measurement if the jump from previous measurement is reasonable
+    //I've noticed a suspect Fahrenheit value of 0x80 (128) that is not real (by feeling the chip) - this seems to be some sort of error/NA value
+    if (wifiTempRange.current.time == 0 && fabs(toFahrenheit(wifiTemp.value) - 128.0f) < TEMP_NA_COMPARE_EPSILON) {
+        log_warn( F("Discarding initial WiFi temperature measurement of %.2f 'C (128 'F error value detected)"), wifiTemp.value);
+        return;
+    }
+    if (const float wifiTempJump = wifiTemp.value - wifiTempRange.current.value; fabs(wifiTempJump) < 10.0f || wifiTempRange.current.time == 0)
+        wifiTempRange.setMeasurement(wifiTemp);
+    else
+        log_warn(F("WiFi temperature jump too big %.2f 'C for measurement %.2f 'C (%.2f 'F) - ignoring"), wifiTempJump, wifiTemp.value, toFahrenheit(wifiTemp.value));
+
+    log_info(F("WiFi subsystem temperature %.2f (last %.2f) 'C (%.2f 'F); range [%.2f - %.2f] 'C"), wifiTemp.value, wifiTempRange.current.value, toFahrenheit(wifiTempRange.current.value),
+             wifiTempRange.min.value, wifiTempRange.max.value);
 }
 
