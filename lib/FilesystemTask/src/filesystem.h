@@ -10,7 +10,7 @@
 #include <functional>
 #include <deque>
 #include "SchedulerExt.h"
-#include "br_sha256.h"
+#include "fs_sha256.h"
 
 inline constexpr auto FS_PATH_SEPARATOR PROGMEM = "/";
 using namespace fs;

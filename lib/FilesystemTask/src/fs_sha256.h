@@ -1,10 +1,10 @@
 // Copyright (c) 2025 by Dan Luca. All rights reserved.
 //
 #pragma once
-#ifndef BR_SHA256_H
-#define BR_SHA256_H
+#ifndef FS_SHA256_H
+#define FS_SHA256_H
 
-#include <bearssl/bearssl.h>
+#include <bearssl/bearssl_hash.h>
 #include <Arduino.h>
 
 // Function to calculate SHA-256 using BearSSL directly

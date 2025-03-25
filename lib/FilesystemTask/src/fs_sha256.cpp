@@ -1,7 +1,7 @@
 // Copyright (c) 2025 by Dan Luca. All rights reserved.
 //
 
-#include "br_sha256.h"
+#include "fs_sha256.h"
 
 /**
  * Convenience for converting byte array to hex - Same as StringUtils::asHexString
@@ -78,7 +78,7 @@ void sha256_update(br_sha256_context *ctx, const uint8_t *data, const size_t len
  * @param ctx the BearSSL SHA-256 context initialized by sha256_init
  * @return SHA-256 value as hex string
  */
-String sha256_final(br_sha256_context *ctx) {
+String sha256_final(const br_sha256_context *ctx) {
     uint8_t hash[32];
     br_sha256_out(ctx, hash);
     delete ctx;
