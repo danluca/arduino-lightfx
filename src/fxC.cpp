@@ -17,12 +17,12 @@ constexpr auto fxc5Desc PROGMEM = "FXC5: matrix";
 constexpr auto fxc6Desc PROGMEM = "FXC6: one sine";
 
 void FxC::fxRegister() {
-    static FxC1 fxC1;
-    static FxC2 fxC2;
-    static FxC3 fxC3;
-    static FxC4 fxC4;
-    static FxC5 fxC5;
-    static FxC6 fxC6;
+    new FxC1();
+    new FxC2();
+    new FxC3();
+    new FxC4();
+    new FxC5();
+    new FxC6();
 }
 
 /**
@@ -47,7 +47,7 @@ void FxC1::run() {
     CRGBSet others(leds, setB.size(), NUM_PIXELS);
 
     //combine all into setB (it is backed by the strip)
-    uint8_t ratio = beatsin8(2);
+    const uint8_t ratio = beatsin8(2);
     for (uint16_t x = 0; x < setB.size(); x++) {
         setB[x] = blend(setA[x], setB[x], ratio);
     }
@@ -98,12 +98,12 @@ FxC2::FxC2() : LedEffect(fxc2Desc) {}
 //}
 
 void FxC2::run() {
-    uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
+    const uint8_t blurAmount = dim8_raw( beatsin8(3,64, 192) );       // A sinewave at 3 Hz with values ranging from 64 to 192.
     tpl.blur1d(blurAmount);                        // Apply some blurring to whatever's already on the strip, which will eventually go black.
 
-    uint16_t  i = beatsin16(  9, 0, tpl.size()-1);
-    uint16_t  j = beatsin16( 7, 0, tpl.size()-1);
-    uint16_t  k = beatsin16(  5, 0, tpl.size()-1);
+    const uint16_t  i = beatsin16(  9, 0, tpl.size()-1);
+    const uint16_t  j = beatsin16( 7, 0, tpl.size()-1);
+    const uint16_t  k = beatsin16(  5, 0, tpl.size()-1);
 
     // The color of each point shifts over time, each at a different speed.
     uint16_t ms = millis();
@@ -148,8 +148,8 @@ void FxC3::setup() {
 
 void FxC3::run() {
     EVERY_N_MILLISECONDS(35) {
-        uint16_t locn = inoise16(xscale, dist+yscale) % 0xFFFF;           // Get a new pixel location from moving noise.
-        uint16_t pixlen = map(locn, 0, 0xFFFF, 0, tpl.size());                     // Map that to the length of the strand.
+        const uint16_t locn = inoise16(xscale, dist+yscale) % 0xFFFF;           // Get a new pixel location from moving noise.
+        const uint16_t pixlen = map(locn, 0, 0xFFFF, 0, tpl.size());                     // Map that to the length of the strand.
         leds[pixlen] = ColorFromPalette(palette, pixlen, brightness, LINEARBLEND);   // Use that value for both the location as well as the palette index colour for the pixel.
 
         dist += beatsin16(10,128,8192);             // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
@@ -333,7 +333,7 @@ void FxC6::one_sine_pal(uint8_t colorIndex) {
 
     for (uint16_t k=0; k<tpl.size(); k++) {
         // For each of the LED's in the strand, set a brightness based on a wave as follows:
-        uint8_t thisBright = qsubd(cubicwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
+        const uint8_t thisBright = qsubd(cubicwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
         tpl[k] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, bgclr, bgbright) : CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
         tpl[k] += ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
         colorIndex +=3;

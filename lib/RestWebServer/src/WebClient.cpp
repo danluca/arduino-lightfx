@@ -454,8 +454,7 @@ bool WebClient::_handleRawData() {
     //notify the handler the raw reading has ended
     _rawBody->status = RAW_END;
     _requestHandler->raw(*this);
-    log_debug(F("Raw length read %zu (client content length %d)\n====="), _rawBody->totalSize,
-              request().contentLength());
+    log_debug(F("Raw length read %zu (client content length %d)\n====="), _rawBody->totalSize, request().contentLength());
     return true;
 }
 

@@ -16,13 +16,15 @@ constexpr auto fxa4Desc PROGMEM = "FXA4: pixel segments moving opposite directio
 constexpr auto fxa5Desc PROGMEM = "FXA5: Moving a color swath on top of another";
 constexpr auto fxa6Desc PROGMEM = "FXA6: Sleep Light";
 
+uint16_t FxA::szStack = 0;
+
 void FxA::fxRegister() {
-    static FxA1 fxA1;
-    static FxA2 fxA2;
-    static FxA3 fxA3;
-    static FxA4 fxA4;
-    static FxA5 fxA5;
-    static SleepLight fxA6;
+    new FxA1();
+    new FxA2();
+    new FxA3();
+    new FxA4();
+    new FxA5();
+    new SleepLight();
 }
 
 void FxA::resetStack() {
@@ -35,14 +37,13 @@ void FxA::resetStack() {
 // Support Utilities
 ///////////////////////////////////////
 
-uint16_t FxA::fxa_incStackSize(int16_t delta, uint16_t max) {
+uint16_t FxA::fxa_incStackSize(const int16_t delta, const uint16_t max) {
     szStack = capr(szStack + delta, 0, max);
     return szStack;
 }
 
-uint16_t FxA::fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg) {
-    uint16_t minStack = szStackSeg << 1;
-    if (szStack < minStack) {
+uint16_t FxA::fxa_stackAdjust(CRGBSet &set, const uint16_t szStackSeg) {
+    if (const uint16_t minStack = szStackSeg << 1; szStack < minStack) {
         fxa_incStackSize(szStackSeg, set.size());
         return szStack;
     }
@@ -69,7 +70,7 @@ void FxA1::setup() {
     makeDot(ColorFromPalette(palette, colorIndex, random8(dimmed + 50, brightness), LINEARBLEND), szSegment);
 }
 
-void FxA1::makeDot(CRGB color, uint16_t szDot) const {
+void FxA1::makeDot(const CRGB color, const uint16_t szDot) const {
     for (uint16_t x = 0; x < szDot; x++) {
         dot[x] = color;
         dot[x] %= brightness;
@@ -85,8 +86,8 @@ void FxA1::run() {
         return;
     }
     EVERY_N_MILLISECONDS_I(a1Timer, speed) {
-        uint16_t upLimit = tpl.size() - szStack;
-        uint16_t movLimit = upLimit + szSegment - szStackSeg;
+        const uint16_t upLimit = tpl.size() - szStack;
+        const uint16_t movLimit = upLimit + szSegment - szStackSeg;
         shiftRight(tpl, curPos < szSegment ? dot[curPos] : BKG, (Viewport) upLimit);
         if (curPos == movLimit - 1)
             tpl[curPos - szSegment + 1] = dot[0];
@@ -135,8 +136,8 @@ void FxA2::setup() {
 }
 
 void FxA2::makeDot() const {
-    uint8_t brdIndex = beatsin8(11);
-    uint8_t brdBright = brdIndex % 2 ? BRIGHTNESS : dimmed;
+    const uint8_t brdIndex = beatsin8(11);
+    const uint8_t brdBright = brdIndex % 2 ? BRIGHTNESS : dimmed;
     dot[szSegment - 1] = ColorFromPalette(palette, brdIndex, brdBright, LINEARBLEND);
     for (uint16_t x = 1; x < (szSegment - 1); x++) {
         dot[x] = ColorFromPalette(palette, colorIndex + random8(32), brightness, LINEARBLEND);
@@ -172,8 +173,7 @@ void FxA2::run() {
         else
             FastLED.show(stripBrightness);
         incr(curPos, 1, tpl.size());
-        uint8_t ss = curPos % (szSegment + spacing);
-        if (ss == 0) {
+        if (const uint8_t ss = curPos % (szSegment + spacing); ss == 0) {
             //change segment, space sizes
             szSegment = beatsin8(11, 1, 7);
             spacing = beatsin8(8, 2, 11);
@@ -220,7 +220,7 @@ void FxA3::setup() {
     transEffect.prepare(random8());
 }
 
-void FxA3::makeDot(CRGB color, uint16_t szDot) const {
+void FxA3::makeDot(const CRGB color, const uint16_t szDot) const {
     for (uint16_t x = 0; x < szDot; x++) {
         dot[x] = color;
         dot[x] %= brightness;
@@ -277,9 +277,9 @@ void FxA4::setup() {
     makeDot(ColorFromPalette(palette, colorIndex, brightness, LINEARBLEND), szSegment);
 }
 
-void FxA4::makeDot(CRGB color, uint16_t szDot) {
-    CRGB c1 = color;
-    CRGB c2 = ColorFromPalette(targetPalette, colorIndex, brightness, LINEARBLEND);
+void FxA4::makeDot(const CRGB color, const uint16_t szDot) {
+    const CRGB c1 = color;
+    const CRGB c2 = ColorFromPalette(targetPalette, colorIndex, brightness, LINEARBLEND);
     dot(0, szDot).fill_gradient_RGB(c1, c2);
 }
 
@@ -292,7 +292,7 @@ void FxA4::run() {
 
     EVERY_N_MILLISECONDS_I(a4Timer, speed) {
         curBkg = ColorFromPalette(palette, beatsin8(11), 3, LINEARBLEND);
-        uint8_t ss = curPos % (szSegment + spacing);
+        const uint8_t ss = curPos % (szSegment + spacing);
         shiftRight(frR, ss < szSegment ? dot[ss] : curBkg);
         shiftLeft(frL,
                   curPos < szStackSeg ? ColorFromPalette(targetPalette, colorIndex, brightness, LINEARBLEND) : BKG);
@@ -345,12 +345,12 @@ void FxA5::setup() {
 }
 
 void FxA5::makeFrame() {
-    uint8_t halfBright = brightness >> 1;
-    uint8_t rndBright = random8(halfBright);
-    bool mainPal = ovr[0].getParity();
-    CRGBPalette16 &pal = mainPal ? palette : targetPalette;
+    const uint8_t halfBright = brightness >> 1;
+    const uint8_t rndBright = random8(halfBright);
+    const bool mainPal = ovr[0].getParity();
+    const CRGBPalette16 &pal = mainPal ? palette : targetPalette;
     ovr.fill_solid(ColorFromPalette(pal, lastColorIndex, halfBright + rndBright, LINEARBLEND));
-    CRGB newClr = ColorFromPalette(pal, colorIndex, halfBright + rndBright, LINEARBLEND);
+    const CRGB newClr = ColorFromPalette(pal, colorIndex, halfBright + rndBright, LINEARBLEND);
     uint16_t seg = 5;
     for (uint16_t x = 0; x < seg; x++) {
         nblend(ovr[x], newClr, (seg-x-1)*50);
@@ -407,7 +407,7 @@ SleepLight::SleepLight() : LedEffect(fxa6Desc), state(Fade), refPixel(&ledSet[0]
     }
 }
 
-uint8_t excludeActiveColors(uint8_t hue) {
+uint8_t excludeActiveColors(const uint8_t hue) {
     constexpr uint8_t min = HUE_ORANGE-8;     //24       (~33°)
     constexpr uint8_t max = HUE_AQUA;         //128      (180°)
     return scale8(sin8(hue), (max-min)) + min;
@@ -433,8 +433,8 @@ void SleepLight::setup() {
  * @param floor min value not to go under
  * @return val-sub if greater than floor, floor otherwise
  */
-uint8_t flrSub(uint8_t val, uint8_t sub, uint8_t floor) {
-    uint8_t res = qsub8(val, sub);
+uint8_t flrSub(const uint8_t val, const uint8_t sub, const uint8_t floor) {
+    const uint8_t res = qsub8(val, sub);
     return res < floor ? floor : res;
 }
 
@@ -462,7 +462,7 @@ void SleepLight::run() {
 }
 
 SleepLight::SleepLightState SleepLight::step() {
-    SleepLightState oldState = state;
+    const SleepLightState oldState = state;
     switch (state) {
         case FadeColorTransition:
             if (rblend(*refPixel, (CRGB) colorBuf, 7))

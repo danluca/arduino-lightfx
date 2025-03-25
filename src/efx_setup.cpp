@@ -38,16 +38,12 @@ uint8_t hue = 50;
 uint8_t delta = 1;
 uint8_t saturation = 100;
 uint8_t dotBpm = 30;
-uint8_t twinkRate = 100;
-uint16_t szStack = 0;
 uint16_t stripShuffleIndex[NUM_PIXELS];
 uint16_t hueDiff = 256;
 uint16_t totalAudioBumps = 0;
-int8_t rot = 1;
 int32_t dist = 1;
 bool stripBrightnessLocked = false;
 bool dirFwd = true;
-bool randHue = true;
 EffectTransition transEffect;
 
 //~ Support functions -----------------
@@ -127,7 +123,7 @@ void saveFxState() {
 void resetGlobals() {
     //turn off the LEDs on the strip and the frame buffer - flush to the LED strip if we have the time and not in sleep time
     //flushing to strip may cause a short blink if called mid-effect, like an audio effect bump would do for the same effect when sleeping
-    bool flushStrip = sysInfo->isSysStatus(SYS_STATUS_NTP) && !fxRegistry.isAsleep();
+    const bool flushStrip = sysInfo->isSysStatus(SYS_STATUS_NTP) && !fxRegistry.isAsleep();
     FastLED.clear(flushStrip);
     FastLED.setBrightness(BRIGHTNESS);
     frame.fill_solid(BKG);
@@ -144,13 +140,9 @@ void resetGlobals() {
     delta = 1;
     saturation = 100;
     dotBpm = 30;
-    twinkRate = 100;
-    szStack = 0;
     hueDiff = 256;
-    rot = 1;
     dist = 1;
     dirFwd = true;
-    randHue = true;
     fxBump = false;
 
     //shuffle led indexes - when engaging secureRandom functions, each call is about 30ms. Shuffling a 320 items array (~200 swaps and secure random calls) takes about 6 seconds!
@@ -917,7 +909,7 @@ void LedEffect::windDownPrep() {
     CRGBSet strip(leds, NUM_PIXELS);
     strip.nblend(ColorFromPalette(targetPalette, random8(), 72, LINEARBLEND), 80);
     FastLED.show(stripBrightness);
-    transEffect.prepare(rot);
+    transEffect.prepare(random8());
 }
 
 /**

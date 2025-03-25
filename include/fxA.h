@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXA_H
 #define LIGHTFX_FXA_H
@@ -10,6 +10,7 @@ namespace FxA {
     uint16_t fxa_incStackSize(int16_t delta, uint16_t max);
     uint16_t fxa_stackAdjust(CRGBSet &set, uint16_t szStackSeg);
     void resetStack();
+    extern uint16_t szStack;
 
     class FxA1 : public LedEffect {
     public:

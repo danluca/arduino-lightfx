@@ -34,13 +34,14 @@ struct fsOperationData {
     const char* const name;
     String* const content;
     void* const data;
+    size_t size=0;
 };
 
 /**
  * Structure of the message sent to the filesystem task - internal use only
  */
 struct fsTaskMessage {
-    enum Action:uint8_t {READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, RENAME, DELETE, EXISTS, FORMAT, LIST_FIlES, INFO, STAT, MAKE_DIR} event;
+    enum Action:uint8_t {READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, APPEND_FILE_BIN, RENAME, DELETE, EXISTS, FORMAT, LIST_FIlES, INFO, STAT, MAKE_DIR, SHA256} event;
     TaskHandle_t task;
     fsOperationData* data;
 };
@@ -170,6 +171,10 @@ void fsExecute() {
             sz = SyncFsImpl.prvAppendFile(msg->data->name, msg->data->content);
             xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
             break;
+        case fsTaskMessage::APPEND_FILE_BIN:
+            sz = SyncFsImpl.prvAppendFile(msg->data->name, static_cast<uint8_t*>(msg->data->data), msg->data->size);
+            xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
+            break;
         case fsTaskMessage::DELETE:
             sz = SyncFsImpl.prvRemove(msg->data->name);
             xTaskNotify(msg->task, sz, eSetValueWithOverwrite);
@@ -202,6 +207,9 @@ void fsExecute() {
             success = SyncFsImpl.prvMakeDir(msg->data->name);
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
+        case fsTaskMessage::SHA256:
+            success = SyncFsImpl.prvSha256(msg->data->name, msg->data->content);
+            xTaskNotify(msg->task, success, eSetValueWithOverwrite);
         default:
             Log.error(F("Event type %hd not supported"), msg->event);
             break;
@@ -339,6 +347,23 @@ size_t SynchronizedFS::appendFile(const char *fname, String *s) const {
         sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
     } else
         Log.error(F("Error sending APPEND_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
+
+    delete msg;
+    delete args;
+    return sz;
+}
+
+size_t SynchronizedFS::appendFile(const char *fname, uint8_t *buffer, const size_t size) const {
+    auto *args = new fsOperationData {fname, nullptr, buffer, size};
+    auto *msg = new fsTaskMessage {fsTaskMessage::APPEND_FILE_BIN, xTaskGetCurrentTaskHandle(), args};
+
+    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    size_t sz = 0;
+    if (qResult == pdTRUE) {
+        //wait for the filesystem task to finish and notify us
+        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    } else
+        Log.error(F("Error sending APPEND_FILE_BIN message to filesystem task for file name %s - error %d"), fname, qResult);
 
     delete msg;
     delete args;
@@ -492,6 +517,25 @@ bool SynchronizedFS::stat(const char *path, FSStat *st) {
     return successful;
 }
 
+String SynchronizedFS::sha256(const char *path) const {
+    String strSha2;
+    strSha2.reserve(65);
+    auto *args = new fsOperationData {path, &strSha2, nullptr};
+    auto *msg = new fsTaskMessage{fsTaskMessage::SHA256, xTaskGetCurrentTaskHandle(), args};
+
+    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    bool successful = false;
+    if (qResult == pdTRUE)
+        successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    else
+        Log.error(F("Error sending SHA256 message to filesystem task for path %s - error %d"), path, qResult);
+    if (!successful)
+        Log.error(F("Failed to calculate SHA-256 hash for path %s (does not exist or not a file)"), path);
+    delete msg;
+    delete args;
+    return strSha2;
+}
+
 void SynchronizedFS::end() {
     Scheduler.stopTask(fsTask);
     if (fsPtr)
@@ -558,7 +602,7 @@ size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
     size_t fSize = 0;
     File f = fsPtr->open(fname, "w");
     f.setTimeCallback(now);
-    fSize = f.write(s->c_str());
+    fSize = f.write(s->c_str(), s->length());
     f.close();
     //get the current last write timestamp
     FSStat fstat{};
@@ -576,7 +620,7 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const String *s) const {
     size_t fSize = 0;
     File f = fsPtr->open(fname, "a");
     f.setTimeCallback(now);
-    fSize = f.write(s->c_str());
+    fSize = f.write(s->c_str(), s->length());
     f.close();
     //get the current last write timestamp
     FSStat fstat{};
@@ -584,6 +628,21 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const String *s) const {
 
     Log.info(F("File %s - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, fstat.size, StringUtils::asString(fstat.atime).c_str());
     Log.trace(F("Appended file %s content [%zu]: %s"), fname, fSize, s->c_str());
+    return fSize;
+}
+
+size_t SynchronizedFS::prvAppendFile(const char *fname, const uint8_t *buffer, const size_t size) const {
+    size_t fSize = 0;
+    File f = fsPtr->open(fname, "a");
+    f.setTimeCallback(now);
+    fSize = f.write(buffer, size);
+    f.close();
+    //get the current last write timestamp
+    FSStat fstat{};
+    fsPtr->stat(fname, &fstat);
+
+    Log.info(F("File %s (binary) - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, fstat.size, StringUtils::asString(fstat.atime).c_str());
+    Log.trace(F("Appended file %s binary content %zu bytes"), fname, fSize);    //this is superfluous, perhaps logging binary content in hex would be helpful but quite a bit of overhead on flip side
     return fSize;
 }
 
@@ -672,4 +731,28 @@ bool SynchronizedFS::prvStat(const char *path, FSStat *fs) const {
 
 bool SynchronizedFS::prvMakeDir(const char *path) const {
     return fsPtr->mkdir(path);
+}
+
+bool SynchronizedFS::prvSha256(const char *path, String *sha256) const {
+    if (!fsPtr->exists(path)) {
+        Log.error(F("File %s does not exist, no SHA256 hash calculated"), path);
+        return false;
+    }
+    const ulong start = millis();
+    File f = fsPtr->open(path, "r");
+    if (f.isDirectory()) {
+        Log.error(F("File %s is a directory, no SHA-256 hash calculated"), path);
+        return false;
+    }
+    br_sha256_context* ctx = sha256_init();
+    size_t fSize = 0;
+    uint8_t buf[FILE_BUF_SIZE]{};
+    while (const size_t charsRead = f.read(buf, FILE_BUF_SIZE)) {
+        sha256_update(ctx, buf, charsRead);
+        fSize += charsRead;
+    }
+    f.close();
+    *sha256 = sha256_final(ctx);
+    Log.info(F("Read %d bytes from %s file, SHA-256 %s computed in %ldms"), fSize, path, sha256->c_str(), millis() - start);
+    return true;
 }

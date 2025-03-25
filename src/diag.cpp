@@ -39,6 +39,7 @@ static uint16_t tmrSysTempId = 11;
 static uint16_t tmrSysVoltageId = 12;
 static uint16_t tmrSaveSysInfoId = 13;
 static uint16_t tmrDiagInfoId = 14;
+static uint16_t tmrStatusLEDCheck = 15;
 
 // declarations ahead
 void deviceSetup();
@@ -52,6 +53,7 @@ void enqueueSysTemp(TimerHandle_t xTimer);
 void enqueueSysVoltage(TimerHandle_t xTimer);
 void enqueueSaveSysInfo(TimerHandle_t xTimer);
 void enqueueDiagInfo(TimerHandle_t xTimer);
+void enqueueStatusLEDCheck(TimerHandle_t xTimer);
 
 // diag task definition - priority is overwritten during setup, see diagSetup
 // TaskDef diagDef {deviceSetup, diagExecute, 3072, "Diag", 1, CORE_1};
@@ -145,6 +147,12 @@ void diagSetup() {
         log_error(F("Cannot create saveSysInfo timer - Ignored."));
     else if (xTimerStart(thSaveSysInfo, 0) != pdPASS)
         log_error(F("Cannot start the saveSysInfo timer - Ignored."));
+    //update the status LED - repeated each 2 seconds
+    const TimerHandle_t thStatusLED = xTimerCreate("statusLEDCheck", pdMS_TO_TICKS(2 * 1000), pdTRUE, &tmrStatusLEDCheck, enqueueStatusLEDCheck);
+    if (thStatusLED == nullptr)
+        log_error(F("Cannot create statusLEDCheck timer - Ignored."));
+    else if (xTimerStart(thStatusLED, 0) != pdPASS)
+        log_error(F("Cannot start the statusLEDCheck timer - Ignored."));
 
     //setup the diagnostic thread, higher priority to avoid interruption during I2C communication
     diagQueue = xQueueCreate(20, sizeof(DiagAction));
@@ -201,6 +209,18 @@ void enqueueSaveSysInfo(TimerHandle_t xTimer) {
         log_error(F("Error sending SAVE_SYS_INFO message to ALM queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     log_info(F("Sent SAVE_SYS_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+}
+
+/**
+ * Callback for statusLEDCheck timer - this is called from Timer task. Enqueues a STATUS_LED_CHECK message for the alarm task.
+ * @param xTimer the statusLEDCheck timer that fired the callback
+ */
+void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
+    constexpr MiscAction msg = STATUS_LED_CHECK;
+    if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
+        log_error(F("Error sending STATUS_LED_CHECK message to ALM queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+    // else
+    //     log_info(F("Sent STATUS_LED_CHECK event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -591,17 +611,22 @@ void wifi_temp() {
     //read the ESP32 WiFi chip's temperature
     const Measurement wifiTemp {WiFi.getTemperature(), now(), Deg_C};
     //add the measurement if the jump from previous measurement is reasonable
+    const float fTemp = toFahrenheit(wifiTemp.value);
     //I've noticed a suspect Fahrenheit value of 0x80 (128) that is not real (by feeling the chip) - this seems to be some sort of error/NA value
-    if (wifiTempRange.current.time == 0 && fabs(toFahrenheit(wifiTemp.value) - 128.0f) < TEMP_NA_COMPARE_EPSILON) {
-        log_warn( F("Discarding initial WiFi temperature measurement of %.2f 'C (128 'F error value detected)"), wifiTemp.value);
-        return;
+    //if not first reading or current value is within 8 degrees 'C of 53.33'C (128'F) (53.33 'C +/- 4) then consider the 128'F value of the reading, otherwise ignore these (erroneous) readings
+    bool bInvalid = fabs(fTemp - 128.0f) < TEMP_NA_COMPARE_EPSILON && (wifiTempRange.current.time == 0 || fabs(wifiTempRange.current.value - 53.33f) > 4.0f);
+#if LOGGING_ENABLED == 1
+    if (bInvalid) {
+        if (wifiTempRange.current.time == 0)
+            log_warn( F("Discarding WiFi temperature measurement of %.2f 'C - 128 'F error value detected"), wifiTemp.value);
+        else
+            log_warn(F("Discarding WiFi temperature measurement %.2f 'C (%.2f 'F) - not within allowed range for inclusion [49.33 - 57.33] 'C"), wifiTemp.value, fTemp);
     }
-    if (const float wifiTempJump = wifiTemp.value - wifiTempRange.current.value; fabs(wifiTempJump) < 10.0f || wifiTempRange.current.time == 0)
+#endif
+    if (!bInvalid) {
+        log_info(F("WiFi subsystem temperature %.2f 'C (%.2f 'F) (ADC %u) (last measurement %.2f 'C, %.2f 'F); range [%.2f - %.2f] 'C"), wifiTemp.value, fTemp, wifiTemp.adcRaw,
+            wifiTempRange.current.value, toFahrenheit(wifiTempRange.current.value), wifiTempRange.min.value, wifiTempRange.max.value);
         wifiTempRange.setMeasurement(wifiTemp);
-    else
-        log_warn(F("WiFi temperature jump too big %.2f 'C for measurement %.2f 'C (%.2f 'F) - ignoring"), wifiTempJump, wifiTemp.value, toFahrenheit(wifiTemp.value));
-
-    log_info(F("WiFi subsystem temperature %.2f (last %.2f) 'C (%.2f 'F); range [%.2f - %.2f] 'C"), wifiTemp.value, wifiTempRange.current.value, toFahrenheit(wifiTempRange.current.value),
-             wifiTempRange.min.value, wifiTempRange.max.value);
+    }
 }
 

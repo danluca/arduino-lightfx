@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXB_H
 #define LIGHTFX_FXB_H
@@ -28,6 +28,7 @@ namespace FxB {
 
     void ease();
 
+    extern uint16_t szStack;
 
     class FxB1 : public LedEffect {
     public:

@@ -10,6 +10,7 @@
 #include <functional>
 #include <deque>
 #include "SchedulerExt.h"
+#include "br_sha256.h"
 
 inline constexpr auto FS_PATH_SEPARATOR PROGMEM = "/";
 using namespace fs;
@@ -58,10 +59,12 @@ public:
     bool rmdir(const char *path) override;
     bool stat(const char *path, FSStat *st) override;
     bool stat(const char *path, FileInfo *info) const;
+    String sha256(const char *path) const;
 
     size_t readFile(const char *fname, String *s) const;
     size_t writeFile(const char *fname, String *s) const;
     size_t appendFile(const char *fname, String *s) const;
+    size_t appendFile(const char *fname, uint8_t *buffer, size_t size) const;
     bool writeFileAsync(const char *fname, String *s) const;
     bool list(const char *path, std::deque<FileInfo*> *list) const;
 
@@ -69,6 +72,7 @@ protected:
     size_t prvReadFile(const char *fname, String *s) const;
     size_t prvWriteFile(const char *fname, const String *s) const;
     size_t prvAppendFile(const char *fname, const String *s) const;
+    size_t prvAppendFile(const char *fname, const uint8_t *buffer, size_t size) const;
     size_t prvWriteFileAndFreeMem(const char *fname, const String *s) const;
     bool prvRemove(const char *path) const;
     bool prvRename(const char *fromName, const String *toName) const;
@@ -78,6 +82,7 @@ protected:
     bool prvInfo(const char *path, FileInfo *fileInfo) const;
     bool prvStat(const char *path, FSStat *fs) const;
     bool prvMakeDir(const char *path) const;
+    bool prvSha256(const char *path, String *sha256) const;
 
     friend void fsInit();
     friend void fsExecute();

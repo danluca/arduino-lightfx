@@ -14,12 +14,14 @@ constexpr auto fxd3Desc PROGMEM = "FXD3: plasma";
 constexpr auto fxd4Desc PROGMEM = "FXD4: rainbow marching";
 constexpr auto fxd5Desc PROGMEM = "FXD5: ripples";
 
+int8_t FxD::rot = 1;
+
 void FxD::fxRegister() {
-    static FxD1 fxD1;
-    static FxD2 fxD2;
-    static FxD3 fxD3;
-    static FxD4 fxD4;
-    static FxD5 fxD5;
+    new FxD1();
+    new FxD2();
+    new FxD3();
+    new FxD4();
+    new FxD5();
 }
 
 /**
@@ -62,7 +64,7 @@ void FxD1::baseConfig(JsonObject &json) const {
 void FxD1::confetti() {
     // random colored speckles that blink in and fade smoothly
     tpl.fadeToBlackBy(fade);                    // Low values = slower fade.
-    uint16_t pos = random16(tpl.size());    // Pick an LED at random.
+    const uint16_t pos = random16(tpl.size());    // Pick an LED at random.
     //tpl[pos] += CHSV((hue + random16(hueDiff)) / 4 , saturation, localBright);  // I use 12 bits for hue so that the hue increment isn't too quick.
     tpl[pos] += ColorFromPalette(palette, hue, brightness, LINEARBLEND);
     hue = hue + delta;                                // It increments here.
@@ -121,9 +123,9 @@ void FxD2::baseConfig(JsonObject &json) const {
 }
 
 void FxD2::dot_beat() {
-    uint16_t inner = beatsin16(dotBpm, tpl.size()/4, tpl.size()/4*3);    // Move 1/4 to 3/4
-    uint16_t outer = beatsin16(dotBpm, 0, tpl.size()-1);               // Move entire length
-    uint16_t middle = beatsin16(dotBpm, tpl.size()/3, tpl.size()/3*2);   // Move 1/3 to 2/3
+    const uint16_t inner = beatsin16(dotBpm, tpl.size()/4, tpl.size()/4*3);    // Move 1/4 to 3/4
+    const uint16_t outer = beatsin16(dotBpm, 0, tpl.size()-1);               // Move entire length
+    const uint16_t middle = beatsin16(dotBpm, tpl.size()/3, tpl.size()/3*2);   // Move 1/3 to 2/3
 
     tpl[middle] = ColorFromPalette(palette, beatsin8(10));
     tpl[inner] = ColorFromPalette(palette, beatsin8(11, 0, 255, 0, 127));
@@ -173,14 +175,14 @@ void FxD3::run() {
 }
 
 void FxD3::plasma() {
-    uint8_t thisPhase = beatsin8(6,-64,64);                           // Setting phase change for a couple of waves.
-    uint8_t thatPhase = beatsin8(7,-64,64);
+    const uint8_t thisPhase = beatsin8(6,-64,64);                           // Setting phase change for a couple of waves.
+    const uint8_t thatPhase = beatsin8(7,-64,64);
 
     for (int k=0; k<NUM_PIXELS; k++) {                              // For each of the LED's in the strand, set a localBright based on a wave as follows:
         uint8_t colorIndex = cubicwave8((k*23)+thisPhase)/2 + cos8((k*15)+thatPhase)/2;           // Create a wave and add a phase change and add another wave with its own phase change. Hey, you can even change the frequencies if you wish.
-        uint8_t thisBright = qsuba(colorIndex, beatsin8(7,0,96));              // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
+        const uint8_t thisBright = qsuba(colorIndex, beatsin8(7,0,96));              // qsub gives it a bit of 'black' dead space by setting sets a minimum value. If colorIndex < current value of beatsin8(), then bright = 0. Otherwise, bright = colorIndex..
         //plasma becomes slime during Halloween (single color morphing mass)
-        uint8_t clr = paletteFactory.isHolidayLimitedHue() ? monoColor : colorIndex;
+        const uint8_t clr = paletteFactory.isHolidayLimitedHue() ? monoColor : colorIndex;
         leds[k] = ColorFromPalette(palette, clr, thisBright, LINEARBLEND);  // Let's now add the foreground colour.
     }
 }
@@ -204,6 +206,7 @@ void FxD4::setup() {
     LedEffect::setup();
     hue = 0;
     hueDiff = 1;
+    rot = 0;
 }
 
 void FxD4::run() {

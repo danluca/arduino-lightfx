@@ -14,6 +14,7 @@ typedef FixedQueue<time_t, MAX_WATCHDOG_REBOOT_TIMESTAMPS> WatchdogQueue;
 extern unsigned long prevStatTime;
 extern unsigned long prevIdleTime;
 
+void state_led_run();
 void logTaskStats();
 void logSystemInfo();
 void logSystemState();

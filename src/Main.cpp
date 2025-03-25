@@ -48,7 +48,7 @@ void enqueueAlarmSetup();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
 constexpr TaskDef fxTasks {fx_setup, fx_run, 2048, "Fx", 255, CORE_1};
 constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 255, CORE_1};
-constexpr TaskDef alarmTasks {nullptr, alarm_misc_run, 1024, "ALM", 255, CORE_0};
+constexpr TaskDef alarmTasks {state_led_run, alarm_misc_run, 1024, "ALM", 255, CORE_0};
 bool core1_separate_stack = true;
 QueueHandle_t almQueue;
 QueueHandle_t webQueue;
@@ -102,6 +102,7 @@ void alarm_misc_run() {
         case ALARM_SETUP: alarm_setup(); break;
         case ALARM_CHECK: alarm_check(); break;
         case SAVE_SYS_INFO: saveSysInfo(); break;
+        case STATUS_LED_CHECK: state_led_run(); break;
         default:
             log_error(F("Misc Action %hu not supported"), action);
     }
@@ -152,7 +153,11 @@ void setup() {
 
     sysInfo = new SysInfo();    //system information object built once per run
     filesystem_setup();
-    sysInfo->begin();           //starts the LED status task
+    sysInfo->begin();
+
+    webQueue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE0 task for communication between cores
+    almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for ALM task for communication between cores
+    Scheduler.startTask(&alarmTasks);
 
     readSysInfo();
     secElement_setup();
@@ -161,8 +166,6 @@ void setup() {
     const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
     log_info(F("Basic components ok - Core 1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
 
-    webQueue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE0 task for communication between cores
-    almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for ALM task for communication between cores
     wifi_setup();
     taskDelay(2500);    //let the WiFi settle
     timeSetup();
@@ -176,7 +179,6 @@ void setup() {
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
     taskDelay(250);         // leave reasonable time to alarm task to setup
-    Scheduler.startTask(&alarmTasks);
     //enqueues the alarm setup event
     enqueueAlarmSetup();
 

@@ -15,7 +15,7 @@
 #define SYS_STATUS_DST          0x0080
 #define SYS_STATUS_DIAG         0x0100
 
-enum MiscAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO};
+enum MiscAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO, STATUS_LED_CHECK};
 enum CommAction:uint8_t {WIFI_ENSURE, WIFI_TEMP};
 
 ulong adcRandom();

@@ -19,8 +19,8 @@ constexpr auto fxi3Desc PROGMEM = "FXI3: Three overlay segments";
  * Register FxI effects
  */
 void FxI::fxRegister() {
-    static FxI1 fxI1;
-    static FxI2 fxI2;
+    new FxI1();
+    new FxI2();
 }
 
 //FXI1
@@ -239,8 +239,7 @@ void FxI2::pacifica_add_whitecaps() {
     for (uint16_t i = 0; i < tpl.size(); i++) {
         const uint8_t threshold = scale8(sin8(wave), 20) + baseThreshold;
         wave += 7;
-        const uint8_t l = tpl[i].getAverageLight();
-        if (l > threshold) {
+        if (const uint8_t l = tpl[i].getAverageLight(); l > threshold) {
             const uint8_t overage = l - threshold;
             const uint8_t overage2 = qadd8(overage, overage);
             tpl[i] += CRGB(overage, overage2, qadd8(overage2, overage2));

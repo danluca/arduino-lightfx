@@ -19,16 +19,18 @@ constexpr auto fxb7Desc PROGMEM = "FXB7: ease";
 constexpr auto fxb8Desc PROGMEM = "FXB8: fadein";
 constexpr auto fxb9Desc PROGMEM = "FXB9: juggle long segments";
 
+uint16_t FxB::szStack = 0;
+
 void FxB::fxRegister() {
-    static FxB1 fxb1;
-    static FxB2 fxB2;
-    static FxB3 fxB3;
-    static FxB4 fxB4;
-    static FxB5 fxB5;
-    static FxB6 fxB6;
-    static FxB7 fxB7;
-    static FxB8 fxB8;
-    static FxB9 fxB9;
+    new FxB1();
+    new FxB2();
+    new FxB3();
+    new FxB4();
+    new FxB5();
+    new FxB6();
+    new FxB7();
+    new FxB8();
+    new FxB9();
 }
 
 //FXB1
@@ -96,7 +98,7 @@ void FxB::rainbowWithGlitter() {
     addGlitter(80);
 }
 
-void FxB::addGlitter(fract8 chanceOfGlitter) {
+void FxB::addGlitter(const fract8 chanceOfGlitter) {
     if (random8() < chanceOfGlitter) {
         leds[random16(NUM_PIXELS)] += CRGB::White;
     }
@@ -136,7 +138,7 @@ void FxB3::run() {
 void FxB::fxb_confetti() {
     // Random colored speckles that blink in and fade smoothly.
     tpl.fadeToBlackBy(10);
-    uint16_t pos = random16(tpl.size());
+    const uint16_t pos = random16(tpl.size());
     if (paletteFactory.isHolidayLimitedHue())
         tpl[pos] += ColorFromPalette(palette, hue + random8(64));
     else
@@ -176,7 +178,7 @@ void FxB4::run() {
 void FxB::sinelon() {
     // A colored dot sweeping back and forth, with fading trails.
     tpl.fadeToBlackBy(20);
-    uint16_t pos = beatsin16(14, 0, tpl.size() - 1);
+    const uint16_t pos = beatsin16(14, 0, tpl.size() - 1);
     if (paletteFactory.isHolidayLimitedHue())
         tpl[pos] += ColorFromPalette(palette, hue, brightness);
     else
@@ -259,8 +261,8 @@ void FxB6::run() {
 
 void FxB::bpm() {
     // Colored stripes pulsing at a defined Beats-Per-Minute.
-    uint8_t BeatsPerMinute = beatsin8(5, 42, 47);
-    uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
+    const uint8_t BeatsPerMinute = beatsin8(5, 42, 47);
+    const uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
 
     for (uint16_t i = 0; i < tpl.size(); i++) {
         leds[i] = ColorFromPalette(palette, hue + i, beat - hue + (i * 3));

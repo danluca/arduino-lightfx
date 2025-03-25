@@ -49,13 +49,9 @@ extern uint8_t hue;
 extern uint8_t dotBpm;
 extern uint8_t saturation;
 extern uint8_t delta;
-extern uint8_t twinkRate;
-extern uint16_t szStack;
 extern uint16_t hueDiff;
 extern bool dirFwd;
-extern int8_t rot;
 extern int32_t dist;
-extern bool randHue;
 extern uint16_t totalAudioBumps;
 extern volatile uint16_t audioBumpThreshold;
 extern volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT];
@@ -193,14 +189,14 @@ public:
 
     [[nodiscard]] uint16_t getRegistryIndex() const;
 
-    [[nodiscard]] inline EffectState getState() const { return state; }
+    [[nodiscard]] EffectState getState() const { return state; }
 
     /**
      * What weight does this effect have when random selection is engaged
      * Subclasses have the opportunity to customize this value by e.g. the current holiday, time, etc., hence changing/reshaping the chances of selecting an effect
      * @return a value between 1 and 255. If returning 0, this effectively removes the effect from random selection.
      */
-    [[nodiscard]] virtual inline uint8_t selectionWeight() const {
+    [[nodiscard]] virtual uint8_t selectionWeight() const {
         return 1;
     }
 

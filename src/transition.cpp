@@ -37,7 +37,7 @@ bool EffectTransition::transition() {
     }
 }
 
-void EffectTransition::prepare(uint selector) {
+void EffectTransition::prepare(const uint selector) {
     sel = selector % (effectsCount*2);    //twice the amount of fade out effects - allows for 2 variations within each effect
     prefFx = (selector >> 8) & 0xFF;
     if (prefFx) {
