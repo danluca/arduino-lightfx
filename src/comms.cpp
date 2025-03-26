@@ -243,7 +243,7 @@ void timeUpdate() {
         dst ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
         time_t curTime = now();
         log_info(F("Time DST status changed from %s [offset %d] to %s [offset %d] - current time %s"), dst ? "CST" : "CDT", dst ? CST_OFFSET_SECONDS : CDT_OFFSET_SECONDS,
-            dst ? "CDT" : "CST", dst ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS : CST_OFFSET_SECONDS, StringUtils::asString(curTime).c_str());
+            dst ? "CDT" : "CST", dst ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS, StringUtils::asString(curTime).c_str());
     }
     if (result && timeSyncs.size() > 2) {
         //log the current drift

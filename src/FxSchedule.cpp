@@ -136,13 +136,13 @@ bool isAwakeTime(const time_t time) {
 }
 
 /**
- * Enqueues an alarm check message to the core0 queue
+ * Enqueues an alarm check message to the ALM queue
  * @param xTimer the timer that triggered the alarm check
  */
 void enqueueAlarmCheck(TimerHandle_t xTimer) {
     constexpr MiscAction action = ALARM_CHECK;
-    if (BaseType_t qResult = xQueueSend(almQueue, &action, 0); qResult != pdTRUE)
-        log_error(F("Error sending ALARM_CHECK message to core0 queue for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
+    if (const BaseType_t qResult = xQueueSend(almQueue, &action, 0); qResult != pdTRUE)
+        log_error(F("Error sending ALARM_CHECK message to ALM queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
 }
 
 void alarm_setup() {

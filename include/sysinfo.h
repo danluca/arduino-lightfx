@@ -15,6 +15,7 @@ extern unsigned long prevStatTime;
 extern unsigned long prevIdleTime;
 
 void state_led_run();
+void state_led_begin();
 void logTaskStats();
 void logSystemInfo();
 void logSystemState();
@@ -92,6 +93,7 @@ public:
     friend void readSysInfo();
     friend void saveSysInfo();
     friend void state_led_run();
+    friend void state_led_begin();
 };
 
 extern SysInfo *sysInfo;

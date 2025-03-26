@@ -624,7 +624,7 @@ void wifi_temp() {
     }
 #endif
     if (!bInvalid) {
-        log_info(F("WiFi subsystem temperature %.2f 'C (%.2f 'F) (ADC %u) (last measurement %.2f 'C, %.2f 'F); range [%.2f - %.2f] 'C"), wifiTemp.value, fTemp, wifiTemp.adcRaw,
+        log_info(F("WiFi subsystem temperature %.2f 'C (%.2f 'F) (last measurement %.2f 'C, %.2f 'F); range [%.2f - %.2f] 'C"), wifiTemp.value, fTemp,
             wifiTempRange.current.value, toFahrenheit(wifiTempRange.current.value), wifiTempRange.min.value, wifiTempRange.max.value);
         wifiTempRange.setMeasurement(wifiTemp);
     }

@@ -48,7 +48,7 @@ void enqueueAlarmSetup();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
 constexpr TaskDef fxTasks {fx_setup, fx_run, 2048, "Fx", 255, CORE_1};
 constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 255, CORE_1};
-constexpr TaskDef alarmTasks {state_led_run, alarm_misc_run, 1024, "ALM", 255, CORE_0};
+constexpr TaskDef alarmTasks {state_led_begin, alarm_misc_run, 1024, "ALM", 255, CORE_0};
 bool core1_separate_stack = true;
 QueueHandle_t almQueue;
 QueueHandle_t webQueue;
@@ -67,8 +67,8 @@ QueueHandle_t webQueue;
  */
 void enqueueAlarmSetup() {
     constexpr MiscAction msg = ALARM_SETUP;
-    if (const BaseType_t qResult = xQueueSend(almQueue, &msg, pdMS_TO_TICKS(2000)); qResult != pdTRUE)
-        log_error(F("Error sending ALARM_SETUP message to CORE0 task - error %d"), qResult);
+    if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
+        log_error(F("Error sending ALARM_SETUP message to ALM queue - error %d"), qResult);
 }
 
 /**
@@ -95,7 +95,6 @@ void alarm_misc_run() {
     MiscAction action;
     // wait indefinitely for a message to be received
     if (pdFALSE == xQueueReceive(almQueue, &action, portMAX_DELAY)) {
-        vTaskDelay(pdMS_TO_TICKS(1000));   //wait a bit before trying again
         return;
     }
     switch (action) {

@@ -483,15 +483,17 @@ void SysInfo::updateStateLED() const {
     updateStateLED(colorCode);
 }
 
-void state_led_run() {
+void state_led_begin() {
     while (!sysInfo->isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1)) {
         sysInfo->updateStateLED();
         taskDelay(640);
         SysInfo::updateStateLED(CRGB::Black);
         taskDelay(640);
     }
+}
+
+void state_led_run() {
     sysInfo->updateStateLED();
-    // taskDelay(750);
 }
 
 void SysInfo::begin() {
