@@ -39,7 +39,6 @@ static uint16_t tmrSysTempId = 11;
 static uint16_t tmrSysVoltageId = 12;
 static uint16_t tmrSaveSysInfoId = 13;
 static uint16_t tmrDiagInfoId = 14;
-static uint16_t tmrStatusLEDCheck = 15;
 
 // declarations ahead
 void deviceSetup();
@@ -53,7 +52,6 @@ void enqueueSysTemp(TimerHandle_t xTimer);
 void enqueueSysVoltage(TimerHandle_t xTimer);
 void enqueueSaveSysInfo(TimerHandle_t xTimer);
 void enqueueDiagInfo(TimerHandle_t xTimer);
-void enqueueStatusLEDCheck(TimerHandle_t xTimer);
 
 // diag task definition - priority is overwritten during setup, see diagSetup
 // TaskDef diagDef {deviceSetup, diagExecute, 3072, "Diag", 1, CORE_1};
@@ -147,12 +145,6 @@ void diagSetup() {
         log_error(F("Cannot create saveSysInfo timer - Ignored."));
     else if (xTimerStart(thSaveSysInfo, 0) != pdPASS)
         log_error(F("Cannot start the saveSysInfo timer - Ignored."));
-    //update the status LED - repeated each 2 seconds
-    const TimerHandle_t thStatusLED = xTimerCreate("statusLEDCheck", pdMS_TO_TICKS(2 * 1000), pdTRUE, &tmrStatusLEDCheck, enqueueStatusLEDCheck);
-    if (thStatusLED == nullptr)
-        log_error(F("Cannot create statusLEDCheck timer - Ignored."));
-    else if (xTimerStart(thStatusLED, 0) != pdPASS)
-        log_error(F("Cannot start the statusLEDCheck timer - Ignored."));
 
     //setup the diagnostic thread, higher priority to avoid interruption during I2C communication
     diagQueue = xQueueCreate(20, sizeof(DiagAction));
@@ -208,19 +200,7 @@ void enqueueSaveSysInfo(TimerHandle_t xTimer) {
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending SAVE_SYS_INFO message to ALM queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
-    //     log_info(F("Sent SAVE_SYS_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
-}
-
-/**
- * Callback for statusLEDCheck timer - this is called from Timer task. Enqueues a STATUS_LED_CHECK message for the alarm task.
- * @param xTimer the statusLEDCheck timer that fired the callback
- */
-void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
-    constexpr MiscAction msg = STATUS_LED_CHECK;
-    if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
-        log_error(F("Error sending STATUS_LED_CHECK message to ALM queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
-    // else
-    //     log_info(F("Sent STATUS_LED_CHECK event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    //     log_info(F("Sent SAVE_SYS_INFO event successfully to ALM queue for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
 }
 
 /**
@@ -231,9 +211,9 @@ void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
 void enqueueDiagInfo(TimerHandle_t xTimer) {
     constexpr DiagAction msg = DIAG_INFO;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        log_error(F("Error sending DIAG_INFO message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending DIAG_INFO message to DIAG queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
-    //     log_info(F("Sent DIAG_INFO event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    //     log_info(F("Sent DIAG_INFO event successfully to DIAG queue for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
 }
 
 /**

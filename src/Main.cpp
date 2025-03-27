@@ -43,12 +43,13 @@
  */
 
 void web_run();
+void alarm_misc_begin();
 void alarm_misc_run();
 void enqueueAlarmSetup();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
-constexpr TaskDef fxTasks {fx_setup, fx_run, 2048, "Fx", 255, CORE_1};
+constexpr TaskDef fxTasks {fx_setup, fx_run, 1536, "Fx", 255, CORE_1};
 constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 255, CORE_1};
-constexpr TaskDef alarmTasks {state_led_begin, alarm_misc_run, 1024, "ALM", 255, CORE_0};
+constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1024, "ALM", 5, CORE_0};
 bool core1_separate_stack = true;
 QueueHandle_t almQueue;
 QueueHandle_t webQueue;
@@ -72,6 +73,14 @@ void enqueueAlarmSetup() {
 }
 
 /**
+ * ALM task begin - for now just blinking the board status LED while in setup mode
+ */
+void alarm_misc_begin() {
+    state_led_begin();
+    log_info(F("ALM task setup completed"));
+}
+
+/**
  * Miscellaneous & alarm task handler
  *
  * This function processes miscellaneous alarm-related actions received through a message queue.
@@ -83,6 +92,7 @@ void enqueueAlarmSetup() {
  *   - ALARM_SETUP: Calls `alarm_setup()` to initialize alarm settings.
  *   - ALARM_CHECK: Calls `alarm_check()` to verify current alarm status.
  *   - SAVE_SYS_INFO: Calls `saveSysInfo()` to persist system state information.
+ *   - STATUS_LED_CHECK: Calls `state_led_run()` to update board status LED.
  * - Logs an error if an unsupported or unrecognized action is encountered.
  *
  * Notes:
@@ -101,7 +111,6 @@ void alarm_misc_run() {
         case ALARM_SETUP: alarm_setup(); break;
         case ALARM_CHECK: alarm_check(); break;
         case SAVE_SYS_INFO: saveSysInfo(); break;
-        case STATUS_LED_CHECK: state_led_run(); break;
         default:
             log_error(F("Misc Action %hu not supported"), action);
     }
@@ -126,6 +135,7 @@ void web_run() {
         switch (action) {
             case WIFI_ENSURE: wifi_ensure(); break;
             case WIFI_TEMP: wifi_temp(); break;
+            case STATUS_LED_CHECK: state_led_update(); break;
             default:
                 log_error(F("Comm Action %hu not supported"), action);
         }

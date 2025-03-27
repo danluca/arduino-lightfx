@@ -223,14 +223,14 @@ uint SysInfo::get_flash_capacity() const {
 uint16_t SysInfo::setSysStatus(const uint16_t bitMask) {
     CoreMutex coreMutex(&mutex);
     status |= bitMask;
-    updateStateLED();
+    // updateStatusLED();
     return status;
 }
 
 uint16_t SysInfo::resetSysStatus(const uint16_t bitMask) {
     CoreMutex coreMutex(&mutex);
     status &= (~bitMask);
-    updateStateLED();
+    // updateStatusLED();
     return status;
 }
 
@@ -453,21 +453,24 @@ void SysInfo::setupStateLED() {
     pinMode(LEDR, OUTPUT);
     pinMode(LEDG, OUTPUT);
     pinMode(LEDB, OUTPUT);
-    updateStateLED(CRGB::Black);    //black, turned off
+    updateBoardLED(CRGB::Black);    //black, turned off
 }
 /**
  * Controls the on-board status LED
  * @param colorCode
  */
-void SysInfo::updateStateLED(const uint32_t colorCode) {
-    updateStateLED(CRGB(colorCode));
+void SysInfo::updateBoardLED(const uint32_t colorCode) {
+    updateBoardLED(CRGB(colorCode));
 }
 
 /**
  * Controls the onboard LED using individual values for R, G, B
+ * NOTE: the \code analogWrite\endcode works with WiFi driver as the onboard LED is connected
+ * to the WiFi chip. This function CANNOT be called from a different thread than WiFi operations as otherwise
+ * undefined behavior may occur (I've observed thread lockout, resets).
  * @param rgb RGB value
  */
-void SysInfo::updateStateLED(const CRGB rgb) {
+void SysInfo::updateBoardLED(const CRGB rgb) {
     analogWrite(LEDR, 255 - rgb.red);
     analogWrite(LEDG, 255 - rgb.green);
     analogWrite(LEDB, 255 - rgb.blue);
@@ -476,29 +479,30 @@ void SysInfo::updateStateLED(const CRGB rgb) {
 /**
  * Adjusts the LED state (color, illumination style) in response to overall system's state
  */
-void SysInfo::updateStateLED() const {
-    const bool inSetup = !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1);
+void SysInfo::updateStatusLED() const {
     const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
-    const CRGB colorCode = isOk ? CLR_ALL_OK : inSetup ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
-    updateStateLED(colorCode);
+    const CRGB colorCode = isOk ? CLR_ALL_OK : !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1) ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
+    updateBoardLED(colorCode);
 }
 
+/**
+ * Flash status LED for as long as both cores are in setup mode
+ */
 void state_led_begin() {
     while (!sysInfo->isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1)) {
-        sysInfo->updateStateLED();
+        SysInfo::updateBoardLED(CRGB::Black);
         taskDelay(640);
-        SysInfo::updateStateLED(CRGB::Black);
+        SysInfo::updateBoardLED(CLR_SETUP_IN_PROGRESS);
         taskDelay(640);
     }
 }
 
-void state_led_run() {
-    sysInfo->updateStateLED();
+/**
+ * Update the color of the status LED consistent with system's state
+ */
+void state_led_update() {
+    sysInfo->updateStatusLED();
 }
 
 void SysInfo::begin() {
-    // const auto stLedTask = Scheduler.startTask(&stLedTasks);
-    // TaskStatus_t tStat;
-    // vTaskGetTaskInfo(stLedTask->getTaskHandle(), &tStat, pdFALSE, eReady);
-    // log_info(F("System LED task [%s] - priority %d - has been setup id %u. System status is monitored."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
 }
