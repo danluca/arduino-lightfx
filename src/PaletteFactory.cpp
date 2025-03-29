@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
 
 #include "PaletteFactory.h"
@@ -245,6 +245,23 @@ CRGBPalette16 PaletteFactory::selectRandomPalette() {
 CRGBPalette16 PaletteFactory::selectNextPalette() {
     activePaletteIndex = addmod8(activePaletteIndex, 1, sizeof(allPalettes)/sizeof(TProgmemPalette16*));
     return *allPalettes[activePaletteIndex];
+}
+
+/**
+ * Update holiday theme, if needed
+ */
+void holidayUpdate() {
+#if LOGGING_ENABLED == 1
+    const Holiday oldHday = paletteFactory.getHoliday();
+    const Holiday hDay = paletteFactory.adjustHoliday();
+    if (oldHday == hDay)
+        log_info(F("Current holiday remains %s"), holidayToString(hDay));
+    else
+        log_info(F("Current holiday adjusted from %s to %s"), holidayToString(oldHday), holidayToString(hDay));
+#else
+    paletteFactory.adjustHoliday();
+#endif
+
 }
 
 PaletteFactory paletteFactory;

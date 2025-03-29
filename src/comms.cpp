@@ -30,16 +30,16 @@ static constexpr auto hdKeepAlive PROGMEM = "Connection: keep-alive";
 static constexpr auto fmtFxChange PROGMEM = R"===({"effect":%u,"auto":false,"broadcast":false})===";
 
 QueueHandle_t bcQueue;
-static uint16_t tmrHolidayUpdateId = 20;
-static uint16_t tmrTimeUpdateId = 21;
+static uint16_t tmrTimeUpdateId = 20;
+static uint16_t tmrWifiEnsure = 21;
+static uint16_t tmrWifiTemp = 22;
+static uint16_t tmrStatusLEDCheck = 23;
 
 //function declarations ahead
 void commInit();
 void fxBroadcast(uint16_t index);
-void holidayUpdate();
 void timeUpdate();
 void timeSetupCheck();
-void enqueueHoliday(TimerHandle_t xTimer);
 void enqueueTimeUpdate(TimerHandle_t xTimer);
 void enqueueTimeSetup(TimerHandle_t xTimer);
 // broadcast task definition - priority is overwritten during setup, see broadcastSetup
@@ -49,7 +49,7 @@ FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
  * Structure of the message sent to the broadcast task - internal use only
  */
 struct bcTaskMessage {
-    enum Action:uint8_t {TIME_SETUP, TIME_UPDATE, HOLIDAY_UPDATE, FX_SYNC} event;
+    enum Action:uint8_t {TIME_SETUP, TIME_UPDATE, FX_SYNC, WIFI_ENSURE, WIFI_TEMP, STATUS_LED_CHECK} event;
     uint16_t data;
 };
 
@@ -87,25 +87,16 @@ void commRun() {
     switch (msg->event) {
         case bcTaskMessage::TIME_SETUP: timeSetupCheck(); break;
         case bcTaskMessage::TIME_UPDATE: timeUpdate(); break;
-        case bcTaskMessage::HOLIDAY_UPDATE: holidayUpdate(); break;
         case bcTaskMessage::FX_SYNC: fxBroadcast(msg->data); break;
+        case bcTaskMessage::WIFI_ENSURE: wifi_ensure(); break;
+        case bcTaskMessage::WIFI_TEMP: wifi_temp(); break;
+        case bcTaskMessage::STATUS_LED_CHECK: state_led_update(); break;
         default:
             log_error(F("Event type %hd not supported"), msg->event);
             break;
     }
-    delete msg;
-}
 
-/**
- * Callback for holidayUpdate timer - this is called from Timer task or from main task. Enqueues a HOLIDAY_UPDATE message for the broadcast task.
- * @param xTimer the holidayUpdate timer that fired the callback; nullptr when called on-demand (from main)
- */
-void enqueueHoliday(TimerHandle_t xTimer) {
-    auto *msg = new bcTaskMessage {bcTaskMessage::HOLIDAY_UPDATE, 0};   //gets deleted in execute upon message receipt
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE)
-        log_error(F("Error sending HOLIDAY_UPDATE message to broadcast task for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
-    // else
-    //     log_infoln(F("Sent HOLIDAY_UPDATE event successfully to broadcast task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    delete msg;
 }
 
 /**
@@ -138,9 +129,33 @@ void enqueueFxUpdate(const uint16_t index) {
 void enqueueTimeSetup(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{bcTaskMessage::TIME_SETUP, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
-        log_error(F("Error sending TIME_SETUP message to broadcast task for timer %s - error %ld"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending TIME_SETUP message to BC queue for timer %s - error %ld"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer), qResult);
     // else
-    //     log_infoln(F("Sent TIME_SETUP event successfully to broadcast task for timer %s"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer));
+    //     log_infoln(F("Sent TIME_SETUP event successfully to BC queue for timer %s"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer));
+}
+
+void enqueueWifiEnsure(TimerHandle_t xTimer) {
+    auto *msg = new bcTaskMessage{bcTaskMessage::WIFI_ENSURE, 0};
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
+        log_error(F("Error sending WIFI_ENSURE message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+}
+
+void enqueueWifiTempRead(TimerHandle_t xTimer) {
+    auto *msg = new bcTaskMessage{bcTaskMessage::WIFI_TEMP, 0};
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
+        log_error(F("Error sending WIFI_TEMP message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+}
+
+/**
+ * Callback for statusLEDCheck timer - this is called from Timer task. Enqueues a STATUS_LED_CHECK message for the alarm task.
+ * @param xTimer the statusLEDCheck timer that fired the callback
+ */
+void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
+    auto *msg = new bcTaskMessage{bcTaskMessage::STATUS_LED_CHECK, 0};
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
+        log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+    // else
+    //     log_info(F("Sent STATUS_LED_CHECK event successfully to BC queue for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
 }
 
 /**
@@ -214,17 +229,6 @@ void fxBroadcast(const uint16_t index) {
 }
 
 /**
- * Update holiday theme, if needed
- */
-void holidayUpdate() {
-    const Holiday oldHday = paletteFactory.getHoliday();
-    if (Holiday hDay = paletteFactory.adjustHoliday(); oldHday == hDay)
-        log_info(F("Current holiday remains %s"), holidayToString(hDay));
-    else
-        log_info(F("Current holiday adjusted from %s to %s"), holidayToString(oldHday), holidayToString(hDay));
-}
-
-/**
  * Update time with NTP, assert offset (DST or not) and track drift
  */
 void timeUpdate() {
@@ -241,9 +245,11 @@ void timeUpdate() {
     if (const bool dst = isDST(timeClient.getEpochTime()); dst != sysInfo->isSysStatus(SYS_STATUS_DST)) {
         timeClient.setTimeOffset(dst ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS);
         dst ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
+#if LOGGING_ENABLED == 1
         time_t curTime = now();
         log_info(F("Time DST status changed from %s [offset %d] to %s [offset %d] - current time %s"), dst ? "CST" : "CDT", dst ? CST_OFFSET_SECONDS : CDT_OFFSET_SECONDS,
             dst ? "CDT" : "CST", dst ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS, StringUtils::asString(curTime).c_str());
+#endif
     }
     if (result && timeSyncs.size() > 2) {
         //log the current drift
@@ -288,24 +294,32 @@ void commSetup() {
     // create the broadcast queue, used by enqueue methods to send actions and execute method to receive and execute actions
     bcQueue = xQueueCreate(10, sizeof(bcTaskMessage*));
 
-    //time update event - holiday - repeat every 12h
-    if (TimerHandle_t thHoliday = xTimerCreate("holidayUpdate", pdMS_TO_TICKS(12 * 3600 * 1000), pdTRUE, &tmrHolidayUpdateId, enqueueHoliday); thHoliday == nullptr)
-        log_error(F("Cannot create holidayUpdate timer - Ignored."));
-    else if (xTimerStart(thHoliday, 0) != pdPASS)
-        log_error(F("Cannot start the holidayUpdate timer - Ignored."));
-
     //time update event - sync - repeat every 17h
     if (TimerHandle_t thSync = xTimerCreate("timeUpdate", pdMS_TO_TICKS(17 * 3600 * 1000), pdTRUE, &tmrTimeUpdateId, enqueueTimeUpdate); thSync == nullptr)
         log_error(F("Cannot create timeUpdate timer - Ignored."));
     else if (xTimerStart(thSync, 0) != pdPASS)
         log_error(F("Cannot start the timeUpdate timer - Ignored."));
+    // create timer to re-check WiFi and ensure connectivity - every 7 minutes
+    const TimerHandle_t thWifiEnsure = xTimerCreate("wifiEnsure", pdMS_TO_TICKS(7*60*1000), pdTRUE, &tmrWifiEnsure, enqueueWifiEnsure);
+    if (thWifiEnsure == nullptr)
+        log_error(F("Cannot create wifiEnsure timer - Ignored. There is NO wifi re-check scheduled"));
+    else if (xTimerStart(thWifiEnsure, 0) != pdPASS)
+        log_error(F("Cannot start the wifiEnsure timer - Ignored."));
+    //create timer to take WiFi temperature - every 33s, 1s off from the diagnostic thread temp read, to avoid overlap
+    const TimerHandle_t thWifiTempRead = xTimerCreate("wifiTempRead", pdMS_TO_TICKS(33*1000), pdTRUE, &tmrWifiTemp, enqueueWifiTempRead);
+    if (thWifiTempRead == nullptr)
+        log_error(F("Cannot create wifiTempRead timer - Ignored. There is NO wifi temperature read scheduled"));
+    else if (xTimerStart(thWifiTempRead, 0) != pdPASS)
+        log_error(F("Cannot start the wifiTempRead timer - Ignored."));
+    //update the status LED - repeated each 5 seconds
+    const TimerHandle_t thStatusLED = xTimerCreate("statusLEDCheck", pdMS_TO_TICKS(5 * 1000), pdTRUE, &tmrStatusLEDCheck, enqueueStatusLEDCheck);
+    if (thStatusLED == nullptr)
+        log_error(F("Cannot create statusLEDCheck timer - Ignored."));
+    else if (xTimerStart(thStatusLED, 0) != pdPASS)
+        log_error(F("Cannot start the statusLEDCheck timer - Ignored."));
 
     commInit();
 
-    //setup the communications thread - normal priority
-    // bcTask = Scheduler.startTask(&bcDef);
-    // log_infoln(F("Communications thread [%s], priority %d - has been started with id %u. Events broadcasting enabled=%T"), bcTask->getName(),
-    //            uxTaskPriorityGet(bcTask->getTaskHandle()), uxTaskGetTaskNumber(bcTask->getTaskHandle()), fxBroadcastEnabled);
     postTimeSetupCheck();  //ensure we have the time NTP sync
     log_info(F("Communication system setup OK"));
 }
@@ -332,4 +346,3 @@ void postFxChangeEvent(const uint16_t index) {
     else
         log_warn(F("Broadcast system is not configured yet - effect %hu cannot be synced. Broadcast enabled=%s"), index, StringUtils::asString(fxBroadcastEnabled));
 }
-

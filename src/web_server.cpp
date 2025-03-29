@@ -334,6 +334,12 @@ struct FWUploadData {
     String fileName;
 };
 
+/**
+ * Handles FW image buffered upload leveraging raw handling. This method is called multiple times, where the raw status \code client.raw().status\endcode
+ * varies in this order:
+ * RAW_START --> RAW_WRITE * n --> RAW_END or RAW_ABORTED
+ * @param client web client
+ */
 void handleFWImageUpload(WebClient &client) {
     const WebRequest &req = client.request();
     switch (HTTPRaw raw = client.raw(); raw.status) {
@@ -350,8 +356,9 @@ void handleFWImageUpload(WebClient &client) {
                 if (SyncFsImpl.exists(fwData->fileName.c_str()))
                     SyncFsImpl.remove(fwData->fileName.c_str());
             } else
-                raw.totalSize = req.contentLength();
-            //this will stop reading the request - raw.status becomes RAW_END and another call will be made to this handler
+                raw.totalSize = req.contentLength(); //this will stop reading the request - raw.status becomes RAW_END and another call will be made to this handler
+            log_info(F("FW upload auth %s, size read %zu, size expected %zu, sha-256 expected %s"), fwData->auth ? "OK" : "failed",
+                raw.totalSize, req.contentLength(), fwData->checkSum.c_str());
         }
         break;
         case RAW_WRITE:
@@ -360,20 +367,29 @@ void handleFWImageUpload(WebClient &client) {
             SyncFsImpl.appendFile(static_cast<FWUploadData *>(raw.data)->fileName.c_str(), raw.buf, raw.currentSize);
             break;
         case RAW_END:
+            //this is called at the regular end of raw data processing (i.e. when the amount of data read from client matches the content-length) - either successful or not
             //close file; send the response to the client as successful receive
             if (const FWUploadData *fwData = static_cast<FWUploadData *>(raw.data); fwData->auth) {
                 //determine sha256 hash for the file content - if it matches the source, respond with success, otherwise error out
-                if (const String sha256 = SyncFsImpl.sha256(fwData->fileName.c_str()); sha256.equals(fwData->checkSum))
+                if (const String sha256 = SyncFsImpl.sha256(fwData->fileName.c_str()); sha256.equals(fwData->checkSum)) {
                     client.send(200, mime::mimeTable[mime::txt].mimeType, R"({"status": "OK"})");
-                else
+                    log_info(F("FW upload and storage %s (size read %zu bytes) succeeded - sha-256 actual: %s"), fwData->fileName.c_str(), raw.totalSize, sha256.c_str());
+                } else {
                     client.send(406, mime::mimeTable[mime::txt].mimeType, R"({"error": "Upload data integrity failed - Checksum does not match"})");
-            } else
+                    log_error(F("FW upload and storage (size read/expected %zu/%zu bytes) failed - checksum does not match: sha-256 expected: %s, actual: %s"),
+                        raw.totalSize, req.contentLength(), fwData->checkSum.c_str(), sha256.c_str());
+                }
+            } else {
                 client.send(401, mime::mimeTable[mime::txt].mimeType, R"({"error": "Unauthorized call"})");
+                log_error(F("FW upload and storage (size expected %zu bytes) failed - authorization failed"), req.contentLength());
+            }
             delete static_cast<FWUploadData *>(raw.data);
             break;
         case RAW_ABORTED: {
+            //this is called when the raw data cannot be read from client any-longer (interrupted). It ends the processing, skips the call for RAW_END
             //close file; delete file; send the response to the client as error in receive
             client.send(400, mime::mimeTable[mime::txt].mimeType, R"({"error": "Bad Request or Read - Aborted"})");
+            log_error(F("FW upload and storage (size read/expected %zu/%zu bytes) failed - aborted"), raw.totalSize, req.contentLength());
             const auto fd = static_cast<FWUploadData *>(raw.data);
             if (SyncFsImpl.exists(fd->fileName.c_str()))
                 SyncFsImpl.remove(fd->fileName.c_str());
@@ -383,6 +399,12 @@ void handleFWImageUpload(WebClient &client) {
         default: break;
     }
 }
+
+/**
+ * Convenience no-op handler. Can also be replaced by a lambda function \code [](WebClient &) { }\endcode
+ * @param client web client
+ */
+void noop(WebClient &client) {}
 
 /**
  * Configures the web server with specific dynamic and static request handlers
@@ -397,7 +419,7 @@ void web::server_setup() {
         server.on("/status.json", HTTP_GET, handleGetStatus);
         server.on("/fx", HTTP_PUT, handlePutConfig);
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
-        server.on("/fw", HTTP_POST, [](WebClient &) { }, handleFWImageUpload);
+        server.on("/fw", HTTP_POST, noop, handleFWImageUpload);
         server.onNotFound(handleNotFound);
         server.collectHeaders("Host", "Connection", "Accept", "Referer", "User-Agent", "X-Token", "X-Check");
         server.enableDelay(false); //the task that runs the web-server also runs other services, do not want to introduce unnecessary delays

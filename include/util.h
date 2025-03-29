@@ -15,8 +15,7 @@
 #define SYS_STATUS_DST          0x0080
 #define SYS_STATUS_DIAG         0x0100
 
-enum MiscAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO};
-enum CommAction:uint8_t {WIFI_ENSURE, WIFI_TEMP, STATUS_LED_CHECK};
+enum MiscAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO, HOLIDAY_UPDATE};
 
 ulong adcRandom();
 
@@ -32,5 +31,6 @@ bool secElement_setup();
 void watchdogSetup();
 void watchdogPing();
 void taskDelay(uint32_t ms);
+void holidayUpdate();
 
 #endif //ARDUINO_LIGHTFX_UTIL_H

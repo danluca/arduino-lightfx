@@ -16,10 +16,13 @@
 constexpr uint16_t dailyBedTime = 30*SECS_PER_MIN;          //12:30am bedtime
 constexpr uint16_t dailyWakeupTime = 6*SECS_PER_HOUR;       //6:00am wakeup time
 static uint16_t tmrAlarmCheck = 30;
+static uint16_t tmrHolidayUpdateId = 31;
 
 uint16_t currentDay = 0;
 
+void enqueueHoliday(TimerHandle_t xTimer);
 std::deque<AlarmData*> scheduledAlarms;
+
 
 const char *alarmTypeToString(const AlarmType alType) {
     switch (alType) {
@@ -153,12 +156,18 @@ void alarm_setup() {
         nextAlarmCheck = max(min(nextAlarm->value-now(), 12*SECS_PER_HOUR)/10, 60);  // set timer at minimum 1 minute or 10% of time to next alarm, but no more than 5% of day (72 minutes)
     else
         log_error(F("There are no alarms scheduled - checking alarms in 15 min, by default"));
+    //create and start the timer to check for alarms
     const TimerHandle_t thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
     if (thAlarmCheck == nullptr)
         log_error(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
     else if (xTimerStart(thAlarmCheck, 0) != pdPASS)
         log_error(F("Cannot start the alarmCheck timer - Ignored."));
 
+    //time update event - holiday - repeat every 12h
+    if (TimerHandle_t thHoliday = xTimerCreate("holidayUpdate", pdMS_TO_TICKS(12 * 3600 * 1000), pdTRUE, &tmrHolidayUpdateId, enqueueHoliday); thHoliday == nullptr)
+        log_error(F("Cannot create holidayUpdate timer - Ignored."));
+    else if (xTimerStart(thHoliday, 0) != pdPASS)
+        log_error(F("Cannot start the holidayUpdate timer - Ignored."));
 }
 
 void alarm_check() {
@@ -197,4 +206,16 @@ void alarm_check() {
         log_error(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
     else if (xTimerStart(thAlarmCheck, 0) != pdPASS)
         log_error(F("Cannot start the alarmCheck timer - Ignored."));
+}
+
+/**
+ * Callback for holidayUpdate timer - this is called from Timer task or from main task. Enqueues a HOLIDAY_UPDATE message for the broadcast task.
+ * @param xTimer the holidayUpdate timer that fired the callback; nullptr when called on-demand (from main)
+ */
+void enqueueHoliday(TimerHandle_t xTimer) {
+    constexpr MiscAction msg = HOLIDAY_UPDATE;
+    if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult == pdFALSE)
+        log_error(F("Error sending HOLIDAY_UPDATE message to ALM queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+    // else
+    //     log_infoln(F("Sent HOLIDAY_UPDATE event successfully to broadcast task for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
 }

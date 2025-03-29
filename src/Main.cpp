@@ -47,12 +47,11 @@ void alarm_misc_begin();
 void alarm_misc_run();
 void enqueueAlarmSetup();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
-constexpr TaskDef fxTasks {fx_setup, fx_run, 1536, "Fx", 255, CORE_1};
+constexpr TaskDef fxTasks {fx_setup, fx_run, 1024, "Fx", 255, CORE_1};
 constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 255, CORE_1};
 constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1024, "ALM", 5, CORE_0};
 bool core1_separate_stack = true;
 QueueHandle_t almQueue;
-QueueHandle_t webQueue;
 
 /**
  * Sends the ALARM_SETUP message to the ALM task via the alarm queue.
@@ -67,8 +66,8 @@ QueueHandle_t webQueue;
  * - Logs an error if the message could not be enqueued.
  */
 void enqueueAlarmSetup() {
-    constexpr MiscAction msg = ALARM_SETUP;
-    if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
+    constexpr MiscAction msgSetup = ALARM_SETUP;
+    if (const BaseType_t qResult = xQueueSend(almQueue, &msgSetup, 0); qResult != pdTRUE)
         log_error(F("Error sending ALARM_SETUP message to ALM queue - error %d"), qResult);
 }
 
@@ -111,35 +110,19 @@ void alarm_misc_run() {
         case ALARM_SETUP: alarm_setup(); break;
         case ALARM_CHECK: alarm_check(); break;
         case SAVE_SYS_INFO: saveSysInfo(); break;
+        case HOLIDAY_UPDATE: holidayUpdate(); break;
         default:
             log_error(F("Misc Action %hu not supported"), action);
     }
 }
 
 /**
- * Executes the primary web-related tasks.
- *
- * - Runs the web server and communication functions
- * - Checks for any additional queued actions by receiving messages from `webQueue`:
- *   - If the action is WIFI_ENSURE, it ensures WiFi is properly functioning by calling wifi_ensure().
- *   - Logs an error for unsupported or unrecognized actions.
- *
+ * Executes the primary web-related tasks - runs the web server and communication functions
  * This function is intended to be invoked regularly to handle web communication and actions efficiently.
  */
 void web_run() {
     web::webserver();
     commRun();
-    //check for any additional actions to be performed
-    CommAction action;
-    if (pdTRUE == xQueueReceive(webQueue, &action, 0)) {
-        switch (action) {
-            case WIFI_ENSURE: wifi_ensure(); break;
-            case WIFI_TEMP: wifi_temp(); break;
-            case STATUS_LED_CHECK: state_led_update(); break;
-            default:
-                log_error(F("Comm Action %hu not supported"), action);
-        }
-    }
 }
 
 void filesystem_setup() {
@@ -164,7 +147,6 @@ void setup() {
     filesystem_setup();
     sysInfo->begin();
 
-    webQueue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE0 task for communication between cores
     almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for ALM task for communication between cores
     Scheduler.startTask(&alarmTasks);
 
@@ -173,7 +155,7 @@ void setup() {
 
     const TaskHandle_t core1 = xTaskGetHandle("CORE1");    //retrieve a task handle for the second core
     const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
-    log_info(F("Basic components ok - Core 1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
+    log_info(F("Basic components ok - CORE1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
 
     wifi_setup();
     taskDelay(2500);    //let the WiFi settle
@@ -195,7 +177,7 @@ void setup() {
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     sysInfo->setSysStatus(SYS_STATUS_SETUP0);
-    log_info(F("Main Core 0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
+    log_info(F("Main CORE0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
 }
 
@@ -230,7 +212,7 @@ void setup1() {
     // const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
     sysInfo->setSysStatus(SYS_STATUS_SETUP1);
-    log_info(F("Main Core 1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
+    log_info(F("Main CORE1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
 }
 
 /**
