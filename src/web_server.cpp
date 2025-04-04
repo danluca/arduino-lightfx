@@ -342,7 +342,7 @@ struct FWUploadData {
  */
 void handleFWImageUpload(WebClient &client) {
     const WebRequest &req = client.request();
-    switch (HTTPRaw raw = client.raw(); raw.status) {
+    switch (HTTPRaw &raw = client.raw(); raw.status) {
         case RAW_START: {
             //check auth token; determine file name and prepare streaming into it
             const auto fwData = new FWUploadData();
@@ -350,21 +350,22 @@ void handleFWImageUpload(WebClient &client) {
             // *auth = req.header("X-Token").equals("*QisW@tWtx4WvERf") ? 0x01 : 0x00;
             fwData->auth = req.header("X-Token").equals("KlFpc1dAdFd0eDRXdkVSZg");
             fwData->checkSum = req.header("X-Check");
+            fwData->checkSum.toLowerCase();
             fwData->fileName = "fw.bin";
             if (fwData->auth) {
                 //create a file for the incoming data
                 if (SyncFsImpl.exists(fwData->fileName.c_str()))
                     SyncFsImpl.remove(fwData->fileName.c_str());
-            } else
-                raw.totalSize = req.contentLength(); //this will stop reading the request - raw.status becomes RAW_END and another call will be made to this handler
+            }
             log_info(F("FW upload auth %s, size read %zu, size expected %zu, sha-256 expected %s"), fwData->auth ? "OK" : "failed",
                 raw.totalSize, req.contentLength(), fwData->checkSum.c_str());
         }
         break;
         case RAW_WRITE:
-            //this is only called when authorization succeeds, and we have a buffer full
-            //append one raw buffer at a time into the file
-            SyncFsImpl.appendFile(static_cast<FWUploadData *>(raw.data)->fileName.c_str(), raw.buf, raw.currentSize);
+            //append one raw buffer at a time into the file, if auth succeeded
+            if (const FWUploadData *fwData = static_cast<FWUploadData *>(raw.data); fwData->auth) {
+                SyncFsImpl.appendFile(fwData->fileName.c_str(), raw.buf, raw.currentSize);
+            }
             break;
         case RAW_END:
             //this is called at the regular end of raw data processing (i.e. when the amount of data read from client matches the content-length) - either successful or not
@@ -421,11 +422,11 @@ void web::server_setup() {
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
         server.on("/fw", HTTP_POST, noop, handleFWImageUpload);
         server.onNotFound(handleNotFound);
-        server.collectHeaders("Host", "Connection", "Accept", "Referer", "User-Agent", "X-Token", "X-Check");
         server.enableDelay(false); //the task that runs the web-server also runs other services, do not want to introduce unnecessary delays
         server_handlers_configured = true;
         log_info(F("Completed Web server setup"));
     }
+    server.collectHeaders("Host", "Accept", "Referer", "User-Agent", "X-Token", "X-Check");
     server.begin(serverPort);
     log_info(F("Web server started"));
 }

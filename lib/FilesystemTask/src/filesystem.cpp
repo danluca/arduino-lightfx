@@ -210,6 +210,7 @@ void fsExecute() {
         case fsTaskMessage::SHA256:
             success = SyncFsImpl.prvSha256(msg->data->name, msg->data->content);
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
+            break;
         default:
             Log.error(F("Event type %hd not supported"), msg->event);
             break;

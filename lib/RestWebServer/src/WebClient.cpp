@@ -394,6 +394,7 @@ void WebClient::_processRequest() {
  */
 void WebClient::_parseHttpHeaders() {
     log_debug(F("=== Headers ==="));
+    log_debug(F("Monitoring for %d headers"), _server->headersOfInterest().size());
     while (true) {
         String req = _rawWifiClient.readStringUntil('\n');
         req.trim();
@@ -523,13 +524,13 @@ bool WebClient::_parseRequest() {
     if (_requestHandler && _requestHandler->canRaw(*this)) {
         //if we can process this request as raw data, we give this option priority vs consuming the request body as a string (below)
         const bool rawAction = _handleRawData();
-        _finalizeResponse();
+        // _finalizeResponse();
         return rawAction;
     }
     if (request()._contentLength > HTTP_MAX_POST_DATA_LENGTH) {
         sendHeader("x-error", "Content length exceeds maximum of " + String(HTTP_MAX_POST_DATA_LENGTH));
         log_error(F("Web Request %s %s Content length %d exceeds maximum of %d"), methodStr.c_str(), request().uri().c_str(), request()._contentLength, HTTP_MAX_POST_DATA_LENGTH);
-        _finalizeResponse();
+        // _finalizeResponse();
         return false;
     }
 

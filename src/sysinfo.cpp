@@ -266,7 +266,7 @@ void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     //MAC address - Formats the MAC address into the character buffer provided, space for 20 chars is needed (includes nul terminator)
     uint8_t mac[WL_MAC_ADDR_LENGTH];
     wifi.macAddress(mac);
-
+    //TODO: this is in the reverse order of what WiFi router reports; we'd need to reverse the mac byte array
     char buf[BUF_ID_SIZE];
     int x = 0;
     for (const auto &b : mac)
