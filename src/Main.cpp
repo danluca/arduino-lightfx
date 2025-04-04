@@ -48,7 +48,7 @@ void alarm_misc_run();
 void enqueueAlarmSetup();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
 constexpr TaskDef fxTasks {fx_setup, fx_run, 1024, "Fx", 255, CORE_1};
-constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 255, CORE_1};
+constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 5, CORE_1};
 constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1024, "ALM", 5, CORE_0};
 bool core1_separate_stack = true;
 QueueHandle_t almQueue;

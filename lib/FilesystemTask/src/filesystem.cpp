@@ -605,14 +605,14 @@ size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
     f.close();
-    //get the current last write timestamp
-    FSStat fstat{};
-    fsPtr->stat(fname, &fstat);
-    // f = fsPtr->open(fname, "r");
-    // const time_t lastWrite = f.getLastWrite();
-    // f.close();
+    //get the current last write timestamp - note that stat function does not make this distinction in LittleFS; we'll use file API
+    // FSStat fstat{};
+    // fsPtr->stat(fname, &fstat);
+    f = fsPtr->open(fname, "r");
+    const time_t lastWrite = f.getLastWrite();
+    f.close();
 
-    Log.info(F("File %s - %zu bytes - has been saved at %s"), fname, fSize, StringUtils::asString(fstat.atime).c_str());
+    Log.info(F("File %s - %zu bytes - has been saved at %s"), fname, fSize, StringUtils::asString(lastWrite).c_str());
     Log.trace(F("Saved file %s content [%zu]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
