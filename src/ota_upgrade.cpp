@@ -13,19 +13,35 @@
 bool upgrade_check();
 void fw_upgrade();
 
+/**
+ * @brief Handles the firmware upgrade process.
+ *
+ * This method checks whether a firmware upgrade is available and if so, it initiates the
+ * firmware upgrade process. A system reboot is triggered after the upgrade.
+ *
+ * This function is called periodically by CORE0 task to ensure the system
+ * upgrades seamlessly when a new firmware version is uploaded.
+ */
 void handle_fw_upgrade() {
     if (upgrade_check()) {
-        log_info(F("Firmware upgrade available, proceeding to stop all tasks and write the new image into flash. System will reboot - see ya on the other side!"));
+        log_info(F("Firmware upgrade available, proceeding to disable watchdog, stop all tasks and write the new image into flash. System will reboot - see ya on the other side!"));
         fw_upgrade();
     }
 }
 
+/**
+ * Check if this task - CORE0 - has been notified that a FW image has been successfully uploaded and verified.
+ * Note: this method does not check whether the FW image file exists
+ * @return true if we've been notified a firmware image has been uploaded successfully
+ */
 bool upgrade_check() {
     return ulTaskNotifyTake(pdTRUE, 0) == OTA_UPGRADE_NOTIFY;
 }
 
 void fw_upgrade() {
     taskDelay(3000);
+    //stop the watchdog
+    watchdog_disable();
     //stop all tasks
     Scheduler.stopAllTasks(true);
     taskDelay(1000);
@@ -37,6 +53,10 @@ void fw_upgrade() {
     picoOTA.begin();
     picoOTA.addFile(csFWImageFilename);
     picoOTA.commit();
+    //simple wait after flashing
+    taskDelay(500);
+    //remove the image file - we're done
+    LittleFS.remove(csFWImageFilename);
     LittleFS.end();
     //restart the system
     taskDelay(2000);
