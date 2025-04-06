@@ -16,6 +16,8 @@
 
 #include "SchedulerExt.h"
 
+#define TASK_NOTIFY_TERMINATE 0xF0
+
 static constexpr char fmtTaskName[] PROGMEM = "Tsk %d";
 
 SchedulerClassExt Scheduler;
@@ -32,29 +34,13 @@ void taskJobExecutor(void *params) {
  * @param taskDef
  * @return pointer to TaskWrapper created for this task
  */
-TaskWrapper *SchedulerClassExt::startTask(TaskDefPtr taskDef) {
-    const int16_t tPos = findNextThreadSlot();
-    if (tPos < 0)
-        return nullptr;
+TaskWrapper *SchedulerClassExt::startTask(const TaskDefPtr taskDef) {
     //if priority is not provided (above the range), use the default priority of the calling task
     if (taskDef->priority >= configMAX_PRIORITIES)
         taskDef->priority = uxTaskPriorityGet(nullptr);
-    auto *job = new TaskWrapper(taskDef, tPos);
-    tasks[tPos] = job;
+    auto *job = new TaskWrapper(taskDef, tasks.size());
+    tasks.push_back(job);
     return scheduleTask(job) ? job : nullptr;
-}
-
-/**
- * How many slots do we have available in the local threads array
- * @return number of available threads, if any
- */
-uint16_t SchedulerClassExt::availableThreads() const {
-    uint16_t res = 0;
-    for (const auto task : tasks) {
-        if (task == nullptr)
-            res++;
-    }
-    return res;
 }
 
 /**
@@ -75,38 +61,55 @@ bool SchedulerClassExt::scheduleTask(TaskWrapper *taskJob) {
 }
 
 /**
- * Finds the index for the next thread.
- * If the local thread array is full, it returns -1
- * @return either the index where next thread can be stored in the local thread array, or -1 (0xFFFF)
- */
-int16_t SchedulerClassExt::findNextThreadSlot() const {
-    for (int16_t i = 0; i < MAX_THREADS_NUMBER; i++)
-        if (tasks[i] == nullptr)
-            return i;
-    return -1;
-}
-
-/**
  * Waits for the thread to terminate, then disposes it and frees its slot in the local thread array
  * If the thread is not one tracked in the local thread array, it returns osErrorParameter
  * @param pt pointer to the thread to terminate
  * @return whether the task termination and resource cleanup were successful
  */
 bool SchedulerClassExt::stopTask(const TaskWrapper *pt) {
-    bool result = false;
-    for (auto & task : tasks) {
-        if (task == pt) {
+    for (auto it = tasks.begin(); it != tasks.end(); ++it) {
+        if (const auto *task = *it; task == pt) {
             //signal task to terminate and wait
             const bool tskEnd = task->waitToEnd();
             //deallocate the thread (created with new) and its name
+            tasks.erase(it);
             delete task;
-            //free-up the thread array spot for it
-            task = nullptr;
-            result = tskEnd;
-            break;
+            return tskEnd;
         }
     }
-    return result;
+    return false;
+}
+
+/**
+ * Stop all tasks started by this scheduler (in the reverse order they have been started)
+ * @param forced whether to forcefully terminate task (not wait) or signal the task to terminate and wait 1 second (default)
+ */
+void SchedulerClassExt::stopAllTasks(const bool forced) {
+    //iterate tasks in reverse order and stop them
+    while (tasks.size() > 0) {
+        if (TaskWrapper *task = tasks.back(); task != nullptr) {
+            if (forced)
+                task->terminate();          //forcefully terminate task
+            else
+                (void)task->waitToEnd();    //signal task to terminate and wait
+            //free up resources
+            tasks.pop_back();
+            delete task;
+        }
+    }
+}
+
+/**
+ * Suspends all tasks managed by this scheduler. Alternative to stopAllTasks that's less destructive -
+ * it doesn't free up any resources allocated to the tasks
+ * Note: this does not suspend any of the core tasks
+ * Note: no API is provided to resume all tasks. Reboot the system.
+ */
+void SchedulerClassExt::suspendAllTasks() const {
+    for (auto & task : tasks) {
+        if (task != nullptr)
+            vTaskSuspend(task->handle);
+    }
 }
 
 /**
@@ -127,8 +130,8 @@ TaskWrapper *SchedulerClassExt::getTask(const char *name) const {
  * @param index task index to retrieve
  * @return the task at given index, or nullptr if the index is higher than max tasks or there is no task at the index
  */
-TaskWrapper *SchedulerClassExt::getTask(uint index) const {
-    return index >= MAX_THREADS_NUMBER ? nullptr : tasks[index];
+TaskWrapper *SchedulerClassExt::getTask(const uint index) const {
+    return index >= tasks.size() ? nullptr : tasks[index];
 }
 
 /**
@@ -150,8 +153,8 @@ TaskWrapper *SchedulerClassExt::getTask(const UBaseType_t uid) const {
  * @param taskDef definitions
  * @param x index in the Scheduler tasks array that this task will take
  */
-TaskWrapper::TaskWrapper(const TaskDefPtr taskDef, int16_t x) : fnSetup(taskDef->setup), fnLoop(taskDef->loop), stackSize(taskDef->stackSize), coreAffinity(taskDef->core),
-                                                          priority(taskDef->priority), index(x) {
+TaskWrapper::TaskWrapper(const TaskDefPtr taskDef, const int16_t x) : fnSetup(taskDef->setup), fnLoop(taskDef->loop), stackSize(taskDef->stackSize),
+    coreAffinity(taskDef->core), priority(taskDef->priority), index(x) {
     if (taskDef->threadName) {
         const size_t sz = strlen(taskDef->threadName);
         id = new char[sz + 1]();   //zero initialized array
@@ -170,8 +173,12 @@ void TaskWrapper::run() {
     state = EXECUTING;
     if (fnSetup)
         fnSetup();
+    if (fnLoop == nullptr) {
+        state = TERMINATED;
+        return;
+    }
     //with each loop, check if we have been notified to stop
-    while (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1)) == 0U)
+    while (ulTaskNotifyTake(pdTRUE, 0) != TASK_NOTIFY_TERMINATE)
         fnLoop();
     state = TERMINATED;
 }
@@ -181,7 +188,7 @@ void TaskWrapper::run() {
  * The timeout is rounded up to nearest 100ms. Default timeout is 1000ms = 1s.
  */
 bool TaskWrapper::waitToEnd(const uint16_t msTimeOut) const {
-    xTaskNotify(handle, 1, eIncrement);
+    xTaskNotify(handle, TASK_NOTIFY_TERMINATE, eSetValueWithOverwrite);
     //wait for the task to finish a fnLoop execution or timeout
     uint16_t nbrLoops = msTimeOut/100 + 1;      //ensure we have at least 1 loop as well as round up the timeout to nearest 100ms
     while (state != TERMINATED && nbrLoops > 0) {

@@ -11,7 +11,7 @@
 #include "PicoLog.h"
 #include "stringutils.h"
 
-#define FILE_BUF_SIZE   256
+#define FILE_BUF_SIZE   512
 #define MAX_DIR_LEVELS  10          // maximum number of directory levels to list (limits the recursion in the list function)
 #define FILE_OPERATIONS_TIMEOUT pdMS_TO_TICKS(1000)     //1 second file operations timeout (plenty time)
 
@@ -605,7 +605,7 @@ size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
     f.close();
-    //get the current last write timestamp - note that stat function does not make this distinction in LittleFS; we'll use file API
+    //get the current last write timestamp - note that stat function does not make the distinction between creation and last access time in LittleFS; we'll use file API
     // FSStat fstat{};
     // fsPtr->stat(fname, &fstat);
     f = fsPtr->open(fname, "r");
@@ -622,12 +622,11 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const String *s) const {
     File f = fsPtr->open(fname, "a");
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
+    const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
+    const size_t totalSize = f.size();
     f.close();
-    //get the current last write timestamp
-    FSStat fstat{};
-    fsPtr->stat(fname, &fstat);
 
-    Log.info(F("File %s - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, fstat.size, StringUtils::asString(fstat.atime).c_str());
+    Log.info(F("File %s - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, StringUtils::asString(lastWrite).c_str());
     Log.trace(F("Appended file %s content [%zu]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
@@ -637,12 +636,11 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const uint8_t *buffer, c
     File f = fsPtr->open(fname, "a");
     f.setTimeCallback(now);
     fSize = f.write(buffer, size);
+    const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
+    const size_t totalSize = f.size();
     f.close();
-    //get the current last write timestamp
-    FSStat fstat{};
-    fsPtr->stat(fname, &fstat);
 
-    Log.info(F("File %s (binary) - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, fstat.size, StringUtils::asString(fstat.atime).c_str());
+    Log.info(F("File %s (binary) - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, StringUtils::asString(lastWrite).c_str());
     Log.trace(F("Appended file %s binary content %zu bytes"), fname, fSize);    //this is superfluous, perhaps logging binary content in hex would be helpful but quite a bit of overhead on flip side
     return fSize;
 }

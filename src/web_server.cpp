@@ -110,6 +110,15 @@ void web::handleGetStatus(WebClient &client) {
 
     // response body
     JsonDocument doc;
+    // System
+    char timeBuf[21];
+    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
+    doc["cleanBoot"] = sysInfo->isCleanBoot();
+    if (!sysInfo->watchdogReboots().empty()) {
+        formatDateTime(timeBuf, sysInfo->watchdogReboots().back());
+        doc["lastWatchdogReboot"] = timeBuf;
+    }
+
     // WiFi
     const auto wifi = doc["wifi"].to<JsonObject>();
     wifi["IP"] = sysInfo->getIpAddress(); //IP Address
@@ -140,13 +149,14 @@ void web::handleGetStatus(WebClient &client) {
     const auto time = doc["time"].to<JsonObject>();
     time["ntpSync"] = timeStatus();
     time["millis"] = millis(); //current time in ms
-    char timeBuf[21];
     const time_t curTime = now();
     formatDate(timeBuf, curTime);
     time["date"] = timeBuf;
     formatTime(timeBuf, curTime);
     time["time"] = timeBuf;
-    time["dst"] = sysInfo->isSysStatus(SYS_STATUS_DST);
+    const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
+    time["dst"] = bDST;
+    time["offset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
     time[csHoliday] = holidayToString(currentHoliday()); //time derived holiday
     time["syncSize"] = timeSyncs.size();
     time["averageDrift"] = getAverageTimeDrift();
@@ -351,7 +361,7 @@ void handleFWImageUpload(WebClient &client) {
             fwData->auth = req.header("X-Token").equals("KlFpc1dAdFd0eDRXdkVSZg");
             fwData->checkSum = req.header("X-Check");
             fwData->checkSum.toLowerCase();
-            fwData->fileName = "fw.bin";
+            fwData->fileName = csFWImageFilename;
             if (fwData->auth) {
                 //create a file for the incoming data
                 if (SyncFsImpl.exists(fwData->fileName.c_str()))
@@ -375,6 +385,10 @@ void handleFWImageUpload(WebClient &client) {
                 if (const String sha256 = SyncFsImpl.sha256(fwData->fileName.c_str()); sha256.equals(fwData->checkSum)) {
                     client.send(200, mime::mimeTable[mime::txt].mimeType, R"({"status": "OK"})");
                     log_info(F("FW upload and storage %s (size read %zu bytes) succeeded - sha-256 actual: %s"), fwData->fileName.c_str(), raw.totalSize, sha256.c_str());
+                    if (const TaskHandle_t core0Handle = xTaskGetHandle(csCORE0)) {
+                        const BaseType_t fwNotif = xTaskNotify(core0Handle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
+                        log_info(F("CORE0 task has been notified of FW image upload complete, notification status %d"), fwNotif);
+                    }
                 } else {
                     client.send(406, mime::mimeTable[mime::txt].mimeType, R"({"error": "Upload data integrity failed - Checksum does not match"})");
                     log_error(F("FW upload and storage (size read/expected %zu/%zu bytes) failed - checksum does not match: sha-256 expected: %s, actual: %s"),

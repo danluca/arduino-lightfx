@@ -65,9 +65,6 @@ function getConfig() {
             $('#buildBranch').html(data.fwBranch);
             $('#buildTime').html(data.buildTime);
             $('#macAddress').html(data.MAC);
-            $('#cleanBoot').html(`${data.cleanBoot}`);
-            let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
-            $('#wdReboots').html(wdr);
             $('#osVersion').html(`${data.arduinoPicoVersion}<br/>&nbsp;&nbsp;[FreeRTOS ${data.freeRTOSVersion}]`);
             if (data.wifiCurVersion !== data.wifiLatestVersion) {
                 $('#wfVersion').html(`WiFi NINA v${data.wifiCurVersion} [could upgrade to ${data.wifiLatestVersion}]`);
@@ -115,6 +112,9 @@ function getStatus() {
             $('#lastDrift').html(`${data.time.lastDrift} ms`);
             $('#avgDrift').html(`${data.time.averageDrift} ms/hr`);
             $('#totalDrift').html(`${data.time.totalDrift} ms (${data.time.syncSize} sync points @ 17 hrs)`);
+            $('#cleanBoot').html(`${data.cleanBoot}`);
+            let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
+            $('#wdReboots').html(wdr);
 
             let strAlarms = "";
             data.time.alarms.sort((a, b) => a.timeLong - b.timeLong);

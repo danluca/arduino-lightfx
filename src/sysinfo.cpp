@@ -290,21 +290,12 @@ void SysInfo::sysConfig(JsonDocument &doc) {
     doc["fwVersion"] = sysInfo->getBuildVersion();
     doc["fwBranch"] = sysInfo->getScmBranch();
     doc["buildTime"] = sysInfo->getBuildTime();
-    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
-    doc["cleanBoot"] = sysInfo->isCleanBoot();
-    if (!sysInfo->watchdogReboots().empty()) {
-        formatDateTime(buf, sysInfo->watchdogReboots().back());
-        doc["lastWatchdogReboot"] = buf;
-    }
     doc["wifiCurVersion"] = sysInfo->getWiFiFwVersion();
     doc["wifiLatestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
     const auto hldList = doc["holidayList"].to<JsonArray>();
     for (uint8_t hi = None; hi <= NewYear; hi++)
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
     formatDateTime(buf, now());
-    const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
-    doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
-    doc["dst"] = bDST;
     doc["MAC"] = sysInfo->getMacAddress();
 }
 

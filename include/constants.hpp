@@ -4,7 +4,9 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#include <Arduino.h>
+// #include <Arduino.h>
+
+#define OTA_UPGRADE_NOTIFY 0xDC
 
 struct CRGB;
 
@@ -70,6 +72,9 @@ inline constexpr auto csWatchdog PROGMEM = "watchdog";
 inline constexpr auto csDebug PROGMEM = "debug";
 inline constexpr auto csGlitch PROGMEM = "glitch";
 inline constexpr auto csBrownout PROGMEM = "brownout";
+inline constexpr auto csCORE0 PROGMEM = "CORE0";
+inline constexpr auto csCORE1 PROGMEM = "CORE1";
+inline constexpr auto csFWImageFilename PROGMEM = "fw.bin";
 
 inline constexpr uint8_t dimmed = 20;
 inline constexpr uint8_t maxChanges = 24;

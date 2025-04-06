@@ -20,8 +20,7 @@
 #include <Arduino.h>
 #include <FreeRTOS.h>
 #include <task.h>
-
-#define MAX_THREADS_NUMBER    10
+#include <deque>
 
 extern "C" {
     typedef void (*NoArgTask)();
@@ -60,34 +59,16 @@ class TaskWrapper final : Runnable {
 public:
     explicit TaskWrapper(TaskDefPtr taskDef, int16_t x);
 
-    ~TaskWrapper() override {
-        delete [] id;
-    }
+    ~TaskWrapper() override { delete [] id; }
 
-    [[nodiscard]] inline const char *getName() const {
-        return state == NEW ? id : pcTaskGetName(handle);
-    }
-    [[nodiscard]] inline uint getIndex() const {
-        return index;
-    }
-    [[nodiscard]] inline CoreAffinity getCoreAffinity() const {
-        return coreAffinity;
-    }
-    [[nodiscard]] inline TaskHandle_t getTaskHandle() const {
-        return handle;
-    }
-    [[nodiscard]] inline uint32_t getStackSize() const {
-        return stackSize;
-    }
-    [[nodiscard]] inline BaseType_t getPriority() const {
-        return priority;
-    }
-    [[nodiscard]] inline UBaseType_t getUID() const {
-        return uid;
-    }
-    [[nodiscard]] inline State getState() const {
-        return state;
-    }
+    [[nodiscard]] const char *getName() const { return state == NEW ? id : pcTaskGetName(handle); }
+    [[nodiscard]] uint getIndex() const { return index; }
+    [[nodiscard]] CoreAffinity getCoreAffinity() const { return coreAffinity; }
+    [[nodiscard]] TaskHandle_t getTaskHandle() const { return handle; }
+    [[nodiscard]] uint32_t getStackSize() const { return stackSize; }
+    [[nodiscard]] BaseType_t getPriority() const { return priority; }
+    [[nodiscard]] UBaseType_t getUID() const { return uid; }
+    [[nodiscard]] State getState() const { return state; }
 
 protected:
     void run () override;
@@ -107,8 +88,6 @@ protected:
 };
 
 class SchedulerClassExt {
-protected:
-    [[nodiscard]] int16_t findNextThreadSlot() const;
 public:
     SchedulerClassExt() = default;
 
@@ -118,12 +97,13 @@ public:
     [[nodiscard]] TaskWrapper* getTask(uint index) const;
     [[nodiscard]] TaskWrapper* getTask(const char* name) const;
     [[nodiscard]] TaskWrapper* getTask(UBaseType_t uid) const;
-    [[nodiscard]] uint16_t availableThreads() const;
+    void stopAllTasks(bool forced = false);
+    void suspendAllTasks() const;
 
     static void yield() { ::yield(); };
     static void delay(const uint32_t ms) { ::vTaskDelay(pdMS_TO_TICKS(ms)); };
 private:
-    TaskWrapper *tasks[MAX_THREADS_NUMBER] = {};
+    std::deque<TaskWrapper*> tasks {};
     static bool scheduleTask(TaskWrapper *taskJob);
 };
 

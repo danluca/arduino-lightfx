@@ -18,6 +18,7 @@
 #include "mic.h"
 #include "util.h"
 #include "web_server.h"
+#include "ota_upgrade.h"
 
 /**
  * TASK ALLOCATIONS
@@ -153,7 +154,7 @@ void setup() {
     readSysInfo();
     secElement_setup();
 
-    const TaskHandle_t core1 = xTaskGetHandle("CORE1");    //retrieve a task handle for the second core
+    const TaskHandle_t core1 = xTaskGetHandle(csCORE1);    //retrieve a task handle for the second core
     const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
     log_info(F("Basic components ok - CORE1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
 
@@ -186,6 +187,7 @@ void setup() {
  */
 void loop() {
     web_run();
+    handle_fw_upgrade();
 }
 
 
@@ -209,7 +211,7 @@ void setup1() {
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)+1);    //raise the priority of the diag task to allow uninterrupted I2C interactions
     taskDelay(250);    // safety delay after priority bump
-    // const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
+    // const TaskHandle_t core0 = xTaskGetHandle(csCORE0);    //retrieve a task handle for the first core
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
     sysInfo->setSysStatus(SYS_STATUS_SETUP1);
     log_info(F("Main CORE1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
