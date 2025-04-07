@@ -266,11 +266,13 @@ void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     //MAC address - Formats the MAC address into the character buffer provided, space for 20 chars is needed (includes nul terminator)
     uint8_t mac[WL_MAC_ADDR_LENGTH];
     wifi.macAddress(mac);
-    //TODO: this is in the reverse order of what WiFi router reports; we'd need to reverse the mac byte array
     char buf[BUF_ID_SIZE];
     int x = 0;
-    for (const auto &b : mac)
-        x += snprintf(buf+x, 4, "%02X:", b);
+    //the Wi-Fi router reports MAC address as an integer, byte 0 is LSB, thus last in the string - we'll iterate mac in reverse order
+    for (int i = WL_MAC_ADDR_LENGTH - 1; i >= 0; i--)
+        x += snprintf(buf + x, 4, "%02X:", mac[i]);
+    // for (const auto &b : mac)
+        // x += snprintf(buf+x, 4, "%02X:", b);
     //last character - at index x-1 is a ':', make it null to trim the last colon character
     buf[x-1] = 0;
     macAddress = buf;

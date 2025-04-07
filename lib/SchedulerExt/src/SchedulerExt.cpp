@@ -35,6 +35,7 @@ void taskJobExecutor(void *params) {
  * @return pointer to TaskWrapper created for this task
  */
 TaskWrapper *SchedulerClassExt::startTask(const TaskDefPtr taskDef) {
+    CoreMutex core_mutex(&mutex);
     //if priority is not provided (above the range), use the default priority of the calling task
     if (taskDef->priority >= configMAX_PRIORITIES)
         taskDef->priority = uxTaskPriorityGet(nullptr);
@@ -67,6 +68,7 @@ bool SchedulerClassExt::scheduleTask(TaskWrapper *taskJob) {
  * @return whether the task termination and resource cleanup were successful
  */
 bool SchedulerClassExt::stopTask(const TaskWrapper *pt) {
+    CoreMutex core_mutex(&mutex);
     for (auto it = tasks.begin(); it != tasks.end(); ++it) {
         if (const auto *task = *it; task == pt) {
             //signal task to terminate and wait
@@ -85,6 +87,7 @@ bool SchedulerClassExt::stopTask(const TaskWrapper *pt) {
  * @param forced whether to forcefully terminate task (not wait) or signal the task to terminate and wait 1 second (default)
  */
 void SchedulerClassExt::stopAllTasks(const bool forced) {
+    CoreMutex core_mutex(&mutex);
     //iterate tasks in reverse order and stop them
     while (tasks.size() > 0) {
         if (TaskWrapper *task = tasks.back(); task != nullptr) {
@@ -173,14 +176,12 @@ void TaskWrapper::run() {
     state = EXECUTING;
     if (fnSetup)
         fnSetup();
-    if (fnLoop == nullptr) {
-        state = TERMINATED;
+    if (fnLoop == nullptr)
         return;
-    }
-    //with each loop, check if we have been notified to stop
-    while (ulTaskNotifyTake(pdTRUE, 0) != TASK_NOTIFY_TERMINATE)
+    //with each loop, check if we have been notified to stop - it is important to block for at least 1ms (aka 1 tick for RP2040)
+    //such that other task scheduler can give other threads a chance to run
+    while (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1)) != TASK_NOTIFY_TERMINATE)
         fnLoop();
-    state = TERMINATED;
 }
 
 /**

@@ -103,6 +103,7 @@ public:
     static void yield() { ::yield(); };
     static void delay(const uint32_t ms) { ::vTaskDelay(pdMS_TO_TICKS(ms)); };
 private:
+    mutex_t mutex {};
     std::deque<TaskWrapper*> tasks {};
     static bool scheduleTask(TaskWrapper *taskJob);
 };
