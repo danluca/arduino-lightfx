@@ -1,10 +1,19 @@
 [CmdletBinding()]
-param ($fwPath)
+param (
+    [Parameter(Mandatory=$true)]
+    $fwPath,
+    [Parameter(Mandatory=$false)]
+    [ValidateSet("Dev", "FX01")]
+    [string]$board = "Dev"
+)
 
 #######################################
 ## Global
 #######################################
-$brdUri = "http://192.168.0.10/fw"
+$brdUri = "http://192.168.0.10/fw"  # Default URI for Dev board
+switch ($board) {
+    "FX01" { $brdUri = "http://192.168.0.11/fw"; break; }
+}
 
 $clrReset = "`e[0m"
 $clrMsg = "`e[38;5;112m"
@@ -36,6 +45,9 @@ function uploadFile($filePath) {
 #######################################
 Push-Location $PSScriptRoot
 
-uploadFile $fwPath
+$ms = Measure-Command {
+    uploadFile $fwPath
+}
+Write-Information "${clrMsg}Upload completed in $($ms.TotalSeconds) seconds.${clrReset}" -InformationAction Continue
 
 Pop-Location

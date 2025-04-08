@@ -8,12 +8,18 @@
 #include <TimeLib.h>
 #include "SchedulerExt.h"
 #include "filesystem.h"
+
+#include <LogProxy.h>
+
 #include "PicoLog.h"
 #include "stringutils.h"
 
 #define FILE_BUF_SIZE   512
 #define MAX_DIR_LEVELS  10          // maximum number of directory levels to list (limits the recursion in the list function)
 #define FILE_OPERATIONS_TIMEOUT pdMS_TO_TICKS(1000)     //1 second file operations timeout (plenty time)
+
+#define OTA_COMMAND_FILE "/ota_command.bin"     // must match the _OTA_COMMAND_FILE name in the ../include/rp2040/pico_base/pico/ota_command.h
+#define FW_BIN_FILE "/fw.bin"                   // must match the csFWImageFilename name in the app include/constants.hpp
 
 SynchronizedFS SyncFsImpl;
 FS SyncLittleFS(FSImplPtr(&SyncFsImpl));
@@ -134,6 +140,13 @@ void fsInit() {
             const bool removed = SyncFsImpl.prvRemove(corruptedFiles.front().c_str());
             corruptedFiles.pop();
         }
+    }
+
+    //check for otacommand.bin and fw.bin - this means a FW upgrade just occurred; delete the files
+    if (SyncFsImpl.fsPtr->exists(OTA_COMMAND_FILE)) {
+        log_info(F("=== FW Upgrade has completed!! Welcome to the other side! Cleaning up the FW files ==="));
+        (void)SyncFsImpl.prvRemove(OTA_COMMAND_FILE);
+        (void)SyncFsImpl.prvRemove(FW_BIN_FILE);
     }
 
     size_t sz = Log.info(dirContent.c_str());

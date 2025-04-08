@@ -24,7 +24,8 @@ void fw_upgrade();
  */
 void handle_fw_upgrade() {
     if (upgrade_check()) {
-        log_info(F("Firmware upgrade available, proceeding to disable watchdog, stop all tasks and write the new image into flash. System will reboot - see ya on the other side!"));
+        log_info(F("=====================================UPGRADE===================================="))
+        log_info(F("Firmware upgrade available, proceeding to disable watchdog, stop all tasks and write the command file. System will reboot and flash - see ya on the other side!"));
         fw_upgrade();
     }
 }
@@ -42,23 +43,20 @@ void fw_upgrade() {
     taskDelay(3000);
     //stop the watchdog
     watchdog_disable();
+    if (Serial)
+        Serial.println(F(">> FWU:: Watchdog disabled"));
     //stop all tasks
-    Scheduler.stopAllTasks(true);
-    taskDelay(1000);
-    //stop the other core
-    rp2040.idleOtherCore();
-    //we're starting image upgrade
-    taskDelay(1000);
-    //flash the image
+    Scheduler.suspendAllTasks();
+    if (Serial)
+        Serial.println(F(">> FWU:: All APP tasks suspended"));
+    //prepare the command file to flash the image
     picoOTA.begin();
     picoOTA.addFile(csFWImageFilename);
     picoOTA.commit();
-    //simple wait after flashing
-    taskDelay(500);
-    //remove the image file - we're done
-    LittleFS.remove(csFWImageFilename);
     LittleFS.end();
+    if (Serial)
+        Serial.println(F(">> FWU:: Firmware upgrade initiated, rebooting system to complete..."));
     //restart the system
-    taskDelay(2000);
+    taskDelay(1000);
     rp2040.reboot();
 }
