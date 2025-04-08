@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory=$true)]
-    $fwPath,
+    [Parameter(Mandatory=$false)]
+    $fwPath = ".pio/build/rp2040-rel/firmware.bin",
     [Parameter(Mandatory=$false)]
     [ValidateSet("Dev", "FX01")]
     [string]$board = "Dev"
@@ -44,6 +44,11 @@ function uploadFile($filePath) {
 ## Main
 #######################################
 Push-Location $PSScriptRoot
+
+if (-not (Test-Path $fwPath) -and ($fwPath -match '\.pio[\\/]build[\\/]')) {
+    Write-Information "${clrMsg}Building firmware file...${clrReset}" -InformationAction Continue
+    ./build.ps1
+}
 
 $ms = Measure-Command {
     uploadFile $fwPath
