@@ -137,7 +137,7 @@ void fsInit() {
     if (!corruptedFiles.empty()) {
         StringUtils::append(dirContent, F("Found %d (likely) corrupted files (size < 64 bytes), deleting\n"), corruptedFiles.size());
         while (!corruptedFiles.empty()) {
-            const bool removed = SyncFsImpl.prvRemove(corruptedFiles.front().c_str());
+            (void)SyncFsImpl.prvRemove(corruptedFiles.front().c_str());
             corruptedFiles.pop();
         }
     }

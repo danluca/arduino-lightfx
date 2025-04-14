@@ -24,7 +24,7 @@ void fw_upgrade();
  */
 void handle_fw_upgrade() {
     if (upgrade_check()) {
-        log_info(F("=====================================UPGRADE===================================="))
+        log_info(F("=====================================UPGRADE===================================="));
         log_info(F("Firmware upgrade available, proceeding to disable watchdog, stop all tasks and write the command file. System will reboot and flash - see ya on the other side!"));
         fw_upgrade();
     }

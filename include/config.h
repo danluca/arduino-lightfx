@@ -27,8 +27,10 @@
 // MODE 1 = Access point mode
 // #define MODE 0
 
-// Board 1 is the dev board, board 2 is the house lighting controller.
+// Board 1 is the dev board, board 2 is the house lighting controller, board 3 is the spare light controller.
+#ifndef BOARD_ID
 #define BOARD_ID    1
+#endif
 
 // Board specific configurations
 #if BOARD_ID == 1
@@ -63,6 +65,23 @@
 #define VCC_DIV_R4  21800
 #define VCC_DIV_R5  3305
 #define DEVICE_NAME  "FX01"
+
+#endif
+
+#if BOARD_ID == 3
+
+#define NUM_PIXELS  170      //number of pixels on the office window edge is 166
+#define FRAME_SIZE  76
+#define PIXEL_BUFFER_SPACE  4*FRAME_SIZE    //number of pixels to reserve for secondary buffer (used for effects data maneuvering)
+
+// static IP - alternatively, the router can be configured to reserve IPs based on MAC
+#define IP_ADDR 192,168,0,12    //Board 3
+#define V3_3    3.262f      //measured 3V3 pin voltage in V
+#define MV3_3    3262       //measured 3V3 pin voltage in mV - technically 1000*V3_3 - expressed as int
+// measured Vcc voltage divisor for A0 pin
+#define VCC_DIV_R4  19890
+#define VCC_DIV_R5  3302
+#define DEVICE_NAME  "FX02"
 
 #endif
 

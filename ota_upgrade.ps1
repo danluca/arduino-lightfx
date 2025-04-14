@@ -3,7 +3,7 @@ param (
     [Parameter(Mandatory=$false)]
     $fwPath = ".pio/build/rp2040-rel/firmware.bin",
     [Parameter(Mandatory=$false)]
-    [ValidateSet("Dev", "FX01")]
+    [ValidateSet("Dev", "FX01", "FX02")]
     [string]$board = "Dev"
 )
 
@@ -13,6 +13,7 @@ param (
 $brdUri = "http://192.168.0.10/fw"  # Default URI for Dev board
 switch ($board) {
     "FX01" { $brdUri = "http://192.168.0.11/fw"; break; }
+    "FX02" { $brdUri = "http://192.168.0.12/fw"; break; }
 }
 
 $clrReset = "`e[0m"
