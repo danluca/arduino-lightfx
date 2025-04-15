@@ -77,12 +77,14 @@ function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
             $('#status h1').removeClass('red');
-            $('#boardTemp').html(`${data.boardTemp.toFixed(1)} °C (${(data.boardTemp*9/5+32).toFixed(1)} °F)`);
-            $('#rangeTemp').html(`[${data.boardMinTemp.toFixed(1)} - ${data.boardMaxTemp.toFixed(1)}] °C`);
-            $('#cpuTemp').html(`${data.chipTemp.toFixed(1)} °C (${(data.chipTemp*9/5+32).toFixed(1)} °F)`);
-            $('#wifiTemp').html(`${data.wifiTemp.toFixed(1)} °C (${(data.wifiTemp*9/5+32).toFixed(1)} °F)`);
-            $('#boardVcc').html(`${data.vcc.toFixed(2)} V`);
-            $('#rangeVcc').html(`[${data.minVcc.toFixed(2)} - ${data.maxVcc.toFixed(2)}] V`);
+            $('#boardTemp').html(`${data.temp.board.current.toFixed(1)} °C (${(data.temp.board.current*9/5+32).toFixed(1)} °F)`);
+            $('#boardRangeTemp').html(`[${data.temp.board.min.toFixed(1)} - ${data.temp.board.max.toFixed(1)}] °C`);
+            $('#cpuTemp').html(`${data.temp.cpu.current.toFixed(1)} °C (${(data.temp.cpu.current*9/5+32).toFixed(1)} °F)`);
+            $('#cpuRangeTemp').html(`[${data.temp.cpu.min.toFixed(1)} - ${data.temp.cpu.max.toFixed(1)}] °C`);
+            $('#wifiTemp').html(`${data.temp.wifi.current.toFixed(1)} °C (${(data.temp.wifi.current*9/5+32).toFixed(1)} °F)`);
+            $('#wifiRangeTemp').html(`[${data.temp.wifi.min.toFixed(1)} - ${data.temp.wifi.max.toFixed(1)}] °C`);
+            $('#boardVcc').html(`${data.vcc.current.toFixed(2)} V`);
+            $('#rangeVcc').html(`[${data.vcc.min.toFixed(2)} - ${data.vcc.max.toFixed(2)}] V`);
             $('#audioThreshold').html(`${data.fx.audioThreshold}`);
             $('#upTime').html(`${data.upTime}`);
             $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);

@@ -178,14 +178,23 @@ void web::handleGetStatus(WebClient &client) {
         //        jal["taskPtr"] = (long)al->onEventHandler;
     }
     //System
-    doc["boardTemp"] = imuTempRange.current.value;
-    doc["chipTemp"] = cpuTempRange.current.value;
-    doc["wifiTemp"] = wifiTempRange.current.value;
-    doc["vcc"] = lineVoltage.current.value;
-    doc["minVcc"] = lineVoltage.min.value;
-    doc["maxVcc"] = lineVoltage.max.value;
-    doc["boardMinTemp"] = imuTempRange.min.value;
-    doc["boardMaxTemp"] = imuTempRange.max.value;
+    const auto temp = doc["temp"].to<JsonObject>();
+    const auto boardTemp = temp["board"].to<JsonObject>();
+    const auto cpuTemp = temp["cpu"].to<JsonObject>();
+    const auto wifiTemp = temp["wifi"].to<JsonObject>();
+    boardTemp["current"] = imuTempRange.current.value;
+    boardTemp["max"] = imuTempRange.max.value;
+    boardTemp["min"] = imuTempRange.min.value;
+    cpuTemp["current"] = cpuTempRange.current.value;
+    cpuTemp["max"] = cpuTempRange.max.value;
+    cpuTemp["min"] = cpuTempRange.min.value;
+    wifiTemp["current"] = wifiTempRange.current.value;
+    wifiTemp["max"] = wifiTempRange.max.value;
+    wifiTemp["min"] = wifiTempRange.min.value;
+    const auto vcc = doc["vcc"].to<JsonObject>();
+    vcc["current"] = lineVoltage.current.value;
+    vcc["max"] = lineVoltage.max.value;
+    vcc["min"] = lineVoltage.min.value;
     doc["overallStatus"] = sysInfo->getSysStatus();
     //ISO8601 format
     //snprintf(timeBuf, 15, "P%2dDT%2dH%2dM", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));

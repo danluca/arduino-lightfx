@@ -543,7 +543,7 @@ void updateLineVoltage() {
  */
 void updateSystemTemp() {
     MeasurementPair chipTemp = chipTemperature();
-    Measurement msmt = boardTemperature();
+    const Measurement msmt = boardTemperature();
     if (fabs(msmt.value - IMU_TEMPERATURE_NOT_AVAILABLE) > TEMP_NA_COMPARE_EPSILON) {
         imuTempRange.setMeasurement(msmt);
         if (calibCpuTemp.isValid())
