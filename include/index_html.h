@@ -80,7 +80,7 @@ inline constexpr auto index_html PROGMEM = R"~~~(
             <dl id="statusArea">
                 <div>
                 <dt>Board [Nano RP2040 Connect]</dt>
-                <dd>UID: <span id="boardUid"></span><div>[vendor: 0x2341, model: 0x5E]</div></dd>
+                <dd>UID: <span id="boardUid"></span></dd>
                 <dd>Device Name: <span id="deviceName"></span></dd>
                 <dd>Arduino Pico: <span id="osVersion"></span></dd>
                 <dd>Clean Boot: <span id="cleanBoot"></span></dd>
@@ -104,9 +104,9 @@ inline constexpr auto index_html PROGMEM = R"~~~(
                 <dt>Environment</dt>
                 <dd>Temperature: <br/>
                     <ul class="indent2">
-                        <li>Board (Acc): <span id="boardTemp"></span><br/><span id="rangeTemp" class="indent1"></span></li>
-                        <li>CPU (ADC): <span id="cpuTemp"></span></li>
-                        <li>WiFi (ESP32): <span id="wifiTemp"></span></li>
+                        <li>Board (Acc): <span id="boardTemp"></span><br/><span id="boardRangeTemp" class="indent1"></span></li>
+                        <li>CPU (ADC): <span id="cpuTemp"></span><br/><span id="cpuRangeTemp" class="indent1"></span></li>
+                        <li>WiFi (ESP32): <span id="wifiTemp"></span><br/><span id="wifiRangeTemp" class="indent1"></span></li>
                     </ul>
                 </dd>
                 <dd>Vcc: <span id="boardVcc"></span> <span id="rangeVcc" class="indent2"></span></dd>
