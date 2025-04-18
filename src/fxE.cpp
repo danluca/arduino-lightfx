@@ -273,7 +273,9 @@ void FxE4::run() {
 void FxE4::serendipitous() {
     //  Xn = X-(Y/2); Yn = Y+(Xn/2);
     //  Xn = X-Y/2;   Yn = Y+Xn/2;
-    const uint16_t Xn = X-(Y/2); uint16_t Yn = Y+(X/2.1); uint16_t Zn = X + Y*2.3;
+    const uint16_t Xn = X-(Y/2);
+    const uint16_t Yn = Y+(X/2.1);
+    const uint16_t Zn = X + Y*2.3;
     //    Xn = X-(Y/3); Yn = Y+(X/1.5);
     //  Xn = X-(2*Y); Yn = Y+(X/1.1);
 
@@ -281,7 +283,7 @@ void FxE4::serendipitous() {
     Y = Yn;
 
     index=(sin8(X)+cos8(Y))/2;
-    CRGB newcolor = ColorFromPalette(palette, index, map(Zn, 0, 65535, dimmed*3, brightness), LINEARBLEND);
+    const CRGB newcolor = ColorFromPalette(palette, index, map(Zn, 0, 65535, dimmed*3, brightness), LINEARBLEND);
 
     nblend(tpl[map(X, 0, 65535, 0, tpl.size()-1)], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
     tpl.fadeToBlackBy(16);                    // 8 bit, 1 = slow, 255 = fast

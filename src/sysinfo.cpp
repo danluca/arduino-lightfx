@@ -192,7 +192,7 @@ SysInfo::SysInfo() : boardName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildT
     secElemId.reserve(BUF_ID_SIZE);     // 18 from ECCX08Class::serialNumber() implementation
     macAddress.reserve(BUF_ID_SIZE);    // 6 (WL_MAC_ADDR_LENGTH) groups of 2 hex digits and ':' separator, includes \0 terminator
     strIpAddress.reserve(BUF_ID_SIZE);     // 4 groups of 3 digits, 3 '.' separators, \0 terminator
-    wifiFwVersion.reserve(BUF_ID_SIZE); // typical semantic version e.g. v1.5.0, 3 groups of 2 digits, '.' separator, \0 terminator
+    wifiFwVersion.reserve(BUF_ID_SIZE); // typical semantic version e.g., v1.5.0, 3 groups of 2 digits, '.' separator, \0 terminator
     ssid.reserve(BUF_ID_SIZE);          // initial space, most networks are short names
     status = 0;
     cleanBoot = true;
@@ -208,7 +208,7 @@ void SysInfo::fillBoardId() {
 /**
  * <p>Per AT25SF128A Flash specifications, command ox9F returns 0x1F8901, where last byte 0x01 should represent density (size)
  * Trial/error shows the command returns 0xFF1F89011F</p>
- * <p>We won't use the flash chip SPI commands - very chip specific - but instead leverage the constant PICO_FLASH_SIZE_BYTES already tailored to the board we use, Nano RP2040</p>
+ * <p>We won't use the flash chip SPI commands - very chip-specific - but instead leverage the constant PICO_FLASH_SIZE_BYTES already tailored to the board we use, Nano RP2040</p>
  * @return Board flash size in bytes - currently fixed at PICO_FLASH_SIZE_BYTES
  */
 uint SysInfo::get_flash_capacity() const {
@@ -244,11 +244,11 @@ uint16_t SysInfo::getSysStatus() const {
 
 /**
  * Extracts identification information from a connected Wi-Fi.
- * NOTE: For reasons unknown yet, reading the network information from the Wi-Fi sub-system (through SPI connection) hangs the whole system
+ * NOTE: For reasons unknown yet, reading the network information from the Wi-Fi subsystem (through SPI connection) freezes the whole system
  * if the Analog/Digital Converter API calls are present somewhere else in the code. These Wi-Fi network information calls have SPI responses with 3 parameters,
- * unsure if this is a factor in failure - all other SPI calls with Wi-Fi module seem to be working fine, and they have less parameters.
+ * unsure if this is a factor in failure - all other SPI calls with Wi-Fi module seem to be working fine, and they have fewer parameters.
  * For this reason, the workaround is to record the IP address and Gateway Address from the configuration provided (we're using static IP assignment) rather
- * than retrieving from Wi-Fi module.
+ * than retrieving from the Wi-Fi module.
  * @param wifi the Wi-Fi (global) object
  */
 void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
@@ -263,17 +263,14 @@ void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     // IPAddress dns2;
     // wifi.dnsIP(dns1, dns2);  //needs WiFi version > 1.5.0
 
-    //MAC address - Formats the MAC address into the character buffer provided, space for 20 chars is needed (includes nul terminator)
+    //MAC address - Formats the MAC address into the character buffer provided; space for 20 chars is needed (includes nul terminator)
     uint8_t mac[WL_MAC_ADDR_LENGTH];
     wifi.macAddress(mac);
     char buf[BUF_ID_SIZE];
     int x = 0;
-    //the Wi-Fi router reports MAC address as an integer, byte 0 is LSB, thus last in the string - we'll iterate mac in reverse order
-    for (int i = WL_MAC_ADDR_LENGTH - 1; i >= 0; i--)
-        x += snprintf(buf + x, 4, "%02X:", mac[i]);
-    // for (const auto &b : mac)
-        // x += snprintf(buf+x, 4, "%02X:", b);
-    //last character - at index x-1 is a ':', make it null to trim the last colon character
+    for (const auto &b : mac)
+        x += snprintf(buf+x, 4, "%02X:", b);
+    //the last character - at index x-1 is a ':', make it null to trim the last colon character
     buf[x-1] = 0;
     macAddress = buf;
 }
@@ -313,9 +310,9 @@ void SysInfo::sysConfig(JsonDocument &doc) {
 void SysInfo::heapStats(JsonObject &doc) {
     // Simple heap stats - the HeapStats_t and vPortGetHeapStats is only available with heap_4 and heap_5 memory management solutions; the current one for arduino-pico is heap_3
     doc["stackPointer"] = rp2040.getStackPointer();
-    doc["freeStack"] = rp2040.getFreeStack();
-    doc["totalHeap"] = rp2040.getTotalHeap();
-    doc["freeHeap"] = rp2040.getFreeHeap();
+    doc["freeStack"] = sysInfo->freeStack = rp2040.getFreeStack();
+    doc["totalHeap"] = sysInfo->heapSize = rp2040.getTotalHeap();
+    doc["freeHeap"] = sysInfo->freeHeap = rp2040.getFreeHeap();
     doc["usedHeap"] = rp2040.getUsedHeap();
 #if LOGGING_ENABLED == 1
     doc["logMinBufferSpace"] = Log.getMinBufferSpace();
@@ -375,8 +372,7 @@ void readSysInfo() {
     json->reserve(512);  // approximation
     if (const size_t sysSize = SyncFsImpl.readFile(sysFileName, json); sysSize > 0) {
         JsonDocument doc;
-        const DeserializationError error = deserializeJson(doc, *json);
-        if (error) {
+        if (const DeserializationError error = deserializeJson(doc, *json)) {
             log_error(F("Error reading the system information JSON file %s [%zu bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
             delete json;
             return;
@@ -402,7 +398,7 @@ void readSysInfo() {
         sysInfo->freeHeap = doc[csFreeHeap];
         sysInfo->stackSize = doc[csStackSize];
         sysInfo->freeStack = doc[csFreeStack];
-        //do not override current status (in progress of populating) with last run status
+        //do not override the current status (in progress of populating) with the last run status
         const uint8_t lastStatus = doc[csStatus];
         log_info(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status, lastStatus,
@@ -446,7 +442,7 @@ void saveSysInfo() {
 }
 
 /**
- * Setup the on-board status LED
+ * Set-up the on-board status LED
  */
 void SysInfo::setupStateLED() {
     pinMode(LEDR, OUTPUT);
@@ -476,7 +472,7 @@ void SysInfo::updateBoardLED(const CRGB rgb) {
 }
 
 /**
- * Adjusts the LED state (color, illumination style) in response to overall system's state
+ * Adjusts the LED state (color, illumination style) in response to the overall system's state
  */
 void SysInfo::updateStatusLED() const {
     const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
@@ -497,7 +493,7 @@ void state_led_begin() {
 }
 
 /**
- * Update the color of the status LED consistent with system's state
+ * Update the color of the status LED consistent with the system's state
  */
 void state_led_update() {
     sysInfo->updateStatusLED();

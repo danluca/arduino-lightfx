@@ -21,7 +21,7 @@
 volatile bool fxBroadcastEnabled = false;
 BroadcastState broadcastState = Uninitialized;
 
-//broadcast client list, using last byte of IP addresses - e.g. 192.168.0.10, 192.168.0.11
+//broadcast client list, using the last byte of IP addresses - e.g., 192.168.0.10, 192.168.0.11
 static constexpr auto syncClientsLSB PROGMEM = {BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
 
 static constexpr auto hdContentJson PROGMEM = "Content-Type: application/json";
@@ -54,7 +54,7 @@ struct bcTaskMessage {
 };
 
 /**
- * Preparations for broadcast effect changes - setup the recipient clients (others than self), the event posting attributes
+ * Preparations for broadcast effect changes - set up the recipient clients (others than self), the event posting attributes
  */
 void commInit() {
     const String& sysAddr = sysInfo->getIpAddress();
@@ -100,11 +100,11 @@ void commRun() {
 }
 
 /**
- * Callback for timeUpdate timer - this is called from Timer task. Enqueues a TIME_UPDATE message for the broadcast task.
+ * Callback for timeUpdate timer - this is called from the Timer task. Enqueues a TIME_UPDATE message for the broadcast task.
  * @param xTimer the timeUpdate timer that fired the callback
  */
 void enqueueTimeUpdate(TimerHandle_t xTimer) {
-    auto *msg = new bcTaskMessage{bcTaskMessage::TIME_UPDATE, 0};   //gets deleted in execute upon message receipt
+    auto *msg = new bcTaskMessage{bcTaskMessage::TIME_UPDATE, 0};   //gets deleted in execute method upon message receipt
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE)
         log_error(F("Error sending TIME_UPDATE message to broadcast task for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
     // else
@@ -123,7 +123,7 @@ void enqueueFxUpdate(const uint16_t index) {
 }
 
 /**
- * Callback for timeSetup timer - this is called from Timer task. Enqueues a TIME_SETUP message for the broadcast task.
+ * Callback for timeSetup timer - this is called from the Timer task. Enqueues a TIME_SETUP message for the broadcast task.
  * @param xTimer the timeSetup timer that fired the callback
  */
 void enqueueTimeSetup(TimerHandle_t xTimer) {
@@ -147,7 +147,7 @@ void enqueueWifiTempRead(TimerHandle_t xTimer) {
 }
 
 /**
- * Callback for statusLEDCheck timer - this is called from Timer task. Enqueues a STATUS_LED_CHECK message for the alarm task.
+ * Callback for statusLEDCheck timer - this is called from the Timer task. Enqueues a STATUS_LED_CHECK message for the alarm task.
  * @param xTimer the statusLEDCheck timer that fired the callback
  */
 void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
@@ -165,7 +165,7 @@ void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
  */
 void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     log_info(F("Attempting to connect to client %s for FX %hu"), ip->toString().c_str(), fxIndex);
-    WiFiClient wiFiClient;  //wifi client - does not need explicit pointer for underlying WiFi class/driver
+    WiFiClient wiFiClient;  //wifi client - does not need an explicit pointer for underlying WiFi class/driver
     HttpClient client(wiFiClient, *ip, HttpClient::kHttpPort);
     client.setTimeout(1000);
     client.setHttpResponseTimeout(2000);
@@ -175,10 +175,10 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     const size_t sz = sprintf(nullptr, fmtFxChange, fxIndex);
     char buf[sz+1];
     sprintf(buf, fmtFxChange, fxIndex);
-    buf[sz] = 0;    //null terminated string
+    buf[sz] = 0;    //null-terminated string
 
     client.beginRequest();
-    //client.put is where connection is established
+    //client.put is where the connection is established
     if (HTTP_SUCCESS == client.put("/fx")) {
         client.sendHeader(hdContentJson);
         client.sendHeader(hdUserAgent);
@@ -238,7 +238,7 @@ void timeUpdate() {
     }
     const bool result = ntp_sync();
     log_info(F("Time NTP sync performed; success = %s"), StringUtils::asString(result));
-    //if result is false, do not reset the NTP status, we may have had an older NTP sync
+    //if the result is false, do not reset the NTP status; we may have had an older NTP sync
     if (result)
         sysInfo->setSysStatus(SYS_STATUS_NTP);
     //check for a DST transition
@@ -284,7 +284,7 @@ void timeSetupCheck() {
 }
 
 /**
- * Called from main thread - sets up a task and timers for handling events
+ * Called from the main thread - sets up a task and timers for handling events
  */
 void commSetup() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
@@ -299,13 +299,13 @@ void commSetup() {
         log_error(F("Cannot create timeUpdate timer - Ignored."));
     else if (xTimerStart(thSync, 0) != pdPASS)
         log_error(F("Cannot start the timeUpdate timer - Ignored."));
-    // create timer to re-check WiFi and ensure connectivity - every 7 minutes
+    // create a timer to re-check WiFi and ensure connectivity - every 7 minutes
     const TimerHandle_t thWifiEnsure = xTimerCreate("wifiEnsure", pdMS_TO_TICKS(7*60*1000), pdTRUE, &tmrWifiEnsure, enqueueWifiEnsure);
     if (thWifiEnsure == nullptr)
         log_error(F("Cannot create wifiEnsure timer - Ignored. There is NO wifi re-check scheduled"));
     else if (xTimerStart(thWifiEnsure, 0) != pdPASS)
         log_error(F("Cannot start the wifiEnsure timer - Ignored."));
-    //create timer to take WiFi temperature - every 33s, 1s off from the diagnostic thread temp read, to avoid overlap
+    //create a timer to take WiFi temperature - every 33 s, 1 s off from the diagnostic thread temp read, to avoid overlap
     const TimerHandle_t thWifiTempRead = xTimerCreate("wifiTempRead", pdMS_TO_TICKS(33*1000), pdTRUE, &tmrWifiTemp, enqueueWifiTempRead);
     if (thWifiTempRead == nullptr)
         log_error(F("Cannot create wifiTempRead timer - Ignored. There is NO wifi temperature read scheduled"));
@@ -337,7 +337,7 @@ void postTimeSetupCheck() {
 
 /**
  * Abstraction for posting an effect update event to the queue, without inner knowledge of event objects
- * <b>Note:</b> this method is called from Fx thread and the event queueing will cause the broadcast to be executed in broadcast thread.
+ * <b>Note:</b> this method is called from Fx thread and the event queueing will cause the broadcast to be executed in the comms thread.
  * @param index the effect index to post update for
  */
 void postFxChangeEvent(const uint16_t index) {

@@ -492,8 +492,7 @@ void readCalibrationInfo() {
     json->reserve(512);  // approximation
     if (const size_t calibSize = SyncFsImpl.readFile(calibFileName, json); calibSize > 0) {
         JsonDocument doc;
-        const DeserializationError error = deserializeJson(doc, *json);
-        if (error) {
+        if (const DeserializationError error = deserializeJson(doc, *json)) {
             log_error(F("Error reading the CPU temp calibration information JSON file %s [%zd bytes]: %s - calibration information state NOT restored. Content read:\n%s"), calibFileName, calibSize, error.c_str(), json->c_str());
             delete json;
             return;
@@ -594,7 +593,7 @@ void wifi_temp() {
     //add the measurement if the jump from previous measurement is reasonable
     const float fTemp = toFahrenheit(wifiTemp.value);
     //I've noticed a suspect Fahrenheit value of 0x80 (128) that is not real (by feeling the chip) - this seems to be some sort of error/NA value
-    //if not first reading or current value is within 8 degrees 'C of 53.33'C (128'F) (53.33 'C +/- 4) then consider the 128'F value of the reading, otherwise ignore these (erroneous) readings
+    //if not first reading or current value is within 4 degrees 'C of 53.33'C (128'F) (53.33 'C +/- 4) then consider the 128'F value of the reading, otherwise ignore these (erroneous) readings
     bool bInvalid = fabs(fTemp - 128.0f) < TEMP_NA_COMPARE_EPSILON && (wifiTempRange.current.time == 0 || fabs(wifiTempRange.current.value - 53.33f) > 4.0f);
 #if LOGGING_ENABLED == 1
     if (bInvalid) {

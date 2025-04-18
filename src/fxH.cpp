@@ -383,7 +383,7 @@ void FxH4::drawTwinkles(CRGBSet &set) {
     // this function is called, so that the sequence of 'random' numbers that it generates is (paradoxically) stable.
     uint16_t PRNG16 = 11337;
 
-    uint32_t clock32 = millis();
+    const uint32_t clock32 = millis();
 
     // Set up the background color, "bg".
     CRGB bg{};
@@ -404,12 +404,12 @@ void FxH4::drawTwinkles(CRGBSet &set) {
 
     for (auto &pixel: set) {
         PRNG16 = (uint16_t) (PRNG16 * 2053) + 1384; // next 'random' number
-        uint16_t myclockoffset16 = PRNG16; // use that number as clock offset
+        const uint16_t myclockoffset16 = PRNG16; // use that number as clock offset
         PRNG16 = (uint16_t) (PRNG16 * 2053) + 1384; // next 'random' number
         // use that number as clock speed adjustment factor (in 8ths, from 8/8ths to 23/8ths)
-        uint8_t myspeedmultiplierQ5_3 = ((((PRNG16 & 0xFF) >> 4) + (PRNG16 & 0x0F)) & 0x0F) + 0x08;
-        uint32_t myclock30 = (uint32_t) ((clock32 * myspeedmultiplierQ5_3) >> 3) + myclockoffset16;
-        uint8_t myunique8 = PRNG16 >> 8; // get 'salt' value for this pixel
+        const uint8_t myspeedmultiplierQ5_3 = ((((PRNG16 & 0xFF) >> 4) + (PRNG16 & 0x0F)) & 0x0F) + 0x08;
+        const uint32_t myclock30 = (uint32_t) ((clock32 * myspeedmultiplierQ5_3) >> 3) + myclockoffset16;
+        const uint8_t myunique8 = PRNG16 >> 8; // get 'salt' value for this pixel
 
         // We now have the adjusted 'clock' for this pixel, now we call
         // the function that computes what color the pixel should be based
@@ -652,7 +652,7 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
             notUsed.push_back(s);
     if (howMany > notUsed.size())
         howMany = notUsed.size();
-    bool all = howMany == notUsed.size();
+    const bool all = howMany == notUsed.size();
     while (howMany > 0) {
         for (auto it = notUsed.begin(); it != notUsed.end();) {
             if (all || random8()%2) {
@@ -701,8 +701,8 @@ void FxH6::run() {
         if (stage == DefinedPattern)
             resetActivateAllSparks((millis()>>11)-64);
         else
-            for (auto &s : sparks)
-                s->loop = false;    //stage == DefinedPattern;  ends looping, which turns the sparks idle when they finish cycle, removing them from active sparks list
+            for (const auto &s : sparks)
+                s->loop = false;    //stage == DefinedPattern; ends looping, which turns the sparks idle when they finish cycle, removing them from active sparks list
     }
 }
 

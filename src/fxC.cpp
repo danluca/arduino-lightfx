@@ -106,7 +106,7 @@ void FxC2::run() {
     const uint16_t  k = beatsin16(  5, 0, tpl.size()-1);
 
     // The color of each point shifts over time, each at a different speed.
-    uint16_t ms = millis();
+    const uint16_t ms = millis();
     leds[(i+j)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/29) : CHSV( ms / 29, 200, 255);
     leds[(j+k)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/41) : CHSV( ms / 41, 200, 255);
     leds[(k+i)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/73) : CHSV( ms / 73, 200, 255);

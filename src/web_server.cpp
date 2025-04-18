@@ -93,7 +93,7 @@ void contentDispositionHeader(WebClient &client, const char *fname) {
 size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
     //send it out
     const auto buf = new String();
-    buf->reserve(5120); // deemed enough for all/most json docs in this app (largest is the config file at 4800 bytes)
+    buf->reserve(5120); // deemed enough for all/most JSON docs in this app (largest is the config file at 4800 bytes)
     serializeJson(doc, *buf);
     const size_t sz = client.send(200, mime::mimeTable[mime::json].mimeType, *buf);
     delete buf;
@@ -101,7 +101,7 @@ size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
 }
 
 /**
- * Web request handler - GET /status.json. Method invoked by the web server; response sent to current client awaiting response from the server
+ * Web request handler - GET /status.json. Method invoked by the web server; response sent to the current client awaiting response from the server
  */
 void web::handleGetStatus(WebClient &client) {
     dateHeader(client);
@@ -220,13 +220,13 @@ void web::handleGetStatus(WebClient &client) {
     cpuTempCal["refTempADC"] = calibTempMeasurements.ref.adcRaw;
     cpuTempCal["refTempTime"] = calibTempMeasurements.ref.time;
 
-    //send it out - the size returned is http headers + response body (does not include the HTTP protocol header)
+    //send it out - the size returned is http headers and response body (does not include the HTTP protocol header)
     const size_t sz = marshalJson(doc, client);
     log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
- * Web request handler - PUT /fx. Method invoked by the web server; response sent to current client awaiting response from the server
+ * Web request handler - PUT /fx. Method invoked by the web server; response sent to the current client awaiting response from the server
  */
 void web::handlePutConfig(WebClient &client) {
     dateHeader(client);
@@ -306,7 +306,7 @@ void web::handlePutConfig(WebClient &client) {
 }
 
 /**
- * Web request handler - GET /tasks.json. Method invoked by the web server; response sent to current client awaiting response from the server
+ * Web request handler - GET /tasks.json. Method invoked by the web server; response sent to the current client awaiting response from the server
  */
 void web::handleGetTasks(WebClient &client) {
     dateHeader(client);
@@ -363,7 +363,7 @@ void handleFWImageUpload(WebClient &client) {
     const WebRequest &req = client.request();
     switch (HTTPRaw &raw = client.raw(); raw.status) {
         case RAW_START: {
-            //check auth token; determine file name and prepare streaming into it
+            //check auth token; determine the file name and prepare to stream into it
             const auto fwData = new FWUploadData();
             raw.data = fwData;
             // *auth = req.header("X-Token").equals("*QisW@tWtx4WvERf") ? 0x01 : 0x00;
@@ -381,13 +381,13 @@ void handleFWImageUpload(WebClient &client) {
         }
         break;
         case RAW_WRITE:
-            //append one raw buffer at a time into the file, if auth succeeded
+            //append one raw buffer at a time into the file if auth succeeded
             if (const FWUploadData *fwData = static_cast<FWUploadData *>(raw.data); fwData->auth) {
                 SyncFsImpl.appendFile(fwData->fileName.c_str(), raw.buf, raw.currentSize);
             }
             break;
         case RAW_END:
-            //this is called at the regular end of raw data processing (i.e. when the amount of data read from client matches the content-length) - either successful or not
+            //this is called at the regular end of raw data processing (i.e., when the amount of data read from the client matches the content-length) - either successful or not
             //close file; send the response to the client as successful receive
             if (const FWUploadData *fwData = static_cast<FWUploadData *>(raw.data); fwData->auth) {
                 //determine sha256 hash for the file content - if it matches the source, respond with success, otherwise error out
@@ -410,8 +410,8 @@ void handleFWImageUpload(WebClient &client) {
             delete static_cast<FWUploadData *>(raw.data);
             break;
         case RAW_ABORTED: {
-            //this is called when the raw data cannot be read from client any-longer (interrupted). It ends the processing, skips the call for RAW_END
-            //close file; delete file; send the response to the client as error in receive
+            //This is called when the raw data cannot be read from the client any-longer (interrupted). It ends the processing, skips the call for RAW_END
+            //close file; delete the file; send the response to the client as an error in receiving
             client.send(400, mime::mimeTable[mime::txt].mimeType, R"({"error": "Bad Request or Read - Aborted"})");
             log_error(F("FW upload and storage (size read/expected %zu/%zu bytes) failed - aborted"), raw.totalSize, req.contentLength());
             const auto fd = static_cast<FWUploadData *>(raw.data);

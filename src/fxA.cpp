@@ -351,7 +351,7 @@ void FxA5::makeFrame() {
     const CRGBPalette16 &pal = mainPal ? palette : targetPalette;
     ovr.fill_solid(ColorFromPalette(pal, lastColorIndex, halfBright + rndBright, LINEARBLEND));
     const CRGB newClr = ColorFromPalette(pal, colorIndex, halfBright + rndBright, LINEARBLEND);
-    uint16_t seg = 5;
+    const uint16_t seg = 5;
     for (uint16_t x = 0; x < seg; x++) {
         nblend(ovr[x], newClr, (seg-x-1)*50);
     }
@@ -454,8 +454,7 @@ void SleepLight::run() {
         }
     }
     EVERY_N_MILLIS(125) {
-        SleepLightState oldState = step();
-        if (!(oldState == state && state == Sleep))
+        if (const SleepLightState oldState = step(); !(oldState == state && state == Sleep))
             FastLED.show(); //overall brightness is managed through color's value of HSV structure, which stabilizes at minBrightness, hence no need to scale with stripBrightness here
     }
 

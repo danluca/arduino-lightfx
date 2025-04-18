@@ -16,8 +16,8 @@
 // initial global brightness 0-255
 #define BRIGHTNESS 255
 
-// These are lists and need to be commas instead of dots eg. for IP address 192.168.0.1 use 192,168,0,1 instead
-// #define IP_DNS 8,8,8,8              // Google DNS
+// These are lists and need to be commas instead of dots e.g., for IP address 192.168.0.1 use 192,168,0,1 instead
+// #define IP_DNS 8,8,8,8               // Google DNS
 #define IP_DNS 75,75,75,75              // Xfinity DNS
 #define IP_GW 192,168,0,1           // default gateway (router)
 #define IP_SUBNET 255,255,255,0     // usual subnet mask
@@ -35,9 +35,9 @@
 // Board specific configurations
 #if BOARD_ID == 1
 
-#define NUM_PIXELS  170      //number of pixels on the office window edge is 166
+#define NUM_PIXELS  170      //the number of pixels on the office window edge is 166
 #define FRAME_SIZE  76
-#define PIXEL_BUFFER_SPACE  4*FRAME_SIZE    //number of pixels to reserve for secondary buffer (used for effects data maneuvering)
+#define PIXEL_BUFFER_SPACE  (4*FRAME_SIZE)    //number of pixels to reserve for secondary buffer (used for effects data maneuvering)
 
 // static IP - alternatively, the router can be configured to reserve IPs based on MAC
 #define IP_ADDR 192,168,0,10    //Board 1 (dev)

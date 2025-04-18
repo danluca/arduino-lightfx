@@ -54,7 +54,7 @@ namespace FxD {
 
         void windDownPrep() override;
 
-        void plasma();
+        void plasma() const;
 
         [[nodiscard]] uint8_t selectionWeight() const override;
 

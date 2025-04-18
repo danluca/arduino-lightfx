@@ -225,7 +225,7 @@ void FxB::juggle_short() {
     for (uint16_t i = 0; i < segSize; i++) {
         // leds[beatsin16(i + 7, 0, NUM_PIXELS - 1)] |= CHSV(dothue, 200, 255);
         // note the |= operator may lead to colors outside the palette - for limited hues palettes (like Halloween) this may not be ideal
-        uint16_t pos = beatsin16(i + 7, 0, tpl.size() - 1);
+        const uint16_t pos = beatsin16(i + 7, 0, tpl.size() - 1);
         tpl[pos] |= ColorFromPalette(palette, hue, brightness, LINEARBLEND);
         curPos = pos;
         hue += 32;
@@ -419,7 +419,7 @@ void FxB::juggle_long() {
 
         for (uint16_t i = 0; i < numDots; i++) {
             //  note the += operator may lead to colors outside the palette (less evident than |= operator) - for limited hues palettes (like Halloween) this may not be ideal
-            uint16_t pos = beatsin16(dotBpm + i + numDots, 0, tpl.size() - 1);
+            const uint16_t pos = beatsin16(dotBpm + i + numDots, 0, tpl.size() - 1);
             tpl[pos] += ColorFromPalette(palette, curHue, brightness, LINEARBLEND);
             curHue += hueDiff;
         }

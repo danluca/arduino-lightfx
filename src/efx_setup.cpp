@@ -106,7 +106,7 @@ void saveFxState() {
     doc[csAutoColorAdjust] = paletteFactory.isAuto();
     doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
     doc[csBroadcast] = fxBroadcastEnabled;
-    auto str = new String();
+    const auto str = new String();
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
     if (!SyncFsImpl.writeFile(stateFileName, str))
@@ -166,13 +166,13 @@ uint16_t easeOutBounce(const uint16_t x, const uint16_t lim) {
     if (xf < 1/d1) {
         res = n1*xf*xf;
     } else if (xf < 2/d1) {
-        float xf1 = xf - 1.5f/d1;
+        const float xf1 = xf - 1.5f/d1;
         res = n1*xf1*xf1 + 0.75f;
     } else if (xf < 2.5f/d1) {
-        float xf1 = xf - 2.25f/d1;
+        const float xf1 = xf - 2.25f/d1;
         res = n1*xf1*xf1 + 0.9375f;
     } else {
-        float xf1 = xf - 2.625f/d1;
+        const float xf1 = xf - 2.625f/d1;
         res = n1*xf1*xf1 + 0.984375f;
     }
     return (uint16_t )(res * (float)lim);
@@ -205,14 +205,14 @@ void shiftRight(CRGBSet &set, const CRGB feedLeft, Viewport vwp, const uint16_t 
     if (vwp.size() == 0)
         vwp = (Viewport)set.size();
     if (pos >= vwp.size()) {
-        uint16_t hiMark = capu(vwp.high, (set.size()-1));
+        const uint16_t hiMark = capu(vwp.high, (set.size()-1));
         set(vwp.low, hiMark) = feedLeft;
         return;
     }
-    uint16_t hiMark = capu(vwp.high, set.size());
+    const uint16_t hiMark = capu(vwp.high, set.size());
     //don't use >= as the indexer is unsigned and always >=0 --> infinite loop
     for (uint16_t x = hiMark; x > vwp.low; x--) {
-        uint16_t y = x - 1;
+        const uint16_t y = x - 1;
         set[y] = y < pos ? feedLeft : set[y-pos];
     }
 }
@@ -229,11 +229,11 @@ void loopRight(CRGBSet &set, Viewport vwp, uint16_t pos) {
         return;
     if (vwp.size() == 0)
         vwp = (Viewport)set.size();
-    uint16_t hiMark = capu(vwp.high, set.size());
+    const uint16_t hiMark = capu(vwp.high, set.size());
     pos = pos % vwp.size();
     CRGB buf[pos];
     for (uint16_t x = hiMark; x > vwp.low; x--) {
-        uint16_t y = x - 1;
+        const uint16_t y = x - 1;
         if (hiMark-x < pos)
             buf[hiMark-x] = set[y];
         set[y] = y < pos ? buf[pos-y-1] : set[y-pos];
@@ -253,13 +253,13 @@ void shiftLeft(CRGBSet &set, const CRGB feedRight, Viewport vwp, const uint16_t 
         return;
     if (vwp.size() == 0)
         vwp = (Viewport)set.size();
-    uint16_t hiMark = capu(vwp.high, (set.size()-1));
+    const uint16_t hiMark = capu(vwp.high, (set.size()-1));
     if (pos >= vwp.size()) {
         set(vwp.low, hiMark) = feedRight;
         return;
     }
     for (uint16_t x = vwp.low; x <= hiMark; x++) {
-        uint16_t y = x + pos;
+        const uint16_t y = x + pos;
         set[x] = y < set.size() ? set[y] : feedRight;
     }
 }
@@ -361,8 +361,7 @@ void replicateSet(const CRGBSet& src, CRGBSet& dest) {
     if (max(normSrcStart, normDestStart) < min(normSrcEnd, normDestEnd)) {
         //we have overlap - account for it
         for (auto & y : dest) {
-            CRGB* yPtr = &y;
-            if ((yPtr < normSrcStart) || (yPtr >= normSrcEnd)) {
+            if (CRGB* yPtr = &y; (yPtr < normSrcStart) || (yPtr >= normSrcEnd)) {
                 (*yPtr) = src[x];
                 incr(x, 1, srcSize);
             }
@@ -388,8 +387,8 @@ void shuffleIndexes(uint16_t array[], uint16_t szArray) {
     //shuffle indexes
     const uint16_t swIter = (szArray >> 1) + (szArray >> 3);
     for (uint16_t x = 0; x < swIter; x++) {
-        uint16_t r = random16(0, szArray);
-        uint16_t tmp = array[x];
+        const uint16_t r = random16(0, szArray);
+        const uint16_t tmp = array[x];
         array[x] = array[r];
         array[r] = tmp;
     }
@@ -609,9 +608,9 @@ bool rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay) {
         existing = target;
         return true;
     }
-    bool bRed = rblend8(existing.red, target.red, frOverlay);
-    bool bGreen = rblend8(existing.green, target.green, frOverlay);
-    bool bBlue = rblend8(existing.blue, target.blue, frOverlay);
+    const bool bRed = rblend8(existing.red, target.red, frOverlay);
+    const bool bGreen = rblend8(existing.green, target.green, frOverlay);
+    const bool bBlue = rblend8(existing.blue, target.blue, frOverlay);
     return bRed && bGreen && bBlue;
 }
 
@@ -625,7 +624,7 @@ bool rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay) {
  */
 uint8_t adjustStripBrightness() {
     if (!stripBrightnessLocked && sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        int hr = hour();
+        const int hr = hour();
         fract8 scale;
         if (hr < 8)
             scale = 100;
@@ -737,7 +736,7 @@ void EffectRegistry::transitionEffect() const {
 uint16_t EffectRegistry::registerEffect(LedEffect *effect) {
     effects.push_back(effect);  //pushing from the back to preserve the order or insertion during iteration
     effectsCount = effects.size();
-    uint16_t fxIndex = effectsCount - 1;
+    const uint16_t fxIndex = effectsCount - 1;
     if (strcmp(FX_SLEEPLIGHT_ID, effect->name()) == 0)
         sleepEffect = fxIndex;
     log_info(F("Effect [%s] registered successfully at index %hu"), effect->name(), fxIndex);
@@ -762,7 +761,7 @@ void EffectRegistry::setSleepState(const bool sleepFlag) {
             if (lastEffects.size() < 2)
                 nextRandomEffectPos();
             else {
-                uint16_t prevFx = *(lastEffects.end()-2); //second entry in the queue (from the inserting point - the end) is the previous effect before the sleep mode
+                const uint16_t prevFx = *(lastEffects.end()-2); //the second entry in the queue (from the inserting point - the end) is the previous effect before the sleep mode
                 currentEffect = prevFx;
                 transitionEffect();
             }
@@ -1094,7 +1093,7 @@ void fx_run() {
             fxBump = false;
             totalAudioBumps++;
         }
-        uint8_t oldBrightness = stripBrightness;
+        const uint8_t oldBrightness = stripBrightness;
         stripBrightness = adjustStripBrightness();
         if (oldBrightness != stripBrightness)
             log_info(F("Strip brightness updated from %d to %d"), oldBrightness, stripBrightness);

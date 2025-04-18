@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Copyright 2023 (c) Dan Luca
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// Collection of light strip effects with ability to be configured through Wi-Fi
+// Collection of light strip effects with the ability to be configured through Wi-Fi
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #include <LittleFS.h>
@@ -73,7 +73,7 @@ void enqueueAlarmSetup() {
 }
 
 /**
- * ALM task begin - for now just blinking the board status LED while in setup mode
+ * ALM task begins - for now just blinking the board status LED while in setup mode
  */
 void alarm_misc_begin() {
     state_led_begin();
@@ -142,13 +142,13 @@ void setup() {
     SysInfo::setupStateLED();
     log_setup();
 
-    RP2040::enableDoubleResetBootloader();   //that's just good idea overall
+    RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
 
     sysInfo = new SysInfo();    //system information object built once per run
     filesystem_setup();
     sysInfo->begin();
 
-    almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for ALM task for communication between cores
+    almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for the ALM task for communication between cores
     Scheduler.startTask(&alarmTasks);
 
     readSysInfo();
@@ -170,7 +170,7 @@ void setup() {
     watchdogSetup();
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
-    taskDelay(250);         // leave reasonable time to alarm task to setup
+    taskDelay(250);         // leave reasonable time to the alarm task to set up
     //enqueues the alarm setup event
     enqueueAlarmSetup();
 
@@ -201,7 +201,7 @@ void setup1() {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     Scheduler.startTask(&fxTasks);
-    // taskDelay(250);         // leave reasonable time to FX task to setup
+    // taskDelay(250);         // leave reasonable time to FX task to set-up
 
     //wait for the main core to notify us that WiFi is ready, not interested in the notification value
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);

@@ -106,13 +106,15 @@ time_t curUnixTime() {
     if (timeClient.isTimeSet())
         return timeClient.getEpochTime();
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time telling purpose
+        //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time-telling purpose
         //determine what offset to use
-        const time_t wifiTime = WiFi.getTime();
-        time_t localTime = wifiTime + CST_OFFSET_SECONDS;
-        if (isDST(localTime))
-            localTime = wifiTime + CDT_OFFSET_SECONDS;
-        return localTime;
+        if (const time_t wifiTime = WiFi.getTime(); wifiTime > 0) {
+            time_t localTime = wifiTime + CST_OFFSET_SECONDS;
+            if (isDST(localTime))
+                localTime = wifiTime + CDT_OFFSET_SECONDS;
+            return localTime;
+        } else
+            log_warn(F("WiFi.getTime() failed - returned 0, falling back to local millis()"));
     }
     return millis();
 }

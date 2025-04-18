@@ -174,7 +174,7 @@ void FxD3::run() {
 
 }
 
-void FxD3::plasma() {
+void FxD3::plasma() const {
     const uint8_t thisPhase = beatsin8(6,-64,64);                           // Setting phase change for a couple of waves.
     const uint8_t thatPhase = beatsin8(7,-64,64);
 
@@ -309,8 +309,8 @@ void ripple::Move() {
 }
 
 void ripple::Fade() const {
-    uint16_t lowEndRipple = qsuba(center, step);
-    uint16_t upEndRipple = capu(center + step, pSeg->size()-1);
+    const uint16_t lowEndRipple = qsuba(center, step);
+    const uint16_t upEndRipple = capu(center + step, pSeg->size()-1);
     (*pSeg)(lowEndRipple, upEndRipple).fadeToBlackBy(rpFade);
 }
 

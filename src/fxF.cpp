@@ -469,11 +469,11 @@ void FxF5::flare() {
     Spark flareSparks[flareSparksCount];
 
     // initialize launch sparks
-    for (auto &spark : flareSparks) {
-        spark.pos = 0;
-        spark.velocity = (float(random8(180,255)) / 255) * (flareVel / 2);
+    for (auto &[pos, velocity, hue] : flareSparks) {
+        pos = 0;
+        velocity = (float(random8(180,255)) / 255) * (flareVel / 2);
         // random around 20% of flare velocity
-        spark.hue = uint8_t(spark.velocity * 1000);
+        hue = uint8_t(velocity * 1000);
     }
     // launch
     while ((ushort(flarePos) < curPos) && (flareVel > 0)) {
@@ -512,15 +512,15 @@ void FxF5::explode() const {
     const auto nSparks = ushort(flarePos / 3); // works out to look about right
     Spark sparks[nSparks];
     //map the flare position in its range to a hue
-    uint8_t decayHue = constrain(map(ushort(flarePos), tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10, 0, 255), 0, 255);
-    uint8_t flarePosQdrnt = decayHue/64;
+    const uint8_t decayHue = constrain(map(ushort(flarePos), tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10, 0, 255), 0, 255);
+    const uint8_t flarePosQdrnt = decayHue/64;
 
     // initialize sparks
-    for (auto &spark : sparks) {
-        spark.pos = flarePos;
-        spark.velocity = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
-        spark.hue = random8(flarePosQdrnt*64, 64+flarePosQdrnt*64);   //limit the spark hues in a closer color range based on flare height
-        spark.velocity *= flarePos/1.7f/ float(tpl.size()); // proportional to height
+    for (auto &[pos, velocity, hue] : sparks) {
+        pos = flarePos;
+        velocity = (static_cast<float>(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
+        hue = random8(flarePosQdrnt*64, 64+flarePosQdrnt*64);   //limit the spark hues in a closer color range based on flare height
+        velocity *= flarePos/1.7f/ static_cast<float>(tpl.size()); // proportional to height
     }
     // the original implementation was to designate a known spark starting from a known value and iterate until it goes below a fixed threshold - c2/128
     // since they were all fixed values, the math shows the number of iterations can be precisely determined. The formula is iterCount = log(c2/128/255)/log(degFactor),
