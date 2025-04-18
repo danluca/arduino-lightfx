@@ -25,6 +25,7 @@ inline constexpr auto csAuto PROGMEM = "auto";
 inline constexpr auto csHoliday PROGMEM = "holiday";
 inline constexpr auto strNR PROGMEM = "N/R";
 inline constexpr auto csBroadcast PROGMEM = "broadcast";
+inline constexpr auto fxCfgFileName PROGMEM = "/status/fxconfig.json";
 inline constexpr auto sysCfgFileName PROGMEM = "/status/sysconfig.json";
 inline constexpr auto calibFileName PROGMEM = "/status/calibration.json";
 inline constexpr auto stateFileName PROGMEM = "/state.json";

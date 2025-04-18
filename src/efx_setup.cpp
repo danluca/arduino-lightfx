@@ -1068,16 +1068,18 @@ void fx_setup() {
     //ensure the current effect is moved to setup state
     fxRegistry.getCurrentEffect()->desiredState(Setup);
 
-    //generate and cache the SYS/FX config data
+    //generate and cache the FX config data
     JsonDocument doc;
-    SysInfo::sysConfig(doc);
+    const auto hldList = doc["holidayList"].to<JsonArray>();
+    for (uint8_t hi = None; hi <= NewYear; hi++)
+        hldList.add(holidayToString(static_cast<Holiday>(hi)));
     const auto fxArray = doc["fx"].to<JsonArray>();
     fxRegistry.describeConfig(fxArray);
     auto *str = new String();
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
-    if (!SyncFsImpl.writeFile(sysCfgFileName, str))
-        log_error(F("Cannot save SysConfig JSON file %s"), sysCfgFileName);
+    if (!SyncFsImpl.writeFile(fxCfgFileName, str))
+        log_error(F("Cannot save FxConfig JSON file %s"), fxCfgFileName);
     delete str;
     log_info(F("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)"), fxRegistry.getCurrentEffect()->name(),
                fxRegistry.getCurrentEffect()->getRegistryIndex(), Setup);

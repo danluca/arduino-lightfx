@@ -41,9 +41,9 @@ function getTasks() {
             $('#curTime').html(`Time: ${data.date} ${data.time}`);
             $('#boardName').html(data.boardName);
             $('#deviceName').html(data.boardName);
-            $('#boardUid').html(data.boardUid);
-            $('#buildVersion').html(data.fwVersion);
-            $('#buildBranch').html(data.fwBranch);
+            $('#boardUid').html(data.boardId);
+            $('#buildVersion').html(data.buildVersion);
+            $('#buildBranch').html(data.scmBranch);
             $('#buildTime').html(data.buildTime);
             let tableBody = $('#taskTableBody');
             tableBody.empty();

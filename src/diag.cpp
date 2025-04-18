@@ -546,7 +546,8 @@ void updateSystemTemp() {
     const Measurement msmt = boardTemperature();
     if (fabs(msmt.value - IMU_TEMPERATURE_NOT_AVAILABLE) > TEMP_NA_COMPARE_EPSILON) {
         imuTempRange.setMeasurement(msmt);
-        if (calibCpuTemp.isValid())
+        //if calibration is valid and the measurement is within 15'C of the higher precision IMU sensor, use the CPU temperature measurement
+        if (calibCpuTemp.isValid() && fabs(msmt.value - chipTemp.value) < 15.0f)
             cpuTempRange.setMeasurement(chipTemp);
         chipTemp.value = msmt.value;
         chipTemp.time = msmt.time;

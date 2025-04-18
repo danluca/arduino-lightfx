@@ -58,16 +58,16 @@ function getConfig() {
             hdList.val(data.holiday);
             $('#boardName').html(data.boardName);
             $('#deviceName').html(data.boardName);
-            $('#boardUid').html(data.boardUid);
-            $('#buildVersion').html(data.fwVersion);
-            $('#buildBranch').html(data.fwBranch);
+            $('#boardUid').html(data.boardId);
+            $('#buildVersion').html(data.buildVersion);
+            $('#buildBranch').html(data.scmBranch);
             $('#buildTime').html(data.buildTime);
-            $('#macAddress').html(data.MAC);
+            $('#macAddress').html(data.macAddress);
             $('#osVersion').html(`${data.arduinoPicoVersion}<br/>&nbsp;&nbsp;[FreeRTOS ${data.freeRTOSVersion}]`);
-            if (data.wifiCurVersion !== data.wifiLatestVersion) {
-                $('#wfVersion').html(`WiFi NINA v${data.wifiCurVersion} [could upgrade to ${data.wifiLatestVersion}]`);
+            if (data.wifiFwVersion !== data.wifiLatestVersion) {
+                $('#wfVersion').html(`WiFi NINA v${data.wifiFwVersion} [could upgrade to ${data.wifiLatestVersion}]`);
             } else {
-                $('#wfVersion').html(`WiFi NINA v${data.wifiCurVersion} (latest)`);
+                $('#wfVersion').html(`WiFi NINA v${data.wifiFwVersion} (latest)`);
             }
 
         });

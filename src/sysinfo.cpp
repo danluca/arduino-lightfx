@@ -283,22 +283,27 @@ void SysInfo::setSecureElementId(const String &secId) {
 }
 
 void SysInfo::sysConfig(JsonDocument &doc) {
-    char buf[20];
     doc["arduinoPicoVersion"] = ARDUINO_PICO_VERSION_STR;
     doc["freeRTOSVersion"] = tskKERNEL_VERSION_NUMBER;
-    doc["boardName"] = sysInfo->getBoardName();
-    doc["boardUid"] = sysInfo->getBoardId();
-    doc["secElemId"] = sysInfo->getSecureElementId();
-    doc["fwVersion"] = sysInfo->getBuildVersion();
-    doc["fwBranch"] = sysInfo->getScmBranch();
-    doc["buildTime"] = sysInfo->getBuildTime();
-    doc["wifiCurVersion"] = sysInfo->getWiFiFwVersion();
+    doc[csBoardName] = sysInfo->boardName;
+    doc[csBoardId] = sysInfo->boardId;
+    doc[csSecElemId] = sysInfo->secElemId;
+    doc[csBuildVersion] = sysInfo->buildVersion;
+    doc[csScmBranch] = sysInfo->scmBranch;
+    doc[csBuildTime] = sysInfo->buildTime;
+    doc[csWifiFwVersion] = sysInfo->wifiFwVersion;
     doc["wifiLatestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
-    const auto hldList = doc["holidayList"].to<JsonArray>();
-    for (uint8_t hi = None; hi <= NewYear; hi++)
-        hldList.add(holidayToString(static_cast<Holiday>(hi)));
-    formatDateTime(buf, now());
-    doc["MAC"] = sysInfo->getMacAddress();
+    doc[csMacAddress] = sysInfo->macAddress;
+    doc[csIpAddress] = sysInfo->strIpAddress;
+    doc[csGatewayAddress] = sysInfo->strGatewayIpAddress;
+    doc[csStatus] = sysInfo->status;
+    doc[csHeapSize] = sysInfo->heapSize;
+    doc[csFreeHeap] = sysInfo->freeHeap;
+    doc[csStackSize] = sysInfo->stackSize;
+    doc[csFreeStack] = sysInfo->freeStack;
+    const auto reboots = doc[csWdReboots].to<JsonArray>();
+    for (auto & t : sysInfo->wdReboots)
+        (void)reboots.add(t);
 }
 
 /**
@@ -412,31 +417,32 @@ void readSysInfo() {
  */
 void saveSysInfo() {
     JsonDocument doc;
-    doc[csBuildVersion] = sysInfo->buildVersion;
-    doc[csBoardName] = sysInfo->boardName;
-    doc[csBuildTime] = sysInfo->buildTime;
-    doc[csScmBranch] = sysInfo->scmBranch;
-    doc[csBoardId] = sysInfo->boardId;
-    doc[csSecElemId] = sysInfo->secElemId;
-    doc[csMacAddress] = sysInfo->macAddress;
-    doc[csWifiFwVersion] = sysInfo->wifiFwVersion;
-    doc[csIpAddress] = sysInfo->strIpAddress;
-    doc[csGatewayAddress] = sysInfo->strGatewayIpAddress;
-    doc[csHeapSize] = sysInfo->heapSize;
-    doc[csFreeHeap] = sysInfo->freeHeap;
-    doc[csStackSize] = sysInfo->stackSize;
-    doc[csFreeStack] = sysInfo->freeStack;
-    doc[csStatus] = sysInfo->status;
-    const auto reboots = doc[csWdReboots].to<JsonArray>();
-    for (auto & t : sysInfo->wdReboots)
-        (void)reboots.add(t);
-
+    SysInfo::sysConfig(doc);
     auto str = new String();    //larger temporary string, put it on the heap
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
     if (!SyncFsImpl.writeFile(sysFileName, str))
         log_error(F("Failed to create/write the system information file %s"), sysFileName);
     delete str;
+    doc.clear();
+    //read the fx file and merge it with the sys one into a new sysconfig file - by this time the FX task has created the fx config
+    //for merging JsonDocuments see https://arduinojson.org/v7/how-to/merge-json-objects/
+    str = new String();
+    str->reserve(6144);  // approximation
+    SyncFsImpl.readFile(fxCfgFileName, str);
+    if (const DeserializationError error = deserializeJson(doc, *str))
+        log_error(F("Failed to deserialize the FX configuration file %s: %s"), fxCfgFileName, error.c_str());
+    else {
+        delete str;
+        SysInfo::sysConfig(doc);
+        str = new String();
+        str->reserve(measureJson(doc));
+        serializeJson(doc, *str);
+        if (!SyncFsImpl.writeFile(sysCfgFileName, str))
+            log_error(F("Failed to create/write the system configuration file %s"), sysCfgFileName);
+        delete str;
+        doc.clear();
+    }
 }
 
 /**
