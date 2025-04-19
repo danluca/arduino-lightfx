@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]
-    $fwPath = ".pio/build/rp2040-rel/firmware.bin",
+    $fwPath,
     [Parameter(Mandatory=$false)]
     [ValidateSet("Dev", "FX01", "FX02")]
     [string]$board = "Dev"
@@ -46,11 +46,32 @@ function uploadFile($filePath) {
 #######################################
 Push-Location $PSScriptRoot
 
-if (-not (Test-Path $fwPath) -and ($fwPath -match '\.pio[\\/]build[\\/]')) {
-    Write-Information "${clrMsg}Building firmware file...${clrReset}" -InformationAction Continue
-    ./build.ps1
-}
+# if we're going to build the firmware, we'll do it in release mode for the OTA upgrade purposes.
+# if the user wants to build in debug mode, they need to plugin USB and use the update.ps1 script directly.
 
+if (-not $fwPath) {
+    Write-Information "${clrMsg}No firmware path provided. Building for board $board in release mode...${clrReset}" -InformationAction Continue
+    ./build.ps1 -board $board
+    $fwPath = Get-ChildItem -Path ".pio/build/rp2040-rel/firmware.bin" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $fwPath) {
+        Write-Warning "No firmware file found after build. Please check the build process."
+        return
+    } else {
+        Write-Information "${clrMsg}Firmware file: $fwPath${clrReset}" -InformationAction Continue
+    }
+} elseif (-not (Test-Path $fwPath)) {
+    if ($fwPath -match '\.pio[\\/]build[\\/]') {
+        Write-Information "${clrMsg}Building firmware file in release mode...${clrReset}" -InformationAction Continue
+        ./build.ps1 -board $board
+        if (-not(Test-Path $fwPath)) {
+            Write-Warning "Firmware file $fwPath NOT found after release build. Please check the arguments - only release firmware is accepted for automatic build."
+            return
+        }
+    } else {
+        Write-Warning "Firmware file $fwPath NOT found. Please check the path."
+        return
+    }
+}
 $ms = Measure-Command {
     uploadFile $fwPath
 }
