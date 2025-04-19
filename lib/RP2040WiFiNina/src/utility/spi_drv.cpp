@@ -389,6 +389,46 @@ int SpiDrv::waitResponse(uint8_t cmd, tParam* params, uint8_t* numParamRead, uin
 }
 */
 
+
+int SpiDrv::waitResponseParams(const uint8_t cmd, const uint8_t numParam, tDataParam* params)
+{
+    char _data = 0;
+    int i =0, ii = 0;
+
+
+    IF_CHECK_START_CMD(_data)
+    {
+        CHECK_DATA(cmd | REPLY_FLAG, _data){};
+
+        uint8_t _numParam = readChar();
+        if (_numParam != 0)
+        {
+            for (i=0; i<_numParam; ++i)
+            {
+                params[i].dataLen = readParamLen16();
+                for (ii=0; ii<params[i].dataLen; ++ii)
+                {
+                    // Get Params data
+                    params[i].data[ii] = spiTransfer(DUMMY_DATA);
+                }
+            }
+        } else
+        {
+            WARN("Error numParam == 0");
+            return 0;
+        }
+
+        if (numParam != _numParam)
+        {
+            WARN("Mismatch numParam");
+            return 0;
+        }
+
+        readAndCheckChar(END_CMD, &_data);
+    }
+    return 1;
+}
+
 int SpiDrv::waitResponse(const uint8_t cmd, uint8_t* numParamRead, uint8_t** params, const uint8_t maxNumParams) {
     char _data = 0;
     int i =0;

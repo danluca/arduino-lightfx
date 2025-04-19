@@ -16,12 +16,12 @@ constexpr auto fxh5Desc PROGMEM = "FXH5: RainbowSparkle";
 constexpr auto fxh6Desc PROGMEM = "FXH6: JustSparkle";
 
 void FxH::fxRegister() {
-    static FxH1 fxH1;
-    static FxH2 fxH2;
-    static FxH3 fxH3;
-    static FxH4 fxH4;
-    static FxH5 fxH5;
-    static FxH6 fxH6;
+    new FxH1();
+    new FxH2();
+    new FxH3();
+    new FxH4();
+    new FxH5();
+    new FxH6();
 }
 
 // Fire2012 with programmable Color Palette standard example, broken into multiple segments
@@ -141,15 +141,15 @@ void FxH1::Fire2012WithPalette(uint8_t xFire) {
 
     // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
     if (random8() < SPARKING) {
-        uint8_t y = random8(7);
+        const uint8_t y = random8(7);
         hMap[y][xFire] = qadd8(hMap[y][xFire], random8(160, 255));
     }
 
     // Step 4.  Map from heat cells to LED colors
     for (uint16_t j = 0; j < fire.size(); j++) {
         // Scale the heat value from 0-255 down to 0-240 for best results with color palettes.
-        uint8_t colorIndex = scale8(hMap[j][xFire], 240);
-        CRGB color = ColorFromPalette(palette, colorIndex);
+        const uint8_t colorIndex = scale8(hMap[j][xFire], 240);
+        const CRGB color = ColorFromPalette(palette, colorIndex);
         fire[j] = color;
         if (j > random8(5, 9))
             fire[j].nscale8(brightness);
@@ -195,7 +195,7 @@ void FxH2::run() {
 void FxH2::confetti_pal() {
     // random colored speckles that blink in and fade smoothly
     tpl.fadeToBlackBy(fade);  // Low values = slower fade.
-    uint16_t pos = random16(tpl.size());             // Pick an LED at random.
+    const uint16_t pos = random16(tpl.size());             // Pick an LED at random.
     tpl[pos] = ColorFromPalette(palette, hue + random16(hueDiff) / 4, brightness, LINEARBLEND);
     hue = hue + delta;  // It increments here.
     replicateSet(tpl, others);
@@ -383,14 +383,13 @@ void FxH4::drawTwinkles(CRGBSet &set) {
     // this function is called, so that the sequence of 'random' numbers that it generates is (paradoxically) stable.
     uint16_t PRNG16 = 11337;
 
-    uint32_t clock32 = millis();
+    const uint32_t clock32 = millis();
 
     // Set up the background color, "bg".
-    CRGB bg;
+    CRGB bg{};
     if (palette[0] == targetPalette[1]) {
         bg = palette[0];
-        uint8_t bglight = bg.getAverageLight();
-        if (bglight > 64) {
+        if (const uint8_t bglight = bg.getAverageLight(); bglight > 64) {
             bg.nscale8_video(16); // very bright, so scale to 1/16th
         } else if (bglight > 16) {
             bg.nscale8_video(64); // not that bright, so scale to 1/4th
@@ -401,25 +400,24 @@ void FxH4::drawTwinkles(CRGBSet &set) {
         bg = BKG; // just use the explicitly defined background color
     }
 
-    uint8_t backgroundBrightness = bg.getAverageLight();
+    const uint8_t backgroundBrightness = bg.getAverageLight();
 
     for (auto &pixel: set) {
         PRNG16 = (uint16_t) (PRNG16 * 2053) + 1384; // next 'random' number
-        uint16_t myclockoffset16 = PRNG16; // use that number as clock offset
+        const uint16_t myclockoffset16 = PRNG16; // use that number as clock offset
         PRNG16 = (uint16_t) (PRNG16 * 2053) + 1384; // next 'random' number
         // use that number as clock speed adjustment factor (in 8ths, from 8/8ths to 23/8ths)
-        uint8_t myspeedmultiplierQ5_3 = ((((PRNG16 & 0xFF) >> 4) + (PRNG16 & 0x0F)) & 0x0F) + 0x08;
-        uint32_t myclock30 = (uint32_t) ((clock32 * myspeedmultiplierQ5_3) >> 3) + myclockoffset16;
-        uint8_t myunique8 = PRNG16 >> 8; // get 'salt' value for this pixel
+        const uint8_t myspeedmultiplierQ5_3 = ((((PRNG16 & 0xFF) >> 4) + (PRNG16 & 0x0F)) & 0x0F) + 0x08;
+        const uint32_t myclock30 = (uint32_t) ((clock32 * myspeedmultiplierQ5_3) >> 3) + myclockoffset16;
+        const uint8_t myunique8 = PRNG16 >> 8; // get 'salt' value for this pixel
 
         // We now have the adjusted 'clock' for this pixel, now we call
         // the function that computes what color the pixel should be based
         // on the "brightness = f( time )" idea.
         CRGB c = computeOneTwinkle(myclock30, myunique8);
 
-        uint8_t cbright = c.getAverageLight();
-        int16_t deltabright = cbright - backgroundBrightness;
-        if (deltabright >= 32 || (!bg)) {
+        const uint8_t cbright = c.getAverageLight();
+        if (const int16_t deltabright = cbright - backgroundBrightness; deltabright >= 32 || (!bg)) {
             // If the new pixel is significantly brighter than the background color, use the new color.
             pixel = c;
         } else if (deltabright > 0) {
@@ -439,20 +437,20 @@ void FxH4::drawTwinkles(CRGBSet &set) {
 //  fade-out of one cycle of the brightness wave function. The 'high digits' are also used to determine whether this
 //  pixel should light at all during this cycle, based on the TWINKLE_DENSITY.
 CRGB FxH4::computeOneTwinkle(uint32_t ms, uint32_t salt) {
-    uint16_t ticks = ms >> (8 - FxH4::twinkleSpeed);
-    uint8_t fastcycle8 = ticks;
+    const uint16_t ticks = ms >> (8 - FxH4::twinkleSpeed);
+    const uint8_t fastcycle8 = ticks;
     uint16_t slowcycle16 = (ticks >> 8) + salt;
     slowcycle16 += sin8(slowcycle16);
     slowcycle16 = (slowcycle16 * 2053) + 1384;
-    uint8_t slowcycle8 = (slowcycle16 & 0xFF) + (slowcycle16 >> 8);
+    const uint8_t slowcycle8 = (slowcycle16 & 0xFF) + (slowcycle16 >> 8);
 
     uint8_t bright = 0;
     if (((slowcycle8 & 0x0E) / 2) < FxH4::twinkleDensity) {
         bright = attackDecayWave8(fastcycle8);
     }
 
-    uint8_t hue = slowcycle8 - salt;
-    CRGB c;
+    const uint8_t hue = slowcycle8 - salt;
+    CRGB c{};
     if (bright > 0) {
         c = ColorFromPalette(palette, hue, bright, NOBLEND);
         coolLikeIncandescent(c, fastcycle8);
@@ -485,7 +483,7 @@ uint8_t FxH4::attackDecayWave8(uint8_t i) {
 void FxH4::coolLikeIncandescent(CRGB &c, uint8_t phase) {
     if (phase < 128) return;
 
-    uint8_t cooling = (phase - 128) >> 4;
+    const uint8_t cooling = (phase - 128) >> 4;
     c.g = qsub8(c.g, cooling);
     c.b = qsub8(c.b, cooling * 2);
 }
@@ -516,7 +514,7 @@ void FxH5::run() {
         }
         pixelPos = random16(small.size());
         prevClr = small[pixelPos];
-        CRGB clr(red, green, blue);
+        const CRGB clr(red, green, blue);
 
         switch (fxState) {
             case Sparkle:
@@ -654,7 +652,7 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
             notUsed.push_back(s);
     if (howMany > notUsed.size())
         howMany = notUsed.size();
-    bool all = howMany == notUsed.size();
+    const bool all = howMany == notUsed.size();
     while (howMany > 0) {
         for (auto it = notUsed.begin(); it != notUsed.end();) {
             if (all || random8()%2) {
@@ -671,7 +669,7 @@ void FxH6::activateSparks(uint8_t howMany, uint8_t clrHint) {
 
 void FxH6::run() {
     EVERY_N_MILLISECONDS(35) {
-        uint8_t x = random8();
+        const uint8_t x = random8();
         for (auto it = activeSparks.begin(); it != activeSparks.end();)
             //if spark becomes idle, remove from list
             (*it)->step(x) == Spark::Idle ? it = activeSparks.erase(it) : ++it;
@@ -688,12 +686,12 @@ void FxH6::run() {
         if (timerCounter++ % 300 == 0) {
             if (stage == DefinedPattern) {
                 //rotate colors - keep all sparks on same color, when they flash rapidly it puts more strain to the eyes if they are different colors
-                uint8_t clrHint = ((millis()+x)>>10)-64;
-                for (auto &s: sparks) {
+                const uint8_t clrHint = ((millis()+x)>>10)-64;
+                for (const auto &s: sparks) {
                     s->setColor(ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND));
                 }
             }
-            for (auto &s : sparks)
+            for (const auto &s : sparks)
                 s->dimBkg = !s->dimBkg;
         }
     }
@@ -703,8 +701,8 @@ void FxH6::run() {
         if (stage == DefinedPattern)
             resetActivateAllSparks((millis()>>11)-64);
         else
-            for (auto &s : sparks)
-                s->loop = false;    //stage == DefinedPattern;  ends looping, which turns the sparks idle when they finish cycle, removing them from active sparks list
+            for (const auto &s : sparks)
+                s->loop = false;    //stage == DefinedPattern; ends looping, which turns the sparks idle when they finish cycle, removing them from active sparks list
     }
 }
 

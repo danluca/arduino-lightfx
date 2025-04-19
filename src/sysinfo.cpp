@@ -34,8 +34,7 @@ unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
 
-void state_led_run();
-constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
+// constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
 
 const char *taskStatusToString(const eTaskState state) {
     switch (state) {
@@ -193,7 +192,7 @@ SysInfo::SysInfo() : boardName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildT
     secElemId.reserve(BUF_ID_SIZE);     // 18 from ECCX08Class::serialNumber() implementation
     macAddress.reserve(BUF_ID_SIZE);    // 6 (WL_MAC_ADDR_LENGTH) groups of 2 hex digits and ':' separator, includes \0 terminator
     strIpAddress.reserve(BUF_ID_SIZE);     // 4 groups of 3 digits, 3 '.' separators, \0 terminator
-    wifiFwVersion.reserve(BUF_ID_SIZE); // typical semantic version e.g. v1.5.0, 3 groups of 2 digits, '.' separator, \0 terminator
+    wifiFwVersion.reserve(BUF_ID_SIZE); // typical semantic version e.g., v1.5.0, 3 groups of 2 digits, '.' separator, \0 terminator
     ssid.reserve(BUF_ID_SIZE);          // initial space, most networks are short names
     status = 0;
     cleanBoot = true;
@@ -209,7 +208,7 @@ void SysInfo::fillBoardId() {
 /**
  * <p>Per AT25SF128A Flash specifications, command ox9F returns 0x1F8901, where last byte 0x01 should represent density (size)
  * Trial/error shows the command returns 0xFF1F89011F</p>
- * <p>We won't use the flash chip SPI commands - very chip specific - but instead leverage the constant PICO_FLASH_SIZE_BYTES already tailored to the board we use, Nano RP2040</p>
+ * <p>We won't use the flash chip SPI commands - very chip-specific - but instead leverage the constant PICO_FLASH_SIZE_BYTES already tailored to the board we use, Nano RP2040</p>
  * @return Board flash size in bytes - currently fixed at PICO_FLASH_SIZE_BYTES
  */
 uint SysInfo::get_flash_capacity() const {
@@ -224,14 +223,14 @@ uint SysInfo::get_flash_capacity() const {
 uint16_t SysInfo::setSysStatus(const uint16_t bitMask) {
     CoreMutex coreMutex(&mutex);
     status |= bitMask;
-    updateStateLED();
+    // updateStatusLED();
     return status;
 }
 
 uint16_t SysInfo::resetSysStatus(const uint16_t bitMask) {
     CoreMutex coreMutex(&mutex);
     status &= (~bitMask);
-    updateStateLED();
+    // updateStatusLED();
     return status;
 }
 
@@ -245,11 +244,11 @@ uint16_t SysInfo::getSysStatus() const {
 
 /**
  * Extracts identification information from a connected Wi-Fi.
- * NOTE: For reasons unknown yet, reading the network information from the Wi-Fi sub-system (through SPI connection) hangs the whole system
+ * NOTE: For reasons unknown yet, reading the network information from the Wi-Fi subsystem (through SPI connection) freezes the whole system
  * if the Analog/Digital Converter API calls are present somewhere else in the code. These Wi-Fi network information calls have SPI responses with 3 parameters,
- * unsure if this is a factor in failure - all other SPI calls with Wi-Fi module seem to be working fine, and they have less parameters.
+ * unsure if this is a factor in failure - all other SPI calls with Wi-Fi module seem to be working fine, and they have fewer parameters.
  * For this reason, the workaround is to record the IP address and Gateway Address from the configuration provided (we're using static IP assignment) rather
- * than retrieving from Wi-Fi module.
+ * than retrieving from the Wi-Fi module.
  * @param wifi the Wi-Fi (global) object
  */
 void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
@@ -264,15 +263,14 @@ void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     // IPAddress dns2;
     // wifi.dnsIP(dns1, dns2);  //needs WiFi version > 1.5.0
 
-    //MAC address - Formats the MAC address into the character buffer provided, space for 20 chars is needed (includes nul terminator)
+    //MAC address - Formats the MAC address into the character buffer provided; space for 20 chars is needed (includes nul terminator)
     uint8_t mac[WL_MAC_ADDR_LENGTH];
     wifi.macAddress(mac);
-
     char buf[BUF_ID_SIZE];
     int x = 0;
     for (const auto &b : mac)
         x += snprintf(buf+x, 4, "%02X:", b);
-    //last character - at index x-1 is a ':', make it null to trim the last colon character
+    //the last character - at index x-1 is a ':', make it null to trim the last colon character
     buf[x-1] = 0;
     macAddress = buf;
 }
@@ -282,31 +280,27 @@ void SysInfo::setSecureElementId(const String &secId) {
 }
 
 void SysInfo::sysConfig(JsonDocument &doc) {
-    char buf[20];
     doc["arduinoPicoVersion"] = ARDUINO_PICO_VERSION_STR;
     doc["freeRTOSVersion"] = tskKERNEL_VERSION_NUMBER;
-    doc["boardName"] = sysInfo->getBoardName();
-    doc["boardUid"] = sysInfo->getBoardId();
-    doc["secElemId"] = sysInfo->getSecureElementId();
-    doc["fwVersion"] = sysInfo->getBuildVersion();
-    doc["fwBranch"] = sysInfo->getScmBranch();
-    doc["buildTime"] = sysInfo->getBuildTime();
-    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
-    doc["cleanBoot"] = sysInfo->isCleanBoot();
-    if (!sysInfo->watchdogReboots().empty()) {
-        formatDateTime(buf, sysInfo->watchdogReboots().back());
-        doc["lastWatchdogReboot"] = buf;
-    }
-    doc["wifiCurVersion"] = sysInfo->getWiFiFwVersion();
+    doc[csBoardName] = sysInfo->boardName;
+    doc[csBoardId] = sysInfo->boardId;
+    doc[csSecElemId] = sysInfo->secElemId;
+    doc[csBuildVersion] = sysInfo->buildVersion;
+    doc[csScmBranch] = sysInfo->scmBranch;
+    doc[csBuildTime] = sysInfo->buildTime;
+    doc[csWifiFwVersion] = sysInfo->wifiFwVersion;
     doc["wifiLatestVersion"] = WIFI_FIRMWARE_LATEST_VERSION;
-    const auto hldList = doc["holidayList"].to<JsonArray>();
-    for (uint8_t hi = None; hi <= NewYear; hi++)
-        hldList.add(holidayToString(static_cast<Holiday>(hi)));
-    formatDateTime(buf, now());
-    const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
-    doc["currentOffset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
-    doc["dst"] = bDST;
-    doc["MAC"] = sysInfo->getMacAddress();
+    doc[csMacAddress] = sysInfo->macAddress;
+    doc[csIpAddress] = sysInfo->strIpAddress;
+    doc[csGatewayAddress] = sysInfo->strGatewayIpAddress;
+    doc[csStatus] = sysInfo->status;
+    doc[csHeapSize] = sysInfo->heapSize;
+    doc[csFreeHeap] = sysInfo->freeHeap;
+    doc[csStackSize] = sysInfo->stackSize;
+    doc[csFreeStack] = sysInfo->freeStack;
+    const auto reboots = doc[csWdReboots].to<JsonArray>();
+    for (auto & t : sysInfo->wdReboots)
+        (void)reboots.add(t);
 }
 
 /**
@@ -316,9 +310,9 @@ void SysInfo::sysConfig(JsonDocument &doc) {
 void SysInfo::heapStats(JsonObject &doc) {
     // Simple heap stats - the HeapStats_t and vPortGetHeapStats is only available with heap_4 and heap_5 memory management solutions; the current one for arduino-pico is heap_3
     doc["stackPointer"] = rp2040.getStackPointer();
-    doc["freeStack"] = rp2040.getFreeStack();
-    doc["totalHeap"] = rp2040.getTotalHeap();
-    doc["freeHeap"] = rp2040.getFreeHeap();
+    doc["freeStack"] = sysInfo->freeStack = rp2040.getFreeStack();
+    doc["totalHeap"] = sysInfo->heapSize = rp2040.getTotalHeap();
+    doc["freeHeap"] = sysInfo->freeHeap = rp2040.getFreeHeap();
     doc["usedHeap"] = rp2040.getUsedHeap();
 #if LOGGING_ENABLED == 1
     doc["logMinBufferSpace"] = Log.getMinBufferSpace();
@@ -378,8 +372,7 @@ void readSysInfo() {
     json->reserve(512);  // approximation
     if (const size_t sysSize = SyncFsImpl.readFile(sysFileName, json); sysSize > 0) {
         JsonDocument doc;
-        const DeserializationError error = deserializeJson(doc, *json);
-        if (error) {
+        if (const DeserializationError error = deserializeJson(doc, *json)) {
             log_error(F("Error reading the system information JSON file %s [%zu bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
             delete json;
             return;
@@ -405,7 +398,7 @@ void readSysInfo() {
         sysInfo->freeHeap = doc[csFreeHeap];
         sysInfo->stackSize = doc[csStackSize];
         sysInfo->freeStack = doc[csFreeStack];
-        //do not override current status (in progress of populating) with last run status
+        //do not override the current status (in progress of populating) with the last run status
         const uint8_t lastStatus = doc[csStatus];
         log_info(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status, lastStatus,
@@ -420,84 +413,91 @@ void readSysInfo() {
  */
 void saveSysInfo() {
     JsonDocument doc;
-    doc[csBuildVersion] = sysInfo->buildVersion;
-    doc[csBoardName] = sysInfo->boardName;
-    doc[csBuildTime] = sysInfo->buildTime;
-    doc[csScmBranch] = sysInfo->scmBranch;
-    doc[csBoardId] = sysInfo->boardId;
-    doc[csSecElemId] = sysInfo->secElemId;
-    doc[csMacAddress] = sysInfo->macAddress;
-    doc[csWifiFwVersion] = sysInfo->wifiFwVersion;
-    doc[csIpAddress] = sysInfo->strIpAddress;
-    doc[csGatewayAddress] = sysInfo->strGatewayIpAddress;
-    doc[csHeapSize] = sysInfo->heapSize;
-    doc[csFreeHeap] = sysInfo->freeHeap;
-    doc[csStackSize] = sysInfo->stackSize;
-    doc[csFreeStack] = sysInfo->freeStack;
-    doc[csStatus] = sysInfo->status;
-    const auto reboots = doc[csWdReboots].to<JsonArray>();
-    for (auto & t : sysInfo->wdReboots)
-        (void)reboots.add(t);
-
+    SysInfo::sysConfig(doc);
     auto str = new String();    //larger temporary string, put it on the heap
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
     if (!SyncFsImpl.writeFile(sysFileName, str))
         log_error(F("Failed to create/write the system information file %s"), sysFileName);
     delete str;
+    doc.clear();
+    //read the fx file and merge it with the sys one into a new sysconfig file - by this time the FX task has created the fx config
+    //for merging JsonDocuments see https://arduinojson.org/v7/how-to/merge-json-objects/
+    str = new String();
+    str->reserve(6144);  // approximation
+    SyncFsImpl.readFile(fxCfgFileName, str);
+    if (const DeserializationError error = deserializeJson(doc, *str))
+        log_error(F("Failed to deserialize the FX configuration file %s: %s"), fxCfgFileName, error.c_str());
+    else {
+        delete str;
+        SysInfo::sysConfig(doc);
+        str = new String();
+        str->reserve(measureJson(doc));
+        serializeJson(doc, *str);
+        if (!SyncFsImpl.writeFile(sysCfgFileName, str))
+            log_error(F("Failed to create/write the system configuration file %s"), sysCfgFileName);
+        delete str;
+        doc.clear();
+    }
 }
 
 /**
- * Setup the on-board status LED
+ * Set-up the on-board status LED
  */
 void SysInfo::setupStateLED() {
     pinMode(LEDR, OUTPUT);
     pinMode(LEDG, OUTPUT);
     pinMode(LEDB, OUTPUT);
-    updateStateLED(CRGB::Black);    //black, turned off
+    updateBoardLED(CRGB::Black);    //black, turned off
 }
 /**
  * Controls the on-board status LED
  * @param colorCode
  */
-void SysInfo::updateStateLED(const uint32_t colorCode) {
-    updateStateLED(CRGB(colorCode));
+void SysInfo::updateBoardLED(const uint32_t colorCode) {
+    updateBoardLED(CRGB(colorCode));
 }
 
 /**
  * Controls the onboard LED using individual values for R, G, B
+ * NOTE: the \code analogWrite\endcode works with WiFi driver as the onboard LED is connected
+ * to the WiFi chip. This function CANNOT be called from a different thread than WiFi operations as otherwise
+ * undefined behavior may occur (I've observed thread lockout, resets).
  * @param rgb RGB value
  */
-void SysInfo::updateStateLED(const CRGB rgb) {
+void SysInfo::updateBoardLED(const CRGB rgb) {
     analogWrite(LEDR, 255 - rgb.red);
     analogWrite(LEDG, 255 - rgb.green);
     analogWrite(LEDB, 255 - rgb.blue);
 }
 
 /**
- * Adjusts the LED state (color, illumination style) in response to overall system's state
+ * Adjusts the LED state (color, illumination style) in response to the overall system's state
  */
-void SysInfo::updateStateLED() const {
-    const bool inSetup = !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1);
+void SysInfo::updateStatusLED() const {
     const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
-    const CRGB colorCode = isOk ? CLR_ALL_OK : inSetup ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
-    updateStateLED(colorCode);
+    const CRGB colorCode = isOk ? CLR_ALL_OK : !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1) ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
+    updateBoardLED(colorCode);
 }
 
-void state_led_run() {
+/**
+ * Flash status LED for as long as both cores are in setup mode
+ */
+void state_led_begin() {
     while (!sysInfo->isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1)) {
-        sysInfo->updateStateLED();
+        SysInfo::updateBoardLED(CRGB::Black);
         taskDelay(640);
-        SysInfo::updateStateLED(CRGB::Black);
+        SysInfo::updateBoardLED(CLR_SETUP_IN_PROGRESS);
         taskDelay(640);
     }
-    sysInfo->updateStateLED();
-    taskDelay(750);
+}
+
+/**
+ * Update the color of the status LED consistent with the system's state
+ */
+void state_led_update() {
+    sysInfo->updateStatusLED();
 }
 
 void SysInfo::begin() {
-    // const auto stLedTask = Scheduler.startTask(&stLedTasks);
-    // TaskStatus_t tStat;
-    // vTaskGetTaskInfo(stLedTask->getTaskHandle(), &tStat, pdFALSE, eReady);
-    // log_info(F("System LED task [%s] - priority %d - has been setup id %u. System status is monitored."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);
 }

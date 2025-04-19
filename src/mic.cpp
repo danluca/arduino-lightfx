@@ -80,8 +80,7 @@ void mic_run() {
             //contribute to the audio histogram - the bins are 500 units wide and tailored around audioBumpThreshold.
             bool bFoundBin = false;
             for (uint8_t x = 0; x < AUDIO_HIST_BINS_COUNT; x++) {
-                uint16_t binThr = audioBumpThreshold + (x+1)*500;
-                if (maxSample <= binThr) {
+                if (const uint16_t binThr = audioBumpThreshold + (x+1)*500; maxSample <= binThr) {
                     maxAudio[x]++;
                     bFoundBin = true;
                     break;

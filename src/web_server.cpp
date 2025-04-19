@@ -21,6 +21,7 @@
 #include "stats_html.h"
 #include "stats_css.h"
 #include "stats_js.h"
+// #include <detail/base64.hpp>
 
 using namespace web;
 // using namespace colTheme;
@@ -50,7 +51,7 @@ bool web::server_handlers_configured = false;
  * - File paths (e.g., "/pixel.css", "/index.html") as keys.
  * - Pointers to in-memory resources (e.g., `pixel_css`, `index_html`) as values.
  */
-static const std::map<std::string, const char*> inFlashResources PROGMEM = {
+static const std::map<std::string, const char *> inFlashResources PROGMEM = {
     {"/pixel.css", pixel_css},
     {"/pixel.js", pixel_js},
     {"/index.html", index_html},
@@ -63,7 +64,7 @@ static const std::map<std::string, const char*> inFlashResources PROGMEM = {
 /**
  * Adds the current date as an HTTP header for the current outgoing response
  */
-void dateHeader(WebClient& client) {
+void dateHeader(WebClient &client) {
     const time_t curTime = now();
     const int szBuf = snprintf(nullptr, 0, hdFmtDate, year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime)) + 1;
     char buf[szBuf];
@@ -76,7 +77,7 @@ void dateHeader(WebClient& client) {
  * @param client web client handling current request
  * @param fname file name
  */
-void contentDispositionHeader(WebClient& client, const char *fname) {
+void contentDispositionHeader(WebClient &client, const char *fname) {
     const int szBuf = snprintf(nullptr, 0, hdFmtContentDisposition, fname) + 1;
     char buf[szBuf];
     snprintf(buf, szBuf, hdFmtContentDisposition, fname);
@@ -92,7 +93,7 @@ void contentDispositionHeader(WebClient& client, const char *fname) {
 size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
     //send it out
     const auto buf = new String();
-    buf->reserve(5120);     // deemed enough for all/most json docs in this app (largest is the config file at 4800 bytes)
+    buf->reserve(5120); // deemed enough for all/most JSON docs in this app (largest is the config file at 4800 bytes)
     serializeJson(doc, *buf);
     const size_t sz = client.send(200, mime::mimeTable[mime::json].mimeType, *buf);
     delete buf;
@@ -100,20 +101,29 @@ size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
 }
 
 /**
- * Web request handler - GET /status.json. Method invoked by the web server; response sent to current client awaiting response from the server
+ * Web request handler - GET /status.json. Method invoked by the web server; response sent to the current client awaiting response from the server
  */
-void web::handleGetStatus(WebClient& client) {
+void web::handleGetStatus(WebClient &client) {
     dateHeader(client);
     contentDispositionHeader(client, statusJsonFilename);
     client.sendHeader(hdCacheControl, hdCacheJson);
 
     // response body
     JsonDocument doc;
+    // System
+    char timeBuf[21];
+    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
+    doc["cleanBoot"] = sysInfo->isCleanBoot();
+    if (!sysInfo->watchdogReboots().empty()) {
+        formatDateTime(timeBuf, sysInfo->watchdogReboots().back());
+        doc["lastWatchdogReboot"] = timeBuf;
+    }
+
     // WiFi
     const auto wifi = doc["wifi"].to<JsonObject>();
-    wifi["IP"] = sysInfo->getIpAddress();         //IP Address
+    wifi["IP"] = sysInfo->getIpAddress(); //IP Address
     const int32_t rssi = WiFi.RSSI();
-    wifi["bars"] = barSignalLevel(rssi);  //Wi-Fi signal level
+    wifi["bars"] = barSignalLevel(rssi); //Wi-Fi signal level
     wifi["rssi"] = rssi;
     // Fx
     const auto fx = doc["fx"].to<JsonObject>();
@@ -121,66 +131,76 @@ void web::handleGetStatus(WebClient& client) {
     fx[csSleepEnabled] = fxRegistry.isSleepEnabled();
     fx["asleep"] = fxRegistry.isAsleep();
     fx["autoTheme"] = paletteFactory.isAuto();
-    fx["theme"] = holidayToString(paletteFactory.getHoliday());   //could be forced to a fixed value
+    fx["theme"] = holidayToString(paletteFactory.getHoliday()); //could be forced to a fixed value
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
     fx[csBroadcast] = fxBroadcastEnabled;
     auto lastFx = fx["pastEffects"].to<JsonArray>();
-    fxRegistry.pastEffectsRun(lastFx);                   //ordered earliest to latest (current effect is the last element)
+    fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness;
     fx[csBrightnessLocked] = stripBrightnessLocked;
-    fx[csAudioThreshold] = audioBumpThreshold;              //current audio level threshold
-    fx["totalAudioBumps"] = totalAudioBumps;                //how many times (in total) have we bumped the effect due to audio level
+    fx[csAudioThreshold] = audioBumpThreshold; //current audio level threshold
+    fx["totalAudioBumps"] = totalAudioBumps; //how many times (in total) have we bumped the effect due to audio level
     const auto audioHist = fx["audioHist"].to<JsonArray>();
-    for (uint16_t x : maxAudio)
+    for (uint16_t x: maxAudio)
         audioHist.add<uint16_t>(x);
     // Time
     const auto time = doc["time"].to<JsonObject>();
     time["ntpSync"] = timeStatus();
-    time["millis"] = millis();           //current time in ms
-    char timeBuf[21];
+    time["millis"] = millis(); //current time in ms
     const time_t curTime = now();
     formatDate(timeBuf, curTime);
     time["date"] = timeBuf;
     formatTime(timeBuf, curTime);
     time["time"] = timeBuf;
-    time["dst"] = sysInfo->isSysStatus(SYS_STATUS_DST);
-    time[csHoliday] = holidayToString(currentHoliday());      //time derived holiday
+    const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
+    time["dst"] = bDST;
+    time["offset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
+    time[csHoliday] = holidayToString(currentHoliday()); //time derived holiday
     time["syncSize"] = timeSyncs.size();
     time["averageDrift"] = getAverageTimeDrift();
     time["lastDrift"] = getLastTimeDrift();
     time["totalDrift"] = getTotalDrift();
     const auto syncs = time["syncs"].to<JsonArray>();
-    for (const auto &[localMillis, unixSeconds] : timeSyncs) {
+    for (const auto &[localMillis, unixSeconds]: timeSyncs) {
         auto jts = syncs.add<JsonObject>();
         jts["localMillis"] = localMillis;
         jts["unixSeconds"] = unixSeconds;
     }
     const auto alarms = time["alarms"].to<JsonArray>();
-    for (const auto &al : scheduledAlarms) {
+    for (const auto &al: scheduledAlarms) {
         auto jal = alarms.add<JsonObject>();
         jal["timeLong"] = al->value;
         formatDateTime(timeBuf, al->value);
         jal["timeFmt"] = timeBuf;
         jal["type"] = alarmTypeToString(al->type);
-//        jal["taskPtr"] = (long)al->onEventHandler;
+        //        jal["taskPtr"] = (long)al->onEventHandler;
     }
     //System
-    doc["boardTemp"] = imuTempRange.current.value;
-    doc["chipTemp"] = cpuTempRange.current.value;
-    doc["wifiTemp"] = wifiTempRange.current.value;
-    doc["vcc"] = lineVoltage.current.value;
-    doc["minVcc"] = lineVoltage.min.value;
-    doc["maxVcc"] = lineVoltage.max.value;
-    doc["boardMinTemp"] = imuTempRange.min.value;
-    doc["boardMaxTemp"] = imuTempRange.max.value;
+    const auto temp = doc["temp"].to<JsonObject>();
+    const auto boardTemp = temp["board"].to<JsonObject>();
+    const auto cpuTemp = temp["cpu"].to<JsonObject>();
+    const auto wifiTemp = temp["wifi"].to<JsonObject>();
+    boardTemp["current"] = imuTempRange.current.value;
+    boardTemp["max"] = imuTempRange.max.value;
+    boardTemp["min"] = imuTempRange.min.value;
+    cpuTemp["current"] = cpuTempRange.current.value;
+    cpuTemp["max"] = cpuTempRange.max.value;
+    cpuTemp["min"] = cpuTempRange.min.value;
+    wifiTemp["current"] = wifiTempRange.current.value;
+    wifiTemp["max"] = wifiTempRange.max.value;
+    wifiTemp["min"] = wifiTempRange.min.value;
+    const auto vcc = doc["vcc"].to<JsonObject>();
+    vcc["current"] = lineVoltage.current.value;
+    vcc["max"] = lineVoltage.max.value;
+    vcc["min"] = lineVoltage.min.value;
     doc["overallStatus"] = sysInfo->getSysStatus();
     //ISO8601 format
     //snprintf(timeBuf, 15, "P%2dDT%2dH%2dM", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     //human readable format
     const unsigned long upTime = millis();
-    snprintf(timeBuf, 15, "%2dD %2dH %2dm", upTime/86400000l, (upTime/3600000l%24), (upTime/60000%60));
+    snprintf(timeBuf, 15, "%2dD %2dH %2dm", upTime / 86400000l, (upTime / 3600000l % 24), (upTime / 60000 % 60));
     doc["upTime"] = timeBuf;
     doc["bootTime"] = upTime;
     const auto cpuTempCal = doc["cpuTempCal"].to<JsonObject>();
@@ -200,15 +220,15 @@ void web::handleGetStatus(WebClient& client) {
     cpuTempCal["refTempADC"] = calibTempMeasurements.ref.adcRaw;
     cpuTempCal["refTempTime"] = calibTempMeasurements.ref.time;
 
-    //send it out - the size returned is http headers + response body (does not include the HTTP protocol header)
+    //send it out - the size returned is http headers and response body (does not include the HTTP protocol header)
     const size_t sz = marshalJson(doc, client);
     log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
- * Web request handler - PUT /fx. Method invoked by the web server; response sent to current client awaiting response from the server
+ * Web request handler - PUT /fx. Method invoked by the web server; response sent to the current client awaiting response from the server
  */
-void web::handlePutConfig(WebClient& client) {
+void web::handlePutConfig(WebClient &client) {
     dateHeader(client);
     client.sendHeader(hdCacheControl, hdCacheJson);
     String body = client.request().body();
@@ -228,7 +248,7 @@ void web::handlePutConfig(WebClient& client) {
         upd[csAuto] = autoAdvance;
     }
     if (doc[strEffect].is<uint16_t>()) {
-        const auto nextFx = doc[strEffect].as<uint16_t >();
+        const auto nextFx = doc[strEffect].as<uint16_t>();
         fxRegistry.nextEffectPos(nextFx);
         upd[strEffect] = nextFx;
     }
@@ -267,13 +287,14 @@ void web::handlePutConfig(WebClient& client) {
     if (doc[csBroadcast].is<bool>()) {
         const bool syncMode = doc[csBroadcast].as<bool>();
         const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
-        fxBroadcastEnabled = syncMode;  //we need this enabled before we post the event, if we're doing that
+        fxBroadcastEnabled = syncMode; //we need this enabled before we post the event, if we're doing that
         if (masterEnabled)
-            postFxChangeEvent(fxRegistry.curEffectPos());   //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
+            postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
     }
     log_info(F("FX: Current config updated effect %hu, autoswitch %s, holiday %s, brightness %hu, brightness adjustment %s"),
-               fxRegistry.curEffectPos(), StringUtils::asString(fxRegistry.isAutoRoll()), holidayToString(paletteFactory.getHoliday()),
-               stripBrightness, stripBrightnessLocked?"fixed":"automatic");
+        fxRegistry.curEffectPos(), StringUtils::asString(fxRegistry.isAutoRoll()),
+        holidayToString(paletteFactory.getHoliday()),
+        stripBrightness, stripBrightnessLocked?"fixed":"automatic");
 
     //main status and headers
     resp["status"] = true;
@@ -285,9 +306,9 @@ void web::handlePutConfig(WebClient& client) {
 }
 
 /**
- * Web request handler - GET /tasks.json. Method invoked by the web server; response sent to current client awaiting response from the server
+ * Web request handler - GET /tasks.json. Method invoked by the web server; response sent to the current client awaiting response from the server
  */
-void web::handleGetTasks(WebClient& client) {
+void web::handleGetTasks(WebClient &client) {
     dateHeader(client);
     contentDispositionHeader(client, tasksJsonFilename);
     client.sendHeader(hdCacheControl, hdCacheJson);
@@ -321,10 +342,93 @@ void web::handleGetTasks(WebClient& client) {
 /**
  * Special web request handler for resources not found on this server
  */
-void web::handleNotFound(WebClient& client) {
+void web::handleNotFound(WebClient &client) {
     const size_t sz = client.send(404, mime::mimeTable[mime::txt].mimeType, msgRequestNotMapped);
     log_info(F("Handler handleNotFound invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
+
+struct FWUploadData {
+    bool auth{};
+    String checkSum;
+    String fileName;
+};
+
+/**
+ * Handles FW image buffered upload leveraging raw handling. This method is called multiple times, where the raw status \code client.raw().status\endcode
+ * varies in this order:
+ * RAW_START --> RAW_WRITE * n --> RAW_END or RAW_ABORTED
+ * @param client web client
+ */
+void handleFWImageUpload(WebClient &client) {
+    const WebRequest &req = client.request();
+    switch (HTTPRaw &raw = client.raw(); raw.status) {
+        case RAW_START: {
+            //check auth token; determine the file name and prepare to stream into it
+            const auto fwData = new FWUploadData();
+            raw.data = fwData;
+            // *auth = req.header("X-Token").equals("*QisW@tWtx4WvERf") ? 0x01 : 0x00;
+            fwData->auth = req.header("X-Token").equals("KlFpc1dAdFd0eDRXdkVSZg");
+            fwData->checkSum = req.header("X-Check");
+            fwData->checkSum.toLowerCase();
+            fwData->fileName = csFWImageFilename;
+            if (fwData->auth) {
+                //create a file for the incoming data
+                if (SyncFsImpl.exists(fwData->fileName.c_str()))
+                    SyncFsImpl.remove(fwData->fileName.c_str());
+            }
+            log_info(F("FW upload auth %s, size read %zu, size expected %zu, sha-256 expected %s"), fwData->auth ? "OK" : "failed",
+                raw.totalSize, req.contentLength(), fwData->checkSum.c_str());
+        }
+        break;
+        case RAW_WRITE:
+            //append one raw buffer at a time into the file if auth succeeded
+            if (const FWUploadData *fwData = static_cast<FWUploadData *>(raw.data); fwData->auth) {
+                SyncFsImpl.appendFile(fwData->fileName.c_str(), raw.buf, raw.currentSize);
+            }
+            break;
+        case RAW_END:
+            //this is called at the regular end of raw data processing (i.e., when the amount of data read from the client matches the content-length) - either successful or not
+            //close file; send the response to the client as successful receive
+            if (const FWUploadData *fwData = static_cast<FWUploadData *>(raw.data); fwData->auth) {
+                //determine sha256 hash for the file content - if it matches the source, respond with success, otherwise error out
+                if (const String sha256 = SyncFsImpl.sha256(fwData->fileName.c_str()); sha256.equals(fwData->checkSum)) {
+                    client.send(200, mime::mimeTable[mime::txt].mimeType, R"({"status": "OK"})");
+                    log_info(F("FW upload and storage %s (size read %zu bytes) succeeded - sha-256 actual: %s"), fwData->fileName.c_str(), raw.totalSize, sha256.c_str());
+                    if (const TaskHandle_t core0Handle = xTaskGetHandle(csCORE0)) {
+                        const BaseType_t fwNotif = xTaskNotify(core0Handle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
+                        log_info(F("CORE0 task has been notified of FW image upload complete, notification status %d"), fwNotif);
+                    }
+                } else {
+                    client.send(406, mime::mimeTable[mime::txt].mimeType, R"({"error": "Upload data integrity failed - Checksum does not match"})");
+                    log_error(F("FW upload and storage (size read/expected %zu/%zu bytes) failed - checksum does not match: sha-256 expected: %s, actual: %s"),
+                        raw.totalSize, req.contentLength(), fwData->checkSum.c_str(), sha256.c_str());
+                }
+            } else {
+                client.send(401, mime::mimeTable[mime::txt].mimeType, R"({"error": "Unauthorized call"})");
+                log_error(F("FW upload and storage (size expected %zu bytes) failed - authorization failed"), req.contentLength());
+            }
+            delete static_cast<FWUploadData *>(raw.data);
+            break;
+        case RAW_ABORTED: {
+            //This is called when the raw data cannot be read from the client any-longer (interrupted). It ends the processing, skips the call for RAW_END
+            //close file; delete the file; send the response to the client as an error in receiving
+            client.send(400, mime::mimeTable[mime::txt].mimeType, R"({"error": "Bad Request or Read - Aborted"})");
+            log_error(F("FW upload and storage (size read/expected %zu/%zu bytes) failed - aborted"), raw.totalSize, req.contentLength());
+            const auto fd = static_cast<FWUploadData *>(raw.data);
+            if (SyncFsImpl.exists(fd->fileName.c_str()))
+                SyncFsImpl.remove(fd->fileName.c_str());
+            delete fd;
+        }
+        break;
+        default: break;
+    }
+}
+
+/**
+ * Convenience no-op handler. Can also be replaced by a lambda function \code [](WebClient &) { }\endcode
+ * @param client web client
+ */
+void noop(WebClient &client) {}
 
 /**
  * Configures the web server with specific dynamic and static request handlers
@@ -339,15 +443,15 @@ void web::server_setup() {
         server.on("/status.json", HTTP_GET, handleGetStatus);
         server.on("/fx", HTTP_PUT, handlePutConfig);
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
+        server.on("/fw", HTTP_POST, noop, handleFWImageUpload);
         server.onNotFound(handleNotFound);
-        server.collectHeaders("Host", "Connection", "Accept", "Referer", "User-Agent");
-        server.enableDelay(false);      //the task that runs the web-server also runs other services, do not want to introduce unnecessary delays
+        server.enableDelay(false); //the task that runs the web-server also runs other services, do not want to introduce unnecessary delays
         server_handlers_configured = true;
         log_info(F("Completed Web server setup"));
     }
+    server.collectHeaders("Host", "Accept", "Referer", "User-Agent", "X-Token", "X-Check");
     server.begin(serverPort);
     log_info(F("Web server started"));
-    
 }
 
 /**
@@ -360,5 +464,4 @@ void web::webserver() {
         mdns->process();
     }
 #endif
-
 }

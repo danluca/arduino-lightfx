@@ -4,7 +4,9 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#include <Arduino.h>
+// #include <Arduino.h>
+
+#define OTA_UPGRADE_NOTIFY 0xDC
 
 struct CRGB;
 
@@ -23,6 +25,7 @@ inline constexpr auto csAuto PROGMEM = "auto";
 inline constexpr auto csHoliday PROGMEM = "holiday";
 inline constexpr auto strNR PROGMEM = "N/R";
 inline constexpr auto csBroadcast PROGMEM = "broadcast";
+inline constexpr auto fxCfgFileName PROGMEM = "/status/fxconfig.json";
 inline constexpr auto sysCfgFileName PROGMEM = "/status/sysconfig.json";
 inline constexpr auto calibFileName PROGMEM = "/status/calibration.json";
 inline constexpr auto stateFileName PROGMEM = "/state.json";
@@ -70,6 +73,9 @@ inline constexpr auto csWatchdog PROGMEM = "watchdog";
 inline constexpr auto csDebug PROGMEM = "debug";
 inline constexpr auto csGlitch PROGMEM = "glitch";
 inline constexpr auto csBrownout PROGMEM = "brownout";
+inline constexpr auto csCORE0 PROGMEM = "CORE0";
+inline constexpr auto csCORE1 PROGMEM = "CORE1";
+inline constexpr auto csFWImageFilename PROGMEM = "/fw.bin";
 
 inline constexpr uint8_t dimmed = 20;
 inline constexpr uint8_t maxChanges = 24;

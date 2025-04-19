@@ -394,6 +394,7 @@ void WebClient::_processRequest() {
  */
 void WebClient::_parseHttpHeaders() {
     log_debug(F("=== Headers ==="));
+    log_debug(F("Monitoring for %d headers"), _server->headersOfInterest().size());
     while (true) {
         String req = _rawWifiClient.readStringUntil('\n');
         req.trim();
@@ -433,7 +434,7 @@ void WebClient::_parseHttpHeaders() {
 }
 
 bool WebClient::_handleRawData() {
-    log_debug(F("=== Body Parse raw ==="));
+    log_debug(F("=== Body Handle raw ==="));
     _rawBody.reset(new HTTPRaw());
     _rawBody->status = RAW_START;
     _rawBody->totalSize = 0;
@@ -447,6 +448,7 @@ bool WebClient::_handleRawData() {
         if (_rawBody->currentSize == 0) {
             _rawBody->status = RAW_ABORTED;
             _requestHandler->raw(*this);
+            log_error(F("=== Body Raw handling ABORTED. Length read %zu (client content length %d) ==="), _rawBody->totalSize, request().contentLength());
             return false;
         }
         _requestHandler->raw(*this);
@@ -454,8 +456,7 @@ bool WebClient::_handleRawData() {
     //notify the handler the raw reading has ended
     _rawBody->status = RAW_END;
     _requestHandler->raw(*this);
-    log_debug(F("Raw length read %zu (client content length %d)\n====="), _rawBody->totalSize,
-              request().contentLength());
+    log_debug(F("=== Body Raw handling completed OK. Length read %zu (client content length %d) ==="), _rawBody->totalSize, request().contentLength());
     return true;
 }
 
@@ -524,13 +525,13 @@ bool WebClient::_parseRequest() {
     if (_requestHandler && _requestHandler->canRaw(*this)) {
         //if we can process this request as raw data, we give this option priority vs consuming the request body as a string (below)
         const bool rawAction = _handleRawData();
-        _finalizeResponse();
+        // _finalizeResponse();
         return rawAction;
     }
     if (request()._contentLength > HTTP_MAX_POST_DATA_LENGTH) {
         sendHeader("x-error", "Content length exceeds maximum of " + String(HTTP_MAX_POST_DATA_LENGTH));
         log_error(F("Web Request %s %s Content length %d exceeds maximum of %d"), methodStr.c_str(), request().uri().c_str(), request()._contentLength, HTTP_MAX_POST_DATA_LENGTH);
-        _finalizeResponse();
+        // _finalizeResponse();
         return false;
     }
 

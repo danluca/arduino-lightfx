@@ -1,5 +1,10 @@
 [CmdletBinding()]
-param ([string]$port='auto', [switch]$dbg, [string]$otaAddrHint)
+param ([string]$port='auto', [switch]$dbg, [string]$otaAddrHint,
+    [Parameter(Mandatory=$false)]
+    [ValidateSet("Dev", "FX01", "FX02")]
+    [string]$board = "Dev",
+    [switch]$log
+)
 
 #######################################
 ## Global
@@ -32,12 +37,28 @@ function getOTAEnabledIPAddress() {
     return $ipAddress
 }
 
+function prepEnvironment() {
+    # see config.h in the include folder for board ID values
+    # 1 = Dev, 2 = FX01, 3 = FX02
+    $boardId = switch ($board) {
+        "Dev" { 1 }
+        "FX01" { 2 }
+        "FX02" { 3 }
+    }
+    $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"
+    if ($log) {
+        $env:PLATFORMIO_BUILD_FLAGS += " -DLOGGING_ENABLED=1"
+    }
+}
+
 function buildClean() {
+    prepEnvironment
     pio run -t clean -e $brdEnv
     pio run -e $brdEnv
 }
 
 function updateFirmwareSerial() {
+    prepEnvironment
     if ($port -eq 'auto') {
         pio run -t upload -e $brdEnv
     } else {

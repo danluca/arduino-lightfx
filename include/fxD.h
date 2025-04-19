@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXD_H
 #define LIGHTFX_FXD_H
@@ -7,6 +7,7 @@
 #include "efx_setup.h"
 
 namespace FxD {
+    extern int8_t rot;
     class FxD1 : public LedEffect {
     public:
         FxD1();
@@ -53,7 +54,7 @@ namespace FxD {
 
         void windDownPrep() override;
 
-        void plasma();
+        void plasma() const;
 
         [[nodiscard]] uint8_t selectionWeight() const override;
 

@@ -7,10 +7,9 @@
 #include "PaletteFactory.h"
 #include "secrets.h"
 
-extern QueueHandle_t webQueue;
-
 bool wifi_setup();
 void wifi_ensure();
+void wifi_temp();
 
 void printSuccessfulWifiStatus();
 void checkFirmwareVersion();

@@ -154,7 +154,7 @@ dd {
 
 dl div {
     float: left;
-    width: 220pt;
+    width: 250pt;
 }
 
 dd span {

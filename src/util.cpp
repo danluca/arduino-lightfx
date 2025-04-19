@@ -17,9 +17,9 @@
 FixedQueue<TimeSync, 8> timeSyncs;
 
 /**
- * Adapted from article https://rheingoldheavy.com/better-arduino-random-values/
- * <p>Not fast, timed at 64ms on Arduino Uno allegedly</p>
- * <p>The residual floating voltage of the unconnected AD pin A1 is read multiple times and assembled into a 32 bit value</p>
+ * Adapted from the article https://rheingoldheavy.com/better-arduino-random-values/
+ * <p>Not fast, timed at 64 ms on Arduino Uno allegedly</p>
+ * <p>The residual floating voltage of the unconnected AD pin A1 is read multiple times and assembled into a 32-bit value</p>
  * @return a good 32bit random value from the residual electric signal on an Analog-Digital unconnected (floating) pin
  */
 ulong adcRandom() {
@@ -27,7 +27,7 @@ ulong adcRandom() {
     uint8_t  seedByteValue = 0;
     uint32_t seedWordValue = 0;
 
-    for (uint8_t wordShift = 0; wordShift < 4; wordShift++) {       // 4 bytes in a 32 bit word
+    for (uint8_t wordShift = 0; wordShift < 4; wordShift++) {       // 4 bytes in a 32-bit word
         for (uint8_t byteShift = 0; byteShift < 8; byteShift+=2) {  // 8 bits in a byte, advance by 2 - we collect 2 bits (last 2 LSB) with each analog read
             for (uint8_t bitSum = 0; bitSum < 8; bitSum++) {        // 8 samples of analog pin
                 seedBitValue += (analogRead(A1) & 0x03);  // Flip the coin 8 times, adding the results together
@@ -44,7 +44,7 @@ ulong adcRandom() {
 
 /**
  * Multiply function for color blending purposes - assumes the operands are fractional (n/256) and the result
- * of multiplying 2 fractional numbers is less than both numbers (e.g. 0.2 x 0.3 = 0.06). Special handling for operand values of 255 (i.e. 1.0)
+ * of multiplying 2 fractional numbers is less than both numbers (e.g., 0.2 x 0.3 = 0.06). Special handling for operand values of 255 (i.e., 1.0)
  * <p>f(a,b) = a*b</p>
  * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
  * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
@@ -60,7 +60,7 @@ uint8_t bmul8(const uint8_t a, const uint8_t b) {
 }
 
 /**
- * Screen two 8 bit operands for color blending purposes - assumes the operands are fractional (n/256)
+ * Screen two 8-bit operands for color blending purposes - assumes the operands are fractional (n/256)
  * <p>f(a,b)=1-(1-a)*(1-b)</p>
  * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
  * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
@@ -72,11 +72,11 @@ uint8_t bscr8(const uint8_t a, const uint8_t b) {
 }
 
 /**
- * Overlay two 8 bit operands for color blending purposes - assumes the operands are fractional (n/256)
+ * Overlay two 8-bit operands for color blending purposes - assumes the operands are fractional (n/256)
  * <p>f(a,b)=2*a*b, if a&lt;0.5; 1-2*(1-a)*(1-b), otherwise</p>
  * @param a first operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
  * @param b second operand, range [0,255] inclusive - mapped as range [0,1.0] inclusive
- * @return the 8 bit value per formula above
+ * @return the 8-bit value per formula above
  * @see https://en.wikipedia.org/wiki/Blend_modes
  */
 uint8_t bovl8(const uint8_t a, const uint8_t b) {
@@ -87,10 +87,10 @@ uint8_t bovl8(const uint8_t a, const uint8_t b) {
 
 /**
  * Leverages ECC608B's High-Quality NIST SP 800-90A/B/C Random Number Generator
- * <p>It is slow - takes about 30ms</p>
+ * <p>It is slow - takes about 30 ms</p>
  * @param minLim minimum value, defaults to 0
  * @param maxLim maximum value, defaults to max unsigned 8 bits (UINT8_MAX)
- * @return a high quality random number in the range specified
+ * @return a high-quality random number in the range specified
  * @see secRandom(uint32_t, uint32_t)
  */
  uint8_t secRandom8(const uint8_t minLim, const uint8_t maxLim) {
@@ -99,10 +99,10 @@ uint8_t bovl8(const uint8_t a, const uint8_t b) {
 
 /**
  * Leverages ECC608B's High-Quality NIST SP 800-90A/B/C Random Number Generator
- * <p>It is slow - takes about 30ms</p>
+ * <p>It is slow - takes about 30 ms</p>
  * @param minLim minimum value, defaults to 0
  * @param maxLim maximum value, defaults to max unsigned 16 bits (UINT16_MAX)
- * @return a high quality random number in the range specified
+ * @return a high-quality random number in the range specified
  * @see secRandom(uint32_t, uint32_t)
  */
 uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
@@ -111,10 +111,10 @@ uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
 
 /**
  * Leverages ECC608B's High-Quality NIST SP 800-90A/B/C Random Number Generator
- * <p>It is slow - takes about 30ms</p>
+ * <p>It is slow - takes about 30 ms</p>
  * @param minLim minimum value, defaults to 0
  * @param maxLim maximum value, defaults to max signed 32 bits (INT32_MAX)
- * @return a high quality random number in the range specified
+ * @return a high-quality random number in the range specified
  */
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
     const long low = (long)minLim;
@@ -151,7 +151,7 @@ bool secElement_setup() {
 }
 
 /**
- * Setup the watchdog to 10 seconds - this is run once in the setup step at the program start
+ * Set up the watchdog to 10 seconds - this is run once in the setup step at the program start
  * Take the opportunity and log if this program start is the result of a watchdog reboot
  */
 void watchdogSetup() {
@@ -175,7 +175,7 @@ void watchdogPing() {
 }
 
 /**
- * Delays a task for number of ms provided by leveraging FreeRTOS task primitives. Alternate to the plain delay() function that may be implemented
+ * Delays a task for a number of ms provided by leveraging FreeRTOS task primitives. Alternate to the plain delay() function that may be implemented
  * differently on FastLED, or collide with the RP2040 port implementation
  * @param ms number of milliseconds to delay
  */

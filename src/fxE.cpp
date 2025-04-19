@@ -14,12 +14,15 @@ constexpr auto fxe3Desc PROGMEM = "FXE3: sawtooth back/forth";
 constexpr auto fxe4Desc PROGMEM = "FXE4: serendipitous";
 constexpr auto fxe5Desc PROGMEM = "FXE5: three single color beat-waves";
 
+uint8_t FxE::twinkRate = 100;
+bool FxE::randHue = true;
+
 void FxE::fxRegister() {
-    static FxE1 fxe1;
-    static FxE2 fxE2;
-    static FxE3 fxE3;
-    static FxE4 fxE4;
-    static FxE5 fxE5;
+    new FxE1();
+    new FxE2();
+    new FxE3();
+    new FxE4();
+    new FxE5();
 }
 
 /**
@@ -35,6 +38,8 @@ FxE1::FxE1() : LedEffect(fxe1Desc) {}
 
 void FxE1::setup() {
     LedEffect::setup();
+    twinkRate = 100;
+    randHue = true;
     speed = 20;
     saturation = 255;
     brightness = 224;
@@ -122,10 +127,10 @@ void FxE2::run() {
 }
 
 void FxE2::beatwave() {
-    uint8_t wave1 = beatsin8(9, 0, 255);                        // That's the same as beatsin8(9);
-    uint8_t wave2 = beatsin8(8, 0, 255);
-    uint8_t wave3 = beatsin8(7, 0, 255);
-    uint8_t wave4 = beatsin8(6, 0, 255);
+    const uint8_t wave1 = beatsin8(9, 0, 255);                        // That's the same as beatsin8(9);
+    const uint8_t wave2 = beatsin8(8, 0, 255);
+    const uint8_t wave3 = beatsin8(7, 0, 255);
+    const uint8_t wave4 = beatsin8(6, 0, 255);
 
     for (uint16_t i=0; i<tpl.size(); i++)
         tpl[i] = ColorFromPalette(palette, i + wave1 + wave2 + wave3 + wave4, brightness, LINEARBLEND);
@@ -161,7 +166,7 @@ void FxE3::setup() {
  */
 void FxE3::run() {
     EVERY_N_MILLISECONDS(60) {
-        uint16_t maxIndex = tpl.size() - 1;
+        const uint16_t maxIndex = tpl.size() - 1;
         if (timerSlot == 0) {
             switch (move) {
                 case sasquatch:
@@ -268,7 +273,9 @@ void FxE4::run() {
 void FxE4::serendipitous() {
     //  Xn = X-(Y/2); Yn = Y+(Xn/2);
     //  Xn = X-Y/2;   Yn = Y+Xn/2;
-    const uint16_t Xn = X-(Y/2); uint16_t Yn = Y+(X/2.1); uint16_t Zn = X + Y*2.3;
+    const uint16_t Xn = X-(Y/2);
+    const uint16_t Yn = Y+(X/2.1);
+    const uint16_t Zn = X + Y*2.3;
     //    Xn = X-(Y/3); Yn = Y+(X/1.5);
     //  Xn = X-(2*Y); Yn = Y+(X/1.1);
 
@@ -276,7 +283,7 @@ void FxE4::serendipitous() {
     Y = Yn;
 
     index=(sin8(X)+cos8(Y))/2;
-    CRGB newcolor = ColorFromPalette(palette, index, map(Zn, 0, 65535, dimmed*3, brightness), LINEARBLEND);
+    const CRGB newcolor = ColorFromPalette(palette, index, map(Zn, 0, 65535, dimmed*3, brightness), LINEARBLEND);
 
     nblend(tpl[map(X, 0, 65535, 0, tpl.size()-1)], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
     tpl.fadeToBlackBy(16);                    // 8 bit, 1 = slow, 255 = fast

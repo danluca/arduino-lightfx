@@ -40,6 +40,23 @@ String StringUtils::asString(const time_t &time) {
 }
 
 /**
+ * Useful byte array to hex conversion for small arrays - the returned string is through the stack.
+ * @param data byte array
+ * @param len size of data
+ * @return byte array converted to hex equivalent - a stream of 2 hex digits for each byte in the data
+ */
+String StringUtils::asHexString(const uint8_t *data, const size_t len) {
+    String str;
+    str.reserve(len*2);
+    char buf[3]{};
+    for (size_t i = 0; i < len; i++) {
+        snprintf(buf, 3, "%02X", data[i]);
+        str.concat(buf, 2);
+    }
+    return str;
+}
+
+/**
  *
  * @param rgb
  * @param str

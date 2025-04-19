@@ -63,7 +63,7 @@ class WebRequest {
     [[nodiscard]] String argName(int i) const;          // get request argument name by number
     [[nodiscard]] size_t argsCount() const;                     // get arguments count
     [[nodiscard]] bool hasArg(const String& name) const;       // check if argument exists
-    [[nodiscard]] String header(const String& name) const;     // get request header value by name
+    [[nodiscard]] String header(const String& name) const;     // get request header value by name; empty string if not present
     [[nodiscard]] String header(int i) const;           // get request header value by number
     [[nodiscard]] String headerName(int i) const;       // get request header name by number
     [[nodiscard]] size_t headersCount() const;                  // get header count

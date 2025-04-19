@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Copyright 2023 (c) Dan Luca
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// Collection of light strip effects with ability to be configured through Wi-Fi
+// Collection of light strip effects with the ability to be configured through Wi-Fi
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #include <LittleFS.h>
@@ -18,6 +18,7 @@
 #include "mic.h"
 #include "util.h"
 #include "web_server.h"
+#include "ota_upgrade.h"
 
 /**
  * TASK ALLOCATIONS
@@ -43,15 +44,15 @@
  */
 
 void web_run();
+void alarm_misc_begin();
 void alarm_misc_run();
 void enqueueAlarmSetup();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
-constexpr TaskDef fxTasks {fx_setup, fx_run, 2048, "Fx", 255, CORE_1};
-constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 255, CORE_1};
-constexpr TaskDef alarmTasks {nullptr, alarm_misc_run, 1024, "ALM", 255, CORE_0};
+constexpr TaskDef fxTasks {fx_setup, fx_run, 1024, "Fx", 255, CORE_1};
+constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 5, CORE_1};
+constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1024, "ALM", 5, CORE_0};
 bool core1_separate_stack = true;
 QueueHandle_t almQueue;
-QueueHandle_t webQueue;
 
 /**
  * Sends the ALARM_SETUP message to the ALM task via the alarm queue.
@@ -66,9 +67,17 @@ QueueHandle_t webQueue;
  * - Logs an error if the message could not be enqueued.
  */
 void enqueueAlarmSetup() {
-    constexpr MiscAction msg = ALARM_SETUP;
-    if (const BaseType_t qResult = xQueueSend(almQueue, &msg, pdMS_TO_TICKS(2000)); qResult != pdTRUE)
-        log_error(F("Error sending ALARM_SETUP message to CORE0 task - error %d"), qResult);
+    constexpr MiscAction msgSetup = ALARM_SETUP;
+    if (const BaseType_t qResult = xQueueSend(almQueue, &msgSetup, 0); qResult != pdTRUE)
+        log_error(F("Error sending ALARM_SETUP message to ALM queue - error %d"), qResult);
+}
+
+/**
+ * ALM task begins - for now just blinking the board status LED while in setup mode
+ */
+void alarm_misc_begin() {
+    state_led_begin();
+    log_info(F("ALM task setup completed"));
 }
 
 /**
@@ -83,6 +92,7 @@ void enqueueAlarmSetup() {
  *   - ALARM_SETUP: Calls `alarm_setup()` to initialize alarm settings.
  *   - ALARM_CHECK: Calls `alarm_check()` to verify current alarm status.
  *   - SAVE_SYS_INFO: Calls `saveSysInfo()` to persist system state information.
+ *   - STATUS_LED_CHECK: Calls `state_led_run()` to update board status LED.
  * - Logs an error if an unsupported or unrecognized action is encountered.
  *
  * Notes:
@@ -95,41 +105,25 @@ void alarm_misc_run() {
     MiscAction action;
     // wait indefinitely for a message to be received
     if (pdFALSE == xQueueReceive(almQueue, &action, portMAX_DELAY)) {
-        vTaskDelay(pdMS_TO_TICKS(1000));   //wait a bit before trying again
         return;
     }
     switch (action) {
         case ALARM_SETUP: alarm_setup(); break;
         case ALARM_CHECK: alarm_check(); break;
         case SAVE_SYS_INFO: saveSysInfo(); break;
+        case HOLIDAY_UPDATE: holidayUpdate(); break;
         default:
             log_error(F("Misc Action %hu not supported"), action);
     }
 }
 
 /**
- * Executes the primary web-related tasks.
- *
- * - Runs the web server and communication functions
- * - Checks for any additional queued actions by receiving messages from `webQueue`:
- *   - If the action is WIFI_ENSURE, it ensures WiFi is properly functioning by calling wifi_ensure().
- *   - Logs an error for unsupported or unrecognized actions.
- *
+ * Executes the primary web-related tasks - runs the web server and communication functions
  * This function is intended to be invoked regularly to handle web communication and actions efficiently.
  */
 void web_run() {
     web::webserver();
     commRun();
-    //check for any additional actions to be performed
-    CommAction action;
-    if (pdTRUE == xQueueReceive(webQueue, &action, 0)) {
-        switch (action) {
-            case WIFI_ENSURE: wifi_ensure(); break;
-            case WIFI_TEMP: wifi_temp(); break;
-            default:
-                log_error(F("Comm Action %hu not supported"), action);
-        }
-    }
 }
 
 void filesystem_setup() {
@@ -148,21 +142,22 @@ void setup() {
     SysInfo::setupStateLED();
     log_setup();
 
-    RP2040::enableDoubleResetBootloader();   //that's just good idea overall
+    RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
 
     sysInfo = new SysInfo();    //system information object built once per run
     filesystem_setup();
-    sysInfo->begin();           //starts the LED status task
+    sysInfo->begin();
+
+    almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for the ALM task for communication between cores
+    Scheduler.startTask(&alarmTasks);
 
     readSysInfo();
     secElement_setup();
 
-    const TaskHandle_t core1 = xTaskGetHandle("CORE1");    //retrieve a task handle for the second core
+    const TaskHandle_t core1 = xTaskGetHandle(csCORE1);    //retrieve a task handle for the second core
     const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
-    log_info(F("Basic components ok - Core 1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
+    log_info(F("Basic components ok - CORE1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
 
-    webQueue = xQueueCreate(10, sizeof(CommAction));    //create a receiving queue for CORE0 task for communication between cores
-    almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for ALM task for communication between cores
     wifi_setup();
     taskDelay(2500);    //let the WiFi settle
     timeSetup();
@@ -175,8 +170,7 @@ void setup() {
     watchdogSetup();
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
-    taskDelay(250);         // leave reasonable time to alarm task to setup
-    Scheduler.startTask(&alarmTasks);
+    taskDelay(250);         // leave reasonable time to the alarm task to set up
     //enqueues the alarm setup event
     enqueueAlarmSetup();
 
@@ -184,7 +178,7 @@ void setup() {
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     sysInfo->setSysStatus(SYS_STATUS_SETUP0);
-    log_info(F("Main Core 0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
+    log_info(F("Main CORE0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
 }
 
@@ -193,6 +187,7 @@ void setup() {
  */
 void loop() {
     web_run();
+    handle_fw_upgrade();
 }
 
 
@@ -206,7 +201,7 @@ void setup1() {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     Scheduler.startTask(&fxTasks);
-    // taskDelay(250);         // leave reasonable time to FX task to setup
+    // taskDelay(250);         // leave reasonable time to FX task to set-up
 
     //wait for the main core to notify us that WiFi is ready, not interested in the notification value
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -216,10 +211,10 @@ void setup1() {
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)+1);    //raise the priority of the diag task to allow uninterrupted I2C interactions
     taskDelay(250);    // safety delay after priority bump
-    // const TaskHandle_t core0 = xTaskGetHandle("CORE0");    //retrieve a task handle for the first core
+    // const TaskHandle_t core0 = xTaskGetHandle(csCORE0);    //retrieve a task handle for the first core
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
     sysInfo->setSysStatus(SYS_STATUS_SETUP1);
-    log_info(F("Main Core 1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
+    log_info(F("Main CORE1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
 }
 
 /**

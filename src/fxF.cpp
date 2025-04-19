@@ -18,11 +18,11 @@ constexpr auto fxf4Desc PROGMEM = "FXF4: Bouncy segments";
 constexpr auto fxf5Desc PROGMEM = "FXF5: Fireworks";
 
 void FxF::fxRegister() {
-    static FxF1 fxF1;
-    static FxF2 fxF2;
-    static FxF3 fxF3;
-    static FxF4 fxF4;
-    static FxF5 fxF5;
+    new FxF1();
+    new FxF2();
+    new FxF3();
+    new FxF4();
+    new FxF5();
 }
 
 // FxF1
@@ -101,7 +101,7 @@ void FxF2::run() {
 void FxF2::makePattern(uint8_t hue) {
     //clear the pattern, start over
     pattern = CRGB::Black;
-    uint16_t s0 = random8(17);
+    const uint16_t s0 = random8(17);
     // pattern of XXX--XX-X-XX--XXX
     for (uint16_t i = 0; i < pattern.size(); i+=17) {
         pattern(i, i+2) = CRGB::White;
@@ -189,7 +189,7 @@ Viewport FxF3::nextEyePos() {
     std::sort(actEyes.begin(), actEyes.end(), [](const EyeBlink *a, const EyeBlink *b) {return a->pos < b->pos;});
     //find the gaps
     uint16_t posGap = 0, szGap = 0, prevEyeEnd = 0, curGap = 0;
-    for (auto & actEye : actEyes) {
+    for (const auto & actEye : actEyes) {
         curGap = actEye->pos - prevEyeEnd;
         if (curGap > szGap) {
             posGap = prevEyeEnd;
@@ -299,7 +299,7 @@ void EyeBlink::start() {
  * @param curPos new position to use
  * @param clr new color to use
  */
-void EyeBlink::reset(uint16_t curPos, CRGB clr) {
+void EyeBlink::reset(const uint16_t curPos, const CRGB clr) {
     curStep = Off;
     idleTime = random16(80, 160);    //5-10s of idle time
     brIncr = random8(50, 100);
@@ -336,7 +336,7 @@ void FxF4::run() {
         switch (fxState) {
             case Bounce:
                 if (delta > 0) {
-                    CRGB feed = curPos > dotSize ? BKG : ColorFromPalette(palette, hue+=hueDiff, brightness, LINEARBLEND);
+                    const CRGB feed = curPos > dotSize ? BKG : ColorFromPalette(palette, hue+=hueDiff, brightness, LINEARBLEND);
                     if (dirFwd) {
                         shiftRight(set1, feed);
                         curPos++;
@@ -348,7 +348,7 @@ void FxF4::run() {
                     tpl = frame(ofs, ofs+tpl.size()-1);
                     delta--;
                 } else {
-                    uint16_t easePos = bouncyCurve[dist++];
+                    const uint16_t easePos = bouncyCurve[dist++];
                     if (dist > upLim) {
                         fxState = Reduce;
                         delta = dotSize-1;
@@ -469,11 +469,11 @@ void FxF5::flare() {
     Spark flareSparks[flareSparksCount];
 
     // initialize launch sparks
-    for (auto &spark : flareSparks) {
-        spark.pos = 0;
-        spark.velocity = (float(random8(180,255)) / 255) * (flareVel / 2);
+    for (auto &[pos, velocity, hue] : flareSparks) {
+        pos = 0;
+        velocity = (float(random8(180,255)) / 255) * (flareVel / 2);
         // random around 20% of flare velocity
-        spark.hue = uint8_t(spark.velocity * 1000);
+        hue = uint8_t(velocity * 1000);
     }
     // launch
     while ((ushort(flarePos) < curPos) && (flareVel > 0)) {
@@ -512,15 +512,15 @@ void FxF5::explode() const {
     const auto nSparks = ushort(flarePos / 3); // works out to look about right
     Spark sparks[nSparks];
     //map the flare position in its range to a hue
-    uint8_t decayHue = constrain(map(ushort(flarePos), tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10, 0, 255), 0, 255);
-    uint8_t flarePosQdrnt = decayHue/64;
+    const uint8_t decayHue = constrain(map(ushort(flarePos), tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10, 0, 255), 0, 255);
+    const uint8_t flarePosQdrnt = decayHue/64;
 
     // initialize sparks
-    for (auto &spark : sparks) {
-        spark.pos = flarePos;
-        spark.velocity = (float(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
-        spark.hue = random8(flarePosQdrnt*64, 64+flarePosQdrnt*64);   //limit the spark hues in a closer color range based on flare height
-        spark.velocity *= flarePos/1.7f/ float(tpl.size()); // proportional to height
+    for (auto &[pos, velocity, hue] : sparks) {
+        pos = flarePos;
+        velocity = (static_cast<float>(random16(0, 20000)) / 10000.0f) - 1.0f; // from -1 to 1
+        hue = random8(flarePosQdrnt*64, 64+flarePosQdrnt*64);   //limit the spark hues in a closer color range based on flare height
+        velocity *= flarePos/1.7f/ static_cast<float>(tpl.size()); // proportional to height
     }
     // the original implementation was to designate a known spark starting from a known value and iterate until it goes below a fixed threshold - c2/128
     // since they were all fixed values, the math shows the number of iterations can be precisely determined. The formula is iterCount = log(c2/128/255)/log(degFactor),
@@ -546,15 +546,13 @@ void FxF5::explode() const {
             //spark.colorFade *= .987f;       //degradation factor degFactor in formula above
             //fade the sparks
 //            auto spDist = uint8_t(abs(spark.pos - flarePos) * 255 / flarePos);
-            auto spDist = uint8_t(abs(spark.pos - flarePos));
-            ushort tplPos = spark.iPos();
+            const auto spDist = uint8_t(abs(spark.pos - flarePos));
+            const ushort tplPos = spark.iPos();
             if (bFade) {
                 tpl[tplPos] += ColorFromPalette(palette, spark.hue+spDist, 255-2*spDist);
                 //tpl.blur1d();
             } else {
-                tpl[tplPos] = blend(ColorFromPalette(palette, spark.hue),
-                                    CHSV(decayHue, 224, 255-2*spDist),
-                                    3*spDist);
+                tpl[tplPos] = blend(ColorFromPalette(palette, spark.hue), CHSV(decayHue, 224, 255-2*spDist), 3*spDist);
             }
         }
 

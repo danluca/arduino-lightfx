@@ -18,8 +18,6 @@ constexpr auto ssid PROGMEM = WF_SSID;
 constexpr auto pass PROGMEM = WF_PSW;
 constexpr auto hostname PROGMEM = "lightfx-" DEVICE_NAME;
 
-static uint16_t tmrWifiEnsure = 40;
-static uint16_t tmrWifiTemp = 41;
 #if MDNS_ENABLED==1
 UDP* mUdp = nullptr;  // mDNS UDP instance
 MDNS* mdns = nullptr;
@@ -98,18 +96,6 @@ bool wifi_connect() {
     return result;
 }
 
-void enqueueWifiEnsure(TimerHandle_t xTimer) {
-    constexpr CommAction action = WIFI_ENSURE;
-    if (const BaseType_t qResult = xQueueSend(webQueue, &action, 0); qResult != pdTRUE)
-        log_error(F("Error sending WIFI_ENSURE message to Web queue for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
-}
-
-void enqueueWifiTempRead(TimerHandle_t xTimer) {
-    constexpr CommAction action = WIFI_TEMP;
-    if (const BaseType_t qResult = xQueueSend(webQueue, &action, 0); qResult != pdTRUE)
-        log_error(F("Error sending WIFI_TEMP message to Web queue for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
-}
-
 bool wifi_setup() {
     // check for the WiFi module:
     if (WiFi.status() == WL_NO_MODULE) {
@@ -124,19 +110,6 @@ bool wifi_setup() {
     WiFi.lowPowerMode();
 
     const bool connStatus = wifi_connect();
-
-    // create timer to re-check WiFi and ensure connectivity - every 7 minutes
-    const TimerHandle_t thWifiEnsure = xTimerCreate("wifiEnsure", pdMS_TO_TICKS(7*60*1000), pdTRUE, &tmrWifiEnsure, enqueueWifiEnsure);
-    if (thWifiEnsure == nullptr)
-        log_error(F("Cannot create wifiEnsure timer - Ignored. There is NO wifi re-check scheduled"));
-    else if (xTimerStart(thWifiEnsure, 0) != pdPASS)
-        log_error(F("Cannot start the wifiEnsure timer - Ignored."));
-    //create timer to take WiFi temperature - every 33s, 1s off from the diagnostic thread temp read, to avoid overlap
-    const TimerHandle_t thWifiTempRead = xTimerCreate("wifiTempRead", pdMS_TO_TICKS(33*1000), pdTRUE, &tmrWifiTemp, enqueueWifiTempRead);
-    if (thWifiTempRead == nullptr)
-        log_error(F("Cannot create wifiTempRead timer - Ignored. There is NO wifi temperature read scheduled"));
-    else if (xTimerStart(thWifiTempRead, 0) != pdPASS)
-        log_error(F("Cannot start the wifiTempRead timer - Ignored."));
 
     return connStatus;
 }

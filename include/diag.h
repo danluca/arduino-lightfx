@@ -111,7 +111,6 @@ extern CalibrationParams calibCpuTemp;
 void readCalibrationInfo();
 void saveCalibrationInfo();
 // end self-calibration support
-void wifi_temp();
 
 extern volatile MeasurementRange imuTempRange;
 extern volatile MeasurementRange cpuTempRange;

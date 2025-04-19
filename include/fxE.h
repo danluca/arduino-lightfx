@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXE_H
 #define LIGHTFX_FXE_H
@@ -7,6 +7,8 @@
 #include "efx_setup.h"
 
 namespace FxE {
+    extern uint8_t twinkRate;
+    extern bool randHue;
     class FxE1 : public LedEffect {
     public:
         FxE1();

@@ -14,6 +14,8 @@ typedef FixedQueue<time_t, MAX_WATCHDOG_REBOOT_TIMESTAMPS> WatchdogQueue;
 extern unsigned long prevStatTime;
 extern unsigned long prevIdleTime;
 
+void state_led_update();
+void state_led_begin();
 void logTaskStats();
 void logSystemInfo();
 void logSystemState();
@@ -46,9 +48,9 @@ class SysInfo {
     mutex_t mutex{};
 
 protected:
-    static void updateStateLED(uint32_t colorCode);
-    static void updateStateLED(CRGB rgb);
-    void updateStateLED() const;
+    static void updateBoardLED(uint32_t colorCode);
+    static void updateBoardLED(CRGB rgb);
+    void updateStatusLED() const;
 
 public:
     uint32_t freeHeap {0}, heapSize {0};
@@ -90,7 +92,8 @@ public:
     // JSON marshalling methods
     friend void readSysInfo();
     friend void saveSysInfo();
-    friend void state_led_run();
+    friend void state_led_update();
+    friend void state_led_begin();
 };
 
 extern SysInfo *sysInfo;
