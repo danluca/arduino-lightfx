@@ -34,6 +34,7 @@ static uint16_t tmrTimeUpdateId = 20;
 static uint16_t tmrWifiEnsure = 21;
 static uint16_t tmrWifiTemp = 22;
 static uint16_t tmrStatusLEDCheck = 23;
+static uint16_t tmrTimeSetup = 24;
 
 //function declarations ahead
 void commInit();
@@ -44,6 +45,7 @@ void enqueueTimeUpdate(TimerHandle_t xTimer);
 void enqueueTimeSetup(TimerHandle_t xTimer);
 // broadcast task definition - priority is overwritten during setup, see broadcastSetup
 FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
+TimerHandle_t thTimeSetupTimer = nullptr;
 
 /**
  * Structure of the message sent to the broadcast task - internal use only
@@ -229,6 +231,25 @@ void fxBroadcast(const uint16_t index) {
 }
 
 /**
+ * Starts or resets the timer responsible for the time setup sequence.
+ * If the timer does not already exist, it creates a one-shot timer configured to trigger the
+ * `enqueueTimeSetup` callback after a delay of 5 seconds.
+ * Logs an error if the timer cannot be created or started.
+ */
+void startTimeSetupTimer() {
+    if (thTimeSetupTimer != nullptr) {
+        if (xTimerReset(thTimeSetupTimer, 0) != pdPASS)
+            log_error(F("Cannot reset the timeSetup timer - Ignored."));
+        return;
+    }
+    thTimeSetupTimer = xTimerCreate("timeSetup", pdMS_TO_TICKS(5 * 1000), pdFALSE, &tmrTimeSetup, enqueueTimeSetup);
+    if (thTimeSetupTimer == nullptr)
+        log_error(F("Cannot create timeSetup timer - Ignored."));
+    else if (xTimerStart(thTimeSetupTimer, 0) != pdPASS)
+        log_error(F("Cannot start the timeSetup timer - Ignored."));
+}
+
+/**
  * Update time with NTP, assert offset (DST or not) and track drift
  */
 void timeUpdate() {
@@ -236,11 +257,27 @@ void timeUpdate() {
         log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform time update. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
+    const bool bHadNtpSync = sysInfo->isSysStatus(SYS_STATUS_NTP);
     const bool result = ntp_sync();
     log_info(F("Time NTP sync performed; success = %s"), StringUtils::asString(result));
-    //if the result is false, do not reset the NTP status; we may have had an older NTP sync
-    if (result)
-        sysInfo->setSysStatus(SYS_STATUS_NTP);
+    result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
+#if LOGGING_ENABLED == 1
+    const time_t curTime = now();
+    const time_t curMs = millis();
+    const time_t logTimeMs = Log.getTimebase() + curMs;
+    if (const bool bNeedsUpdate = Log.getTimebase() == 0 || abs(curTime - logTimeMs/1000) > 5*60; result && bNeedsUpdate) {
+        log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), logTimeMs, StringUtils::asString(logTimeMs/1000).c_str(), StringUtils::asString(curTime).c_str());
+        Log.setTimebase(curTime * 1000 - curMs);
+    }
+#endif
+    log_info(F("System status: %#hX"), sysInfo->getSysStatus());
+
+    if (!bHadNtpSync && !result) {
+        log_warn(F("Time NTP sync was never acquired. Trying again soon. System status: %#hX"), sysInfo->getSysStatus());
+        startTimeSetupTimer();
+        return;
+    }
+
     //check for a DST transition
     if (const bool dst = isDST(timeClient.getEpochTime()); dst != sysInfo->isSysStatus(SYS_STATUS_DST)) {
         timeClient.setTimeOffset(dst ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS);
@@ -251,7 +288,7 @@ void timeUpdate() {
             dst ? "CDT" : "CST", dst ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS, StringUtils::asString(curTime).c_str());
 #endif
     }
-    if (result && timeSyncs.size() > 2) {
+    if (timeSyncs.size() > 2) {
         //log the current drift
         const time_t from = timeSyncs.end()[-2].unixSeconds;
         const time_t to = now();
@@ -263,23 +300,9 @@ void timeUpdate() {
  * Time setup re-attempt, in case we weren't successful during system bootstrap
  */
 void timeSetupCheck() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform time setup check. System status: %#hX"), sysInfo->getSysStatus());
-        return;
-    }
-    if (!timeClient.isTimeSet()) {
-        const bool result = ntp_sync();
-        result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
-#if LOGGING_ENABLED == 1
-        if (result && Log.getTimebase() == 0) {
-            const time_t curTime = now();
-            const time_t curMs = millis();
-            log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
-            Log.setTimebase(curTime * 1000 - curMs);
-        }
-#endif
-        log_info(F("System status: %#hX"), sysInfo->getSysStatus());
-    } else
+    if (!sysInfo->isSysStatus(SYS_STATUS_NTP))
+        timeUpdate();    //attempt to sync time
+    else
         log_info(F("Time was already properly setup, event fired in excess. System status: %#hX"), sysInfo->getSysStatus());
 }
 
@@ -329,9 +352,10 @@ void commSetup() {
  * Note: this method can be called from any other thread
  */
 void postTimeSetupCheck() {
-    if (!timeClient.isTimeSet())
-        enqueueTimeSetup(nullptr);
-    else
+    if (!sysInfo->isSysStatus(SYS_STATUS_NTP)) {
+        //enqueue a time setup in 5 seconds
+        startTimeSetupTimer();
+    } else
         log_info(F("Time properly setup - no action taken"));
 }
 

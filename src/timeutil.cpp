@@ -12,53 +12,123 @@
 
 constexpr auto fmtDate PROGMEM = "%4d-%02d-%02d";
 constexpr auto fmtTime PROGMEM = "%02d:%02d:%02d";
+constexpr size_t TIME_BUFFER_SIZE = 20;
+constexpr auto TIME_ZONE_NAME = "America/Chicago";
 
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
 
+
+void updateLoggingTimebase() {
+#if LOGGING_ENABLED == 1
+    if (Log.getTimebase() == 0) {
+        const time_t currentTime = now();
+        const time_t currentMillis = millis();
+        log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), 
+                currentMillis, StringUtils::asString(currentMillis/1000).c_str(), StringUtils::asString(currentTime).c_str());
+        Log.setTimebase(currentTime * 1000 - currentMillis);
+    }
+#endif
+}
+
+/**
+ * Adjusts America/Chicago time zone offset with DST
+ * @param isDaylightSavings whether current time is in Daylight Savings period
+ */
+void configureTimeOffset(const bool isDaylightSavings) {
+    const int timeOffset = isDaylightSavings ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
+    timeClient.setTimeOffset(timeOffset);
+    setTime(timeClient.getEpochTime());
+}
+
+/**
+ * Log current time information - successful NTP sync
+ * @param curTime current time
+ * @param holiday current holiday
+ */
+void logTimeStatus(const time_t curTime, const Holiday& holiday) {
+#if LOGGING_ENABLED == 1
+    const bool isDaylightSavings = isDST(curTime);
+    const char* const timeZoneType = isDaylightSavings ? "CDT" : "CST";
+    const char* const savingsType = isDaylightSavings ? "Daylight Savings" : "Standard";
+    const int offset = isDaylightSavings ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
+    
+    char timeBuffer[TIME_BUFFER_SIZE];
+    formatDateTime(timeBuffer, curTime);
+    
+    log_info(F("%s %s time, time offset set to %d s, current time %s. NTP sync %s."), TIME_ZONE_NAME, savingsType,
+        offset, timeClient.getFormattedTime().c_str(), sysInfo->isSysStatus(SYS_STATUS_NTP) ? "ok" : "failed (fallback to WiFi time)");
+    log_info(F("Current time %s %s (holiday adjusted to %s); system status %#hX"), timeBuffer, timeZoneType, holidayToString(holiday), sysInfo->getSysStatus());
+#endif
+}
+
+/**
+ * NTP sync was successful and time was within valid range; sets the NTP and DST flags accordingly.
+ * Adjusts the current holiday based on time. Adjusts the logging timebase.
+ * @return true (all the time)
+ */
+bool handleNTPSuccess() {
+    const bool isDaylightSavings = isDST(timeClient.getEpochTime());
+    sysInfo->setSysStatus(SYS_STATUS_NTP);
+    
+    if (isDaylightSavings)
+        sysInfo->setSysStatus(SYS_STATUS_DST);
+    else
+        sysInfo->resetSysStatus(SYS_STATUS_DST);
+
+    configureTimeOffset(isDaylightSavings);
+    const time_t curTime = now();
+    const Holiday holiday = paletteFactory.adjustHoliday(curTime);
+    updateLoggingTimebase();
+    logTimeStatus(curTime, holiday);
+    
+    return true;
+}
+
+/**
+ * Handles the case when NTP sync fails, either due to a timeout or a failure to get a valid time from the pool.ntp.org server
+ * Attempts to leverage Wi-Fi time, potentially sourced from NTP as well. Adjusts the current holiday based on Wi-Fi time if available,
+ * fallback to Party if not.
+ */
+void handleNTPFailure() {
+    sysInfo->resetSysStatus(SYS_STATUS_NTP);
+    paletteFactory.setHoliday(Party);
+
+    const time_t wifiTime = WiFi.getTime();
+    char timeBuffer[TIME_BUFFER_SIZE];
+    Holiday holiday = paletteFactory.adjustHoliday(wifiTime);
+
+    if (wifiTime > 0) {
+        const bool isDaylightSavings = isDST(wifiTime);
+        if (isDaylightSavings)
+            sysInfo->setSysStatus(SYS_STATUS_DST);
+        formatDateTime(timeBuffer, wifiTime);
+        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), timeBuffer,
+            isDaylightSavings ? "CDT" : "CST", holidayToString(holiday));
+    } else {
+        formatDateTime(timeBuffer, now());
+        log_error(F("NTP sync failed, WiFi time not available. Current time from raw clock: %s (holiday adjusted to %s)"), 
+                  timeBuffer, holidayToString(holiday));
+    }
+    
+    log_info(F("Current holiday is %s; system status %#hX"), holidayToString(holiday), sysInfo->getSysStatus());
+}
+
+/**
+ * Sets up the time callback and attempts to source current time from NTP.
+ * @return true if the NTP sync was successful
+ */
 bool timeSetup() {
-    //read the time
     setSyncProvider(curUnixTime);
     const bool ntpTimeAvailable = ntp_sync();
+    
     log_warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
-    Holiday hday;
-    if (ntpTimeAvailable) {
-        const bool bDST = isDST(timeClient.getEpochTime());
-        sysInfo->setSysStatus(SYS_STATUS_NTP);
-        if (bDST) {
-            sysInfo->setSysStatus(SYS_STATUS_DST);
-            timeClient.setTimeOffset(CDT_OFFSET_SECONDS);   //getEpochTime calls account for the offset
-        } else
-            timeClient.setTimeOffset(CST_OFFSET_SECONDS);   //getEpochTime calls account for the offset
-        setTime(timeClient.getEpochTime());    //ensure the offset change above (if it just transitioned) has taken effect
-        hday = paletteFactory.adjustHoliday();    //update the holiday for new time
-#if LOGGING_ENABLED == 1
-        if (Log.getTimebase() == 0) {
-            const time_t curTime = now();
-            const time_t curMs = millis();
-            log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), curMs, StringUtils::asString(curMs/1000).c_str(), StringUtils::asString(curTime).c_str());
-            Log.setTimebase(curTime * 1000 - curMs);                //capture current time into the log offset, such that log statements use current time
-        }
-#endif
-        log_info(F("America/Chicago %s time, time offset set to %d s, current time %s. NTP sync ok."),
-                   bDST?"Daylight Savings":"Standard", bDST?CDT_OFFSET_SECONDS:CST_OFFSET_SECONDS, timeClient.getFormattedTime().c_str());
-        char timeBuf[20];
-        formatDateTime(timeBuf, now());
-        log_info(F("Current time %s %s (holiday adjusted to %s"), timeBuf, bDST?"CDT":"CST", holidayToString(hday));
-    } else {
-        sysInfo->resetSysStatus(SYS_STATUS_NTP);
-        paletteFactory.setHoliday(Party);  //setting it explicitly to avoid defaulting to none when there is no wifi altogether
-        hday = paletteFactory.adjustHoliday();    //update the holiday for new time
-        const bool bDST = isDST(WiFi.getTime() + CST_OFFSET_SECONDS);     //borrowed from curUnixTime() - that is how DST flag is determined
-        if (bDST)
-            sysInfo->setSysStatus(SYS_STATUS_DST);
-        char timeBuf[20];
-        formatDateTime(timeBuf, now());
-        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"),
-              timeBuf, bDST?"CDT":"CST", holidayToString(hday));
-    }
-    log_info(F("Current holiday is %s"), holidayToString(hday));
-    return ntpTimeAvailable;
+    
+    if (ntpTimeAvailable)
+        return handleNTPSuccess();
+
+    handleNTPFailure();
+    return false;
 }
 
 /**
@@ -103,7 +173,8 @@ uint8_t formatDateTime(char *buf, time_t time) {
 }
 
 time_t curUnixTime() {
-    if (timeClient.isTimeSet())
+    // we'll check our custom NTP flag for a more reliable test of a valid time - sometimes the NTP sync ends up with a wild time and timeClient.isTimeSet() reports true
+    if (sysInfo->isSysStatus(SYS_STATUS_NTP))
         return timeClient.getEpochTime();
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time-telling purpose
@@ -116,8 +187,11 @@ time_t curUnixTime() {
         } else
             log_warn(F("WiFi.getTime() failed - returned 0, falling back to local millis()"));
     }
-    return millis();
+    return millis()/1000;    //nowhere close to reality, but better than nothing
 }
+
+#define TWENTY_TWENTY    1577836800L    //2020-01-01 00:00
+#define TWENTY_SEVENTY   3155760000L    //2070-01-01 00:00 - if this code is still relevant in 2070, something is wrong...
 
 bool ntp_sync() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
@@ -125,14 +199,15 @@ bool ntp_sync() {
         return false;
     }
     timeClient.begin();
-    timeClient.update();
+    const bool result = timeClient.update();
     timeClient.end();
-    const bool result = timeClient.isTimeSet();
-    if (result) {
-        const TimeSync tSync {.localMillis = millis(), .unixSeconds=now()};
+    const time_t curTime = now();
+    const bool resultValid = result && curTime > TWENTY_TWENTY && curTime < TWENTY_SEVENTY;
+    if (resultValid) {
+        const TimeSync tSync {.localMillis = millis(), .unixSeconds=curTime};
         timeSyncs.push(tSync);
     }
-    return result;
+    return resultValid;
 }
 
 /**
@@ -322,4 +397,3 @@ int getLastTimeDrift() {
     const TimeSync &prevSync = timeSyncs.end()[-2];   // end() is past the last element, -1 for last element, -2 for second-last
     return getDrift(prevSync, lastSync);
 }
-

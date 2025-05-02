@@ -592,7 +592,7 @@ bool rblend8(uint8_t &a, const uint8_t b, const uint8_t amt) {
 
 /**
  * Blends the target color into an existing (in-place) such that after a number of iterations
- * the existing becomes equal with the target
+ * the existing becomes equal with the target.
  * <p>For repeated blending calls, this works better than <code>nblend(CRGB &existing, CRGB &target, uint8 overlay)</code> as it
  * will actually make existing reach the target value</p>
  * @param existing color to modify
