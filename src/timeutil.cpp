@@ -206,6 +206,9 @@ bool ntp_sync() {
     if (resultValid) {
         const TimeSync tSync {.localMillis = millis(), .unixSeconds=curTime};
         timeSyncs.push(tSync);
+    } else {
+        log_warn(F("NTP sync succeeded but time is invalid - outside the range %s - %s. Current time %s."), StringUtils::asString(static_cast<time_t>(TWENTY_TWENTY)).c_str(),
+            StringUtils::asString(static_cast<time_t>(TWENTY_SEVENTY)).c_str(), StringUtils::asString(curTime).c_str());
     }
     return resultValid;
 }
