@@ -115,7 +115,13 @@ void web::handleGetStatus(WebClient &client) {
     doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
     doc["cleanBoot"] = sysInfo->isCleanBoot();
     if (!sysInfo->watchdogReboots().empty()) {
-        formatDateTime(timeBuf, sysInfo->watchdogReboots().back());
+        time_t &lastReboot = sysInfo->watchdogReboots().back();
+        //fix last reboot timestamp if was captured before NTP sync occurred
+        if (timeSyncs.size() > 0 && lastReboot < TWENTY_TWENTY) {
+            const auto &[lastSyncLocalMillis, lastSyncUnixSeconds] = timeSyncs.back();
+            lastReboot = lastSyncUnixSeconds - (lastSyncLocalMillis / 1000 - lastReboot);
+        }
+        formatDateTime(timeBuf, lastReboot);
         doc["lastWatchdogReboot"] = timeBuf;
     }
 

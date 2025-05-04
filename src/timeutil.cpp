@@ -172,6 +172,20 @@ uint8_t formatDateTime(char *buf, time_t time) {
     return sz;
 }
 
+/**
+ * Retrieves the current Unix time in seconds by attempting to use NTP, Wi-Fi,
+ * or a fallback to the system's millis as the time source.
+ *
+ * This function first checks if the system has an active NTP connection to
+ * retrieve the time. If NTP is unavailable but Wi-Fi is connected, it attempts
+ * to use Wi-Fi's time service, applying an appropriate offset for the Central
+ * Standard Time (CST) or Central Daylight Time (CDT) based on daylight savings.
+ * If neither NTP nor Wi-Fi is available, the method falls back to using the
+ * system's millis as an approximate Unix time.
+ *
+ * @return The current Unix time in seconds (positively adjusted for CST/CDT when using Wi-Fi),
+ * or an approximation if neither NTP nor Wi-Fi sources are available.
+ */
 time_t curUnixTime() {
     // we'll check our custom NTP flag for a more reliable test of a valid time - sometimes the NTP sync ends up with a wild time and timeClient.isTimeSet() reports true
     if (sysInfo->isSysStatus(SYS_STATUS_NTP))
@@ -190,9 +204,17 @@ time_t curUnixTime() {
     return millis()/1000;    //nowhere close to reality, but better than nothing
 }
 
-#define TWENTY_TWENTY    1577836800L    //2020-01-01 00:00
-#define TWENTY_SEVENTY   3155760000L    //2070-01-01 00:00 - if this code is still relevant in 2070, something is wrong...
-
+/**
+ * Synchronizes the system time using the Network Time Protocol (NTP).
+ *
+ * This function will attempt to synchronize the system time if the WiFi connection
+ * is active. If successful, it verifies the received time to ensure it falls within
+ * a valid range. If the time is valid, it records the synchronization details
+ * in a queue. If the time is invalid, it logs a warning.
+ *
+ * @return true if the NTP sync succeeded and the received time is valid;
+ *         false otherwise.
+ */
 bool ntp_sync() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
         log_warn(F("NTP sync failed. No WiFi connection available."));
@@ -215,8 +237,8 @@ bool ntp_sync() {
 
 /**
  * Are we in DST (Daylight Savings Time) at this time?
- * @param time
- * @return
+ * @param time time to check (unix time - seconds since 01/01/1970 adjusted for timezone)
+ * @return true if time is in DST, false otherwise
  */
 bool isDST(const time_t time) {
 //    const uint16_t md = encodeMonthDay(time);

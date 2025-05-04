@@ -15,6 +15,9 @@
 #define SYS_STATUS_DST          0x0080
 #define SYS_STATUS_DIAG         0x0100
 
+#define TWENTY_TWENTY    1577836800L    //2020-01-01 00:00
+#define TWENTY_SEVENTY   3155760000L    //2070-01-01 00:00 - if this code is still relevant in 2070, something is wrong...
+
 enum MiscAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO, HOLIDAY_UPDATE};
 
 ulong adcRandom();
