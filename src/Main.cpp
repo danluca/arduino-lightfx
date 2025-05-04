@@ -46,7 +46,6 @@
 void web_run();
 void alarm_misc_begin();
 void alarm_misc_run();
-void enqueueAlarmSetup();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
 constexpr TaskDef fxTasks {fx_setup, fx_run, 1024, "Fx", 255, CORE_1};
 constexpr TaskDef micTasks {mic_setup, mic_run, 896, "Mic", 5, CORE_1};
@@ -171,8 +170,11 @@ void setup() {
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
     taskDelay(250);         // leave reasonable time to the alarm task to set up
-    //enqueues the alarm setup event
-    enqueueAlarmSetup();
+    //enqueues the alarm setup event if time is ok
+    if (sysInfo->isSysStatus(SYS_STATUS_NTP))
+        enqueueAlarmSetup();
+    else
+        log_warn(F("System time not yet synchronized with NTP, skipping alarm setup"));
 
     //wait for the other core to finish all initializations before allowing web server to respond to requests
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);

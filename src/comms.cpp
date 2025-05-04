@@ -272,10 +272,15 @@ void timeUpdate() {
 #endif
     log_info(F("System status: %#hX"), sysInfo->getSysStatus());
 
-    if (!bHadNtpSync && !result) {
-        log_warn(F("Time NTP sync was never acquired. Trying again soon. System status: %#hX"), sysInfo->getSysStatus());
-        startTimeSetupTimer();
-        return;
+    // if we did not have NTP sync before, react to the current attempt result - if failed, schedule a timer to try again; if succeeded, notify the alarm task for setup
+    if (!bHadNtpSync) {
+        if (result)
+            enqueueAlarmSetup();
+        else {
+            log_warn(F("Time NTP sync was never acquired. Trying again soon. System status: %#hX"), sysInfo->getSysStatus());
+            startTimeSetupTimer();
+            return;
+        }
     }
 
     //check for a DST transition

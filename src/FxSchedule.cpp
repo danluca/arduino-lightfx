@@ -17,6 +17,7 @@ constexpr uint16_t dailyBedTime = 30*SECS_PER_MIN;          //12:30am bedtime
 constexpr uint16_t dailyWakeupTime = 6*SECS_PER_HOUR;       //6:00am wakeup time
 static uint16_t tmrAlarmCheck = 30;
 static uint16_t tmrHolidayUpdateId = 31;
+static bool alarmSetup = false;
 
 uint16_t currentDay = 0;
 
@@ -45,15 +46,17 @@ AlarmData *findNextAlarm() {
 }
 
 /**
- * Counts scheduled alarms of a particular type that haven't yet triggered (are in the future with respect to given time reference)
+ * Counts scheduled alarms of a particular type that haven't yet triggered (are in the future at most 48 hours with respect to given time reference)
  * @param alType alarm type
  * @param refTime time reference
  * @return how many scheduled alarms fit the criteria above
  */
-uint countFutureAlarms(const AlarmType alType, const time_t refTime) {
+uint countUpcomingAlarms(const AlarmType alType, const time_t refTime) {
     uint count = 0;
+    //limit the future alarms to those in the next 48 hours
+    const time_t upperBound = refTime + 2*SECS_PER_DAY;
     for (const auto &al : scheduledAlarms) {
-        if (al->value > refTime && al->type == alType)
+        if (al->value > refTime && al->type == alType && al->value < upperBound)
             count++;
     }
     return count;
@@ -84,7 +87,7 @@ void scheduleDay(const time_t time) {
     const time_t startDay = previousMidnight(time);
 
     const uint8_t curAlarmCount = scheduledAlarms.size();
-    uint alarmCount = countFutureAlarms(WAKEUP, time);
+    uint alarmCount = countUpcomingAlarms(WAKEUP, time);
     if (alarmCount < 1) {
         //add wake-up alarm for today (if we have not passed it) or tomorrow (if we did)
         if (const time_t upOn = startDay + dailyWakeupTime; time < upOn)
@@ -92,7 +95,7 @@ void scheduleDay(const time_t time) {
         else
             scheduledAlarms.push_back(new AlarmData{.value=upOn + SECS_PER_DAY, .type=WAKEUP, .onEventHandler=wakeup});
     }
-    alarmCount = countFutureAlarms(BEDTIME, time);
+    alarmCount = countUpcomingAlarms(BEDTIME, time);
     if (alarmCount < 1) {
         //add sleep alarm for current day if not passed it, or next day; note the bedtime for today is set to past midnight for the next day
         if (const time_t bedTime = startDay + dailyBedTime; time < bedTime)
@@ -150,6 +153,8 @@ void enqueueAlarmCheck(TimerHandle_t xTimer) {
 
 void alarm_setup() {
     setupAlarmSchedule();
+    if (alarmSetup)
+        return;
     //at this point we should have a next alarm
     time_t nextAlarmCheck = 15*60; //default 15 minutes
     if (const AlarmData *nextAlarm = findNextAlarm())
@@ -168,6 +173,8 @@ void alarm_setup() {
         log_error(F("Cannot create holidayUpdate timer - Ignored."));
     else if (xTimerStart(thHoliday, 0) != pdPASS)
         log_error(F("Cannot start the holidayUpdate timer - Ignored."));
+    alarmSetup = true;
+    log_info(F("Alarm setup completed"));
 }
 
 void alarm_check() {

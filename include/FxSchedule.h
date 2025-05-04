@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_FXSCHEDULE_H
@@ -25,7 +25,7 @@ enum AlarmType:uint8_t {
 };
 
 const char* alarmTypeToString(AlarmType alType);
-uint countFutureAlarms(AlarmType alType, time_t refTime);
+uint countUpcomingAlarms(AlarmType alType, time_t refTime);
 
 struct AlarmData {
     const time_t value;

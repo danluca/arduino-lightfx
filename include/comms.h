@@ -11,5 +11,6 @@ void commSetup();
 void commRun();
 void postFxChangeEvent(uint16_t index);
 void postTimeSetupCheck();
+void enqueueAlarmSetup();
 
 #endif //ARDUINO_LIGHTFX_BROADCAST_H
