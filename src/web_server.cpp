@@ -153,7 +153,7 @@ void web::handleGetStatus(WebClient &client) {
         audioHist.add<uint16_t>(x);
     // Time
     const auto time = doc["time"].to<JsonObject>();
-    time["ntpSync"] = timeStatus();
+    time["ntpSync"] = sysInfo->isSysStatus(SYS_STATUS_NTP);
     time["millis"] = millis(); //current time in ms
     const time_t curTime = now();
     formatDate(timeBuf, curTime);

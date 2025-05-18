@@ -1,10 +1,10 @@
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]
-    $fwPath,
-    [Parameter(Mandatory=$false)]
     [ValidateSet("Dev", "FX01", "FX02")]
-    [string]$board = "Dev"
+    [string]$board = "Dev",
+    [Parameter(Mandatory=$false)]
+    $fwPath
 )
 
 #######################################
@@ -23,10 +23,6 @@ $clrMsg = "`e[38;5;112m"
 ## Functions
 #######################################
 function uploadFile($filePath) {
-    if (-not (Test-Path $filePath)) {
-        Write-Warning "File not found: $filePath"
-        return
-    }
     $f = Get-Item $filePath
     $hash = (sha256 $f.FullName) -split ' ' | Select-Object -First 1
     $headers = @{
@@ -34,11 +30,20 @@ function uploadFile($filePath) {
         "X-Check" = $hash;
     }
     $resp = Invoke-WebRequest -Uri $brdUri -Method Post -InFile $f.FullName -Headers $headers -ContentType "application/octet-stream" -SkipHttpErrorCheck
-    if ($resp.StatusCode -eq 200) {
-        Write-Information "${clrMsg}File uploaded successfully: $filePath. Response:`n$($resp.Content) ${clrReset}" -InformationAction Continue
+    $ok = $resp.StatusCode -eq 200
+    if ($ok) {
+        Write-Information "${clrMsg}Board $board updated successfully.${clrReset}" -InformationAction Continue
     } else {
-        Write-Warning "Failed to upload file: $filePath. Status code: $($resp.StatusCode). Response:`n$($resp.Content)"
+        Write-Error "Board $board FAILED to upload file: $filePath. Status code: $($resp.StatusCode). Response:`n$($resp.Content)"
     }
+    return $ok
+}
+
+trap {
+    Pop-Location
+    $errorMsg = $_.Exception.Message
+    Write-Error "Error: $errorMsg"
+    break
 }
 
 #######################################
@@ -46,35 +51,29 @@ function uploadFile($filePath) {
 #######################################
 Push-Location $PSScriptRoot
 
+if ($fwPath -and -not (Test-Path $fwPath -PathType Leaf)) {
+    throw "File not found: $fwPath"
+}
+
 # if we're going to build the firmware, we'll do it in release mode for the OTA upgrade purposes.
-# if the user wants to build in debug mode, they need to plugin USB and use the update.ps1 script directly.
+# if the user wants to build in DEBUG mode, they need to plugin USB and use the update.ps1 script directly.
 
 if (-not $fwPath) {
-    Write-Information "${clrMsg}No firmware path provided. Building for board $board in release mode...${clrReset}" -InformationAction Continue
+    Write-Information "${clrMsg}Building for board $board in release mode...${clrReset}" -InformationAction Continue
     ./build.ps1 -board $board
     $fwPath = Get-ChildItem -Path ".pio/build/rp2040-rel/firmware.bin" -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $fwPath) {
-        Write-Warning "No firmware file found after build. Please check the build process."
-        return
+        throw "No firmware file found after build. Please check the build process."
     } else {
-        Write-Information "${clrMsg}Firmware file: $fwPath${clrReset}" -InformationAction Continue
-    }
-} elseif (-not (Test-Path $fwPath)) {
-    if ($fwPath -match '\.pio[\\/]build[\\/]') {
-        Write-Information "${clrMsg}Building firmware file in release mode...${clrReset}" -InformationAction Continue
-        ./build.ps1 -board $board
-        if (-not(Test-Path $fwPath)) {
-            Write-Warning "Firmware file $fwPath NOT found after release build. Please check the arguments - only release firmware is accepted for automatic build."
-            return
-        }
-    } else {
-        Write-Warning "Firmware file $fwPath NOT found. Please check the path."
-        return
+        Write-Information "${clrMsg}Upgrading Board: $board${clrReset}" -InformationAction Continue
+        Write-Information "${clrMsg}  file[$($fwPath.Length | Format-Byte)]: $fwPath${clrReset}" -InformationAction Continue
     }
 }
-$ms = Measure-Command {
-    uploadFile $fwPath
+if (-not $fwPath -match '\.pio[\\/]build[\\/]') {
+    Write-Warning "Board $board firmware sourced from non-default build location: $(get-item $fwPath)"
 }
-Write-Information "${clrMsg}Upload completed in $($ms.TotalSeconds) seconds.${clrReset}" -InformationAction Continue
+$success = $false
+$ms = Measure-Command { $success = uploadFile $fwPath }
+Write-Information "${clrMsg}Board $board upload $($success ? 'completed':'failed') in $("{0:N3}" -f $ms.TotalSeconds) seconds.${clrReset}" -InformationAction Continue
 
 Pop-Location
