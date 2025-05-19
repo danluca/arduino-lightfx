@@ -60,7 +60,10 @@ if ($fwPath -and -not (Test-Path $fwPath -PathType Leaf)) {
 
 if (-not $fwPath) {
     Write-Information "${clrMsg}Building for board $board in release mode...${clrReset}" -InformationAction Continue
-    ./build.ps1 -board $board
+    ./build.ps1 -board $board | Tee-Object -FilePath logs/build-$board.log
+    if ($LASTEXITCODE -ne 0) {
+        throw "Build failed. Please check the build.log for details."
+    }
     $fwPath = Get-ChildItem -Path ".pio/build/rp2040-rel/firmware.bin" -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $fwPath) {
         throw "No firmware file found after build. Please check the build process."

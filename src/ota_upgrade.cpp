@@ -12,6 +12,7 @@
 
 bool upgrade_check();
 void fw_upgrade();
+void notifyFx();
 
 /**
  * @brief Handles the firmware upgrade process.
@@ -24,6 +25,7 @@ void fw_upgrade();
  */
 void handle_fw_upgrade() {
     if (upgrade_check()) {
+        notifyFx();     //we're starting an upgrade - set the lights on the upgrade mode
         log_info(F("=====================================UPGRADE===================================="));
         log_info(F("Firmware upgrade available, proceeding to disable watchdog, stop all tasks and write the command file. System will reboot and flash - see ya on the other side!"));
         fw_upgrade();
@@ -37,6 +39,17 @@ void handle_fw_upgrade() {
  */
 bool upgrade_check() {
     return ulTaskNotifyTake(pdTRUE, 0) == OTA_UPGRADE_NOTIFY;
+}
+
+/**
+ * Notify the FX task that we're starting firmware upgrade
+ */
+void notifyFx() {
+    if (const TaskHandle_t fxHandle = xTaskGetHandle("Fx")) {
+        const BaseType_t fwNotif = xTaskNotify(fxHandle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
+        log_info(F("FX task has been notified of FW upgrade starting, notification status %d"), fwNotif);
+    } else
+        log_warn(F("FX task not found - unable to notify about FW upgrade"));
 }
 
 void fw_upgrade() {

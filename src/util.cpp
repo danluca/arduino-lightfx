@@ -56,7 +56,7 @@ uint8_t bmul8(const uint8_t a, const uint8_t b) {
         return b;
     if (b==255)
         return a;
-    return ((uint16_t)a*(uint16_t)b)/256;
+    return (static_cast<uint16_t>(a)*static_cast<uint16_t>(b))/256;
 }
 
 /**
@@ -117,8 +117,8 @@ uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
  * @return a high-quality random number in the range specified
  */
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
-    const long low = (long)minLim;
-    const long high = maxLim > 0 ? (long)maxLim : INT32_MAX;
+    const long low = static_cast<long>(minLim);
+    const long high = maxLim > 0 ? static_cast<long>(maxLim) : INT32_MAX;
     return sysInfo->isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
 }
 

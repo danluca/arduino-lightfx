@@ -1,6 +1,6 @@
 // Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
-
+#pragma once
 #ifndef ARDUINO_LIGHTFX_GLOBAL_H
 #define ARDUINO_LIGHTFX_GLOBAL_H
 
