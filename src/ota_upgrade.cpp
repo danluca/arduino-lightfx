@@ -45,7 +45,7 @@ bool upgrade_check() {
  * Notify the FX task that we're starting firmware upgrade
  */
 void notifyFx() {
-    if (const TaskHandle_t fxHandle = xTaskGetHandle("Fx")) {
+    if (const TaskHandle_t fxHandle = xTaskGetHandle(csFxTask)) {
         const BaseType_t fwNotif = xTaskNotify(fxHandle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
         log_info(F("FX task has been notified of FW upgrade starting, notification status %d"), fwNotif);
     } else

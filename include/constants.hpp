@@ -75,6 +75,7 @@ inline constexpr auto csGlitch PROGMEM = "glitch";
 inline constexpr auto csBrownout PROGMEM = "brownout";
 inline constexpr auto csCORE0 PROGMEM = "CORE0";
 inline constexpr auto csCORE1 PROGMEM = "CORE1";
+inline constexpr auto csFxTask PROGMEM = "Fx";
 inline constexpr auto csFWImageFilename PROGMEM = "/fw.bin";
 
 inline constexpr uint8_t dimmed = 20;
