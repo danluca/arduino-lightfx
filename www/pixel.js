@@ -106,7 +106,7 @@ function getStatus() {
                 return { label: lblHistogram[ix], y: elem };
             });
             $("#audioHistogram").CanvasJSChart(histOptions);
-            $('#timeNtp').html(`${data.time.ntpSync == 2}`);
+            $('#timeNtp').html(`${data.time.ntpSync}`);
             $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
             $('#timeHoliday').html(`${data.time.holiday}`);
             $('#lastDrift').html(`${data.time.lastDrift} ms`);
