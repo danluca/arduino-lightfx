@@ -72,8 +72,8 @@ bool wifi_connect() {
     // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
     String dnsHostname(hostname);
     dnsHostname.toLowerCase();
-    const String mdnsSvcName("http");
-    // mdnsSvcName.concat("._http");
+    String mdnsSvcName("lucafx");
+    mdnsSvcName.concat("._http");
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
     mdns->begin();      //this should not be needed - implementation is a no-op
