@@ -153,12 +153,12 @@ void fx_setup() {
     //instantiate effect categories
     for (const auto x : categorySetup)
         x();
-    //strip brightness adjustment needs the time, that's why it is done in fxRun periodically. At the beginning we'll use the value from saved state
+    //Strip brightness adjustment needs the time, that's why it is done in fxRun periodically. In the beginning we'll use the value from the saved state
     readFxState();
     transEffect.setup();
 
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-    //ensure the current effect is moved to setup state
+    //ensure the current effect is moved to the setup state
     fxRegistry.getCurrentEffect()->desiredState(Setup);
 
     //generate and cache the FX config data

@@ -46,7 +46,7 @@ uint16_t fx::easeOutBounce(const uint16_t x, const uint16_t lim) {
 }
 
 /**
- * Ease Out Quad implementation - leverages the double precision original implementation converted to int in a range
+ * Ease Out Quad implementation - leverages the double-precision original implementation converted to int in a range
  * @param x input value
  * @param lim high limit range
  * @return the result in [0,lim] inclusive range
@@ -109,7 +109,7 @@ void fx::loopRight(CRGBSet &set, Viewport vwp, uint16_t pos) {
 
 /**
  * Shifts the content of an array to the left by the number of positions specified
- * The elements entering right are filled with current's array last value (arr[szArr-1])
+ * The elements entering right are filled with current's array-last value (arr[szArr-1])
  * @param set pixel set to shift
  * @param feedRight the color to introduce from the right as we shift the array
  * @param vwp limits of the shifting area
@@ -132,7 +132,7 @@ void fx::shiftLeft(CRGBSet &set, const CRGB feedRight, Viewport vwp, const uint1
 }
 
 /**
- * Spread the color provided into the pixels set starting from the left, in gradient steps
+ * Spread the color provided into the pixel set starting from the left, in gradient steps
  * Note that while the color is spread, the rest of the pixels in the set remain in place - this is
  * different from shifting the set while feeding the color from one end
  * @param set LED strip to update
@@ -151,22 +151,22 @@ bool fx::spreadColor(CRGBSet &set, const CRGB color, const uint8_t gradient) {
     if (clrPos == set.size())
         return true;
 
-    //the nblend takes care about the edge cases of gradient 0 and 255. When 0 it returns the source color unchanged;
-    //when 255 it replaces source color entirely with the overlay
+    //the nblend takes care of the edge cases of gradient 0 and 255. When 0 it returns the source color unchanged;
+    //when 255 it replaces the source color entirely with the overlay
     nblend(set[clrPos], color, gradient);
     return false;
 }
 
 /**
  * Moves the segment from old position to new position by leveraging blend, for a smooth transition
- * @param target pixel set that receives the move - this is (much) larger in size than the segment
- * @param segment the segment to move, will not be changed - this is (much) smaller in size than the target
+ * @param target pixel set that receives the move - this is (much) larger than the segment
+ * @param segment the segment to move will not be changed - this is (much) smaller than the target
  * @param overlay amount of overlay to apply
  * @param fromPos old position - the index where the segment is currently at in the target pixel set. The index is the next position from the END of the segment.
  *  Ranges from 0 to target.size()+segment.size()
  * @param toPos new position - the index where the segment needs to be moved at in the target pixel set. The index is the next position from the END of the segment.
  *  Ranges from 0 to target.size()+segment.size()
- * @return true when the move is complete, that is when the segment at new position in the target set matches the original segment completely (has blended)
+ * @return true when the move is complete, that is when the segment at a new position in the target set matches the original segment completely (has blended)
  */
 bool fx::moveBlend(CRGBSet &target, const CRGBSet &segment, const fract8 overlay, const uint16_t fromPos, const uint16_t toPos) {
     const uint16_t segSize = abs(segment.len);  //we want segment reference to be constant, but the size() function is not marked const in the library
@@ -178,7 +178,7 @@ bool fx::moveBlend(CRGBSet &target, const CRGBSet &segment, const fract8 overlay
     const bool isNewEndSegmentWithinTarget = toPos < tgtSize;
     const bool isOldStartSegmentWithinTarget = fromPos >= segSize;
     const bool isNewStartSegmentWithinTarget = toPos >= segSize;
-    const CRGB bkg = isOldEndSegmentWithinTarget ? target[fromPos] : target[fromPos - segSize - 1];   //if old pos (pixel after segment end) wasn't within target boundaries, choose the pixel before the segment begin for background
+    const CRGB bkg = isOldEndSegmentWithinTarget ? target[fromPos] : target[fromPos - segSize - 1];   //if old pos (pixel after the segment end) wasn't within target boundaries, choose the pixel before the segment begin for background
     const uint16_t newPosTargetStart = qsuba(toPos, segSize);
     const uint16_t newPosTargetEnd = capu(toPos, target.size() - 1);
     if (toPos > fromPos) {
@@ -198,9 +198,9 @@ bool fx::moveBlend(CRGBSet &target, const CRGBSet &segment, const fract8 overlay
 
 /**
  * Are contents of the two sets the same - this is different than the == operator (that checks whether they point to the same thing)
- * @param lhs left hand set
- * @param rhs right hand set
- * @return true if same length and same content
+ * @param lhs left-hand set
+ * @param rhs right-hand set
+ * @return true if the same length and same content
  */
 bool fx::areSame(const CRGBSet &lhs, const CRGBSet &rhs) {
     if (abs(lhs.len) != abs(rhs.len))
@@ -214,12 +214,12 @@ bool fx::areSame(const CRGBSet &lhs, const CRGBSet &rhs) {
 
 /**
  * Replicate the source set into destination, repeating it as necessary to fill the entire destination
- * <p>Any overlaps between source and destination are skipped from replication - source set backing array is guaranteed unchanged</p>
+ * <p>Any overlaps between source and destination are skipped from replication - the source set backing array is guaranteed unchanged</p>
  * @param src source set
  * @param dest destination set
  */
 void fx::replicateSet(const CRGBSet& src, CRGBSet& dest) {
-    const uint16_t srcSize = abs(src.len);    //src.size() would be more appropriate, but function is not marked const
+    const uint16_t srcSize = abs(src.len);    //src.size() would be more appropriate, but the function is not marked const
     CRGB* normSrcStart = src.len < 0 ? src.end_pos : src.leds;     //src.reversed() would have been consistent, but function is not marked const
     CRGB* normSrcEnd = src.len < 0 ? src.leds : src.end_pos;
     CRGB* normDestStart = dest.reversed() ? dest.end_pos : dest.leds;
@@ -272,12 +272,12 @@ void fx::shuffle(CRGBSet &set) {
     }
 }
 
-//copy arrays using memcpy (arguably the fastest way) - no checks are made on the length copied vs actual length of both arrays
+// Copy arrays using memcpy (arguably the fastest way) - no checks are made on the length copied vs. actual length of both arrays
 void fx::copyArray(const CRGB *src, CRGB *dest, uint16_t length) {
     memcpy(dest, src, sizeof(src[0]) * length);
 }
 
-// copy arrays using pointer loops - one of the faster ways. No checks are made on the validity of offsets, length for both arrays
+// Copy arrays using pointer loops - one of the faster ways. No checks are made on the validity of offsets, length for both arrays
 void fx::copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, uint16_t length) {
     const CRGB *srSt = src + srcOfs;
     CRGB *dsSt = &dest[destOfs];
@@ -342,7 +342,7 @@ void fx::mirrorHigh(CRGBSet &set) {
  * @return new color instance with desired brightness
  */
 CRGB fx::adjustBrightness(const CRGB color, uint8_t bright) {
-    //inspired from ColorFromPalette implementation of applying brightness factor
+    //inspired from ColorFromPalette implementation of applying the brightness factor
     uint8_t r = color.r, g = color.g, b = color.b;
     if (bright != 255) {
         if (bright) {
@@ -425,7 +425,7 @@ void fx::blendOverlay(CRGB &blendRGB, const CRGB &topRGB) {
 
 /**
  * Blend overlay 2 color sets
- * <p>Where the base layer is light, the top layer becomes lighter; where the base layer is dark, the top becomes darker; where the base layer is mid grey,
+ * <p>Where the base layer is light, the top layer becomes lighter; where the base layer is dark, the top becomes darker; where the base layer is mid-grey,
  * the top is unaffected. An overlay with the same picture looks like an S-curve. </p>
  * @param blendLayer base color set, which is also the target set (the one receiving the result)
  * @param topLayer color set to overlay with
@@ -483,11 +483,11 @@ bool fx::rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay) {
 
 
 /**
- * Adjust strip overall brightness according with the time of day - as follows:
- * <p>Up until 8pm use the max brightness - i.e. <code>BRIGHTNESS</code></p>
- * <p>Between 8pm-9pm - reduce to 80% of full brightness, i.e. scale with 204</p>
- * <p>Between 9-10pm - reduce to 60% of full brightness, i.e. scale with 152</p>
- * <p>After 10pm - reduce to 40% of full brightness, i.e. scale with 102</p>
+ * Adjust strip overall brightness according to the time of day - as follows:
+ * <p>Up until 8pm use the max brightness - i.e., <code>BRIGHTNESS</code></p>
+ * <p>Between 8pm-9pm - reduce to 80% of full brightness, i.e., scale with 204</p>
+ * <p>Between 9-10pm - reduce to 60% of full brightness, i.e., scale with 152</p>
+ * <p>After 10pm - reduce to 40% of full brightness, i.e., scale with 102</p>
  */
 uint8_t fx::adjustStripBrightness() {
     if (!stripBrightnessLocked && sysInfo->isSysStatus(SYS_STATUS_WIFI)) {

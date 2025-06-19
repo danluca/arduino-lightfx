@@ -66,7 +66,7 @@ uint countUpcomingAlarms(const AlarmType alType, const time_t refTime) {
  * Counts the alarms of a type that have been scheduled on the same day as the reference time
  * @param alType alarm type
  * @param refTime time reference
- * @return how many alarms are scheduled for same day as the reference time
+ * @return how many alarms are scheduled for the same day as the reference time
  */
 uint countTodayAlarms(const AlarmType alType, const time_t refTime) {
     const time_t startDay = previousMidnight(refTime);
@@ -216,7 +216,7 @@ void alarm_check() {
 }
 
 /**
- * Callback for holidayUpdate timer - this is called from Timer task or from main task. Enqueues a HOLIDAY_UPDATE message for the broadcast task.
+ * Callback for holidayUpdate timer - this is called from the Timer task or from the main task. Enqueues a HOLIDAY_UPDATE message for the broadcast task.
  * @param xTimer the holidayUpdate timer that fired the callback; nullptr when called on-demand (from main)
  */
 void enqueueHoliday(TimerHandle_t xTimer) {

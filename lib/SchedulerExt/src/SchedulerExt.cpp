@@ -178,15 +178,16 @@ void TaskWrapper::run() {
         fnSetup();
     if (fnLoop == nullptr)
         return;
-    //with each loop, check if we have been notified to stop - it is important to block for at least 1ms (aka 1 tick for RP2040)
-    //such that other task scheduler can give other threads a chance to run
-    while (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1)) != TASK_NOTIFY_TERMINATE)
+    //with each loop, check if we have been notified to stop - it is important to block for at least 1 tick
+    //such that the task scheduler can give other threads a chance to run
+    while (ulTaskNotifyTake(pdTRUE, 1) != TASK_NOTIFY_TERMINATE)
         fnLoop();
 }
 
 /**
  * Notifies the task to stop running. Returns when the notification was received, fnLoop execution finished or the timeout expired, and task was deleted.
  * The timeout is rounded up to nearest 100ms. Default timeout is 1000ms = 1s.
+ * Can be called from other threads
  */
 bool TaskWrapper::waitToEnd(const uint16_t msTimeOut) const {
     xTaskNotify(handle, TASK_NOTIFY_TERMINATE, eSetValueWithOverwrite);

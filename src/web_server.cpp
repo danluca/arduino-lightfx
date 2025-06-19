@@ -32,7 +32,7 @@ static constexpr auto serverAgent PROGMEM = "rp2040-luca/1.0.0";
 static constexpr auto hdFmtDate PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d CST";
 static constexpr auto hdFmtContentDisposition PROGMEM = "inline; filename=\"%s\"";
 static constexpr auto msgRequestNotMapped PROGMEM = "URI not mapped to a handler on this server";
-static constexpr auto configJsonFilename PROGMEM = "config.json";
+// static constexpr auto configJsonFilename PROGMEM = "config.json";
 static constexpr auto statusJsonFilename PROGMEM = "status.json";
 static constexpr auto tasksJsonFilename PROGMEM = "tasks.json";
 static constexpr uint16_t serverPort PROGMEM = 80;

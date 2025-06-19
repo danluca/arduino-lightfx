@@ -21,7 +21,7 @@
 #define IP_DNS 75,75,75,75              // Xfinity DNS
 #define IP_GW 192,168,0,1           // default gateway (router)
 #define IP_SUBNET 255,255,255,0     // usual subnet mask
-#define BROADCAST_CLIENTS     10, 11        //this is a CSV of last byte of board IP addresses
+#define BROADCAST_CLIENTS     10, 11, 12        //this is a CSV of last byte of board IP addresses
 
 // MODE 0 = connect to wifi
 // MODE 1 = Access point mode

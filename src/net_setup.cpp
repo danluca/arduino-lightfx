@@ -72,16 +72,19 @@ bool wifi_connect() {
     // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
     String dnsHostname(hostname);
     dnsHostname.toLowerCase();
-    String mdnsSvcName(dnsHostname);
-    mdnsSvcName.concat("-webserver._http");
+    const String mdnsSvcName("http");
+    // mdnsSvcName.concat("._http");
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
     mdns->begin();      //this should not be needed - implementation is a no-op
+
     MDNS::Status mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
         .withName(mdnsSvcName)
         .withPort(80)
         .withProtocol(MDNS::Service::Protocol::TCP)
         .withTXT(MDNS::Service::TXT::Builder()
+            .add("info", "no")
+            .add("name", dnsHostname)
             .add("model", "NanoConnect RP2040")
             .build())
         .build()

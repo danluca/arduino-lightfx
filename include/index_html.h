@@ -23,7 +23,7 @@ inline constexpr auto index_html PROGMEM = R"~~~(
         <div id="links"><a href="stats.html">Runtime Stats</a></div>
         <div id="updateStatus"></div>
         <section id="effects">
-            <h1>Effects</h1>
+            <h1 onclick="getConfig()">Effects</h1>
             <div id="fxChangeArea">
                 <div id="fxSelectArea">
                 <label for="fxlist" id="fxListLabel">Current light effect</label>
