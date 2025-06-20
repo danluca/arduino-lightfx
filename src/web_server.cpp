@@ -469,8 +469,8 @@ void web::server_setup() {
 void web::webserver() {
     server.handleClient();
 #if MDNS_ENABLED==1
-    // EVERY_N_MILLIS(500) {
+    EVERY_N_SECONDS(2) {
         mdnsStatus = mdns->process();
-    // }
+    }
 #endif
 }
