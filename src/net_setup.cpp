@@ -74,7 +74,8 @@ bool wifi_connect() {
     dnsHostname.toLowerCase();
     String webSvcName(dnsHostname);
     webSvcName.concat(F("-webserver._http"));
-    String lightfxSvcName(F("_lucasfx"));
+    String lightfxSvcName(dnsHostname);
+    lightfxSvcName.concat(F("._lucasfx"));
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
     mdns->begin();      //this should not be needed - implementation is a no-op
