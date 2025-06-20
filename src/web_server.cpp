@@ -36,6 +36,7 @@ static constexpr auto msgRequestNotMapped PROGMEM = "URI not mapped to a handler
 static constexpr auto statusJsonFilename PROGMEM = "status.json";
 static constexpr auto tasksJsonFilename PROGMEM = "tasks.json";
 static constexpr uint16_t serverPort PROGMEM = 80;
+static auto mdnsStatus = MDNS::Status::TryLater;
 
 WebServer web::server;
 bool web::server_handlers_configured = false;
@@ -202,6 +203,8 @@ void web::handleGetStatus(WebClient &client) {
     vcc["max"] = lineVoltage.max.value;
     vcc["min"] = lineVoltage.min.value;
     doc["overallStatus"] = sysInfo->getSysStatus();
+    doc["lastMdns"] = MDNS::toString(mdnsStatus);
+    doc["mdnsEnabled"] = mdns->isEnabled();
     //ISO8601 format
     //snprintf(timeBuf, 15, "P%2dDT%2dH%2dM", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     //human readable format
@@ -467,7 +470,7 @@ void web::webserver() {
     server.handleClient();
 #if MDNS_ENABLED==1
     EVERY_N_MILLIS(500) {
-        mdns->process();
+        mdnsStatus = mdns->process();
     }
 #endif
 }

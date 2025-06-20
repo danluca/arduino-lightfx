@@ -162,7 +162,7 @@ private:
     void _writeNextSecureRecord(const String& name, const std::initializer_list<uint8_t>& types, uint32_t ttl, bool includeAdditional = false) const;
 
     [[nodiscard]] uint32_t _announceTime() const {
-        return (_ttls.announce / 2 + _ttls.announce / 4) * static_cast<uint32_t>(1000);
+        return (_ttls.announce / 2) * static_cast<uint32_t>(1000);
     }
 
     Status _serviceRecordInsert(Service::Protocol proto, uint16_t port, const String& name, const Service::Config& config = Service::Config(), const Service::TXT& text = Service::TXT());    // deprecated
@@ -192,6 +192,8 @@ public:
     Status serviceClear() {
         return _serviceRecordClear();
     }
+
+    bool isEnabled() const { return _enabled;}
 };
 
 // -----------------------------------------------------------------------------------------------
