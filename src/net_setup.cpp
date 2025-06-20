@@ -72,25 +72,35 @@ bool wifi_connect() {
     // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
     String dnsHostname(hostname);
     dnsHostname.toLowerCase();
-    String mdnsSvcName("lucafx");
-    mdnsSvcName.concat("._http");
+    String webSvcName(dnsHostname);
+    webSvcName.concat(F("-webserver._http"));
+    String lightfxSvcName(F("_lucasfx"));
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
     mdns->begin();      //this should not be needed - implementation is a no-op
-
-    MDNS::Status mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
-        .withName(mdnsSvcName)
-        .withPort(80)
-        .withProtocol(MDNS::Service::Protocol::TCP)
-        .withTXT(MDNS::Service::TXT::Builder()
-            .add("info", "no")
+    const auto mdnstxt = MDNS::Service::TXT::Builder()
+            .add("info", "Arduino RP2040 Lucas LightFX")
             .add("name", dnsHostname)
             .add("model", "NanoConnect RP2040")
-            .build())
+            .build();
+
+    MDNS::Status mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
+        .withName(webSvcName)
+        .withPort(80)
+        .withProtocol(MDNS::Service::Protocol::TCP)
+        .withTXT(mdnstxt)
         .build()
     );
     (void)mdnsStatus;
-    log_info(F("mDNS adding service %s status: %d (%s)"), mdnsSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
+    log_info(F("mDNS adding web service %s status: %d (%s)"), webSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
+    mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
+        .withName(lightfxSvcName)
+        .withPort(80)
+        .withProtocol(MDNS::Service::Protocol::TCP)
+        .withTXT(mdnstxt)
+        .build());
+    (void)mdnsStatus;
+    log_info(F("mDNS adding custom lucasfx service %s status: %d (%s)"), lightfxSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
     mdnsStatus = mdns->start({IP_ADDR}, dnsHostname);
     (void)mdnsStatus;
     log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus).c_str());

@@ -160,7 +160,7 @@ private:
     void _writeCompleteRecord(uint32_t ttl) const;
     void _writeProbeRecord(uint32_t ttl) const;
     void _writeNextSecureRecord(const String& name, const std::initializer_list<uint8_t>& types, uint32_t ttl, bool includeAdditional = false) const;
-
+    /** The announcing time to live in ms */
     [[nodiscard]] uint32_t _announceTime() const {
         return (_ttls.announce / 2) * static_cast<uint32_t>(1000);
     }
@@ -180,20 +180,13 @@ public:
     Status process();
     Status stop();
 
-    Status serviceInsert(const Service& service) {
-        return _serviceRecordInsert(service.proto, service.port, service.name, service.config, service.text);
-    }
-    Status serviceRemove(const Service& service) {
-        return _serviceRecordRemove(service.proto, service.port, service.name);
-    }
-    Status serviceRemove(const String& name) {
-        return name.isEmpty () ? Status::InvalidArgument : _serviceRecordRemove(name);
-    }
-    Status serviceClear() {
-        return _serviceRecordClear();
-    }
+    Status serviceInsert(const Service& service) { return _serviceRecordInsert(service.proto, service.port, service.name, service.config, service.text); }
+    Status serviceRemove(const Service& service) { return _serviceRecordRemove(service.proto, service.port, service.name); }
+    Status serviceRemove(const String& name) { return name.isEmpty () ? Status::InvalidArgument : _serviceRecordRemove(name); }
+    Status serviceClear() { return _serviceRecordClear(); }
+    void updateTTL(const uint32_t ttlAnnounce) { _ttls.announce = ttlAnnounce; }
 
-    bool isEnabled() const { return _enabled;}
+    [[nodiscard]] bool isEnabled() const { return _enabled;}
 };
 
 // -----------------------------------------------------------------------------------------------

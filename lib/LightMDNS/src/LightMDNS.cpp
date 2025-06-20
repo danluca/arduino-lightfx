@@ -724,11 +724,11 @@ MDNS::Status MDNS::_serviceRecordClear() {
 
 MDNS::Status MDNS::_announce() {
     auto status = Status::TryLater;
-    if (const unsigned long tNow = millis(); _enabled && (tNow - _announced) > _announceTime()) {
+    if (!_enabled)
+        return status;
+    if (const unsigned long tNow = millis(); (tNow - _announced) > _announceTime()) {
         log_debug(F("MDNS: announce: services (%d)"), _services.size());
-
         status = _messageSend(XID_DEFAULT, PacketTypeCompleteRecord);
-
         _announced = tNow;
     }
     return status;
