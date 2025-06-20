@@ -95,6 +95,7 @@ public:
         }
     }
     enum ServerState {IDLE, HANDLING_CLIENT, CLOSED};
+    [[nodiscard]] ServerState state() const { return _state; }
 
 protected:
     void _addRequestHandler(RequestHandler* handler);

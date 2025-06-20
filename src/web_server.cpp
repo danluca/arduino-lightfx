@@ -470,7 +470,8 @@ void web::webserver() {
     server.handleClient();
 #if MDNS_ENABLED==1
     EVERY_N_SECONDS(2) {
-        mdnsStatus = mdns->process();
+        if (server.state() == HTTPServer::IDLE)
+            mdnsStatus = mdns->process();
     }
 #endif
 }
