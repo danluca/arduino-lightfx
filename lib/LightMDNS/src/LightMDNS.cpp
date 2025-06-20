@@ -620,7 +620,7 @@ MDNS::Status MDNS::process() {
             log_debug(F("MDNS: process: _announce status %s"), toString(status).c_str());
 #endif
 
-        const auto msgTimeout = millis() + 500;     //hard-coded 500ms of processing mDNS messages
+        const auto msgTimeout = millis() + 50;     //hard-coded 500ms of processing mDNS messages
         auto count = 0;
         while ((status = _messageRecv()) == Status::Success && millis() < msgTimeout)  //limit the time to handle dns messages
             count++;

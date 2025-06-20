@@ -96,9 +96,9 @@ void handleNTPFailure() {
 
     const time_t wifiTime = WiFi.getTime();
     char timeBuffer[TIME_BUFFER_SIZE];
-    Holiday holiday = paletteFactory.adjustHoliday(wifiTime);
 
     if (wifiTime > 0) {
+        Holiday holiday = paletteFactory.adjustHoliday(wifiTime);
         const bool isDaylightSavings = isDST(wifiTime);
         if (isDaylightSavings)
             sysInfo->setSysStatus(SYS_STATUS_DST);

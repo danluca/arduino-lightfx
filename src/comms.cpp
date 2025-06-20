@@ -271,8 +271,8 @@ void timeUpdate() {
         log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), logTimeMs, StringUtils::asString(logTimeMs/1000).c_str(), StringUtils::asString(curTime).c_str());
         Log.setTimebase(curTime * 1000 - curMs);
     }
-#endif
     log_info(F("System status: %#hX"), sysInfo->getSysStatus());
+#endif
 
     // if we did not have NTP sync before, react to the current attempt result - if failed, schedule a timer to try again; if succeeded, notify the alarm task for setup
     if (!bHadNtpSync) {
@@ -288,6 +288,7 @@ void timeUpdate() {
     //check for a DST transition
     if (const bool dst = isDST(timeClient.getEpochTime()); dst != sysInfo->isSysStatus(SYS_STATUS_DST)) {
         timeClient.setTimeOffset(dst ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS);
+        setTime(timeClient.getEpochTime());
         dst ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
 #if LOGGING_ENABLED == 1
         time_t curTime = now();
