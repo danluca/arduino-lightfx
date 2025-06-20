@@ -107,7 +107,7 @@ public:
         uint32_t announce = 120;     // Default announcement TTL
         uint32_t probe = 0;          // Probe TTL always 0
         uint32_t goodbye = 0;        // Goodbye/release TTL always 0
-        uint32_t shared_max = 10;    // Maximum TTL for shared records per RFC
+        uint32_t shared_max = 600;    // Maximum TTL for shared records per RFC
     };
 
     enum class Status {
