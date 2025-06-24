@@ -16,10 +16,8 @@ class StringUtils {
 public:
     static size_t toString(const CRGB &rgb, String &str);
     static size_t toString(const CRGBSet &rgbSet, String &str);
-    static size_t toString(const time_t &time, String &str);
     static String asString(const CRGB &rgb);
     static String asString(const CRGBSet &rgbSet);
-    static String asString(const time_t &time);
     static String asHexString(const uint8_t *data, size_t len);
     static const char *asString(const bool b) { return b ? "true" : "false";};
     static size_t append(String &str, const char *fmt, ...);

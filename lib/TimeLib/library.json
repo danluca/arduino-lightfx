@@ -1,0 +1,34 @@
+{
+  "name": "TimeLib",
+  "keywords": "time,ntp,timezone",
+  "description": "Simple Time library for Raspberry Pico RP2040 based (not yet updated for RP2350). Aggregates work from the authors listed as non-maintainers.",
+  "version": "1.0.0",
+  "authors": [{
+    "name": "Paul Stoffregen",
+    "url": "https://github.com/PaulStoffregen/",
+    "maintainer": false
+  }, {
+    "name": "Jack Christensen",
+    "url": "https://github.com/JChristensen",
+    "maintainer": false
+  }, {
+    "name": "Dan Luca",
+    "url": "https://github.com/danluca",
+    "maintainer": true
+  }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danluca/arduino-lightfx"
+  },
+  "homepage": "https://github.com/danluca/arduino-lightfx",
+  "frameworks": ["arduino"],
+  "platforms": "raspberrypi",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
+  },
+  "dependencies": {
+    "PicoLog": "1.0.0"
+  }
+}

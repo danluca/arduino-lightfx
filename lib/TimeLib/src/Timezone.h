@@ -1,0 +1,67 @@
+/*----------------------------------------------------------------------*
+ * Arduino Timezone Library                                             *
+ * Jack Christensen Mar 2012                                            *
+ *                                                                      *
+ * Arduino Timezone Library Copyright (C) 2018,2025 by Jack Christensen and  *
+ * licensed under GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html   *
+ *----------------------------------------------------------------------*/
+#pragma once
+#ifndef TIMEZONE_H_INCLUDED
+#define TIMEZONE_H_INCLUDED
+#include <Arduino.h>
+#include "TimeDef.h"
+
+// convenient constants for TimeChangeRules
+enum week_t:uint8_t {Last, First, Second, Third, Fourth};
+enum dow_t:uint8_t {Sun=1, Mon, Tue, Wed, Thu, Fri, Sat};
+enum month_t:uint8_t {Jan=1, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};
+
+// structure to describe rules for when daylight/summer-time begins, or when standard time begins.
+struct TimeChangeRule {
+    char name[6];      // short name, five chars max
+    week_t week;      // First, Second, Third, Fourth, or Last week of the month
+    dow_t dow;       // day of week, 1=Sun, 2=Mon, ... 7=Sat
+    month_t month;     // 1=Jan, 2=Feb, ... 12=Dec
+    uint8_t hour;      // 0-23
+    int offset;        // offset from UTC in minutes (more user-friendly)
+};
+
+/**
+ * @class Timezone
+ * @brief Represents a time zone, including rules for daylight saving time (DST) and standard time.
+ *
+ * The Timezone class provides thread-safe methods to handle time conversions, determine whether a time
+ * is in DST or standard time, and to manage time zone rules.
+ */
+class Timezone {
+    public:
+        Timezone(const TimeChangeRule &dstStart, const TimeChangeRule &stdStart, const char *name);
+        Timezone(const TimeChangeRule &stdTime, const char *name);
+        [[nodiscard]] time_t toLocal(time_t utc) const;
+        [[nodiscard]] time_t toUTC(time_t local) const;
+        [[nodiscard]] bool isDST(time_t time, bool bLocal = true) const;
+        /** The full IANA time zone name */
+        [[nodiscard]] const char *getName() const { return m_name; }
+        /** The short zone name for the given local time_t */
+        [[nodiscard]] const char *getShort(const time_t local) const { return isDST(local) ? m_dst.name : m_std.name; }
+        /** The Daylight Savings Time short zone name */
+        [[nodiscard]] const char *getDSTShort() const { return m_dst.name; }
+        /** The Standard Time short zone name */
+        [[nodiscard]] const char *getSTDShort() const { return m_std.name; }
+        /** daylight savings time offset from UTC in seconds (standard unit) */
+        [[nodiscard]] int getDSTOffset() const { return m_dst.offset*static_cast<int>(SECS_PER_MIN); }
+        /** standard time offset from UTC in seconds (standard unit) */
+        [[nodiscard]] int getSTDOffset() const { return m_std.offset*static_cast<int>(SECS_PER_MIN); }
+        /** local time_t offset from UTC in seconds (standard unit) */
+        [[nodiscard]] int getOffset(const time_t time, const bool bLocal=true) const { return (isDST(time, bLocal) ? m_dst.offset : m_std.offset)*static_cast<int>(SECS_PER_MIN); }
+        /** Whether this time zone observes DST */
+        [[nodiscard]] bool isDSTObserved() const { return m_dst.offset != m_std.offset; }
+
+    private:
+        char m_name[33]{};        // name of the timezone, e.g. "America/New_York", max 32 chars
+        const TimeChangeRule m_dst;     // rule for the start of dst or summer-time for any year
+        const TimeChangeRule m_std;     // rule for start of standard time for any year
+};
+
+extern const Timezone utcZone;
+#endif

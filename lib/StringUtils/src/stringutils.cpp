@@ -30,15 +30,6 @@ String StringUtils::asString(const CRGBSet &rgbSet) {
     return str;
 }
 
-String StringUtils::asString(const time_t &time) {
-    String str;
-    str.reserve(20);
-    char buf[20]{};
-    strftime(buf, 20, "%Y-%m-%d %H:%M:%S", localtime(&time));
-    str.concat(buf);
-    return str;
-}
-
 /**
  * Useful byte array to hex conversion for small arrays - the returned string is through the stack.
  * @param data byte array
@@ -76,18 +67,6 @@ size_t StringUtils::toString(const CRGB &rgb, String &str) {
  */
 size_t StringUtils::toString(const CRGBSet &rgbSet, String &str) {
     const String s = asString(rgbSet);
-    str.concat(s);
-    return s.length();
-}
-
-/**
- *
- * @param time
- * @param str
- * @return
- */
-size_t StringUtils::toString(const time_t &time, String &str) {
-    const String s = asString(time);
     str.concat(s);
     return s.length();
 }

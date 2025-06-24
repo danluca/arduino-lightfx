@@ -16,6 +16,7 @@ class EffectRegistry {
     uint16_t effectsCount = 0;
     uint16_t lastEffectRun = 0;
     uint16_t sleepEffect = 0;
+    uint16_t beforeSleepEffect = 0;
     bool autoSwitch = true;
     bool sleepState = false;
     bool sleepModeEnabled = false;

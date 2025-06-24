@@ -92,17 +92,10 @@ void EffectRegistry::setSleepState(const bool sleepFlag) {
     if (sleepState != sleepFlag) {
         sleepState = sleepFlag;
         log_info(F("Switching to sleep state %s (sleep mode enabled %s)"), StringUtils::asString(sleepState), StringUtils::asString(sleepModeEnabled));
-        if (sleepState) {
-            nextEffectPos(FX_SLEEPLIGHT_ID);
-        } else {
-            if (lastEffects.size() < 2)
-                nextRandomEffectPos();
-            else {
-                const uint16_t prevFx = *(lastEffects.end()-2); //the second entry in the queue (from the inserting point - the end) is the previous effect before the sleep mode
-                currentEffect = prevFx;
-                transitionEffect();
-            }
-        }
+        if (sleepState)
+            beforeSleepEffect = nextEffectPos(FX_SLEEPLIGHT_ID);
+        else
+            nextEffectPos(beforeSleepEffect);
     } else
         log_info(F("Sleep state is already %s - no changes"), StringUtils::asString(sleepState));
 }

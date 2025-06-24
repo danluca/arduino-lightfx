@@ -625,7 +625,7 @@ size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
     const time_t lastWrite = f.getLastWrite();
     f.close();
 
-    Log.info(F("File %s - %zu bytes - has been saved at %s"), fname, fSize, StringUtils::asString(lastWrite).c_str());
+    Log.info(F("File %s - %zu bytes - has been saved at %s"), fname, fSize, TimeFormat::asString(lastWrite).c_str());
     Log.trace(F("Saved file %s content [%zu]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
@@ -639,7 +639,7 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const String *s) const {
     const size_t totalSize = f.size();
     f.close();
 
-    Log.info(F("File %s - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, StringUtils::asString(lastWrite).c_str());
+    Log.info(F("File %s - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, TimeFormat::asString(lastWrite).c_str());
     Log.trace(F("Appended file %s content [%zu]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
@@ -653,7 +653,7 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const uint8_t *buffer, c
     const size_t totalSize = f.size();
     f.close();
 
-    Log.info(F("File %s (binary) - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, StringUtils::asString(lastWrite).c_str());
+    Log.info(F("File %s (binary) - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, TimeFormat::asString(lastWrite).c_str());
     Log.trace(F("Appended file %s binary content %zu bytes"), fname, fSize);    //this is superfluous, perhaps logging binary content in hex would be helpful but quite a bit of overhead on flip side
     return fSize;
 }

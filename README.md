@@ -87,6 +87,11 @@ Several dedicated threads are defined in the system that take advantage of both 
   * FX task runs the light effects
   * Mic task runs the microphone signal processing (PDM to PCM conversion)
   * CORE1 task runs the diagnostic actions - logging system info, measure temperature, etc.
+#### Optimal Task Configuration
+The Pico core configures by default the core tasks with 1024 bytes of stack space. In most applications this may be enough,
+however, the amount is not configurable externally.
+With the task allocation above, a more optimal stack depth is **3072** bytes for CORE0 and **1536** bytes for CORE1. These adjustments 
+can be made in the file `~/.platformio/packages/framework-arduinopico/libraries/FreeRTOS/src/variantHooks.cpp` within the function `startFreeRTOS`.
 
 ### Configuration
 A single LED controller is instantiated from `FastLED` library that runs on pin 25 (aka pin D2 on the pinout diagram) for PWM output.

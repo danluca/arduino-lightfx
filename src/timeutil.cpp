@@ -12,12 +12,14 @@
 
 constexpr auto fmtDate PROGMEM = "%4d-%02d-%02d";
 constexpr auto fmtTime PROGMEM = "%02d:%02d:%02d";
-constexpr size_t TIME_BUFFER_SIZE = 20;
+constexpr size_t TIME_BUFFER_SIZE = 32;
 constexpr auto TIME_ZONE_NAME = "America/Chicago";
+constexpr TimeChangeRule cdt {.name = "CDT", .week = Second, .dow = Sun, .month = Mar, .hour = 2, .offset = -300};
+constexpr TimeChangeRule cst {.name = "CST", .week = First, .dow = Sun, .month = Nov, .hour = 2, .offset = -360};
+const Timezone centralTime(cdt, cst, "America/Chicago");
 
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
-NTPClient timeClient(Udp, CST_OFFSET_SECONDS);  //time client, retrieves time from pool.ntp.org for CST
-
+TimeService timeService(Udp);
 
 void updateLoggingTimebase() {
 #if LOGGING_ENABLED == 1
@@ -25,20 +27,10 @@ void updateLoggingTimebase() {
         const time_t currentTime = now();
         const time_t currentMillis = millis();
         log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), 
-                currentMillis, StringUtils::asString(currentMillis/1000).c_str(), StringUtils::asString(currentTime).c_str());
+                currentMillis, TimeFormat::asString(currentMillis/1000).c_str(), TimeFormat::asString(currentTime).c_str());
         Log.setTimebase(currentTime * 1000 - currentMillis);
     }
 #endif
-}
-
-/**
- * Adjusts America/Chicago time zone offset with DST
- * @param isDaylightSavings whether current time is in Daylight Savings period
- */
-void configureTimeOffset(const bool isDaylightSavings) {
-    const int timeOffset = isDaylightSavings ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
-    timeClient.setTimeOffset(timeOffset);
-    setTime(timeClient.getEpochTime());
 }
 
 /**
@@ -48,17 +40,16 @@ void configureTimeOffset(const bool isDaylightSavings) {
  */
 void logTimeStatus(const time_t curTime, const Holiday& holiday) {
 #if LOGGING_ENABLED == 1
-    const bool isDaylightSavings = isDST(curTime);
-    const char* const timeZoneType = isDaylightSavings ? "CDT" : "CST";
+    const bool isDaylightSavings = timeService.timezone()->isDST(curTime);
     const char* const savingsType = isDaylightSavings ? "Daylight Savings" : "Standard";
-    const int offset = isDaylightSavings ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
+    const int offset = timeService.timezone()->getOffset(curTime);
+
+    const String strTime = TimeFormat::asString(curTime);
     
-    char timeBuffer[TIME_BUFFER_SIZE];
-    formatDateTime(timeBuffer, curTime);
-    
-    log_info(F("%s %s time, time offset set to %d s, current time %s. NTP sync %s."), TIME_ZONE_NAME, savingsType,
-        offset, timeClient.getFormattedTime().c_str(), sysInfo->isSysStatus(SYS_STATUS_NTP) ? "ok" : "failed (fallback to WiFi time)");
-    log_info(F("Current time %s %s (holiday adjusted to %s); system status %#hX"), timeBuffer, timeZoneType, holidayToString(holiday), sysInfo->getSysStatus());
+    log_info(F("%s %s time, time offset set to %d s, current time %s. NTP sync %s."), timeService.timezone()->getName(), savingsType,
+        offset, strTime.c_str(), sysInfo->isSysStatus(SYS_STATUS_NTP) ? "ok" : "failed (fallback to WiFi time)");
+    log_info(F("Current time %s %s (holiday adjusted to %s); system status %#hX"), strTime.c_str(), timeService.timezone()->getShort(curTime),
+        holidayToString(holiday), sysInfo->getSysStatus());
 #endif
 }
 
@@ -68,7 +59,8 @@ void logTimeStatus(const time_t curTime, const Holiday& holiday) {
  * @return true (all the time)
  */
 bool handleNTPSuccess() {
-    const bool isDaylightSavings = isDST(timeClient.getEpochTime());
+    const time_t curTime = now();
+    const bool isDaylightSavings = timeService.timezone()->isDST(curTime);
     sysInfo->setSysStatus(SYS_STATUS_NTP);
     
     if (isDaylightSavings)
@@ -76,8 +68,6 @@ bool handleNTPSuccess() {
     else
         sysInfo->resetSysStatus(SYS_STATUS_DST);
 
-    configureTimeOffset(isDaylightSavings);
-    const time_t curTime = now();
     const Holiday holiday = paletteFactory.adjustHoliday(curTime);
     updateLoggingTimebase();
     logTimeStatus(curTime, holiday);
@@ -94,24 +84,22 @@ void handleNTPFailure() {
     sysInfo->resetSysStatus(SYS_STATUS_NTP);
     paletteFactory.setHoliday(Party);
 
-    const time_t wifiTime = WiFi.getTime();
-    char timeBuffer[TIME_BUFFER_SIZE];
-
-    if (wifiTime > 0) {
-        Holiday holiday = paletteFactory.adjustHoliday(wifiTime);
-        const bool isDaylightSavings = isDST(wifiTime);
+    if (const time_t wifiTime = WiFi.getTime(); wifiTime > 0) {
+        timeService.setTime(wifiTime);
+        const Holiday holiday = paletteFactory.adjustHoliday(wifiTime);
+        updateLoggingTimebase();
+        const bool isDaylightSavings = timeService.timezone()->isDST(wifiTime, false);
         if (isDaylightSavings)
             sysInfo->setSysStatus(SYS_STATUS_DST);
-        formatDateTime(timeBuffer, wifiTime);
-        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), timeBuffer,
-            isDaylightSavings ? "CDT" : "CST", holidayToString(holiday));
+        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), TimeFormat::asString(wifiTime).c_str(),
+            isDaylightSavings ? timeService.timezone()->getDSTShort() : timeService.timezone()->getSTDShort(), holidayToString(holiday));
+        logTimeStatus(wifiTime, holiday);
     } else {
-        formatDateTime(timeBuffer, now());
-        log_error(F("NTP sync failed, WiFi time not available. Current time from raw clock: %s (holiday adjusted to %s)"), 
-                  timeBuffer, holidayToString(holiday));
+        log_error(F("NTP sync failed, WiFi time not available. Current time from raw clock: %s (holiday adjusted to %s)"),
+                  TimeFormat::asString(now()).c_str(), holidayToString(paletteFactory.getHoliday()));
     }
     
-    log_info(F("Current holiday is %s; system status %#hX"), holidayToString(holiday), sysInfo->getSysStatus());
+    log_info(F("Current holiday is %s; system status %#hX"), holidayToString(paletteFactory.getHoliday()), sysInfo->getSysStatus());
 }
 
 /**
@@ -119,8 +107,9 @@ void handleNTPFailure() {
  * @return true if the NTP sync was successful
  */
 bool timeSetup() {
-    setSyncProvider(curUnixTime);
-    const bool ntpTimeAvailable = ntp_sync();
+    timeService.begin();    //this requires WiFi!
+    timeService.applyTimezone(centralTime);
+    const bool ntpTimeAvailable = timeService.syncTimeNTP();
     
     log_warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
     
@@ -140,9 +129,11 @@ bool timeSetup() {
 uint8_t formatTime(char *buf, time_t time) {
     if (time == 0)
         time = now();
+    tmElements_t tm;
+    timeService.breakTime(time, tm);
     if (buf == nullptr)
-        return snprintf(buf, 0, fmtTime, hour(time), minute(time), second(time));
-    return snprintf(buf, 9, fmtTime, hour(time), minute(time), second(time));   //8 chars + null terminating
+        return snprintf(buf, 0, fmtTime, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    return snprintf(buf, 9, fmtTime, tm.tm_hour, tm.tm_min, tm.tm_sec);   //8 chars + null terminating
 }
 
 /**
@@ -154,9 +145,11 @@ uint8_t formatTime(char *buf, time_t time) {
 uint8_t formatDate(char *buf, time_t time) {
     if (time == 0)
         time = now();
+    tmElements_t tm;
+    timeService.breakTime(time, tm);
     if (buf == nullptr)
-        return snprintf(buf, 0, fmtDate, year(time), month(time), day(time));
-    return snprintf(buf, 11, fmtDate, year(time), month(time), day(time));   //10 chars + null terminating
+        return snprintf(buf, 0, fmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday);
+    return snprintf(buf, 11, fmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday);   //10 chars + null terminating
 }
 
 uint8_t formatDateTime(char *buf, time_t time) {
@@ -164,75 +157,12 @@ uint8_t formatDateTime(char *buf, time_t time) {
         time = now();
     uint8_t sz = formatDate(buf, time);
     if (buf == nullptr)
-        sz += formatTime(buf, time);
+        sz += formatTime(buf, time) + 1;  //date - time separation character
     else {
         *(buf + sz) = ' ';  //date - time separation character
         sz += formatTime( buf+sz+1, time);
     }
     return sz;
-}
-
-/**
- * Retrieves the current Unix time in seconds by attempting to use NTP, Wi-Fi,
- * or a fallback to the system's millis as the time source.
- *
- * This function first checks if the system has an active NTP connection to
- * retrieve the time. If NTP is unavailable but Wi-Fi is connected, it attempts
- * to use Wi-Fi's time service, applying an appropriate offset for the Central
- * Standard Time (CST) or Central Daylight Time (CDT) based on daylight savings.
- * If neither NTP nor Wi-Fi is available, the method falls back to using the
- * system's millis as an approximate Unix time.
- *
- * @return The current Unix time in seconds (positively adjusted for CST/CDT when using Wi-Fi),
- * or an approximation if neither NTP nor Wi-Fi sources are available.
- */
-time_t curUnixTime() {
-    // we'll check our custom NTP flag for a more reliable test of a valid time - sometimes the NTP sync ends up with a wild time and timeClient.isTimeSet() reports true
-    if (sysInfo->isSysStatus(SYS_STATUS_NTP))
-        return timeClient.getEpochTime();
-    if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        //the WiFi.getTime() (returns unsigned long, 0 for failure) can also achieve time-telling purpose
-        //determine what offset to use
-        if (const time_t wifiTime = WiFi.getTime(); wifiTime > 0) {
-            time_t localTime = wifiTime + CST_OFFSET_SECONDS;
-            if (isDST(localTime))
-                localTime = wifiTime + CDT_OFFSET_SECONDS;
-            return localTime;
-        } else
-            log_warn(F("WiFi.getTime() failed - returned 0, falling back to local millis()"));
-    }
-    return millis()/1000;    //nowhere close to reality, but better than nothing
-}
-
-/**
- * Synchronizes the system time using the Network Time Protocol (NTP).
- *
- * This function will attempt to synchronize the system time if the WiFi connection
- * is active. If successful, it verifies the received time to ensure it falls within
- * a valid range. If the time is valid, it records the synchronization details
- * in a queue. If the time is invalid, it logs a warning.
- *
- * @return true if the NTP sync succeeded and the received time is valid;
- *         false otherwise.
- */
-bool ntp_sync() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        log_warn(F("NTP sync failed. No WiFi connection available."));
-        return false;
-    }
-    timeClient.begin();
-    const bool result = timeClient.update();
-    timeClient.end();
-    const time_t curTime = now();
-    const bool resultValid = result && curTime > TWENTY_TWENTY && curTime < TWENTY_SEVENTY;
-    if (resultValid) {
-        const TimeSync tSync {.localMillis = millis(), .unixSeconds=curTime};
-        timeSyncs.push(tSync);
-    } else {
-        log_warn(F("NTP sync succeeded but time is invalid - outside the range %s - %s. Current time %s."), StringUtils::asString(static_cast<time_t>(TWENTY_TWENTY)).c_str(),
-            StringUtils::asString(static_cast<time_t>(TWENTY_SEVENTY)).c_str(), StringUtils::asString(curTime).c_str());
-    }
-    return resultValid;
 }
 
 /**
@@ -376,9 +306,9 @@ uint16_t encodeMonthDay(const time_t time) {
  * @return time drift in ms - positive means local time is faster, negative means local time is slower than the official time
  */
 int getDrift(const TimeSync &from, const TimeSync &to) {
-    const time_t localDelta = (time_t)to.localMillis - (time_t)from.localMillis;
-    const time_t unixDelta = (to.unixSeconds - from.unixSeconds)*1000l;
-    return (int)(localDelta-unixDelta);
+    const time_t localDelta = static_cast<time_t>(to.localMillis) - static_cast<time_t>(from.localMillis);
+    const time_t unixDelta = to.unixMillis - from.unixMillis;
+    return static_cast<int>(localDelta - unixDelta);
 }
 
 /**
@@ -406,9 +336,9 @@ int getTotalDrift() {
 int getAverageTimeDrift() {
     if (timeSyncs.size() < 2)
         return 0;
-    const time_t start = timeSyncs.begin()->unixSeconds;
-    const time_t end = timeSyncs.end()[-1].unixSeconds;       // end() is past the last element, -1 for last element
-    return getTotalDrift() * 3600 / (int)(end-start);
+    const time_t start = timeSyncs.begin()->unixMillis;
+    const time_t end = timeSyncs.end()[-1].unixMillis;       // end() is past the last element, -1 for the last element
+    return static_cast<int>(getTotalDrift() * 3600000L / static_cast<long>(end - start));
 }
 
 /**

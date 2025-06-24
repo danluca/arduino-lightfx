@@ -256,20 +256,28 @@ void startTimeSetupTimer() {
  */
 void timeUpdate() {
     if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform time update. System status: %#hX"), sysInfo->getSysStatus());
+        log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform NTP time sync. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
     const bool bHadNtpSync = sysInfo->isSysStatus(SYS_STATUS_NTP);
-    const bool result = ntp_sync();
-    log_info(F("Time NTP sync performed; success = %s"), StringUtils::asString(result));
+    const bool result = timeService.syncTimeNTP();
+    if (result) {
+        const TimeSync tSync {.localMillis = static_cast<ulong>(timeService.syncLocalTimeMillis()), .unixMillis=timeService.syncUTCTimeMillis() };
+        timeSyncs.push(tSync);
+    } else {
+        log_warn(F("NTP sync failed; Current time %s."), TimeFormat::asStringMs(nowMillis()).c_str());
+    }
+    log_info(F("Time NTP sync performed; success = %s; current time %s"), StringUtils::asString(result), TimeFormat::asStringMs(nowMillis()));
     result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
+    const time_t curTime = nowMillis();
+    const time_t nixTime = curTime / 1000;
 #if LOGGING_ENABLED == 1
-    const time_t curTime = now();
     const time_t curMs = millis();
     const time_t logTimeMs = Log.getTimebase() + curMs;
-    if (const bool bNeedsUpdate = Log.getTimebase() == 0 || abs(curTime - logTimeMs/1000) > 5*60; result && bNeedsUpdate) {
-        log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), logTimeMs, StringUtils::asString(logTimeMs/1000).c_str(), StringUtils::asString(curTime).c_str());
-        Log.setTimebase(curTime * 1000 - curMs);
+    if (const bool bNeedsUpdate = Log.getTimebase() == 0 || abs(curTime - logTimeMs) > 60000; result && bNeedsUpdate) {
+        log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), logTimeMs, TimeFormat::asString(logTimeMs/1000).c_str(),
+            TimeFormat::asString(nixTime).c_str());
+        Log.setTimebase(curTime - curMs);
     }
     log_info(F("System status: %#hX"), sysInfo->getSysStatus());
 #endif
@@ -286,21 +294,21 @@ void timeUpdate() {
     }
 
     //check for a DST transition
-    if (const bool dst = isDST(timeClient.getEpochTime()); dst != sysInfo->isSysStatus(SYS_STATUS_DST)) {
-        timeClient.setTimeOffset(dst ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS);
-        setTime(timeClient.getEpochTime());
+    if (const bool dst = timeService.timezone()->isDST(nixTime); dst != sysInfo->isSysStatus(SYS_STATUS_DST)) {
         dst ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
 #if LOGGING_ENABLED == 1
-        time_t curTime = now();
-        log_info(F("Time DST status changed from %s [offset %d] to %s [offset %d] - current time %s"), dst ? "CST" : "CDT", dst ? CST_OFFSET_SECONDS : CDT_OFFSET_SECONDS,
-            dst ? "CDT" : "CST", dst ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS, StringUtils::asString(curTime).c_str());
+        log_info(F("Time DST status changed to %s [offset %d] - current time %s"), dst ? "ON" : "OFF", timeService.timezone()->getOffset(nixTime),
+            TimeFormat::asString(nixTime).c_str());
 #endif
     }
     if (timeSyncs.size() > 2) {
         //log the current drift
-        const time_t from = timeSyncs.end()[-2].unixSeconds;
-        const time_t to = now();
-        log_info(F("Current drift between %s and %s (%lld s) measured as %d ms"), StringUtils::asString(from).c_str(), StringUtils::asString(to).c_str(), to-from, getLastTimeDrift());
+        const auto fromSync = timeSyncs.end()[-2];  //second before last
+        const auto toSync = timeSyncs.end()[-1];    //last
+        const int driftMs = getDrift(fromSync, toSync);
+        timeService.addDrift(-driftMs); //adjust for the drift
+        log_info(F("Current drift between %s and %s (%lld ms) measured as %d ms"), TimeFormat::asStringMs(fromSync.unixMillis).c_str(),
+            TimeFormat::asStringMs(toSync.unixMillis).c_str(), toSync.unixMillis-fromSync.unixMillis, driftMs);
     }
 }
 

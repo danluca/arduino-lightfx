@@ -72,7 +72,7 @@ bool imu_setup() {
     log_info(F("IMU sensor OK"));
     // print the board temperature
     const Measurement temp = boardTemperature();
-    log_info(F("Board temperature %.2f 'C (%.2f 'F) at %s"), temp.value, toFahrenheit(temp.value), StringUtils::asString(temp.time).c_str());
+    log_info(F("Board temperature %.2f 'C (%.2f 'F) at %s"), temp.value, toFahrenheit(temp.value), TimeFormat::asString(temp.time).c_str());
     return true;
 }
 
@@ -249,7 +249,7 @@ void Measurement::copy(const Measurement &msmt) volatile {
         value = msmt.value;
         time = msmt.time;
     } else
-        log_warn(F("Measurement::copy - incompatible units, cannot copy %f unit %d at %s into current %.2f unit %d measurement"), msmt.value, msmt.unit, StringUtils::asString(msmt.time).c_str(), value, unit);
+        log_warn(F("Measurement::copy - incompatible units, cannot copy %f unit %d at %s into current %.2f unit %d measurement"), msmt.value, msmt.unit, TimeFormat::asString(msmt.time).c_str(), value, unit);
 }
 
 /**
@@ -260,7 +260,7 @@ void Measurement::copy(const Measurement &msmt) volatile {
  */
 void MeasurementRange::setMeasurement(const Measurement &msmt) volatile {
     if (current.unit != msmt.unit) {
-        log_warn(F("MeasurementRange::setMeasurement - incompatible units, cannot set %f unit %d at %s into range of unit %d"), msmt.value, msmt.unit, StringUtils::asString(msmt.time).c_str(), current.unit);
+        log_warn(F("MeasurementRange::setMeasurement - incompatible units, cannot set %f unit %d at %s into range of unit %d"), msmt.value, msmt.unit, TimeFormat::asString(msmt.time).c_str(), current.unit);
         return;
     }
     if (msmt < min || !min.time)
@@ -503,7 +503,7 @@ void readCalibrationInfo() {
         deserializeCalibrationParams(calibCpuTemp, cbparams);
         log_info(F("CPU temp calibration Information restored from %s [%d bytes]: min %.2f 'C, max %.2f 'C; params: tempRange=%.2f, refTemp=%.2f, VTref=%f, slope=%f, time=%s"),
                    calibFileName, calibSize, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
-                   calibCpuTemp.slope, StringUtils::asString(calibCpuTemp.time).c_str());
+                   calibCpuTemp.slope, TimeFormat::asString(calibCpuTemp.time).c_str());
     }
     delete json;
 }
@@ -557,7 +557,7 @@ void updateSystemTemp() {
     }
     log_info(F("CPU internal temperature %.2f 'C (%.2f 'F) (ADC %u)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value), chipTemp.adcRaw);
     log_info(F("CPU temperature calibration parameters valid=%s, refTemp=%f, vtRef=%f, slope=%f, refDelta=%f, time=%s"), StringUtils::asString(calibCpuTemp.isValid()), calibCpuTemp.refTemp,
-               calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta, StringUtils::asString(calibCpuTemp.time).c_str());
+               calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta, TimeFormat::asString(calibCpuTemp.time).c_str());
     log_info(F("Board temperature %.2f (last %.2f) 'C (%.2f 'F); range [%.2f - %.2f] 'C"), msmt.value, imuTempRange.current.value, toFahrenheit(imuTempRange.current.value),
                imuTempRange.min.value, imuTempRange.max.value);
 }
@@ -594,7 +594,7 @@ void wifi_temp() {
     const float fTemp = toFahrenheit(wifiTemp.value);
     //I've noticed a suspect Fahrenheit value of 0x80 (128) that is not real (by feeling the chip) - this seems to be some sort of error/NA value
     //if not first reading or current value is within 4 degrees 'C of 53.33'C (128'F) (53.33 'C +/- 4) then consider the 128'F value of the reading, otherwise ignore these (erroneous) readings
-    bool bInvalid = fabs(fTemp - 128.0f) < TEMP_NA_COMPARE_EPSILON && (wifiTempRange.current.time == 0 || fabs(wifiTempRange.current.value - 53.33f) > 4.0f);
+    const bool bInvalid = fabs(fTemp - 128.0) < TEMP_NA_COMPARE_EPSILON && (wifiTempRange.current.time == 0 || fabs(wifiTempRange.current.value - 53.33) > 4.0);
 #if LOGGING_ENABLED == 1
     if (bInvalid) {
         if (wifiTempRange.current.time == 0)

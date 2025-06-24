@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_TIMEUTIL_H
@@ -9,9 +9,6 @@
 #include <NTPClient.h>
 #include <TimeLib.h>
 #include "fixed_queue.h"
-
-#define CST_OFFSET_SECONDS (-21600)   //Central Standard Time - America/Chicago
-#define CDT_OFFSET_SECONDS  (-18000)  //Central Daylight Time - America/Chicago
 
 extern WiFiUDP Udp;
 extern NTPClient timeClient;
@@ -30,12 +27,10 @@ uint16_t encodeMonthDay(time_t time = 0);
 
 struct TimeSync {
     ulong localMillis{};
-    time_t unixSeconds{};
+    time_t unixMillis{};
 };
 
 bool timeSetup();
-time_t curUnixTime();
-bool ntp_sync();
 int getAverageTimeDrift();
 int getLastTimeDrift();
 int getTotalDrift();

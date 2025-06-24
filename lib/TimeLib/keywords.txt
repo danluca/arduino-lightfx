@@ -1,0 +1,60 @@
+#######################################
+# Syntax Coloring Map For Time
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+NTPClient	KEYWORD1
+time_t	KEYWORD1
+TimeChangeRule	KEYWORD1
+Timezone	KEYWORD1
+TimeService	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+end	KEYWORD2
+setTime	KEYWORD2
+setDrift	KEYWORD2
+addDrift	KEYWORD2
+applyTimezone	KEYWORD2
+timeStatus	KEYWORD2
+syncTimeNTP	KEYWORD2
+setSyncInterval	KEYWORD2
+syncLocalTimeMillis	KEYWORD2
+syncUTCTimeMillis	KEYWORD2
+breakTime	KEYWORD2
+makeTime	KEYWORD2
+setPoolServerName	KEYWORD2
+setRandomPort   KEYWORD2
+now	KEYWORD2
+nowMillis	KEYWORD2
+utcNow	KEYWORD2
+utcNowMillis	KEYWORD2
+second	KEYWORD2
+minute	KEYWORD2
+hour	KEYWORD2
+day	KEYWORD2
+month	KEYWORD2
+year	KEYWORD2
+isAM	KEYWORD2
+isPM	KEYWORD2
+weekday	KEYWORD2
+setTime	KEYWORD2
+TimeLib	KEYWORD2
+isDST	KEYWORD2
+asString	KEYWORD2
+toString	KEYWORD2
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+

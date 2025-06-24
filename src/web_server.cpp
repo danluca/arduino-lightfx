@@ -163,17 +163,19 @@ void web::handleGetStatus(WebClient &client) {
     time["time"] = timeBuf;
     const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
     time["dst"] = bDST;
-    time["offset"] = bDST ? CDT_OFFSET_SECONDS : CST_OFFSET_SECONDS;
+    time["zoneDST"] = timeService.timezone()->isDST(curTime);
+    time["offset"] = timeService.timezone()->getOffset(curTime);
     time[csHoliday] = holidayToString(currentHoliday()); //time derived holiday
     time["syncSize"] = timeSyncs.size();
     time["averageDrift"] = getAverageTimeDrift();
     time["lastDrift"] = getLastTimeDrift();
     time["totalDrift"] = getTotalDrift();
+    time["currentDrift"] = timeService.getDrift();
     const auto syncs = time["syncs"].to<JsonArray>();
-    for (const auto &[localMillis, unixSeconds]: timeSyncs) {
+    for (const auto &[localMillis, unixMillis]: timeSyncs) {
         auto jts = syncs.add<JsonObject>();
         jts["localMillis"] = localMillis;
-        jts["unixSeconds"] = unixSeconds;
+        jts["unixMillis"] = unixMillis;
     }
     const auto alarms = time["alarms"].to<JsonArray>();
     for (const auto &al: scheduledAlarms) {
