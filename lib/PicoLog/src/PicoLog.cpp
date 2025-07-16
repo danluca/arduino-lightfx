@@ -90,6 +90,7 @@ size_t PicoLog::print(const LogLevel level, const __FlashStringHelper *format, v
  */
 size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     const size_t szMsg = vsnprintf(nullptr, 0, format, args) + 1;
+    //TODO: when szMsg is large (kilobytes), consider moving the buffer to the heap
     char buf[szMsg+48]{};  //sufficient for the header, e.g. '00:00:05.338 [CORE0-5.5] I: ' - 28 chars
     size_t sz = printTimestamp(buf);
     sz += printThread(buf + sz);

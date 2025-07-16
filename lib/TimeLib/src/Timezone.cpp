@@ -10,19 +10,12 @@
 //
 
 #include "Timezone.h"
+#include "LogProxy.h"
 #include "TimeService.h"
 
-struct dstTransitions {
-    time_t m_dstUTC{};        // dst start for the given / current year, given in UTC
-    time_t m_stdUTC{};        // std time start for given/current year, given in UTC
-    time_t m_dstLoc{};        // dst start for the given/current year, given in local time
-    time_t m_stdLoc{};        // std time start for given/current year, given in local time
-};
 
-static dstTransitions currentTransitions;  // current DST transitions for the last year inquired
-static mutex_t currentTransitionsMutex;    // mutex for currentTransitions
 static constexpr TimeChangeRule UTC_RULE = { "UTC", Last, Sun, Jan, 0, 0 };
-const Timezone utcZone(UTC_RULE, UTC_RULE, UTC_RULE.name);                               // the UTC timezone, used for UTC time conversions
+Timezone utcZone(UTC_RULE, UTC_RULE, UTC_RULE.name);                               // the UTC timezone, used for UTC time conversions
 
 /**
  * Convert the given time change rule to a transition time_t value for the given year.
@@ -61,21 +54,17 @@ static time_t transitionTime(const TimeChangeRule &r, int yr) {
 /**
  * Calculate the DST and standard time change points for the given year as local and UTC time_t values,
  * provided the DST and STD rules are different (DST is observed)
- * @param dst the DST rule
- * @param std the Standard rule
  * @param year year of interest
  * @return a structure with time transition points; if DST is not observed, the fields are zeroed out
  */
-static dstTransitions calcTimeChanges(const TimeChangeRule &dst, const TimeChangeRule &std, const int year) {
-    dstTransitions dstLoc;
-    // if (dst.offset == std.offset)
-        // return dstLoc;    // DST is not observed in this timezone
-
-    dstLoc.m_dstLoc = transitionTime(dst, year);
-    dstLoc.m_stdLoc = transitionTime(std, year);
-    dstLoc.m_dstUTC = dstLoc.m_dstLoc - std.offset * SECS_PER_MIN;
-    dstLoc.m_stdUTC = dstLoc.m_stdLoc - dst.offset * SECS_PER_MIN;
-    return dstLoc;
+void Timezone::calcTimeChanges(const int year) {
+    currentTransitions.m_dstLoc = transitionTime(m_dst, year);
+    currentTransitions.m_stdLoc = transitionTime(m_std, year);
+    currentTransitions.m_dstUTC = currentTransitions.m_dstLoc - m_std.offset * SECS_PER_MIN;
+    currentTransitions.m_stdUTC = currentTransitions.m_stdLoc - m_dst.offset * SECS_PER_MIN;
+    currentTransitions.m_year = year;
+    log_info(F("DST transitions for %s updated for year %d: Local DST start %lld (%s - offset %d min); Local STD start %lld (%s - offset %d min); UTC DST start %lld; UTC STD start %lld"),
+        getName(), year, currentTransitions.m_dstLoc, getDSTShort(), m_dst.offset, currentTransitions.m_stdLoc, getSTDShort(), m_std.offset, currentTransitions.m_dstUTC, currentTransitions.m_stdUTC);
 }
 
 /**
@@ -84,7 +73,7 @@ static dstTransitions calcTimeChanges(const TimeChangeRule &dst, const TimeChang
  * @param stdStart
  * @param name
  */
-Timezone::Timezone(const TimeChangeRule &dstStart, const TimeChangeRule &stdStart, const char* name): m_dst(dstStart), m_std(stdStart) {
+Timezone::Timezone(const TimeChangeRule &dstStart, const TimeChangeRule &stdStart, const char* name): m_dst(dstStart), m_std(stdStart), mutex() {
     strncpy(m_name, name, sizeof(m_name)-1);
 }
 
@@ -93,7 +82,7 @@ Timezone::Timezone(const TimeChangeRule &dstStart, const TimeChangeRule &stdStar
  * @param stdTime
  * @param name
  */
-Timezone::Timezone(const TimeChangeRule &stdTime, const char* name) : m_dst(stdTime), m_std(stdTime) {
+Timezone::Timezone(const TimeChangeRule &stdTime, const char* name) : m_dst(stdTime), m_std(stdTime), mutex() {
     strncpy(m_name, name, sizeof(m_name)-1);
 }
 
@@ -102,7 +91,7 @@ Timezone::Timezone(const TimeChangeRule &stdTime, const char* name) : m_dst(stdT
  * @param utc
  * @return
  */
-time_t Timezone::toLocal(const time_t utc) const {
+time_t Timezone::toLocal(const time_t &utc) {
     if (isDST(utc, false))
         return utc + m_dst.offset * SECS_PER_MIN;
     return utc + m_std.offset * SECS_PER_MIN;
@@ -135,7 +124,7 @@ time_t Timezone::toLocal(const time_t utc) const {
  * @param local
  * @return
  */
-time_t Timezone::toUTC(const time_t local) const {
+time_t Timezone::toUTC(const time_t &local) {
     if (isDST(local, true))
         return local - m_dst.offset * SECS_PER_MIN;
     return local - m_std.offset * SECS_PER_MIN;
@@ -147,14 +136,14 @@ time_t Timezone::toUTC(const time_t local) const {
  * @param bLocal whether the time to check is in local time (default) or UTC
  * @return if the given time falls during the DST period and DST is observed; false otherwise
  */
-bool Timezone::isDST(const time_t time, const bool bLocal) const {
+bool Timezone::isDST(const time_t &time, const bool bLocal) {
     if (!isDSTObserved())
         return false;
 
     // recalculate the time change points if needed
-    if (const int yr = year(time); yr != year(bLocal ? currentTransitions.m_dstLoc : currentTransitions.m_dstUTC)) {
-        CoreMutex mutex(&currentTransitionsMutex);
-        currentTransitions = calcTimeChanges(m_dst, m_std, yr);
+    if (const int yr = year(time); yr != currentTransitions.m_year) {
+        CoreMutex coreMutex(&mutex);
+        calcTimeChanges(yr);
     }
 
     //time is local
@@ -174,4 +163,28 @@ bool Timezone::isDST(const time_t time, const bool bLocal) const {
     return !(time >= currentTransitions.m_stdUTC && time < currentTransitions.m_dstUTC);
 }
 
+/**
+ * Updates the zone name, offset and dst fields of the time elements structure
+ * @param tm time elements structure to populate - all time fields must be populated for time argument before calling this method!
+ * @param time the unix time - seconds since unix epoch 1/1/1970 - in local time
+ */
+void Timezone::updateZoneInfo(tmElements_t &tm, const time_t &time) {
+    //DST flag
+    bool isDst = false;
+    if (isDSTObserved()) {
+         if (tm.tm_year != currentTransitions.m_year) {
+             CoreMutex coreMutex(&mutex);
+             calcTimeChanges(tm.tm_year);
+         }
+        // Northern Hemisphere
+        isDst = (time >= currentTransitions.m_dstLoc && time < currentTransitions.m_stdLoc);
+        if (currentTransitions.m_stdLoc <= currentTransitions.m_dstLoc) // Southern Hemisphere
+            isDst = !isDst;
+    }
+    tm.tm_isdst = isDst;
 
+    //offset
+    tm.tm_offset = (isDst ? m_dst.offset : m_std.offset)*static_cast<int>(SECS_PER_MIN);
+    //name
+    tm.tm_zone = getName();
+}

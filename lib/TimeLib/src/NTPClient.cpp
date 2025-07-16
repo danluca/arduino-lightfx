@@ -70,8 +70,8 @@ bool NTPClient::update(time_t &epochTime, int &wait) {
   do {
     delay(10);
     cb = _udp->parsePacket();
-    if (timeout > 100) {
-      log_error(F("NTP update failed - timed out (1000ms)"));
+    if (timeout > 1000) {
+      log_error(F("NTP update failed - timed out (10000ms)"));
       return false; // timeout after 1000 ms
     }
     timeout++;

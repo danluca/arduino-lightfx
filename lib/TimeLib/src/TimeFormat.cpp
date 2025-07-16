@@ -47,7 +47,7 @@ static inline const PROGMEM constexpr char * const PROGMEM dayNames_P[] = {
 };
 
 static inline constexpr char dayShortNames_P[] PROGMEM = "ErrSunMonTueWedThuFriSat";
-static inline constexpr auto defaultTimePattern PROGMEM = "%Y-%m-%d %H:%M:%S z Z";
+static inline constexpr auto defaultTimePattern PROGMEM = "%Y-%m-%d %H:%M:%S %z %Z";
 static inline constexpr auto defaultTimeMsPattern PROGMEM = "%d-%d-%d %d:%d:%d.%d %+02d:%02d %s";
 
 /**
@@ -157,7 +157,7 @@ String TimeFormat::asString(const time_t &time, const char *formatter) {
    char buf[TIME_BUFFER_LENGTH]{};
    tmElements_t tm;
    timeService.breakTime(time, tm);
-   strftime(buf, 40, formatter, &tm);
+   strftime(buf, TIME_BUFFER_LENGTH-1, formatter, &tm);
    str.concat(buf);
    return str;
 }

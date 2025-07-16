@@ -11,7 +11,6 @@
 #include "fixed_queue.h"
 
 extern WiFiUDP Udp;
-extern NTPClient timeClient;
 
 enum Holiday { None, Party, ValentineDay, StPatrick, MemorialDay, IndependenceDay, Halloween, Thanksgiving, Christmas, NewYear };
 Holiday buildHoliday(time_t time);

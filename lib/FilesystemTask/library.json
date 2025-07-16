@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "SchedulerExt": "0.4.4.1",
-    "PicoLog": "1.0.0"
+    "PicoLog": "1.0.0",
+    "StringUtils": "1.0.0",
+    "TimeLib": "1.0.0"
   }
 }

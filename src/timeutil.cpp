@@ -16,7 +16,7 @@ constexpr size_t TIME_BUFFER_SIZE = 32;
 constexpr auto TIME_ZONE_NAME = "America/Chicago";
 constexpr TimeChangeRule cdt {.name = "CDT", .week = Second, .dow = Sun, .month = Mar, .hour = 2, .offset = -300};
 constexpr TimeChangeRule cst {.name = "CST", .week = First, .dow = Sun, .month = Nov, .hour = 2, .offset = -360};
-const Timezone centralTime(cdt, cst, "America/Chicago");
+Timezone centralTime(cdt, cst, "America/Chicago");
 
 WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
 TimeService timeService(Udp);

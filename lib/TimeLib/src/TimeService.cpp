@@ -172,7 +172,7 @@ int dayOfYear(const time_t t) {
  * @param timeInput time input to convert - seconds since 1/1/1970
  * @param tmItems the time structure to fill broken time fields into
  */
-void TimeService::breakTime(const time_t timeInput, tmElements_t &tmItems) const {
+void TimeService::breakTime(const time_t &timeInput, tmElements_t &tmItems) const {
   // this is a more compact version of the C library localtime function
   time_t time = timeInput;
   tmItems.tm_sec = static_cast<int>(time % 60);
@@ -185,7 +185,7 @@ void TimeService::breakTime(const time_t timeInput, tmElements_t &tmItems) const
   
   uint8_t year = 0;
   unsigned long days = 0;
-  while(days += LEAP_YEAR(year) ? 366 : 365 <= time)
+  while((days += LEAP_YEAR(year) ? 366 : 365) <= time)
     year++;
   tmItems.tm_year = unixEpochYearToCalendar(year); // the year in timeInput is offset from 1970 since that is what unix time is
   const bool leapYear = LEAP_YEAR(year);
@@ -209,11 +209,7 @@ void TimeService::breakTime(const time_t timeInput, tmElements_t &tmItems) const
   }
   tmItems.tm_mon = month + 1;  // jan is month 1
   tmItems.tm_mday = static_cast<int>(time) + 1;     // day of the month
-  if (tz) {
-    tmItems.tm_isdst = tz->isDST(timeInput); // daylight savings time flag (0 or 1)
-    tmItems.tm_offset = tz->getOffset(timeInput); // offset from UTC in seconds
-    tmItems.tm_zone = tz->getName(); // timezone name
-  }
+  tz->updateZoneInfo(tmItems, timeInput); // update timezone information
 }
 
 /**
@@ -265,7 +261,7 @@ time_t utcNow() {
  */
 time_t nowMillis() {
   const time_t utcMillis = utcNowMillis();
-  const time_t offsetMillis = timeService.tz ? timeService.tz->getOffset(utcMillis / 1000, false) * 1000 : 0;
+  const time_t offsetMillis = timeService.tz->getOffset(utcMillis / 1000, false) * 1000;
   return utcMillis + offsetMillis;
 }
 
@@ -342,7 +338,7 @@ time_t TimeService::addDrift(const long adjustment) {
  * @param adjustment time drift adjustment in milliseconds
  * @return previous drift value
  */
-time_t TimeService::setDrift(long adjustment) {
+time_t TimeService::setDrift(const long adjustment) {
   const time_t prevDrift = drift;
   drift = adjustment;
   return prevDrift;
@@ -360,7 +356,7 @@ void TimeService::setSyncInterval(const time_t interval) {
  *
  * @param tZone the new timezone rule to apply
  */
-void TimeService::applyTimezone(const Timezone &tZone) {
+void TimeService::applyTimezone(Timezone &tZone) {
   tz = &tZone;
 }
 
@@ -416,7 +412,7 @@ void TimeService::begin() {
  */
 bool TimeService::syncTimeNTP() {
   utcNowMillis(); //force a status update
-  if (status != timeNeedsSync)
+  if (status == timeSet)
     return false;
 
   time_t epochTime;

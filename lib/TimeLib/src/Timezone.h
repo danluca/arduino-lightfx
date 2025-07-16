@@ -16,6 +16,8 @@ enum week_t:uint8_t {Last, First, Second, Third, Fourth};
 enum dow_t:uint8_t {Sun=1, Mon, Tue, Wed, Thu, Fri, Sat};
 enum month_t:uint8_t {Jan=1, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};
 
+typedef tm tmElements_t;
+
 // structure to describe rules for when daylight/summer-time begins, or when standard time begins.
 struct TimeChangeRule {
     char name[6];      // short name, five chars max
@@ -24,6 +26,13 @@ struct TimeChangeRule {
     month_t month;     // 1=Jan, 2=Feb, ... 12=Dec
     uint8_t hour;      // 0-23
     int offset;        // offset from UTC in minutes (more user-friendly)
+};
+struct dstTransitions {
+    time_t m_dstUTC{};        // dst start for the given year, given in UTC
+    time_t m_stdUTC{};        // std time start for given year, given in UTC
+    time_t m_dstLoc{};        // dst start for the given year, given in local time
+    time_t m_stdLoc{};        // std time start for given year, given in local time
+    uint16_t m_year{};        // year of the update
 };
 
 /**
@@ -37,13 +46,14 @@ class Timezone {
     public:
         Timezone(const TimeChangeRule &dstStart, const TimeChangeRule &stdStart, const char *name);
         Timezone(const TimeChangeRule &stdTime, const char *name);
-        [[nodiscard]] time_t toLocal(time_t utc) const;
-        [[nodiscard]] time_t toUTC(time_t local) const;
-        [[nodiscard]] bool isDST(time_t time, bool bLocal = true) const;
+        [[nodiscard]] time_t toLocal(const time_t &utc);
+        [[nodiscard]] time_t toUTC(const time_t &local);
+        [[nodiscard]] bool isDST(const time_t &time, bool bLocal = true);
+        void updateZoneInfo(tmElements_t &tm, const time_t &time);
         /** The full IANA time zone name */
         [[nodiscard]] const char *getName() const { return m_name; }
         /** The short zone name for the given local time_t */
-        [[nodiscard]] const char *getShort(const time_t local) const { return isDST(local) ? m_dst.name : m_std.name; }
+        [[nodiscard]] const char *getShort(const time_t local) { return isDST(local) ? m_dst.name : m_std.name; }
         /** The Daylight Savings Time short zone name */
         [[nodiscard]] const char *getDSTShort() const { return m_dst.name; }
         /** The Standard Time short zone name */
@@ -53,15 +63,20 @@ class Timezone {
         /** standard time offset from UTC in seconds (standard unit) */
         [[nodiscard]] int getSTDOffset() const { return m_std.offset*static_cast<int>(SECS_PER_MIN); }
         /** local time_t offset from UTC in seconds (standard unit) */
-        [[nodiscard]] int getOffset(const time_t time, const bool bLocal=true) const { return (isDST(time, bLocal) ? m_dst.offset : m_std.offset)*static_cast<int>(SECS_PER_MIN); }
+        [[nodiscard]] int getOffset(const time_t time, const bool bLocal=true) { return (isDST(time, bLocal) ? m_dst.offset : m_std.offset)*static_cast<int>(SECS_PER_MIN); }
         /** Whether this time zone observes DST */
         [[nodiscard]] bool isDSTObserved() const { return m_dst.offset != m_std.offset; }
+
+    protected:
+        void calcTimeChanges(int year);
 
     private:
         char m_name[33]{};        // name of the timezone, e.g. "America/New_York", max 32 chars
         const TimeChangeRule m_dst;     // rule for the start of dst or summer-time for any year
         const TimeChangeRule m_std;     // rule for start of standard time for any year
+        mutex_t mutex;
+        dstTransitions currentTransitions;  // current DST transitions for the last year inquired
 };
 
-extern const Timezone utcZone;
+extern Timezone utcZone;
 #endif
