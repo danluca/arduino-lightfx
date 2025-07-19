@@ -109,7 +109,7 @@ function getStatus() {
             });
             $("#audioHistogram").CanvasJSChart(histOptions);
             $('#timeNtp').html(`${data.time.ntpSync}`);
-            $('#timeCurrent').html(`${data.time.date} ${data.time.time} ${data.time.dst?"CDT":"CST"}`);
+            $('#timeCurrent').html(`${data.time.sdate} ${data.time.stime} ${data.time.zoneShort}`);
             $('#timeHoliday').html(`${data.time.holiday}`);
             $('#lastDrift').html(`${data.time.lastDrift} ms`);
             $('#avgDrift').html(`${data.time.averageDrift} ms/hr`);

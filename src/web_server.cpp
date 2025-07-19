@@ -158,13 +158,16 @@ void web::handleGetStatus(WebClient &client) {
     time["millis"] = millis(); //current time in ms
     const time_t curTime = now();
     formatDate(timeBuf, curTime);
-    time["date"] = timeBuf;
+    time["sdate"] = timeBuf;
     formatTime(timeBuf, curTime);
-    time["time"] = timeBuf;
+    time["stime"] = timeBuf;
+    time["time"] = curTime;
     const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
     time["dst"] = bDST;
     time["zoneDST"] = timeService.timezone()->isDST(curTime);
     time["offset"] = timeService.timezone()->getOffset(curTime);
+    time["zone"] = timeService.timezone()->getName();
+    time["zoneShort"] = timeService.timezone()->getShort(curTime);
     time[csHoliday] = holidayToString(currentHoliday()); //time derived holiday
     time["syncSize"] = timeSyncs.size();
     time["averageDrift"] = getAverageTimeDrift();

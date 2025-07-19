@@ -12,7 +12,6 @@
 #define dt_MAX_STRING_LEN 9 // length of the longest date string (excluding terminating null)
 #define TIME_BUFFER_LENGTH    64
 
-static inline constexpr char monthStr0[] PROGMEM = "Error";
 static inline constexpr char monthStr1[] PROGMEM = "January";
 static inline constexpr char monthStr2[] PROGMEM = "February";
 static inline constexpr char monthStr3[] PROGMEM = "March";
@@ -27,13 +26,12 @@ static inline constexpr char monthStr11[] PROGMEM = "November";
 static inline constexpr char monthStr12[] PROGMEM = "December";
 
 static inline const PROGMEM constexpr char * const PROGMEM monthNames_P[] = {
-    monthStr0,monthStr1,monthStr2,monthStr3,monthStr4,monthStr5,monthStr6,
+    monthStr1,monthStr2,monthStr3,monthStr4,monthStr5,monthStr6,
     monthStr7,monthStr8,monthStr9,monthStr10,monthStr11,monthStr12
 };
 
-static inline constexpr char monthShortNames_P[] PROGMEM = "ErrJanFebMarAprMayJunJulAugSepOctNovDec";
+static inline constexpr char monthShortNames_P[] PROGMEM = "JanFebMarAprMayJunJulAugSepOctNovDec";
 
-static inline constexpr char dayStr0[] PROGMEM = "Error";
 static inline constexpr char dayStr1[] PROGMEM = "Sunday";
 static inline constexpr char dayStr2[] PROGMEM = "Monday";
 static inline constexpr char dayStr3[] PROGMEM = "Tuesday";
@@ -43,18 +41,19 @@ static inline constexpr char dayStr6[] PROGMEM = "Friday";
 static inline constexpr char dayStr7[] PROGMEM = "Saturday";
 
 static inline const PROGMEM constexpr char * const PROGMEM dayNames_P[] = {
-   dayStr0,dayStr1,dayStr2,dayStr3,dayStr4,dayStr5,dayStr6,dayStr7
+   dayStr1,dayStr2,dayStr3,dayStr4,dayStr5,dayStr6,dayStr7
 };
 
-static inline constexpr char dayShortNames_P[] PROGMEM = "ErrSunMonTueWedThuFriSat";
+static inline constexpr char dayShortNames_P[] PROGMEM = "SunMonTueWedThuFriSat";
 // static inline constexpr auto defaultTimePattern PROGMEM = "%Y-%m-%d %H:%M:%S %z %Z";
-static inline constexpr auto defaultTimePattern PROGMEM = "%F %T %z %Z (%c)";
+// static inline constexpr auto defaultTimePattern PROGMEM = "%F %T %z %Z (%c)";
+static inline constexpr auto defaultTimePattern PROGMEM = "%d-%02d-%02d %02d:%02d:%02d %+03d:%02d %s";
 static inline constexpr auto defaultTimeMsPattern PROGMEM = "%d-%02d-%02d %02d:%02d:%02d.%03d %+03d:%02d %s";
 
 /**
- * Converts the numeric month value into its string representation - e.g. 2 -> February
+ * Converts the numeric month value into its string representation - e.g. 1 -> February
  * NOTE: no null termination performed
- * @param month the month value, 1-12, January is 1
+ * @param month the month value, 0-11, January is 0
  * @param buffer buffer where to write the string representation
  * @return number of characters written
  */
@@ -64,9 +63,9 @@ size_t TimeFormat::monthStr(const uint8_t month, char *buffer) {
    return strlen_P(pgm_ptr);
 }
 /**
- * Converts the numeric month value into its short string representation - e.g. 2 -> Feb
+ * Converts the numeric month value into its short string representation - e.g. 1 -> Feb
  * NOTE: no null termination performed
- * @param month the month value, 1-12, January is 1
+ * @param month the month value, 0-11, January is 0
  * @param buffer buffer where to write the string representation
  * @return number of characters written
  */
@@ -78,9 +77,9 @@ size_t TimeFormat::monthShortStr(const uint8_t month, char *buffer) {
 }
 
 /**
- * Converts the numeric day  value into its string representation - e.g. 2 -> Monday
+ * Converts the numeric day  value into its string representation - e.g. 1 -> Monday
  * NOTE: no null termination performed
- * @param day the day value, 1-7, Sunday is 1
+ * @param day the day value, 0-6, Sunday is 0
  * @param buffer buffer where to write the string representation
  * @return number of characters written
  */
@@ -91,9 +90,9 @@ size_t TimeFormat::dayStr(const uint8_t day, char *buffer) {
 }
 
 /**
- * Converts the numeric day value into its short string representation - e.g. 2 -> Mon
+ * Converts the numeric day value into its short string representation - e.g. 1 -> Mon
  * NOTE: no null termination performed
- * @param day the day value, 1-7, Sunday is 1
+ * @param day the day value, 0-6, Sunday is 0
  * @param buffer buffer where to write the string representation
  * @return number of characters written
  */
@@ -149,7 +148,7 @@ String TimeFormat::asStringMs(const time_t &timeMs) {
 /**
  * Formats the local time given as a string with the format provided
  * @param time time to format - local seconds since 1/1/1970
- * @param formatter format pattern - see https://en.cppreference.com/w/c/chrono/strftime
+ * @param formatter (temporarily ignored) format pattern - see https://en.cppreference.com/w/c/chrono/strftime
  * @return time formatted string
  */
 String TimeFormat::asString(const time_t &time, const char *formatter) {
@@ -158,7 +157,13 @@ String TimeFormat::asString(const time_t &time, const char *formatter) {
    char buf[TIME_BUFFER_LENGTH]{};
    tmElements_t tm;
    timeService.breakTime(time, tm);
-   strftime(buf, TIME_BUFFER_LENGTH-1, formatter, &tm);
+   // strftime doesn't look to use tm_offset, tm_zone fields for the formatters %z, %Z respectively - the output we've seen is always '+0000 GMT'
+   // strftime(buf, TIME_BUFFER_LENGTH-1, formatter, &tm);
+   //forcing a default (ISO8601) formatter to ensure all fields passed as arguments are used in the formatter in proper order
+   //client code that needs custom formatters need to perform their own time breaking and invoking snprintf with appropriate format and time field arguments
+   const int ofsHour = tm.tm_offset / 3600;
+   const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
+   snprintf(buf, TIME_BUFFER_LENGTH, defaultTimePattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ofsHour, ofsMin, tm.tm_zone);
    str.concat(buf);
    return str;
 }

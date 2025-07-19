@@ -33,7 +33,7 @@ void CoreTimeCalc::breakTimeCore(const time_t &timeInput, tmElements_t &tmItems)
     time /= 60; // now it is hours
     tmItems.tm_hour = static_cast<int>(time % 24);
     time /= 24; // now it is days
-    tmItems.tm_wday = static_cast<int>((time + 4) % 7 + 1);  // Sunday is day 1
+    tmItems.tm_wday = static_cast<int>((time + 4) % 7);  // Sunday is day 0
 
     int year = UNIX_EPOCH_YEAR;   //start of unix epoch
     unsigned long days = 0;
@@ -44,7 +44,7 @@ void CoreTimeCalc::breakTimeCore(const time_t &timeInput, tmElements_t &tmItems)
     const bool leapYear = isLeapYear(year);
     days -= leapYear ? 366 : 365;
     time -= days; // now it is days in this year, starting at 0
-    tmItems.tm_yday = static_cast<int>(time) + 1; // day of the year
+    tmItems.tm_yday = static_cast<int>(time); // day of the year, starts at 0
 
     uint8_t month = 0;
     for (month=0; month<12; month++) {

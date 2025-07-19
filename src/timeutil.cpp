@@ -5,7 +5,6 @@
 #include "timeutil.h"
 #include "PaletteFactory.h"
 #include "util.h"
-#include "stringutils.h"
 #include "sysinfo.h"
 #include "constants.hpp"
 #include "log.h"
@@ -160,7 +159,7 @@ uint8_t formatDateTime(char *buf, time_t time) {
         sz += formatTime(buf, time) + 1;  //date - time separation character
     else {
         *(buf + sz) = ' ';  //date - time separation character
-        sz += formatTime( buf+sz+1, time);
+        sz += formatTime( buf+sz+1, time) + 1;
     }
     return sz;
 }
@@ -171,28 +170,30 @@ uint8_t formatDateTime(char *buf, time_t time) {
  * @return true if time is in DST, false otherwise
  */
 bool isDST(const time_t time) {
+    return timeService.timezone()->isDST(time);
+
 //    const uint16_t md = encodeMonthDay(time);
     // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
     // to the transition, such that we don't need to implement complex Sunday counting rules
 //    return md > 0x030C && md < 0x0B05;
-    const int mo = month(time);
-    const int dy = day(time);
-    const int hr = hour(time);
-    const int dow = weekday(time);
-    // DST runs from second Sunday of March to first Sunday of November
-    // Never in January, February or December
-    if (mo < 3 || mo > 11)
-        return false;
-    // Always in April to October
-    if (mo > 3 && mo < 11)
-        return true;
-    // In March, DST if previous Sunday was on or after the 8th.
-    // Begins at 2am on second Sunday in March
-    const int previousSunday = dy - dow;
-    if (mo == 3)
-        return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
-    // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
-    return (previousSunday < 7 && dow == 1) ? (hr < 2) : (previousSunday < 0);
+    // const int mo = month(time);
+    // const int dy = day(time);
+    // const int hr = hour(time);
+    // const int dow = weekday(time);
+    // // DST runs from second Sunday of March to first Sunday of November
+    // // Never in January, February or December
+    // if (mo < 3 || mo > 11)
+    //     return false;
+    // // Always in April to October
+    // if (mo > 3 && mo < 11)
+    //     return true;
+    // // In March, DST if previous Sunday was on or after the 8th.
+    // // Begins at 2am on second Sunday in March
+    // const int previousSunday = dy - dow;
+    // if (mo == 3)
+    //     return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
+    // // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
+    // return (previousSunday < 7 && dow == 1) ? (hr < 2) : (previousSunday < 0);
 }
 
 /**
