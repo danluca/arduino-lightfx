@@ -140,7 +140,7 @@ String TimeFormat::asStringMs(const time_t &timeMs) {
    timeService.breakTime(time, tm);
    const int ofsHour = tm.tm_offset / 3600;
    const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
-   snprintf(buf, TIME_BUFFER_LENGTH, defaultTimeMsPattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ms, ofsHour, ofsMin, tm.tm_zone);
+   snprintf(buf, TIME_BUFFER_LENGTH, defaultTimeMsPattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ms, ofsHour, ofsMin, tm.tm_zone);
    str.concat(buf);
    return str;
 }

@@ -54,8 +54,8 @@ void CoreTimeCalc::breakTimeCore(const time_t &timeInput, tmElements_t &tmItems)
         else
             break;
     }
-    tmItems.tm_mon = month + 1;  // jan is month 1
-    tmItems.tm_mday = static_cast<int>(time) + 1;     // day of the month
+    tmItems.tm_mon = month;  // jan is month 0
+    tmItems.tm_mday = static_cast<int>(time) + 1;     // day of the month, starts at 1
 
     // Initialize timezone fields with defaults (will be set by timezone logic later)
     tmItems.tm_isdst = 0;
@@ -141,13 +141,13 @@ time_t CoreTimeCalc::makeTimeCore(const tmElements_t &tmItems) {
 
     // add days for this year, months start from 1
     const bool leapYear = isLeapYear(year + UNIX_EPOCH_YEAR);
-    for (int i = 1; i < tmItems.tm_mon; i++) {
-        if (i == 2 && leapYear)
+    for (int i = 0; i < tmItems.tm_mon; i++) {
+        if (i == 1 && leapYear)
             seconds += SECS_PER_DAY * 29;
         else
-            seconds += SECS_PER_DAY * monthDays[i-1];  //monthDay array starts from 0
+            seconds += SECS_PER_DAY * monthDays[i];
     }
-    seconds += (tmItems.tm_mday-1) * SECS_PER_DAY;  //tm_mday starts from 1
+    seconds += tmItems.tm_mday * SECS_PER_DAY;
     seconds += tmItems.tm_hour * SECS_PER_HOUR;
     seconds += tmItems.tm_min * SECS_PER_MIN;
     seconds += tmItems.tm_sec;

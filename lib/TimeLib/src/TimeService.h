@@ -88,7 +88,7 @@ public:
     void begin();
 
     void setTime(time_t t);
-    time_t setTime(int hr, int min, int sec, int day, int month, int year, int offset);
+    time_t setTime(uint16_t hr, uint16_t min, uint16_t sec, uint16_t day, uint16_t month, int year, int offset);
 
     time_t addDrift(long adjustment);
     time_t setDrift(long adjustment);

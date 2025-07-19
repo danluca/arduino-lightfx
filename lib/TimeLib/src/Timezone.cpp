@@ -63,11 +63,11 @@ static time_t transitionTime(const TimeChangeRule &r, int yr) {
 void Timezone::calcTimeChanges(const int year) {
     currentTransitions.m_dstLoc = transitionTime(m_dst, year);
     currentTransitions.m_stdLoc = transitionTime(m_std, year);
-    currentTransitions.m_dstUTC = currentTransitions.m_dstLoc - m_std.offset * SECS_PER_MIN;
-    currentTransitions.m_stdUTC = currentTransitions.m_stdLoc - m_dst.offset * SECS_PER_MIN;
+    currentTransitions.m_dstUTC = currentTransitions.m_dstLoc - m_std.offsetMin * SECS_PER_MIN;
+    currentTransitions.m_stdUTC = currentTransitions.m_stdLoc - m_dst.offsetMin * SECS_PER_MIN;
     currentTransitions.m_year = year;
     log_info(F("DST transitions for %s updated for year %d: Local DST start %lld (%s - offset %d min); Local STD start %lld (%s - offset %d min); UTC DST start %lld; UTC STD start %lld"),
-        getName(), year, currentTransitions.m_dstLoc, getDSTShort(), m_dst.offset, currentTransitions.m_stdLoc, getSTDShort(), m_std.offset, currentTransitions.m_dstUTC, currentTransitions.m_stdUTC);
+        getName(), year, currentTransitions.m_dstLoc, getDSTShort(), m_dst.offsetMin, currentTransitions.m_stdLoc, getSTDShort(), m_std.offsetMin, currentTransitions.m_dstUTC, currentTransitions.m_stdUTC);
 }
 
 /**
@@ -96,8 +96,8 @@ Timezone::Timezone(const TimeChangeRule &stdTime, const char* name) : m_dst(stdT
  */
 time_t Timezone::toLocal(const time_t &utc) {
     if (isDST(utc, false))
-        return utc + m_dst.offset * SECS_PER_MIN;
-    return utc + m_std.offset * SECS_PER_MIN;
+        return utc + m_dst.offsetMin * SECS_PER_MIN;
+    return utc + m_std.offsetMin * SECS_PER_MIN;
 }
 
 
@@ -129,8 +129,8 @@ time_t Timezone::toLocal(const time_t &utc) {
  */
 time_t Timezone::toUTC(const time_t &local) {
     if (isDST(local, true))
-        return local - m_dst.offset * SECS_PER_MIN;
-    return local - m_std.offset * SECS_PER_MIN;
+        return local - m_dst.offsetMin * SECS_PER_MIN;
+    return local - m_std.offsetMin * SECS_PER_MIN;
 }
 
 /**
@@ -188,7 +188,7 @@ void Timezone::updateZoneInfo(tmElements_t &tm, const time_t &time) {
     tm.tm_isdst = isDst;
 
     //offset
-    tm.tm_offset = (isDst ? m_dst.offset : m_std.offset)*static_cast<int>(SECS_PER_MIN);
+    tm.tm_offset = (isDst ? m_dst.offsetMin : m_std.offsetMin)*static_cast<int>(SECS_PER_MIN);
     //name
     tm.tm_zone = getName();
 }

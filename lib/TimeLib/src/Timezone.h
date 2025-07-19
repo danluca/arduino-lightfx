@@ -23,7 +23,7 @@ struct TimeChangeRule {
     dow_t dow;       // day of week, 1=Sun, 2=Mon, ... 7=Sat
     month_t month;     // 1=Jan, 2=Feb, ... 12=Dec
     uint8_t hour;      // 0-23
-    int offset;        // offset from UTC in minutes (more user-friendly)
+    int offsetMin;        // offset from UTC in minutes (more user-friendly)
 };
 struct dstTransitions {
     time_t m_dstUTC{};        // dst start for the given year, given in UTC (seconds)
@@ -57,13 +57,13 @@ class Timezone {
         /** The Standard Time short zone name */
         [[nodiscard]] const char *getSTDShort() const { return m_std.name; }
         /** daylight savings time offset from UTC in seconds (standard unit) */
-        [[nodiscard]] int getDSTOffset() const { return m_dst.offset*static_cast<int>(SECS_PER_MIN); }
+        [[nodiscard]] int getDSTOffset() const { return m_dst.offsetMin*static_cast<int>(SECS_PER_MIN); }
         /** standard time offset from UTC in seconds (standard unit) */
-        [[nodiscard]] int getSTDOffset() const { return m_std.offset*static_cast<int>(SECS_PER_MIN); }
+        [[nodiscard]] int getSTDOffset() const { return m_std.offsetMin*static_cast<int>(SECS_PER_MIN); }
         /** local time_t offset from UTC in seconds (standard unit) */
-        [[nodiscard]] int getOffset(const time_t time, const bool bLocal=true) { return (isDST(time, bLocal) ? m_dst.offset : m_std.offset)*static_cast<int>(SECS_PER_MIN); }
+        [[nodiscard]] int getOffset(const time_t time, const bool bLocal=true) { return (isDST(time, bLocal) ? m_dst.offsetMin : m_std.offsetMin)*static_cast<int>(SECS_PER_MIN); }
         /** Whether this time zone observes DST */
-        [[nodiscard]] bool isDSTObserved() const { return m_dst.offset != m_std.offset; }
+        [[nodiscard]] bool isDSTObserved() const { return m_dst.offsetMin != m_std.offsetMin; }
 
     protected:
         void calcTimeChanges(int year);

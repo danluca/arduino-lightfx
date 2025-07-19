@@ -232,12 +232,12 @@ void TimeService::setTime(const time_t t) {
   breakTime(t, tm);
   datetime_t dt;
   rtc_get_datetime(&dt);
-  const bool timeNeedsUpdate = dt.year != tm.tm_year || dt.month != tm.tm_mon || dt.day != tm.tm_mday ||
+  const bool timeNeedsUpdate = dt.year != tm.tm_year || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
                           dt.hour != tm.tm_hour || dt.min != tm.tm_min || dt.sec != tm.tm_sec;
 
   if (timeNeedsUpdate) {
     dt.year = static_cast<int16_t>(tm.tm_year);
-    dt.month = static_cast<int8_t>(tm.tm_mon);
+    dt.month = static_cast<int8_t>(tm.tm_mon+1);
     dt.day = static_cast<int8_t>(tm.tm_mday);
     dt.hour = static_cast<int8_t>(tm.tm_hour);
     dt.min = static_cast<int8_t>(tm.tm_min);
@@ -260,10 +260,10 @@ void TimeService::setTime(const time_t t) {
  * @param offset the time offset from UTC in seconds
  * @return the time_t built from these elements
  */
-time_t TimeService::setTime(const int hr, const int min, const int sec, const int day, const int month, const int year, const int offset) {
+time_t TimeService::setTime(const uint16_t hr, const uint16_t min, const uint16_t sec, const uint16_t day, const uint16_t month, const int year, const int offset) {
   tmElements_t tm;
   tm.tm_year = year;
-  tm.tm_mon = month;
+  tm.tm_mon = month == 0 ? month : month-1;  //per https://en.cppreference.com/w/c/chrono/tm.html the tm_mon field uses 0-11 range
   tm.tm_mday = day;
   tm.tm_hour = hr;
   tm.tm_min = min;
@@ -278,12 +278,12 @@ time_t TimeService::setTime(const int hr, const int min, const int sec, const in
 #ifdef PICO_RP2040
   datetime_t dt;
   rtc_get_datetime(&dt);
-  const bool timeNeedsUpdate = dt.year != tm.tm_year || dt.month != tm.tm_mon || dt.day != tm.tm_mday ||
+  const bool timeNeedsUpdate = dt.year != tm.tm_year || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
                           dt.hour != tm.tm_hour || dt.min != tm.tm_min || dt.sec != tm.tm_sec;
 
   if (timeNeedsUpdate) {
     dt.year = static_cast<int16_t>(tm.tm_year);
-    dt.month = static_cast<int8_t>(tm.tm_mon);
+    dt.month = static_cast<int8_t>(tm.tm_mon+1);
     dt.day = static_cast<int8_t>(tm.tm_mday);
     dt.hour = static_cast<int8_t>(tm.tm_hour);
     dt.min = static_cast<int8_t>(tm.tm_min);
