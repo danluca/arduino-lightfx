@@ -42,11 +42,11 @@ static time_t transitionTime(const TimeChangeRule &r, int yr) {
     tm.tm_mday = 1;
     tm.tm_mon = m;
     tm.tm_year = yr;
-    time_t t = mktime(&tm);
+    time_t t = CoreTimeCalc::makeTimeCore(tm);
 
     // add offset from the first of the month to r.dow, and offset for the given week
-    // Direct calculation without using breakTime from weekDay call (causes infinite recursion)
-    const int twDay = static_cast<int>((t / SECS_PER_DAY + 4) % 7 + 1);  // Sunday is day 1
+    // Use CoreTimeCalc to get weekday safely
+    const int twDay = CoreTimeCalc::weekdayCore(t);
     t += ( (r.dow - twDay + 7) % 7 + (w - 1) * 7 ) * SECS_PER_DAY;
     // back up a week if this is a "Last" rule
     if (r.week == 0)
@@ -143,15 +143,9 @@ bool Timezone::isDST(const time_t &time, const bool bLocal) {
     if (!isDSTObserved())
         return false;
 
-    // Direct calculation of year without calling year -> breakTime (causes infinite recursion)
-    const time_t t = time / SECS_PER_DAY;  // Convert to days
-    uint8_t yr = 1970;  //unix epoch year
-    unsigned long days = 0;
-    while((days += (LEAP_YEAR(yr) ? 366 : 365)) <= t)
-        yr++;
-
+    // Get year using CoreTimeCalc to avoid circular dependencies
     // recalculate the time change points if needed
-    if (yr != currentTransitions.m_year) {
+    if (const int yr = CoreTimeCalc::calculateYear(time); yr != currentTransitions.m_year) {
         CoreMutex coreMutex(&mutex);
         calcTimeChanges(yr);
     }

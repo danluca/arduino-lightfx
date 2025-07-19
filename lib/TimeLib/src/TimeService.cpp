@@ -51,7 +51,7 @@ time_t defaultPlatformBootTimeMillis() {
   return millis();
 }
 
-static const uint8_t monthDays[] = {31,28,31,30,31,30,31,31,30,31,30,31}; // API starts months from 1, this array starts from 0
+constexpr uint8_t monthDays[] = {31,28,31,30,31,30,31,31,30,31,30,31}; // API starts months from 1, this array starts from 0
 
 // the hour now
 int hour() {
@@ -59,9 +59,7 @@ int hour() {
 }
 // the hour for the given time
 int hour(const time_t t) {
-  tmElements_t tm;
-  timeService.breakTime(t, tm);
-  return tm.tm_hour;
+  return CoreTimeCalc::hourCore(t);
 }
 // the hour now in 12-hour format
 int hourFormat12() {
@@ -99,9 +97,7 @@ int minute() {
 }
 // the minute for the given time
 int minute(const time_t t) {
-  tmElements_t tm;
-  timeService.breakTime(t, tm);
-  return tm.tm_min;
+  return CoreTimeCalc::minuteCore(t);
 }
 // the second now
 int second() {
@@ -109,9 +105,7 @@ int second() {
 }
 // the second for the given time
 int second(const time_t t) {
-  tmElements_t tm;
-  timeService.breakTime(t, tm);
-  return tm.tm_sec;
+  return CoreTimeCalc::secondCore(t);
 }
 // the day now
 int day(){
@@ -119,9 +113,7 @@ int day(){
 }
 // the day for the given time (1-31)
 int day(const time_t t) {
-  tmElements_t tm;
-  timeService.breakTime(t, tm);
-  return tm.tm_mday;
+  return CoreTimeCalc::dayCore(t);
 }
 // the week day now; Sunday is 1
 int weekday() {
@@ -129,9 +121,7 @@ int weekday() {
 }
 // the week day for the given time (1-7), Sunday is 1
 int weekday(const time_t t) {
-  tmElements_t tm;
-  timeService.breakTime(t, tm);
-  return tm.tm_wday;
+  return CoreTimeCalc::weekdayCore(t);
 }
 // the month now (1-12)
 int month(){
@@ -139,9 +129,7 @@ int month(){
 }
 // the month for the given time
 int month(const time_t t) {
-  tmElements_t tm;
-  timeService.breakTime(t, tm);
-  return tm.tm_mon;
+  return CoreTimeCalc::monthCore(t);
 }
 // the full four-digit year: (2009, 2010, etc)
 int year() {
@@ -149,9 +137,7 @@ int year() {
 }
 // the year for the given time
 int year(const time_t t) {
-  tmElements_t tm;
-  timeService.breakTime(t, tm);
-  return tm.tm_year;
+  return CoreTimeCalc::yearCore(t);
 }
 
 int dayOfYear() {
@@ -159,9 +145,7 @@ int dayOfYear() {
 }
 
 int dayOfYear(const time_t t) {
-  tmElements_t tm;
-  timeService.breakTime(t, tm);
-  return tm.tm_yday;
+  return CoreTimeCalc::dayOfYearCore(t);
 }
 
 /**
@@ -170,43 +154,21 @@ int dayOfYear(const time_t t) {
  * @param tmItems the time structure to fill broken time fields into
  */
 void TimeService::breakTime(const time_t &timeInput, tmElements_t &tmItems) const {
-  // this is a more compact version of the C library localtime function
-  time_t time = timeInput;
-  tmItems.tm_sec = static_cast<int>(time % 60);
-  time /= 60; // now it is minutes
-  tmItems.tm_min = static_cast<int>(time % 60);
-  time /= 60; // now it is hours
-  tmItems.tm_hour = static_cast<int>(time % 24);
-  time /= 24; // now it is days
-  tmItems.tm_wday = static_cast<int>((time + 4) % 7 + 1);  // Sunday is day 1
-  
-  uint8_t year = 0;
-  unsigned long days = 0;
-  while((days += LEAP_YEAR(year) ? 366 : 365) <= time)
-    year++;
-  tmItems.tm_year = unixEpochYearToCalendar(year); // the year in timeInput is offset from 1970 since that is what unix time is
-  const bool leapYear = LEAP_YEAR(year);
-  days -= leapYear ? 366 : 365;
-  time -= days; // now it is days in this year, starting at 0
-  tmItems.tm_yday = static_cast<int>(time) + 1; // day of the year
-  
-  uint8_t month = 0;
-  uint8_t monthLength = 0;
-  for (month=0; month<12; month++) {
-    // month length for February
-    if (month==1)
-      monthLength = leapYear ? 29 : 28;
-    else
-      monthLength = monthDays[month];
-    
-    if (time >= monthLength)
-      time -= monthLength;
-    else
-        break;
-  }
-  tmItems.tm_mon = month + 1;  // jan is month 1
-  tmItems.tm_mday = static_cast<int>(time) + 1;     // day of the month
-  tz->updateZoneInfo(tmItems, timeInput); // update timezone information
+  // First do the core time breakdown without timezone
+  CoreTimeCalc::breakTimeCore(timeInput, tmItems);
+
+  // Then apply timezone adjustments
+  tz->updateZoneInfo(tmItems, timeInput);
+}
+
+/**
+ * Break the given local time_t into time components without timezone adjustments
+ * @param timeInput time input to convert - seconds since 1/1/1970
+ * @param tmItems the time structure to fill broken time fields into
+ */
+void TimeService::breakTimeNoTZ(const time_t &timeInput, tmElements_t &tmItems) const {
+  // Just use the core time calculation without timezone
+  CoreTimeCalc::breakTimeCore(timeInput, tmItems);
 }
 
 /**
@@ -215,29 +177,21 @@ void TimeService::breakTime(const time_t &timeInput, tmElements_t &tmItems) cons
  * @return local time corresponding to time elements
  */
 time_t TimeService::makeTime(const tmElements_t &tmItems) {
-  // Note the year element is offset from 1970 if less than 1970, otherwise is absolute year. The time_t represents the year since 1970
-  // As always, if you put garbage in, you get garbage out
-  // Seconds from 1970 till 1 jan 00:00:00 of the given year
-  const int year = tmItems.tm_year > 1970 ? CalendarToUnixEpochYear(tmItems.tm_year) : tmItems.tm_year;
-  time_t seconds = year * (SECS_PER_DAY * 365);
-  for (int i = 0; i < year; i++) {
-    if (LEAP_YEAR(i))
-      seconds += SECS_PER_DAY;   // add extra days for leap years
-  }
-  
-  // add days for this year, months start from 1
-  for (int i = 1; i < tmItems.tm_mon; i++) {
-    if ( (i == 2) && LEAP_YEAR(year))
-      seconds += SECS_PER_DAY * 29;
-    else
-      seconds += SECS_PER_DAY * monthDays[i-1];  //monthDay array starts from 0
-  }
-  seconds+= (tmItems.tm_mday-1) * SECS_PER_DAY;
-  seconds+= tmItems.tm_hour * SECS_PER_HOUR;
-  seconds+= tmItems.tm_min * SECS_PER_MIN;
-  seconds+= tmItems.tm_sec;
-  seconds+= tmItems.tm_offset;
+  // Use core time calculation and add timezone offset
+  time_t seconds = CoreTimeCalc::makeTimeCore(tmItems);
+  // Apply timezone offset if provided
+  seconds += tmItems.tm_offset;
   return seconds;
+}
+
+/**
+ * Assemble time elements into time_t seconds since 1/1/1970 without timezone adjustments
+ * @param tmItems time structure to assemble
+ * @return time corresponding to time elements without timezone adjustments
+ */
+time_t TimeService::makeTimeNoTZ(const tmElements_t &tmItems) {
+  // Just use the core time calculation without timezone offset
+  return CoreTimeCalc::makeTimeCore(tmItems);
 }
 
 /**
@@ -424,5 +378,54 @@ bool TimeService::syncTimeNTP() {
 
 void TimeService::end() {
   ntpClient.end();
+}
+
+// Timezone-aware versions of time component functions
+int localHour(time_t t) {
+  tmElements_t tm;
+  timeService.breakTime(t, tm); // Use the timezone-aware version
+  return tm.tm_hour;
+}
+
+int localMinute(time_t t) {
+  tmElements_t tm;
+  timeService.breakTime(t, tm);
+  return tm.tm_min;
+}
+
+int localSecond(time_t t) {
+  tmElements_t tm;
+  timeService.breakTime(t, tm);
+  return tm.tm_sec;
+}
+
+int localDay(time_t t) {
+  tmElements_t tm;
+  timeService.breakTime(t, tm);
+  return tm.tm_mday;
+}
+
+int localWeekday(time_t t) {
+  tmElements_t tm;
+  timeService.breakTime(t, tm);
+  return tm.tm_wday;
+}
+
+int localMonth(time_t t) {
+  tmElements_t tm;
+  timeService.breakTime(t, tm);
+  return tm.tm_mon;
+}
+
+int localYear(time_t t) {
+  tmElements_t tm;
+  timeService.breakTime(t, tm);
+  return tm.tm_year;
+}
+
+int localDayOfYear(time_t t) {
+  tmElements_t tm;
+  timeService.breakTime(t, tm);
+  return tm.tm_yday;
 }
 

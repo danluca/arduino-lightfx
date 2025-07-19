@@ -8,15 +8,13 @@
 #pragma once
 #ifndef TIMEZONE_H_INCLUDED
 #define TIMEZONE_H_INCLUDED
-#include <Arduino.h>
+#include <CoreTimeCalc.h>
 #include "TimeDef.h"
 
 // convenient constants for TimeChangeRules
 enum week_t:uint8_t {Last, First, Second, Third, Fourth};
 enum dow_t:uint8_t {Sun=1, Mon, Tue, Wed, Thu, Fri, Sat};
 enum month_t:uint8_t {Jan=1, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};
-
-typedef tm tmElements_t;
 
 // structure to describe rules for when daylight/summer-time begins, or when standard time begins.
 struct TimeChangeRule {

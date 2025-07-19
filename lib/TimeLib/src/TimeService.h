@@ -9,6 +9,7 @@
 #include "TimeDef.h"
 #include "NTPClient.h"
 #include "Timezone.h"
+#include "CoreTimeCalc.h"
 
 #define DEFAULT_SYNC_INTERVAL (12 * SECS_PER_HOUR)  // default interval in seconds between NTP sync attempts
 
@@ -54,6 +55,16 @@ int year(time_t t); // the year for the given time
 int dayOfYear(); // the day of the year (1-366)
 int dayOfYear(time_t t); // the day of the year for the given time
 
+// Timezone-aware versions of time component functions
+int localHour(time_t t); // the hour for the given time in local timezone
+int localMinute(time_t t); // the minute for the given time in local timezone
+int localSecond(time_t t); // the second for the given time in local timezone
+int localDay(time_t t); // the day for the given time in local timezone
+int localWeekday(time_t t); // the weekday for the given time in local timezone
+int localMonth(time_t t); // the month for the given time in local timezone
+int localYear(time_t t); // the year for the given time in local timezone
+int localDayOfYear(time_t t); // the day of the year for the given time in local timezone
+
 time_t now();           // return the current local time as seconds since Jan 1 1970 (aka local unix time)
 time_t nowMillis();     // return the current local time as milliseconds since Jan 1 1970
 time_t utcNow();        // return the current UTC time as seconds since Jan 1 1970 (aka unix time)
@@ -96,8 +107,10 @@ public:
     [[nodiscard]] time_t syncLocalTimeMillis() const { return syncLocalMillis; }
     [[nodiscard]] time_t syncUTCTimeMillis() const { return syncUnixMillis; }
 
-    void breakTime(const time_t &timeInput, tmElements_t &tmItems) const; // break time_t into elements
+    void breakTime(const time_t &timeInput, tmElements_t &tmItems) const; // break time_t into elements with timezone
+    void breakTimeNoTZ(const time_t &timeInput, tmElements_t &tmItems) const; // break time_t into elements without timezone
     static time_t makeTime(const tmElements_t &tmItems); // convert time elements into time_t
+    static time_t makeTimeNoTZ(const tmElements_t &tmItems); // convert time elements into time_t without timezone
 
     friend time_t nowMillis();       // return the current local time as milliseconds since Jan 1 1970
     friend time_t utcNowMillis();    // return the current UTC time as milliseconds since Jan 1 1970
