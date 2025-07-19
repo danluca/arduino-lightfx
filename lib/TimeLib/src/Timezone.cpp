@@ -57,7 +57,7 @@ static time_t transitionTime(const TimeChangeRule &r, int yr) {
 /**
  * Calculate the DST and standard time change points for the given year as local and UTC time_t values,
  * provided the DST and STD rules are different (DST is observed)
- * @param year year of interest
+ * @param year year of interest (four digit)
  * @return a structure with time transition points; if DST is not observed, the fields are zeroed out
  */
 void Timezone::calcTimeChanges(const int year) {
@@ -176,9 +176,9 @@ void Timezone::updateZoneInfo(tmElements_t &tm, const time_t &time) {
     //DST flag
     bool isDst = false;
     if (isDSTObserved()) {
-         if (tm.tm_year != currentTransitions.m_year) {
+         if ((tm.tm_year + TM_EPOCH_YEAR) != currentTransitions.m_year) {
              CoreMutex coreMutex(&mutex);
-             calcTimeChanges(tm.tm_year);
+             calcTimeChanges(tm.tm_year + TM_EPOCH_YEAR);
          }
         // Northern Hemisphere
         isDst = (time >= currentTransitions.m_dstLoc && time < currentTransitions.m_stdLoc);
