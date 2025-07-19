@@ -48,6 +48,9 @@ void NTPClient::begin() {
 }
 
 void NTPClient::begin(const unsigned int port) {
+  if (_udpSetup)
+    return;
+
   _port = port;
 
   _udp->begin(_port);
@@ -65,13 +68,13 @@ bool NTPClient::update(time_t &epochTime, int &wait) {
   sendNTPPacket();
 
   // Wait till data is there or timeout...
-  byte timeout = 0;
+  uint16_t timeout = 0;
   int cb = 0;
   do {
-    delay(10);
+    delay(20);
     cb = _udp->parsePacket();
-    if (timeout > 1000) {
-      log_error(F("NTP update failed - timed out (10000ms)"));
+    if (timeout > 250) {
+      log_error(F("NTP update failed - timed out (50000ms)"));
       return false; // timeout after 1000 ms
     }
     timeout++;

@@ -105,6 +105,7 @@ bool wifi_connect() {
     mdnsStatus = mdns->start({IP_ADDR}, dnsHostname);
     (void)mdnsStatus;
     log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
+    timeService.begin();
 #endif
 
     return result;
@@ -167,6 +168,7 @@ void wifi_reconnect() {
     delete mUdp;
 #endif
 
+    timeService.end();
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     taskDelay(2000);    //let disconnect state settle

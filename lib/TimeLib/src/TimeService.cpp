@@ -270,7 +270,7 @@ time_t utcNowMillis() {
   const time_t utcMillis = (sysClock - timeService.syncLocalMillis) + timeService.syncUnixMillis + timeService.drift;  //current UTC time in millis
 
   //opportunity to update sync status
-  if (const time_t nextSyncTime = utcMillis + timeService.syncInterval * 1000; nextSyncTime <= utcMillis)
+  if (const time_t nextSyncTime = timeService.syncUnixMillis + timeService.syncInterval * 1000; nextSyncTime <= utcMillis)
     timeService.status = timeService.status == timeNotSet ? timeNotSet : timeNeedsSync;
   return utcMillis;
 }
