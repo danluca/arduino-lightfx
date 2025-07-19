@@ -26,10 +26,10 @@ struct TimeChangeRule {
     int offset;        // offset from UTC in minutes (more user-friendly)
 };
 struct dstTransitions {
-    time_t m_dstUTC{};        // dst start for the given year, given in UTC
-    time_t m_stdUTC{};        // std time start for given year, given in UTC
-    time_t m_dstLoc{};        // dst start for the given year, given in local time
-    time_t m_stdLoc{};        // std time start for given year, given in local time
+    time_t m_dstUTC{};        // dst start for the given year, given in UTC (seconds)
+    time_t m_stdUTC{};        // std time start for given year, given in UTC (seconds)
+    time_t m_dstLoc{};        // dst start for the given year, given in local time (seconds)
+    time_t m_stdLoc{};        // std time start for given year, given in local time (seconds)
     uint16_t m_year{};        // year of the update
 };
 

@@ -20,8 +20,8 @@ Timezone utcZone(UTC_RULE, UTC_RULE, UTC_RULE.name);                            
 /**
  * Convert the given time change rule to a transition time_t value for the given year.
  * @param r the rule
- * @param yr year of interest
- * @return the transition time for the year given
+ * @param yr year of interest (four digits)
+ * @return the transition time for the year given (seconds since unix epoch)
  */
 static time_t transitionTime(const TimeChangeRule &r, int yr) {
     uint8_t m = r.month;     // temp copies of r.month and r.week
@@ -41,7 +41,7 @@ static time_t transitionTime(const TimeChangeRule &r, int yr) {
     tm.tm_sec = 0;
     tm.tm_mday = 1;
     tm.tm_mon = m;
-    tm.tm_year = yr;
+    tm.tm_year = yr - TM_EPOCH_YEAR;
     time_t t = CoreTimeCalc::makeTimeCore(tm);
 
     // add offset from the first of the month to r.dow, and offset for the given week
