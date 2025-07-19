@@ -47,8 +47,9 @@ static inline const PROGMEM constexpr char * const PROGMEM dayNames_P[] = {
 };
 
 static inline constexpr char dayShortNames_P[] PROGMEM = "ErrSunMonTueWedThuFriSat";
-static inline constexpr auto defaultTimePattern PROGMEM = "%Y-%m-%d %H:%M:%S %z %Z";
-static inline constexpr auto defaultTimeMsPattern PROGMEM = "%d-%d-%d %d:%d:%d.%d %+02d:%02d %s";
+// static inline constexpr auto defaultTimePattern PROGMEM = "%Y-%m-%d %H:%M:%S %z %Z";
+static inline constexpr auto defaultTimePattern PROGMEM = "%F %T %z %Z (%c)";
+static inline constexpr auto defaultTimeMsPattern PROGMEM = "%d-%02d-%02d %02d:%02d:%02d.%03d %+03d:%02d %s";
 
 /**
  * Converts the numeric month value into its string representation - e.g. 2 -> February

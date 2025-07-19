@@ -189,6 +189,7 @@ void Timezone::updateZoneInfo(tmElements_t &tm, const time_t &time) {
 
     //offset
     tm.tm_offset = (isDst ? m_dst.offsetMin : m_std.offsetMin)*static_cast<int>(SECS_PER_MIN);
-    //name
-    tm.tm_zone = getName();
+    //name - abbreviated (geared toward display)
+    tm.tm_zone = isDST ? getDSTShort() : getSTDShort();
+    // tm.tm_zone = getName();
 }

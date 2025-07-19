@@ -51,7 +51,7 @@ bool wifi_connect() {
     uint attCount = 0;
     uint8_t wifiStatus = WiFi.status();
     while (wifiStatus != WL_CONNECTED) {
-        log_info(F("Attempting to connect..."));
+        log_info(F("Attempting to connect Wi-Fi..."));
 
         // Connect to WPA/WPA2 network
         wifiStatus = WiFi.begin(ssid, pass);
