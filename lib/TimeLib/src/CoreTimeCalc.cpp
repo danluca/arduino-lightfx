@@ -73,8 +73,6 @@ int CoreTimeCalc::calculateYear(const time_t &time) {
         year++;
     return year;
 }
-1752905686
-62173101600
 
 // Implement the core time component extractors
 int CoreTimeCalc::hourCore(const time_t t) {
