@@ -150,11 +150,12 @@ int dayOfYear(const time_t t) {
 
 /**
  * Break the given local time_t into time components
+ * See https://en.cppreference.com/w/c/chrono/tm.html for time elements values/ranges
  * @param timeInput time input to convert - seconds since 1/1/1970
  * @param tmItems the time structure to fill broken time fields into
  */
 void TimeService::breakTime(const time_t &timeInput, tmElements_t &tmItems) const {
-  // First do the core time breakdown without timezone
+  // First, do the core time breakdown without timezone
   CoreTimeCalc::breakTimeCore(timeInput, tmItems);
 
   // Then apply timezone adjustments
@@ -162,17 +163,8 @@ void TimeService::breakTime(const time_t &timeInput, tmElements_t &tmItems) cons
 }
 
 /**
- * Break the given local time_t into time components without timezone adjustments
- * @param timeInput time input to convert - seconds since 1/1/1970
- * @param tmItems the time structure to fill broken time fields into
- */
-void TimeService::breakTimeNoTZ(const time_t &timeInput, tmElements_t &tmItems) const {
-  // Just use the core time calculation without timezone
-  CoreTimeCalc::breakTimeCore(timeInput, tmItems);
-}
-
-/**
  * Assemble time elements into local time_t seconds since 1/1/1970
+ * See https://en.cppreference.com/w/c/chrono/tm.html for time elements values/ranges
  * @param tmItems time structure to assemble
  * @return local time corresponding to time elements
  */
@@ -252,16 +244,25 @@ void TimeService::setTime(const time_t t) {
     dt.sec = static_cast<int8_t>(tm.tm_sec);
     rtc_set_datetime(&dt);
   }
-
 #endif
 
 }
 
+/**
+ * Sets the current time to the value built from individual elements
+ * Note: Generally, no validity checks are performed on the input data
+ * @param hr the hour of the day - 0-23
+ * @param min the minute of the hour - 0-59
+ * @param sec the second of the minute - 0-59
+ * @param day the day of the month - 1-31 (no checks are made whether the day is a valid value for the month)
+ * @param month the month of the year - 1-12
+ * @param year the four-digit year
+ * @param offset the time offset from UTC in seconds
+ * @return the time_t built from these elements
+ */
 time_t TimeService::setTime(const int hr, const int min, const int sec, const int day, const int month, const int year, const int offset) {
- // year can be given as full four digit year or offset from 1970; it is converted to years since 1970
   tmElements_t tm;
-  const int yr = year > 1970 ? year : unixEpochYearToCalendar(year);
-  tm.tm_year = yr;
+  tm.tm_year = year;
   tm.tm_mon = month;
   tm.tm_mday = day;
   tm.tm_hour = hr;
@@ -269,7 +270,27 @@ time_t TimeService::setTime(const int hr, const int min, const int sec, const in
   tm.tm_sec = sec;
   tm.tm_offset = offset;
   const time_t t = makeTime(tm);
-  setTime(t);
+  //inlined the setTime(time_t) to avoid a redundant time break for RP2040
+  const time_t sysClock = getLocalClockMillisFunc();
+  syncLocalMillis = sysClock;
+  syncUnixMillis = t * 1000;  //we store the absolute time in milliseconds
+  status = timeSet;
+#ifdef PICO_RP2040
+  datetime_t dt;
+  rtc_get_datetime(&dt);
+  const bool timeNeedsUpdate = dt.year != tm.tm_year || dt.month != tm.tm_mon || dt.day != tm.tm_mday ||
+                          dt.hour != tm.tm_hour || dt.min != tm.tm_min || dt.sec != tm.tm_sec;
+
+  if (timeNeedsUpdate) {
+    dt.year = static_cast<int16_t>(tm.tm_year);
+    dt.month = static_cast<int8_t>(tm.tm_mon);
+    dt.day = static_cast<int8_t>(tm.tm_mday);
+    dt.hour = static_cast<int8_t>(tm.tm_hour);
+    dt.min = static_cast<int8_t>(tm.tm_min);
+    dt.sec = static_cast<int8_t>(tm.tm_sec);
+    rtc_set_datetime(&dt);
+  }
+#endif
   return t;
 }
 

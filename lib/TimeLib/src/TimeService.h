@@ -108,7 +108,8 @@ public:
     [[nodiscard]] time_t syncUTCTimeMillis() const { return syncUnixMillis; }
 
     void breakTime(const time_t &timeInput, tmElements_t &tmItems) const; // break time_t into elements with timezone
-    void breakTimeNoTZ(const time_t &timeInput, tmElements_t &tmItems) const; // break time_t into elements without timezone
+    /** Break the given local time_t (seconds since 1/1/1970) into time components without timezone adjustments */
+    static void breakTimeNoTZ(const time_t &timeInput, tmElements_t &tmItems) { CoreTimeCalc::breakTimeCore(timeInput, tmItems); }; // break time_t into elements without a timezone
     static time_t makeTime(const tmElements_t &tmItems); // convert time elements into time_t
     static time_t makeTimeNoTZ(const tmElements_t &tmItems); // convert time elements into time_t without timezone
 

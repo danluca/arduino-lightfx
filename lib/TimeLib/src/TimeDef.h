@@ -11,10 +11,8 @@ typedef enum {
 } timeDayOfWeek_t;
 
 //convenience macros to convert to and from tm/unix-epoch years
-#define  unixEpochYearToCalendar(Y) ((Y) + 1970)  // full four-digit year
-#define  CalendarToUnixEpochYear(Y)   ((Y) - 1970)
-// leap year calculator expects year argument as years offset from 1970
-#define LEAP_YEAR(Y)     ( ((1970+(Y))>0) && !((1970+(Y))%4) && ( ((1970+(Y))%100) || !((1970+(Y))%400) ) )
+#define UNIX_EPOCH_YEAR 1970
+#define TM_EPOCH_YEAR 1900
 
 /*==============================================================================*/
 /* Useful Constants */

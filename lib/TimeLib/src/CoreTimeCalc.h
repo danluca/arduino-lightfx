@@ -32,6 +32,9 @@ public:
 
     // Calculate year directly from time_t without using breakTime
     static int calculateYear(const time_t &time);
+    static int daysInYear(int year);
+
+    static bool isLeapYear(const int year) { return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0; }
 };
 
 #endif // CORE_TIME_CALC_H
