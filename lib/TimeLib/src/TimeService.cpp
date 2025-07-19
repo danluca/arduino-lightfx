@@ -43,9 +43,6 @@
   // return mktime(tm);
 // }
 
-// leap year calculator expects year argument as years offset from 1970
-#define LEAP_YEAR(Y)     ( ((1970+(Y))>0) && !((1970+(Y))%4) && ( ((1970+(Y))%100) || !((1970+(Y))%400) ) )
-
 /**
  * Default implementation for getSystemLocalClock prototype
  * @return milliseconds since boot

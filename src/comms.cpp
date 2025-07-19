@@ -317,7 +317,8 @@ void timeUpdate() {
  */
 void timeSetupCheck() {
     if (!sysInfo->isSysStatus(SYS_STATUS_NTP))
-        timeUpdate();    //attempt to sync time
+        timeSetup();
+        //timeUpdate();    //attempt to sync time
     else
         log_info(F("Time was already properly setup, event fired in excess. System status: %#hX"), sysInfo->getSysStatus());
 }

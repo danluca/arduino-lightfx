@@ -45,9 +45,12 @@ static time_t transitionTime(const TimeChangeRule &r, int yr) {
     time_t t = mktime(&tm);
 
     // add offset from the first of the month to r.dow, and offset for the given week
-    t += ( (r.dow - weekday(t) + 7) % 7 + (w - 1) * 7 ) * SECS_PER_DAY;
+    // Direct calculation without using breakTime from weekDay call (causes infinite recursion)
+    const int twDay = static_cast<int>((t / SECS_PER_DAY + 4) % 7 + 1);  // Sunday is day 1
+    t += ( (r.dow - twDay + 7) % 7 + (w - 1) * 7 ) * SECS_PER_DAY;
     // back up a week if this is a "Last" rule
-    if (r.week == 0) t -= 7 * SECS_PER_DAY;
+    if (r.week == 0)
+        t -= 7 * SECS_PER_DAY;
     return t;
 }
 
@@ -132,7 +135,7 @@ time_t Timezone::toUTC(const time_t &local) {
 
 /**
  * Determine whether the given time_t is within the DST interval or the Standard time interval
- * @param time time to check - seconds
+ * @param time time to check - seconds since unix epoch (1/1/1970)
  * @param bLocal whether the time to check is in local time (default) or UTC
  * @return if the given time falls during the DST period and DST is observed; false otherwise
  */
@@ -140,8 +143,15 @@ bool Timezone::isDST(const time_t &time, const bool bLocal) {
     if (!isDSTObserved())
         return false;
 
+    // Direct calculation of year without calling year -> breakTime (causes infinite recursion)
+    const time_t t = time / SECS_PER_DAY;  // Convert to days
+    uint8_t yr = 1970;  //unix epoch year
+    unsigned long days = 0;
+    while((days += (LEAP_YEAR(yr) ? 366 : 365)) <= t)
+        yr++;
+
     // recalculate the time change points if needed
-    if (const int yr = year(time); yr != currentTransitions.m_year) {
+    if (yr != currentTransitions.m_year) {
         CoreMutex coreMutex(&mutex);
         calcTimeChanges(yr);
     }
