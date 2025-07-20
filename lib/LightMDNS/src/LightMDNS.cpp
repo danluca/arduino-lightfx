@@ -634,10 +634,6 @@ MDNS::Status MDNS::process() {
             log_debug(F("MDNS: process: %d messages successfully received"), count);
 #endif
 
-        for (auto &sf: _services) {
-            log_info(F("MDNS: process: service: %s"), sf._fqsn.c_str());
-        }
-
     }
 
     return status;
