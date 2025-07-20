@@ -13,15 +13,15 @@
 
 // convenient constants for TimeChangeRules
 enum week_t:uint8_t {Last, First, Second, Third, Fourth};
-enum dow_t:uint8_t {Sun=1, Mon, Tue, Wed, Thu, Fri, Sat};
-enum month_t:uint8_t {Jan=1, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};
+enum dow_t:uint8_t {Sun=0, Mon, Tue, Wed, Thu, Fri, Sat};
+enum month_t:uint8_t {Jan=0, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};
 
 // structure to describe rules for when daylight/summer-time begins, or when standard time begins.
 struct TimeChangeRule {
     char name[6];      // short name, five chars max
     week_t week;      // First, Second, Third, Fourth, or Last week of the month
-    dow_t dow;       // day of week, 1=Sun, 2=Mon, ... 7=Sat
-    month_t month;     // 1=Jan, 2=Feb, ... 12=Dec
+    dow_t dow;       // day of week, 0=Sun, 1=Mon, ... 6=Sat
+    month_t month;     // 0=Jan, 1=Feb, ... 11=Dec
     uint8_t hour;      // 0-23
     int offsetMin;        // offset from UTC in minutes (more user-friendly)
 };

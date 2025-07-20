@@ -21,14 +21,14 @@ Timezone utcZone(UTC_RULE, UTC_RULE, UTC_RULE.name);                            
  * Convert the given time change rule to a transition time_t value for the given year.
  * @param r the rule
  * @param yr year of interest (four digits)
- * @return the transition time for the year given (seconds since unix epoch)
+ * @return the transition time for the year given (seconds since unix epoch) - in UTC
  */
 static time_t transitionTime(const TimeChangeRule &r, int yr) {
     uint8_t m = r.month;     // temp copies of r.month and r.week
     uint8_t w = r.week;
     if (w == 0) {            // is this a "Last week" rule?
-        if (++m > 12) {      // yes, for "Last", go to the next month
-            m = 1;
+        if (++m > 11) {      // yes, for "Last", go to the next month
+            m = 0;
             ++yr;
         }
         w = 1;               // and treat as the first week of next month, subtract 7 days later

@@ -147,8 +147,8 @@ uint8_t formatDate(char *buf, time_t time) {
     tmElements_t tm;
     timeService.breakTime(time, tm);
     if (buf == nullptr)
-        return snprintf(buf, 0, fmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday);
-    return snprintf(buf, 11, fmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday);   //10 chars + null terminating
+        return snprintf(buf, 0, fmtDate, tm.tm_year+TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday);
+    return snprintf(buf, 11, fmtDate, tm.tm_year+TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday);   //10 chars + null terminating
 }
 
 uint8_t formatDateTime(char *buf, time_t time) {
@@ -171,29 +171,6 @@ uint8_t formatDateTime(char *buf, time_t time) {
  */
 bool isDST(const time_t time) {
     return timeService.timezone()->isDST(time);
-
-//    const uint16_t md = encodeMonthDay(time);
-    // switch the time offset for CDT between March 12th and Nov 5th - these are chosen arbitrary (matches 2023 dates) but close enough
-    // to the transition, such that we don't need to implement complex Sunday counting rules
-//    return md > 0x030C && md < 0x0B05;
-    // const int mo = month(time);
-    // const int dy = day(time);
-    // const int hr = hour(time);
-    // const int dow = weekday(time);
-    // // DST runs from second Sunday of March to first Sunday of November
-    // // Never in January, February or December
-    // if (mo < 3 || mo > 11)
-    //     return false;
-    // // Always in April to October
-    // if (mo > 3 && mo < 11)
-    //     return true;
-    // // In March, DST if previous Sunday was on or after the 8th.
-    // // Begins at 2am on second Sunday in March
-    // const int previousSunday = dy - dow;
-    // if (mo == 3)
-    //     return previousSunday >= 7 && (!(previousSunday < 14 && dow == 1) || (hr >= 2));
-    // // Otherwise November, DST if before the first Sunday, i.e. the previous Sunday must be before the 1st
-    // return (previousSunday < 7 && dow == 1) ? (hr < 2) : (previousSunday < 0);
 }
 
 /**
