@@ -23,11 +23,11 @@ TimeService timeService(Udp);
 void updateLoggingTimebase() {
 #if LOGGING_ENABLED == 1
     if (Log.getTimebase() == 0) {
-        const time_t currentTime = now();
+        const time_t currentTime = nowMillis();
         const time_t currentMillis = millis();
         log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), 
-                currentMillis, TimeFormat::asString(currentMillis/1000).c_str(), TimeFormat::asString(currentTime).c_str());
-        Log.setTimebase(currentTime * 1000 - currentMillis);
+                currentMillis, TimeFormat::asStringMs(currentMillis, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
+        Log.setTimebase(currentTime - currentMillis);
     }
 #endif
 }
@@ -70,6 +70,9 @@ bool handleNTPSuccess() {
     const Holiday holiday = paletteFactory.adjustHoliday(curTime);
     updateLoggingTimebase();
     logTimeStatus(curTime, holiday);
+
+    const TimeSync tSync {.localMillis = static_cast<ulong>(timeService.syncLocalTimeMillis()), .unixMillis=timeService.syncUTCTimeMillis() };
+    timeSyncs.push(tSync);
     
     return true;
 }
@@ -85,14 +88,15 @@ void handleNTPFailure() {
 
     if (const time_t wifiTime = WiFi.getTime(); wifiTime > 0) {
         timeService.setTime(wifiTime);
-        const Holiday holiday = paletteFactory.adjustHoliday(wifiTime);
+        const time_t curTime = now();
+        const Holiday holiday = paletteFactory.adjustHoliday(curTime);
         updateLoggingTimebase();
         const bool isDaylightSavings = timeService.timezone()->isDST(wifiTime, false);
         if (isDaylightSavings)
             sysInfo->setSysStatus(SYS_STATUS_DST);
-        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), TimeFormat::asString(wifiTime).c_str(),
+        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), TimeFormat::asString(curTime).c_str(),
             isDaylightSavings ? timeService.timezone()->getDSTShort() : timeService.timezone()->getSTDShort(), holidayToString(holiday));
-        logTimeStatus(wifiTime, holiday);
+        logTimeStatus(curTime, holiday);
     } else {
         log_error(F("NTP sync failed, WiFi time not available. Current time from raw clock: %s (holiday adjusted to %s)"),
                   TimeFormat::asString(now()).c_str(), holidayToString(paletteFactory.getHoliday()));

@@ -11,12 +11,6 @@
 #include "Timezone.h"
 #include "CoreTimeCalc.h"
 
-#define DEFAULT_SYNC_INTERVAL (12 * SECS_PER_HOUR)  // default interval in seconds between NTP sync attempts
-
-typedef enum {
-    timeNotSet, timeNeedsSync, timeSet
-} timeSyncStatus_t;
-
 // function declaration prototype that provides the platform's system hardware clock in milliseconds since boot
 typedef time_t (*getSystemLocalClock)();
 
@@ -73,17 +67,15 @@ time_t utcNowMillis();  // return the current UTC time as milliseconds since Jan
 class TimeService {
     NTPClient ntpClient;
     getSystemLocalClock getLocalClockMillisFunc;
-    timeSyncStatus_t status {timeNotSet};
     time_t syncUnixMillis {0};    // the absolute time - matching syncLocalMillis - when this cache was updated last. In UTC millis since 1/1/1970
     time_t syncLocalMillis {0};   // the last cached millis() value
     time_t drift {0};           // the current drift adjustment in milliseconds (to be applied as a correction to absolute time)
-    unsigned long syncInterval = DEFAULT_SYNC_INTERVAL;  // time cache update will be attempted after this many seconds;
     Timezone *tz {};
 
 public:
     explicit TimeService(UDP& udp, getSystemLocalClock platformTime=nullptr);
-    TimeService(UDP& udp, const char* poolServerName, unsigned long updateInterval=0, getSystemLocalClock platformTime=nullptr);
-    TimeService(UDP& udp, const IPAddress &poolServerIP, unsigned long updateInterval=0, getSystemLocalClock platformTime=nullptr);
+    TimeService(UDP& udp, const char* poolServerName, getSystemLocalClock platformTime=nullptr);
+    TimeService(UDP& udp, const IPAddress &poolServerIP, getSystemLocalClock platformTime=nullptr);
 
     void begin();
 
@@ -97,13 +89,10 @@ public:
     void applyTimezone(Timezone &tZone);
     [[nodiscard]] Timezone* timezone() const { return tz; }
 
-    [[nodiscard]] timeSyncStatus_t timeStatus() const { return status; };
-
     void end();
 
     /* time sync functions	*/
     bool syncTimeNTP();
-    void setSyncInterval(time_t interval); // set the number of seconds between re-sync
     [[nodiscard]] time_t syncLocalTimeMillis() const { return syncLocalMillis; }
     [[nodiscard]] time_t syncUTCTimeMillis() const { return syncUnixMillis; }
 

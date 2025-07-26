@@ -107,13 +107,13 @@ bool NTPClient::update(time_t &epochTime, int &wait) {
   }
 
   const time_t utcTime = static_cast<time_t>(secsSince1900) - SEVENTY_YEARS;
-  log_info(F("NTP update successful - epoch time read as %llu UTC seconds since 1/1/1970 (%s)"), utcTime, TimeFormat::asString(utcTime).c_str());
+  log_info(F("NTP update successful - epoch time read as %llu UTC seconds since 1/1/1970 (%s)"), utcTime, TimeFormat::asString(utcTime, false).c_str());
   //we have seen issues with (WiFiNINA) UDP client stability/thread-safety (most likely) or NTP data (least likely);
   //the time extracted was in the year 2100 (!!) - adding sanity checks
   const bool validTime = utcTime > TWENTY_TWENTY && utcTime < TWENTY_SEVENTY;
   if (!validTime)
-    log_error(F("NTP update succeeded but time is INVALID - outside the range %s - %s."), TimeFormat::asString(TWENTY_TWENTY).c_str(),
-      TimeFormat::asString(TWENTY_SEVENTY).c_str());
+    log_error(F("NTP update succeeded but time is INVALID - outside the range %s - %s."), TimeFormat::asString(TWENTY_TWENTY, false).c_str(),
+      TimeFormat::asString(TWENTY_SEVENTY, false).c_str());
   else
     epochTime = utcTime;
 

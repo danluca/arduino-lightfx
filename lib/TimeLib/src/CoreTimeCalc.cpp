@@ -27,23 +27,47 @@ int CoreTimeCalc::daysInYear(const int year) {
 void CoreTimeCalc::breakTimeCore(const time_t &timeInput, tmElements_t &tmItems) {
     // Copy of the original breakTime but without timezone adjustments
     time_t time = timeInput;
-    tmItems.tm_sec = static_cast<int>(time % 60);
-    time /= 60; // now it is minutes
-    tmItems.tm_min = static_cast<int>(time % 60);
-    time /= 60; // now it is hours
-    tmItems.tm_hour = static_cast<int>(time % 24);
-    time /= 24; // now it is days
-    tmItems.tm_wday = static_cast<int>((time + 4) % 7);  // Sunday is day 0
+    // Handle negative numbers correctly for modulo operations
+    tmItems.tm_sec = (static_cast<int>(time % 60) + 60) % 60;
+    time = (time - tmItems.tm_sec) / 60; // now it is minutes
+    tmItems.tm_min = (static_cast<int>(time % 60) + 60) % 60;
+    time = (time - tmItems.tm_min) / 60; // now it is hours
+    tmItems.tm_hour = (static_cast<int>(time % 24) + 24) % 24;
+    time = (time - tmItems.tm_hour) / 24; // now it is days
+    tmItems.tm_wday = (static_cast<int>((time + 4) % 7) + 7) % 7;  // Sunday is day 0
 
     int year = UNIX_EPOCH_YEAR;   //start of unix epoch
-    unsigned long days = 0;
-    //TODO: this doesn't work if time is negative (before 1/1/1970)
-    while((days += daysInYear(year)) <= time)
-        year++;
+    long days = 0;
+    // Handle both positive and negative time values
+    if (time >= 0) {
+        // For positive times (after 1/1/1970)
+        while((days += daysInYear(year)) <= time)
+            year++;
+    } else {
+        // For negative times (before 1/1/1970)
+        year--; // Start from 1969 and go backwards
+        while (time < days) {
+            days -= daysInYear(year);
+            year--;
+        }
+        year++; // Adjust back since we found the year where time >= days
+    }
+
     tmItems.tm_year = year - TM_EPOCH_YEAR; // year since TM_EPOCH_YEAR (1900)
     const bool leapYear = isLeapYear(year);
-    days -= leapYear ? 366 : 365;
-    time -= days; // now it is days in this year, starting at 0
+
+    if (time >= 0) {
+        days -= leapYear ? 366 : 365;
+        time -= days; // now it is days in this year, starting at 0
+    } else {
+        // For negative times, we need to calculate days within the year differently
+        time -= days; // This gives us the days within the current year, which will be zero or negative
+        // Adjust to get positive day of year value
+        if (time < 0) {
+            const int daysInCurrentYear = leapYear ? 366 : 365;
+            time += daysInCurrentYear; // Make it positive within the year's range
+        }
+    }
     tmItems.tm_yday = static_cast<int>(time); // day of the year, starts at 0
 
     uint8_t month = 0;
@@ -68,9 +92,21 @@ int CoreTimeCalc::calculateYear(const time_t &time) {
     // Direct calculation of year from time_t value
     const time_t days = time / SECS_PER_DAY;  // Convert to days since epoch
     uint16_t year = UNIX_EPOCH_YEAR;
-    unsigned long accumulatedDays = 0;
-    while((accumulatedDays += daysInYear(year)) <= days)
-        year++;
+    long accumulatedDays = 0;
+    // Handle both positive and negative time values
+    if (days >= 0) {
+        // For positive times (after 1/1/1970)
+        while((accumulatedDays += daysInYear(year)) <= days)
+            year++;
+    } else {
+        // For negative times (before 1/1/1970)
+        year--; // Start from 1969 and go backwards
+        while (days < accumulatedDays) {
+            accumulatedDays -= daysInYear(year);
+            year--;
+        }
+        year++; // Adjust back since we found the year where time >= days
+    }
     return year;
 }
 
@@ -94,8 +130,8 @@ int CoreTimeCalc::dayCore(const time_t t) {
 }
 
 int CoreTimeCalc::weekdayCore(const time_t t) {
-    // Direct calculation without using full breakTime
-    return static_cast<int>((t / SECS_PER_DAY + 4) % 7 + 1);  // Sunday is day 1
+    // Direct calculation without using full breakTime, handling negative values
+    return static_cast<int>(((t / SECS_PER_DAY + 4) % 7 + 7) % 7);  // Sunday is day 0
 }
 
 int CoreTimeCalc::monthCore(const time_t t) {

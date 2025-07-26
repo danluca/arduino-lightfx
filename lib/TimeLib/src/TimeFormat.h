@@ -11,9 +11,9 @@ class TimeFormat {
 public:
     static size_t toString(const time_t &time, String &str);
     static size_t toString(const time_t &time, const char* formatter, String &str);
-    static String asString(const time_t &time);
-    static String asStringMs(const time_t &timeMs);
-    static String asString(const time_t &time, const char* formatter);
+    static String asString(const time_t &time, bool includeTZ = true);
+    static String asStringMs(const time_t &timeMs, bool includeTZ = true);
+    static String asString(const time_t &time, const char* formatter, bool includeTZ = true);
     /* date strings */
     static size_t monthStr(uint8_t month, char* buffer);
     static size_t dayStr(uint8_t day, char* buffer);

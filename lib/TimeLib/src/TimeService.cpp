@@ -211,10 +211,6 @@ time_t nowMillis() {
 time_t utcNowMillis() {
   const time_t sysClock = timeService.getLocalClockMillisFunc();  // current milliseconds since boot
   const time_t utcMillis = (sysClock - timeService.syncLocalMillis) + timeService.syncUnixMillis + timeService.drift;  //current UTC time in millis
-
-  //opportunity to update sync status
-  if (const time_t nextSyncTime = timeService.syncUnixMillis + timeService.syncInterval * 1000; nextSyncTime <= utcMillis)
-    timeService.status = timeService.status == timeNotSet ? timeNotSet : timeNeedsSync;
   return utcMillis;
 }
 
@@ -226,7 +222,6 @@ void TimeService::setTime(const time_t t) {
   const time_t sysClock = getLocalClockMillisFunc();
   syncLocalMillis = sysClock;
   syncUnixMillis = t * 1000;  //we store the absolute time in milliseconds
-  status = timeSet;
 #ifdef PICO_RP2040
   tmElements_t tm;
   breakTime(t, tm);
@@ -274,7 +269,6 @@ time_t TimeService::setTime(const uint16_t hr, const uint16_t min, const uint16_
   const time_t sysClock = getLocalClockMillisFunc();
   syncLocalMillis = sysClock;
   syncUnixMillis = t * 1000;  //we store the absolute time in milliseconds
-  status = timeSet;
 #ifdef PICO_RP2040
   datetime_t dt;
   rtc_get_datetime(&dt);
@@ -317,14 +311,6 @@ time_t TimeService::setDrift(const long adjustment) {
 }
 
 /**
- * Set the number of seconds between desired re-sync with NTP
- * @param interval number of seconds between syncs
- */
-void TimeService::setSyncInterval(const time_t interval) {
-  syncInterval = static_cast<uint32_t>(interval);
-}
-
-/**
  *
  * @param tZone the new timezone rule to apply
  */
@@ -337,33 +323,27 @@ TimeService::TimeService(UDP& udp, getSystemLocalClock platformTime): ntpClient(
     platformTime = defaultPlatformBootTimeMillis;
   }
   getLocalClockMillisFunc = platformTime;
-  setSyncInterval(DEFAULT_SYNC_INTERVAL);
-  status = timeNotSet;
   syncLocalMillis = 0;
   syncUnixMillis = 0;
   drift = 0;
   tz = &utcZone;
 }
 
-TimeService::TimeService(UDP& udp, const char* poolServerName, const unsigned long updateInterval, getSystemLocalClock platformTime): ntpClient(udp, poolServerName) {
+TimeService::TimeService(UDP& udp, const char* poolServerName, getSystemLocalClock platformTime): ntpClient(udp, poolServerName) {
   if (platformTime == nullptr) {
     platformTime = defaultPlatformBootTimeMillis;
   }
   getLocalClockMillisFunc = platformTime;
-  setSyncInterval(updateInterval == 0 ? DEFAULT_SYNC_INTERVAL : updateInterval);
-  status = timeNotSet;
   syncLocalMillis = 0;
   syncUnixMillis = 0;
   drift = 0;
   tz = &utcZone;
 }
 
-TimeService::TimeService(UDP& udp, const IPAddress &poolServerIP, const unsigned long updateInterval, getSystemLocalClock platformTime): ntpClient(udp, poolServerIP) {
+TimeService::TimeService(UDP& udp, const IPAddress &poolServerIP, getSystemLocalClock platformTime): ntpClient(udp, poolServerIP) {
   if (platformTime == nullptr)
     platformTime = defaultPlatformBootTimeMillis;
   getLocalClockMillisFunc = platformTime;
-  setSyncInterval(updateInterval == 0 ? DEFAULT_SYNC_INTERVAL : updateInterval);
-  status = timeNotSet;
   syncLocalMillis = 0;
   syncUnixMillis = 0;
   drift = 0;
@@ -383,10 +363,6 @@ void TimeService::begin() {
  * @return whether the NTP sync was successful and decoded valid time
  */
 bool TimeService::syncTimeNTP() {
-  utcNowMillis(); //force a status update
-  if (status == timeSet)
-    return false;
-
   time_t epochTime;
   int delay = 0; //milliseconds delay in processing the time data received; accounts for network lag
   const bool success = ntpClient.update(epochTime, delay);
@@ -402,49 +378,49 @@ void TimeService::end() {
 }
 
 // Timezone-aware versions of time component functions
-int localHour(time_t t) {
+int localHour(const time_t t) {
   tmElements_t tm;
   timeService.breakTime(t, tm); // Use the timezone-aware version
   return tm.tm_hour;
 }
 
-int localMinute(time_t t) {
+int localMinute(const time_t t) {
   tmElements_t tm;
   timeService.breakTime(t, tm);
   return tm.tm_min;
 }
 
-int localSecond(time_t t) {
+int localSecond(const time_t t) {
   tmElements_t tm;
   timeService.breakTime(t, tm);
   return tm.tm_sec;
 }
 
-int localDay(time_t t) {
+int localDay(const time_t t) {
   tmElements_t tm;
   timeService.breakTime(t, tm);
   return tm.tm_mday;
 }
 
-int localWeekday(time_t t) {
+int localWeekday(const time_t t) {
   tmElements_t tm;
   timeService.breakTime(t, tm);
   return tm.tm_wday;
 }
 
-int localMonth(time_t t) {
+int localMonth(const time_t t) {
   tmElements_t tm;
   timeService.breakTime(t, tm);
   return tm.tm_mon;
 }
 
-int localYear(time_t t) {
+int localYear(const time_t t) {
   tmElements_t tm;
   timeService.breakTime(t, tm);
   return tm.tm_year;
 }
 
-int localDayOfYear(time_t t) {
+int localDayOfYear(const time_t t) {
   tmElements_t tm;
   timeService.breakTime(t, tm);
   return tm.tm_yday;

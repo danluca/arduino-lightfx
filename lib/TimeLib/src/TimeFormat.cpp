@@ -49,6 +49,8 @@ static inline constexpr char dayShortNames_P[] PROGMEM = "SunMonTueWedThuFriSat"
 // static inline constexpr auto defaultTimePattern PROGMEM = "%F %T %z %Z (%c)";
 static inline constexpr auto defaultTimePattern PROGMEM = "%d-%02d-%02d %02d:%02d:%02d %+03d:%02d %s";
 static inline constexpr auto defaultTimeMsPattern PROGMEM = "%d-%02d-%02d %02d:%02d:%02d.%03d %+03d:%02d %s";
+static inline constexpr auto defaultTimePatternNoTZ PROGMEM = "%d-%02d-%02d %02d:%02d:%02d %+03d:%02d %s";
+static inline constexpr auto defaultTimeMsPatternNoTZ PROGMEM = "%d-%02d-%02d %02d:%02d:%02d.%03d %+03d:%02d %s";
 
 /**
  * Converts the numeric month value into its string representation - e.g. 1 -> February
@@ -119,18 +121,20 @@ size_t TimeFormat::toString(const time_t &time, const char *formatter, String &s
 /**
  * Formats the given local time as a string with the default time format - see \ref defaultTimePattern
  * @param time time to format - local seconds since 1/1/1970
+ * @param includeTZ whether to include the timezone information; default true
  * @return time formatted string
  */
-String TimeFormat::asString(const time_t &time) {
-   return asString(time, defaultTimePattern);
+String TimeFormat::asString(const time_t &time, const bool includeTZ) {
+   return asString(time, defaultTimePattern, includeTZ);
 }
 
 /**
  * Formats the local time in milliseconds as a string with the default time format - see \ref defaultTimeMsPattern
  * @param timeMs time to format - local milliseconds since 1/1/1970
+ * @param includeTZ whether to include the timezone information; default true
  * @return time formatted string including ms
  */
-String TimeFormat::asStringMs(const time_t &timeMs) {
+String TimeFormat::asStringMs(const time_t &timeMs, const bool includeTZ) {
    const time_t time = timeMs / 1000;
    const int ms = static_cast<int>(timeMs % 1000);
    String str;
@@ -138,9 +142,12 @@ String TimeFormat::asStringMs(const time_t &timeMs) {
    char buf[TIME_BUFFER_LENGTH]{};
    tmElements_t tm;
    timeService.breakTime(time, tm);
-   const int ofsHour = tm.tm_offset / 3600;
-   const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
-   snprintf(buf, TIME_BUFFER_LENGTH, defaultTimeMsPattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ms, ofsHour, ofsMin, tm.tm_zone);
+   if (includeTZ) {
+      const int ofsHour = tm.tm_offset / 3600;
+      const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
+      snprintf(buf, TIME_BUFFER_LENGTH, defaultTimeMsPattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ms, ofsHour, ofsMin, tm.tm_zone);
+   } else
+      snprintf(buf, TIME_BUFFER_LENGTH, defaultTimeMsPatternNoTZ, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ms);
    str.concat(buf);
    return str;
 }
@@ -149,9 +156,10 @@ String TimeFormat::asStringMs(const time_t &timeMs) {
  * Formats the local time given as a string with the format provided
  * @param time time to format - local seconds since 1/1/1970
  * @param formatter (temporarily ignored) format pattern - see https://en.cppreference.com/w/c/chrono/strftime
+ * @param includeTZ whether to include the timezone information; default true
  * @return time formatted string
  */
-String TimeFormat::asString(const time_t &time, const char *formatter) {
+String TimeFormat::asString(const time_t &time, const char *formatter, const bool includeTZ) {
    String str;
    str.reserve(TIME_BUFFER_LENGTH);
    char buf[TIME_BUFFER_LENGTH]{};
@@ -161,9 +169,12 @@ String TimeFormat::asString(const time_t &time, const char *formatter) {
    // strftime(buf, TIME_BUFFER_LENGTH-1, formatter, &tm);
    //forcing a default (ISO8601) formatter to ensure all fields passed as arguments are used in the formatter in proper order
    //client code that needs custom formatters need to perform their own time breaking and invoking snprintf with appropriate format and time field arguments
-   const int ofsHour = tm.tm_offset / 3600;
-   const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
-   snprintf(buf, TIME_BUFFER_LENGTH, defaultTimePattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ofsHour, ofsMin, tm.tm_zone);
+   if (includeTZ) {
+      const int ofsHour = tm.tm_offset / 3600;
+      const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
+      snprintf(buf, TIME_BUFFER_LENGTH, defaultTimePattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ofsHour, ofsMin, tm.tm_zone);
+   } else
+      snprintf(buf, TIME_BUFFER_LENGTH, defaultTimePatternNoTZ, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
    str.concat(buf);
    return str;
 }

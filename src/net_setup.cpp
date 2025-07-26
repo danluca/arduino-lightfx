@@ -79,13 +79,17 @@ bool wifi_connect() {
     mUdp = new WiFiUDP();
     mdns = new MDNS(*mUdp);
     mdns->begin();      //this should not be needed - implementation is a no-op
+
+    MDNS::Status mdnsStatus = mdns->start({IP_ADDR}, dnsHostname);
+    (void)mdnsStatus;
+    log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
+
     const auto mdnstxt = MDNS::Service::TXT::Builder()
             .add("info", "Arduino RP2040 Lucas LightFX")
             .add("name", dnsHostname)
             .add("model", "NanoConnect RP2040")
             .build();
-
-    MDNS::Status mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
+    mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
         .withName(webSvcName)
         .withPort(80)
         .withProtocol(MDNS::Service::Protocol::TCP)
@@ -102,9 +106,7 @@ bool wifi_connect() {
         .build());
     (void)mdnsStatus;
     log_info(F("mDNS adding custom lucasfx service %s status: %d (%s)"), lightfxSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
-    mdnsStatus = mdns->start({IP_ADDR}, dnsHostname);
-    (void)mdnsStatus;
-    log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
+
     timeService.begin();
 #endif
 
