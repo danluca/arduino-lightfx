@@ -43,13 +43,20 @@ NTPClient::NTPClient(UDP& udp, const IPAddress &poolServerIP) {
   _poolServerName = nullptr;
 }
 
-void NTPClient::begin() {
-  begin(NTP_DEFAULT_LOCAL_PORT);
+void NTPClient::begin(UDP* udp) {
+  begin(NTP_DEFAULT_LOCAL_PORT, udp);
 }
 
-void NTPClient::begin(const unsigned int port) {
+void NTPClient::begin(const unsigned int port, UDP* udp) {
   if (_udpSetup)
     return;
+
+  if (udp == nullptr) {
+    log_error(F("NTPClient: UDP instance is null"));
+    return;
+  }
+
+  _udp = udp;
 
   _port = port;
 
@@ -121,7 +128,8 @@ bool NTPClient::update(time_t &epochTime, int &wait) {
 }
 
 void NTPClient::end() {
-  _udp->stop();
+  if (_udp != nullptr)
+    _udp->stop();
   _udpSetup = false;
 }
 
@@ -154,6 +162,8 @@ void NTPClient::sendNTPPacket() {
 }
 
 void NTPClient::setRandomPort(const unsigned int minValue, const unsigned int maxValue) {
-  randomSeed(analogRead(0));
-  _port = random(static_cast<long>(minValue), static_cast<long>(maxValue));
+  // randomSeed(analogRead(0));
+  // random(static_cast<long>(minValue), static_cast<long>(maxValue));  //this seems to cause issues on NanoConnect RP2040 boards
+  _port = minValue + rp2040.hwrand32() % (maxValue - minValue + 1);
+  log_debug(F("NTPClient: random port %d"), _port);
 }

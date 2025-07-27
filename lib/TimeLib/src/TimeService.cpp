@@ -318,6 +318,17 @@ void TimeService::applyTimezone(Timezone &tZone) {
   tz = &tZone;
 }
 
+TimeService::TimeService(getSystemLocalClock platformTime) {
+  if (platformTime == nullptr) {
+    platformTime = defaultPlatformBootTimeMillis;
+  }
+  getLocalClockMillisFunc = platformTime;
+  syncLocalMillis = 0;
+  syncUnixMillis = 0;
+  drift = 0;
+  tz = &utcZone;
+}
+
 TimeService::TimeService(UDP& udp, getSystemLocalClock platformTime): ntpClient(udp) {
   if (platformTime == nullptr) {
     platformTime = defaultPlatformBootTimeMillis;
@@ -350,8 +361,8 @@ TimeService::TimeService(UDP& udp, const IPAddress &poolServerIP, getSystemLocal
   tz = &utcZone;
 }
 
-void TimeService::begin() {
-  ntpClient.begin();
+void TimeService::begin(UDP* udp) {
+    ntpClient.begin(udp);
 #ifdef PICO_RP2040
   if (!rtc_running())
     rtc_init();

@@ -73,11 +73,12 @@ class TimeService {
     Timezone *tz {};
 
 public:
+    explicit TimeService(getSystemLocalClock platformTime=nullptr);
     explicit TimeService(UDP& udp, getSystemLocalClock platformTime=nullptr);
     TimeService(UDP& udp, const char* poolServerName, getSystemLocalClock platformTime=nullptr);
     TimeService(UDP& udp, const IPAddress &poolServerIP, getSystemLocalClock platformTime=nullptr);
 
-    void begin();
+    void begin(UDP* udp = nullptr);
 
     void setTime(time_t t);
     time_t setTime(uint16_t hr, uint16_t min, uint16_t sec, uint16_t day, uint16_t month, int year, int offset);

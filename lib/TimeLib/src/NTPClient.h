@@ -11,17 +11,18 @@
 #define NTP_DEFAULT_LOCAL_PORT 1337
 
 class NTPClient {
-    UDP*          _udp;
-    bool          _udpSetup       = false;
+    UDP*          _udp = nullptr;
+    bool          _udpSetup = false;
 
     const char*   _poolServerName = "pool.ntp.org"; // Default time server
     IPAddress     _poolServerIP;
-    unsigned int  _port           = NTP_DEFAULT_LOCAL_PORT;
+    unsigned int  _port = NTP_DEFAULT_LOCAL_PORT;
 
     byte          _packetBuffer[NTP_PACKET_SIZE]{};
     void          sendNTPPacket();
 
   public:
+    NTPClient() = default;
     explicit NTPClient(UDP& udp);
     NTPClient(UDP& udp, const char* poolServerName);
     NTPClient(UDP& udp, const IPAddress &poolServerIP);
@@ -41,12 +42,12 @@ class NTPClient {
     /**
      * Starts the underlying UDP client with the default local port
      */
-    void begin();
+    void begin(UDP* udp = nullptr);
 
     /**
      * Starts the underlying UDP client with the specified local port
      */
-    void begin(unsigned int port);
+    void begin(unsigned int port, UDP* udp = nullptr);
 
     /**
      * This will force the update from the NTP Server.

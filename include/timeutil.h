@@ -6,11 +6,8 @@
 #define ARDUINO_LIGHTFX_TIMEUTIL_H
 
 #include <WiFiNINA.h>
-#include <NTPClient.h>
 #include <TimeLib.h>
 #include "fixed_queue.h"
-
-extern WiFiUDP Udp;
 
 enum Holiday { None, Party, ValentineDay, StPatrick, MemorialDay, IndependenceDay, Halloween, Thanksgiving, Christmas, NewYear };
 Holiday buildHoliday(time_t time);
@@ -36,6 +33,6 @@ int getTotalDrift();
 int getDrift(const TimeSync &from, const TimeSync &to);
 
 extern FixedQueue<TimeSync, 8> timeSyncs;
-
+extern WiFiUDP* ntpUDP;
 
 #endif //ARDUINO_LIGHTFX_TIMEUTIL_H

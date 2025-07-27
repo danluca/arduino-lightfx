@@ -39,7 +39,7 @@ uint8_t barSignalLevel(const int32_t rssi) {
         return numLevels - 1;
     constexpr float inRange = maxRSSI - minRSSI;
     constexpr float outRange = numLevels - 1;
-    return (uint8_t) ((float) (rssi - minRSSI) * outRange / inRange);
+    return static_cast<uint8_t>(static_cast<float>(rssi - minRSSI) * outRange / inRange);
 }
 
 bool wifi_connect() {
@@ -106,8 +106,6 @@ bool wifi_connect() {
         .build());
     (void)mdnsStatus;
     log_info(F("mDNS adding custom lucasfx service %s status: %d (%s)"), lightfxSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
-
-    timeService.begin();
 #endif
 
     return result;
@@ -163,14 +161,14 @@ bool wifi_check() {
 void wifi_reconnect() {
     sysInfo->resetSysStatus(SYS_STATUS_WIFI);
     web::server.stop();
-    Udp.stop();
+    timeService.end();
+    delete ntpUDP;
 #if MDNS_ENABLED==1
     mdns->stop();
     delete mdns;
     delete mUdp;
 #endif
 
-    timeService.end();
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     taskDelay(2000);    //let disconnect state settle

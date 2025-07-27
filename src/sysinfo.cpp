@@ -22,7 +22,7 @@ static constexpr auto unknown PROGMEM = "N/A";
 #if LOGGING_ENABLED == 1
 // static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
 static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Total Stack:: ptr=%#X free=%d;\n  Total Heap :: size=%d free=%d used=%d\n";
-static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s\n  Flash size %u";
+static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
 #endif
 constexpr CRGB CLR_ALL_OK = CRGB::Indigo;
@@ -166,7 +166,8 @@ void logSystemInfo() {
     if (!Log.isEnabled(INFO))
         return;
     log_info(sysInfoFmt, rp2040_rom_version(), RP2040::f_cpu()/1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
-               sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->get_flash_capacity());
+               sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->getBuildVersion().c_str(), sysInfo->getBuildTime().c_str(),
+               sysInfo->get_flash_capacity());
     log_info(F("System reset reason %s"), resetReasonToString(rp2040.getResetReason()));
 #endif
 }

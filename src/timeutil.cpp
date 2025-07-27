@@ -17,15 +17,15 @@ constexpr TimeChangeRule cdt {.name = "CDT", .week = Second, .dow = Sun, .month 
 constexpr TimeChangeRule cst {.name = "CST", .week = First, .dow = Sun, .month = Nov, .hour = 2, .offsetMin = -360};
 Timezone centralTime(cdt, cst, "America/Chicago");
 
-WiFiUDP Udp;  // A UDP instance to let us send and receive packets over UDP
-TimeService timeService(Udp);
+WiFiUDP* ntpUDP = nullptr;
+TimeService timeService;
 
 void updateLoggingTimebase() {
 #if LOGGING_ENABLED == 1
     if (Log.getTimebase() == 0) {
         const time_t currentTime = nowMillis();
         const time_t currentMillis = millis();
-        log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), 
+        log_warn(F("Logging time reference updated from %lld ms (%s) to %s"),
                 currentMillis, TimeFormat::asStringMs(currentMillis, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
         Log.setTimebase(currentTime - currentMillis);
     }
@@ -110,7 +110,11 @@ void handleNTPFailure() {
  * @return true if the NTP sync was successful
  */
 bool timeSetup() {
-    timeService.begin();    //this requires WiFi!
+    if (ntpUDP == nullptr) {
+        //this requires WiFi!
+        ntpUDP = new WiFiUDP();
+        timeService.begin(ntpUDP);
+    }
     timeService.applyTimezone(centralTime);
     const bool ntpTimeAvailable = timeService.syncTimeNTP();
     
