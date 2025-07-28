@@ -29,6 +29,7 @@
     "includeDir": "src"
   },
   "dependencies": {
-    "PicoLog": "1.0.0"
+    "PicoLog": "1.0.0",
+    "Utils": "1.0.0"
   }
 }

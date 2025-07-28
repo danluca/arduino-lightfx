@@ -114,7 +114,6 @@ void web::handleGetStatus(WebClient &client) {
     // response body
     JsonDocument doc;
     // System
-    char timeBuf[21];
     doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
     doc["cleanBoot"] = sysInfo->isCleanBoot();
     if (!sysInfo->watchdogReboots().empty()) {
@@ -124,8 +123,7 @@ void web::handleGetStatus(WebClient &client) {
             const auto &[lastSyncLocalMillis, lastSyncUnixSeconds] = timeSyncs.back();
             lastReboot = lastSyncUnixSeconds - (lastSyncLocalMillis / 1000 - lastReboot);
         }
-        formatDateTime(timeBuf, lastReboot);
-        doc["lastWatchdogReboot"] = timeBuf;
+        doc["lastWatchdogReboot"] = TimeFormat::asString(lastReboot);
     }
 
     // WiFi
@@ -159,11 +157,9 @@ void web::handleGetStatus(WebClient &client) {
     time["ntpSync"] = sysInfo->isSysStatus(SYS_STATUS_NTP);
     time["millis"] = millis(); //current time in ms
     const time_t curTime = now();
-    formatDate(timeBuf, curTime);
-    time["sdate"] = timeBuf;
-    formatTime(timeBuf, curTime);
-    time["stime"] = timeBuf;
-    time["time"] = curTime;
+    time["sdate"] = TimeFormat::dateAsString(curTime);  //string date
+    time["stime"] = TimeFormat::timeAsString(curTime);  //string time
+    time["time"] = curTime; //numeric time
     const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
     time["dst"] = bDST;
     time["zoneDST"] = timeService.timezone()->isDST(curTime);
@@ -186,8 +182,7 @@ void web::handleGetStatus(WebClient &client) {
     for (const auto &al: scheduledAlarms) {
         auto jal = alarms.add<JsonObject>();
         jal["timeLong"] = al->value;
-        formatDateTime(timeBuf, al->value);
-        jal["timeFmt"] = timeBuf;
+        jal["timeFmt"] = TimeFormat::asString(al->value);
         jal["type"] = alarmTypeToString(al->type);
         //        jal["taskPtr"] = (long)al->onEventHandler;
     }
@@ -216,6 +211,7 @@ void web::handleGetStatus(WebClient &client) {
     //ISO8601 format
     //snprintf(timeBuf, 15, "P%2dDT%2dH%2dM", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
     //human readable format
+    char timeBuf[16];
     const unsigned long upTime = millis();
     snprintf(timeBuf, 15, "%2dD %2dH %2dm", upTime / 86400000l, (upTime / 3600000l % 24), (upTime / 60000 % 60));
     doc["upTime"] = timeBuf;
@@ -336,11 +332,8 @@ void web::handleGetTasks(WebClient &client) {
     doc["cycles64"] = rp2040.getCycleCount64();
     doc["millis"] = millis();
     const time_t curTime = now();
-    char timeBuf[21];
-    formatDate(timeBuf, curTime);
-    doc["date"] = timeBuf;
-    formatTime(timeBuf, curTime);
-    doc["time"] = timeBuf;
+    doc["date"] = TimeFormat::dateAsString(curTime);
+    doc["time"] = TimeFormat::timeAsString(curTime);
     auto heap = doc["heap"].to<JsonObject>();
     SysInfo::heapStats(heap);
     auto tasks = doc["tasks"].to<JsonObject>();

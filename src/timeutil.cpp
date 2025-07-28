@@ -107,69 +107,38 @@ void handleNTPFailure() {
 
 /**
  * Sets up the time callback and attempts to source current time from NTP.
+ * Callers are ensuring this is called after WiFi connectivity is successful - otherwise there is no point in attempting this
+ * as the meaningful fallback if on WiFi time. The last resort is the local unsynchronized time, which has no value.
  * @return true if the NTP sync was successful
  */
 bool timeSetup() {
-    if (ntpUDP == nullptr) {
-        //this requires WiFi!
-        ntpUDP = new WiFiUDP();
-        timeService.begin(ntpUDP);
-    }
+    timeBegin();
     timeService.applyTimezone(centralTime);
-    const bool ntpTimeAvailable = timeService.syncTimeNTP();
+    if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+        const bool ntpTimeAvailable = timeService.syncTimeNTP();
     
-    log_warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
-    
-    if (ntpTimeAvailable)
-        return handleNTPSuccess();
+        log_warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
 
+        if (ntpTimeAvailable)
+            return handleNTPSuccess();
+    } else {
+        log_warn(F("WiFi connectivity not available - this call was made in error! (attempting to fall back to local time)"));
+    }
     handleNTPFailure();
     return false;
 }
 
 /**
- * Formats the time component of the timestamp, using a standard pattern - \see ::fmtTime
- * @param buf buffer to write to. If not null, it must have space for 9 characters
- * @param time the time to format, if not specified defaults to @see now()
- * @return number of characters written to the buffer for given time value
+ * Ensures the UDP client is properly instantiated for the timeService - if a new instance is made, timeService.begin() is also called
+ * Ensure this is called while WiFi is present - creating a WiFiUDP without WiFi connectivity may lead to unexpected behaviors
  */
-uint8_t formatTime(char *buf, time_t time) {
-    if (time == 0)
-        time = now();
-    tmElements_t tm;
-    timeService.breakTime(time, tm);
-    if (buf == nullptr)
-        return snprintf(buf, 0, fmtTime, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    return snprintf(buf, 9, fmtTime, tm.tm_hour, tm.tm_min, tm.tm_sec);   //8 chars + null terminating
-}
-
-/**
- * Formats the date component of the timestamp, using a standard pattern - \ref ::fmtDate
- * @param buf buffer to write to. If not null, it must have space for 11 characters
- * @param time the time to format, if not specified defaults to \code now()\endcode
- * @return number of characters written to the buffer for given time value
- */
-uint8_t formatDate(char *buf, time_t time) {
-    if (time == 0)
-        time = now();
-    tmElements_t tm;
-    timeService.breakTime(time, tm);
-    if (buf == nullptr)
-        return snprintf(buf, 0, fmtDate, tm.tm_year+TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday);
-    return snprintf(buf, 11, fmtDate, tm.tm_year+TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday);   //10 chars + null terminating
-}
-
-uint8_t formatDateTime(char *buf, time_t time) {
-    if (time == 0)
-        time = now();
-    uint8_t sz = formatDate(buf, time);
-    if (buf == nullptr)
-        sz += formatTime(buf, time) + 1;  //date - time separation character
-    else {
-        *(buf + sz) = ' ';  //date - time separation character
-        sz += formatTime( buf+sz+1, time) + 1;
+void timeBegin() {
+    //this requires WiFi!
+    if (ntpUDP == nullptr) {
+        ntpUDP = new WiFiUDP();
+        timeService.begin(ntpUDP);
+        log_info(F("NTP UDP client created"));
     }
-    return sz;
 }
 
 /**

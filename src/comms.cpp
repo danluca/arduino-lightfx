@@ -259,6 +259,7 @@ void timeUpdate() {
         log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform NTP time sync. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
+    timeBegin();    //ensures we have network connectivity infrastructure
     const bool bHadNtpSync = sysInfo->isSysStatus(SYS_STATUS_NTP);
     if (const time_t syncElapsedHours = (millis() - timeService.syncLocalTimeMillis())/1000/SECS_PER_HOUR; bHadNtpSync && syncElapsedHours < 12) {
         log_info(F("Time NTP sync was already performed recently %lld hours ago. Skipping - we want to check NTP at least 12 hours apart"), syncElapsedHours);
