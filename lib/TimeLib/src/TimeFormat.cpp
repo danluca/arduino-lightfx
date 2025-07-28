@@ -208,16 +208,16 @@ String TimeFormat::dateAsString(const time_t &time) {
  */
 String TimeFormat::timeAsString(const time_t &time, const bool includeTZ) {
    String str;
-   str.reserve(16);  //the time pattern is 8 chars long ('HH:mm:ss'), offset pattern is 6 ('+HH:mm') plus a separator space
-   char buf[16]{};
+   str.reserve(20);  //the time pattern is 8 chars long ('HH:mm:ss'), offset pattern is 10 ('+HH:mm XYZ') plus a separator space
+   char buf[21]{};
    tmElements_t tm;
    timeService.breakTime(time, tm);
-   const size_t sz = snprintf(buf, 8, defaultLocalTimePattern, tm.tm_hour, tm.tm_min, tm.tm_sec);
+   const size_t sz = snprintf(buf, 9, defaultLocalTimePattern, tm.tm_hour, tm.tm_min, tm.tm_sec);
    if (includeTZ) {
       const int ofsHour = tm.tm_offset / 3600;
       const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
       buf[sz] = ' ';    //add a space between time and offset
-      snprintf(buf+sz+1, 6, defaultOffsetPattern, ofsHour, ofsMin, tm.tm_zone);
+      snprintf(buf+sz+1, 11, defaultOffsetPattern, ofsHour, ofsMin, tm.tm_zone);
    }
    str.concat(buf);
    return str;
