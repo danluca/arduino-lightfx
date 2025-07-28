@@ -63,9 +63,9 @@ bool wifi_connect() {
     if (result) {
         sysInfo->setSysStatus(SYS_STATUS_WIFI);
         if (const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress()); resPing >= 0)
-            log_info(F("Gateway ping successful: %d ms"), resPing);
+            log_info(F("Connected to WiFi after %d tries. Gateway ping successful: %d ms"), attCount, resPing);
         else
-            log_warn(F("Failed pinging the gateway (ping result %d) - will retry later"), resPing);
+            log_warn(F("Connected to WiFi after %d tries. Failed pinging the gateway (ping result %d) - will retry later"), attCount, resPing);
         printSuccessfulWifiStatus();  // you're connected now, so print out the status
     }
 #if MDNS_ENABLED==1
@@ -171,6 +171,7 @@ void wifi_reconnect() {
 
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
+    log_info(F("Web services stopped, UDP clients terminated, WiFi disconnected"));
     taskDelay(2000);    //let disconnect state settle
     wifi_connect();
     //NVIC_SystemReset();

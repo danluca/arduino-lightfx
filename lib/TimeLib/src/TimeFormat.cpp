@@ -47,10 +47,13 @@ static inline const PROGMEM constexpr char * const PROGMEM dayNames_P[] = {
 static inline constexpr char dayShortNames_P[] PROGMEM = "SunMonTueWedThuFriSat";
 // static inline constexpr auto defaultTimePattern PROGMEM = "%Y-%m-%d %H:%M:%S %z %Z";
 // static inline constexpr auto defaultTimePattern PROGMEM = "%F %T %z %Z (%c)";
-static inline constexpr auto defaultTimePattern PROGMEM = "%d-%02d-%02d %02d:%02d:%02d %+03d:%02d %s";
-static inline constexpr auto defaultTimePatternNoTZ PROGMEM = "%d-%02d-%02d %02d:%02d:%02d";
-static inline constexpr auto defaultTimeMsPattern PROGMEM = "%d-%02d-%02d %02d:%02d:%02d.%03d %+03d:%02d %s";
-static inline constexpr auto defaultTimeMsPatternNoTZ PROGMEM = "%d-%02d-%02d %02d:%02d:%02d.%03d";
+static inline constexpr auto defaultDateTimePattern PROGMEM = "%d-%02d-%02d %02d:%02d:%02d %+03d:%02d %s";
+static inline constexpr auto defaultDateTimePatternNoTZ PROGMEM = "%d-%02d-%02d %02d:%02d:%02d";
+static inline constexpr auto defaultDateTimeMsPattern PROGMEM = "%d-%02d-%02d %02d:%02d:%02d.%03d %+03d:%02d %s";
+static inline constexpr auto defaultDateTimeMsPatternNoTZ PROGMEM = "%d-%02d-%02d %02d:%02d:%02d.%03d";
+static inline constexpr auto defaultDatePattern PROGMEM = "%d-%02d-%02d";
+static inline constexpr auto defaultLocalTimePattern PROGMEM = "%02d:%02d:%02d";
+static inline constexpr auto defaultOffsetPattern PROGMEM = "%+03d:%02d %s";
 
 /**
  * Converts the numeric month value into its string representation - e.g. 1 -> February
@@ -125,7 +128,7 @@ size_t TimeFormat::toString(const time_t &time, const char *formatter, String &s
  * @return time formatted string
  */
 String TimeFormat::asString(const time_t &time, const bool includeTZ) {
-   return asString(time, defaultTimePattern, includeTZ);
+   return asString(time, defaultDateTimePattern, includeTZ);
 }
 
 /**
@@ -145,9 +148,9 @@ String TimeFormat::asStringMs(const time_t &timeMs, const bool includeTZ) {
    if (includeTZ) {
       const int ofsHour = tm.tm_offset / 3600;
       const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
-      snprintf(buf, TIME_BUFFER_LENGTH, defaultTimeMsPattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ms, ofsHour, ofsMin, tm.tm_zone);
+      snprintf(buf, TIME_BUFFER_LENGTH, defaultDateTimeMsPattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ms, ofsHour, ofsMin, tm.tm_zone);
    } else
-      snprintf(buf, TIME_BUFFER_LENGTH, defaultTimeMsPatternNoTZ, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ms);
+      snprintf(buf, TIME_BUFFER_LENGTH, defaultDateTimeMsPatternNoTZ, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ms);
    str.concat(buf);
    return str;
 }
@@ -172,9 +175,50 @@ String TimeFormat::asString(const time_t &time, const char *formatter, const boo
    if (includeTZ) {
       const int ofsHour = tm.tm_offset / 3600;
       const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
-      snprintf(buf, TIME_BUFFER_LENGTH, defaultTimePattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ofsHour, ofsMin, tm.tm_zone);
+      snprintf(buf, TIME_BUFFER_LENGTH, defaultDateTimePattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, ofsHour, ofsMin, tm.tm_zone);
    } else
-      snprintf(buf, TIME_BUFFER_LENGTH, defaultTimePatternNoTZ, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+      snprintf(buf, TIME_BUFFER_LENGTH, defaultDateTimePatternNoTZ, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+   str.concat(buf);
+   return str;
+}
+
+/**
+ * Converts the given time to its date string representation using the default formatter.
+ * @param time the time value to be formatted
+ * @return the date string representation of the given time
+ */
+String TimeFormat::dateAsString(const time_t &time) {
+   String str;
+   str.reserve(12);  //the date pattern is 10 chars long
+   char buf[12]{};
+   tmElements_t tm;
+   timeService.breakTime(time, tm);
+   snprintf(buf, 12, defaultDatePattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday);
+   str.concat(buf);
+   return str;
+}
+
+/**
+ * Converts a given time value into its string representation, optionally including the time zone.
+ * The format of the returned string is standard time representation - 'HH:mm:ss'
+ *
+ * @param time the time value to be converted to a string representation
+ * @param includeTZ flag indicating whether to include time zone information in the output
+ * @return the string representation of the given time
+ */
+String TimeFormat::timeAsString(const time_t &time, const bool includeTZ) {
+   String str;
+   str.reserve(20);  //the time pattern is 8 chars long ('HH:mm:ss'), offset pattern is 10 ('+HH:mm XYZ') plus a separator space
+   char buf[21]{};
+   tmElements_t tm;
+   timeService.breakTime(time, tm);
+   const size_t sz = snprintf(buf, 9, defaultLocalTimePattern, tm.tm_hour, tm.tm_min, tm.tm_sec);
+   if (includeTZ) {
+      const int ofsHour = tm.tm_offset / 3600;
+      const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
+      buf[sz] = ' ';    //add a space between time and offset
+      snprintf(buf+sz+1, 11, defaultOffsetPattern, ofsHour, ofsMin, tm.tm_zone);
+   }
    str.concat(buf);
    return str;
 }

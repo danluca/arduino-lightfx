@@ -1,5 +1,5 @@
 #######################################
-# Syntax Coloring Map StringUtils library
+# Syntax Coloring Map Utils library
 #######################################
 
 #######################################

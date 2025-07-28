@@ -5,7 +5,7 @@
 #ifndef ARDUINO_LIGHTFX_MIC_H
 #define ARDUINO_LIGHTFX_MIC_H
 
-#include "circular_buffer.h"
+#include "../lib/Utils/src/circular_buffer.h"
 
 extern CircularBuffer<short> *audioData;
 

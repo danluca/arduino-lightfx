@@ -23,7 +23,7 @@
 #include "TimeFormat.h"
 #include <LogProxy.h>
 
-#include "../../StringUtils/src/stringutils.h"
+#include "../../Utils/src/stringutils.h"
 
 #define TWENTY_TWENTY    1577836800L    //2020-01-01 00:00
 #define TWENTY_SEVENTY   3155760000L    //2070-01-01 00:00 - if this code is still relevant in 2070, something is wrong...

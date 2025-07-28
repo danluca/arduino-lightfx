@@ -242,7 +242,7 @@ void startTimeSetupTimer() {
             log_error(F("Cannot reset the timeSetup timer - Ignored."));
         return;
     }
-    thTimeSetupTimer = xTimerCreate("timeSetup", pdMS_TO_TICKS(5 * 1000), pdFALSE, &tmrTimeSetup, enqueueTimeSetup);
+    thTimeSetupTimer = xTimerCreate("timeSetup", pdMS_TO_TICKS(60 * 1000), pdFALSE, &tmrTimeSetup, enqueueTimeSetup);
     if (thTimeSetupTimer == nullptr) {
         log_error(F("Cannot create timeSetup timer - Ignored."));
         return;
@@ -259,6 +259,7 @@ void timeUpdate() {
         log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform NTP time sync. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
+    timeBegin();    //ensures we have network connectivity infrastructure
     const bool bHadNtpSync = sysInfo->isSysStatus(SYS_STATUS_NTP);
     if (const time_t syncElapsedHours = (millis() - timeService.syncLocalTimeMillis())/1000/SECS_PER_HOUR; bHadNtpSync && syncElapsedHours < 12) {
         log_info(F("Time NTP sync was already performed recently %lld hours ago. Skipping - we want to check NTP at least 12 hours apart"), syncElapsedHours);
@@ -268,23 +269,12 @@ void timeUpdate() {
     if (result) {
         const TimeSync tSync {.localMillis = static_cast<ulong>(timeService.syncLocalTimeMillis()), .unixMillis=timeService.syncUTCTimeMillis() };
         timeSyncs.push(tSync);
-    } else {
-        log_warn(F("NTP sync failed; Current time %s."), TimeFormat::asStringMs(nowMillis()).c_str());
-    }
-    log_info(F("Time NTP sync performed; success = %s; current time %s"), StringUtils::asString(result), TimeFormat::asStringMs(nowMillis()));
+        log_info(F("NTP sync success; current time %s"), TimeFormat::asStringMs(nowMillis()).c_str());
+        updateLoggingTimebase();
+    } else
+        log_warn(F("No NTP; Current time %s."), TimeFormat::asStringMs(nowMillis()).c_str());
     result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
-    const time_t curTime = nowMillis();
-    const time_t nixTime = curTime / 1000;
-#if LOGGING_ENABLED == 1
-    const time_t curMs = millis();
-    const time_t logTimeMs = Log.getTimebase() + curMs;
-    if (const bool bNeedsUpdate = Log.getTimebase() == 0 || abs(curTime - logTimeMs) > 60000; result && bNeedsUpdate) {
-        log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), logTimeMs, TimeFormat::asString(logTimeMs/1000).c_str(),
-            TimeFormat::asString(nixTime).c_str());
-        Log.setTimebase(curTime - curMs);
-    }
     log_info(F("System status: %#hX"), sysInfo->getSysStatus());
-#endif
 
     // if we did not have NTP sync before, react to the current attempt result - if failed, schedule a timer to try again; if succeeded, notify the alarm task for setup
     if (!bHadNtpSync) {
@@ -298,6 +288,7 @@ void timeUpdate() {
     }
 
     //check for a DST transition
+    const time_t nixTime = now();
     if (const bool dst = timeService.timezone()->isDST(nixTime); dst != sysInfo->isSysStatus(SYS_STATUS_DST)) {
         dst ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
 #if LOGGING_ENABLED == 1
@@ -305,7 +296,7 @@ void timeUpdate() {
             TimeFormat::asString(nixTime).c_str());
 #endif
     }
-    if (timeSyncs.size() > 2) {
+    if (timeSyncs.size() > 1) {
         //log the current drift
         const auto fromSync = timeSyncs.end()[-2];  //second before last
         const auto toSync = timeSyncs.end()[-1];    //last
@@ -320,10 +311,15 @@ void timeUpdate() {
  * Time setup re-attempt, in case we weren't successful during system bootstrap
  */
 void timeSetupCheck() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_NTP))
-        timeSetup();
-        //timeUpdate();    //attempt to sync time
-    else
+    if (!sysInfo->isSysStatus(SYS_STATUS_NTP)) {
+        if (timeSetup()) {
+            //enqueues the alarm setup event if time is ok
+            enqueueAlarmSetup();
+        } else {
+            log_warn(F("System time not yet synchronized with NTP, skipping alarm setup. Reattempting time sync later."));
+            startTimeSetupTimer();
+        }
+    } else
         log_info(F("Time was already properly setup, event fired in excess. System status: %#hX"), sysInfo->getSysStatus());
 }
 

@@ -7,6 +7,7 @@
 #include "util.h"
 #include "sysinfo.h"
 #include "constants.hpp"
+#include "diag.h"
 #include "log.h"
 
 constexpr auto fmtDate PROGMEM = "%4d-%02d-%02d";
@@ -22,13 +23,18 @@ TimeService timeService;
 
 void updateLoggingTimebase() {
 #if LOGGING_ENABLED == 1
-    if (Log.getTimebase() == 0) {
-        const time_t currentTime = nowMillis();
-        const time_t currentMillis = millis();
-        log_warn(F("Logging time reference updated from %lld ms (%s) to %s"),
-                currentMillis, TimeFormat::asStringMs(currentMillis, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
+    const time_t currentTime = nowMillis();
+    const time_t currentMillis = millis();
+    // if the log is off by more than 5 minutes, adjust it
+    if (const time_t timeLog = currentMillis + Log.getTimebase(); abs(currentTime - timeLog) > 5 * SECS_PER_MIN * 1000 ) {
+        const time_t logTimebase = Log.getTimebase();
+        log_info(F("Logging time reference updated at RTC %lld ms from %s to %s"),
+                currentMillis, TimeFormat::asStringMs(timeLog, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
         Log.setTimebase(currentTime - currentMillis);
-    }
+        log_info(F("Logging timebase offset updated from %lld ms to %lld ms"), logTimebase, Log.getTimebase());
+    } else
+        log_info(F("Logging timebase offset not updated - log time %s is within 5 minutes of current time %s"),
+            TimeFormat::asStringMs(timeLog, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
 #endif
 }
 
@@ -46,9 +52,9 @@ void logTimeStatus(const time_t curTime, const Holiday& holiday) {
     const String strTime = TimeFormat::asString(curTime);
     
     log_info(F("%s %s time, time offset set to %d s, current time %s. NTP sync %s."), timeService.timezone()->getName(), savingsType,
-        offset, strTime.c_str(), sysInfo->isSysStatus(SYS_STATUS_NTP) ? "ok" : "failed (fallback to WiFi time)");
-    log_info(F("Current time %s %s (holiday adjusted to %s); system status %#hX"), strTime.c_str(), timeService.timezone()->getShort(curTime),
-        holidayToString(holiday), sysInfo->getSysStatus());
+        offset, strTime.c_str(), sysInfo->isSysStatus(SYS_STATUS_NTP) ? "ok" : "failed (fallback to other source)");
+    log_info(F("Current time %s (holiday adjusted to %s); system status %#hX"), strTime.c_str(), holidayToString(holiday), sysInfo->getSysStatus());
+    log_info(F("Time Sync: local millis RTC %lld to unix millis %lld"), timeService.syncLocalTimeMillis(), timeService.syncUTCTimeMillis());
 #endif
 }
 
@@ -73,7 +79,23 @@ bool handleNTPSuccess() {
 
     const TimeSync tSync {.localMillis = static_cast<ulong>(timeService.syncLocalTimeMillis()), .unixMillis=timeService.syncUTCTimeMillis() };
     timeSyncs.push(tSync);
-    
+
+    //update places where time has been captured before NTP sync - watchdog reboots
+    for (auto &wdTime : sysInfo->watchdogReboots()) {
+        if (wdTime < TWENTY_TWENTY)
+            wdTime = timeService.utcFromRtcMillis(wdTime*1000)/1000;   //watchdog time is in seconds local; we're calling utc flavor as the time is already adjusted for local
+    }
+    //update the timestamps of temp calibration structures - those time values, if captured (through now()) are already adjusted for local timezone, hence converting them
+    //to proper times is done using utcXYZ API to avoid double timezone offset adjustments
+    if (calibCpuTemp.time > 0 && calibCpuTemp.time < TWENTY_TWENTY)
+        calibCpuTemp.time = timeService.utcFromRtcMillis(calibCpuTemp.time * 1000)/1000;
+    if (calibTempMeasurements.ref.time > 0 && calibTempMeasurements.ref.time < TWENTY_TWENTY)
+        calibTempMeasurements.ref.time = timeService.utcFromRtcMillis(calibTempMeasurements.ref.time * 1000)/1000;
+    if (calibTempMeasurements.max.time > 0 && calibTempMeasurements.max.time < TWENTY_TWENTY)
+        calibTempMeasurements.max.time = timeService.utcFromRtcMillis(calibTempMeasurements.max.time * 1000)/1000;
+    if (calibTempMeasurements.min.time > 0 && calibTempMeasurements.min.time < TWENTY_TWENTY)
+        calibTempMeasurements.min.time = timeService.utcFromRtcMillis(calibTempMeasurements.min.time * 1000)/1000;
+
     return true;
 }
 
@@ -94,11 +116,11 @@ void handleNTPFailure() {
         const bool isDaylightSavings = timeService.timezone()->isDST(wifiTime, false);
         if (isDaylightSavings)
             sysInfo->setSysStatus(SYS_STATUS_DST);
-        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), TimeFormat::asString(curTime).c_str(),
+        log_warn(F("No NTP; Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), TimeFormat::asString(curTime).c_str(),
             isDaylightSavings ? timeService.timezone()->getDSTShort() : timeService.timezone()->getSTDShort(), holidayToString(holiday));
         logTimeStatus(curTime, holiday);
     } else {
-        log_error(F("NTP sync failed, WiFi time not available. Current time from raw clock: %s (holiday adjusted to %s)"),
+        log_error(F("No NTP, WiFi time not available. Current time from raw clock: %s (holiday adjusted to %s)"),
                   TimeFormat::asString(now()).c_str(), holidayToString(paletteFactory.getHoliday()));
     }
     
@@ -107,69 +129,38 @@ void handleNTPFailure() {
 
 /**
  * Sets up the time callback and attempts to source current time from NTP.
+ * Callers are ensuring this is called after WiFi connectivity is successful - otherwise there is no point in attempting this
+ * as the meaningful fallback if on WiFi time. The last resort is the local unsynchronized time, which has no value.
  * @return true if the NTP sync was successful
  */
 bool timeSetup() {
-    if (ntpUDP == nullptr) {
-        //this requires WiFi!
-        ntpUDP = new WiFiUDP();
-        timeService.begin(ntpUDP);
-    }
+    timeBegin();
     timeService.applyTimezone(centralTime);
-    const bool ntpTimeAvailable = timeService.syncTimeNTP();
+    if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+        const bool ntpTimeAvailable = timeService.syncTimeNTP();
     
-    log_warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
-    
-    if (ntpTimeAvailable)
-        return handleNTPSuccess();
+        log_warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
 
+        if (ntpTimeAvailable)
+            return handleNTPSuccess();
+    } else {
+        log_warn(F("WiFi connectivity not available - this call was made in error! (attempting to fall back to local time)"));
+    }
     handleNTPFailure();
     return false;
 }
 
 /**
- * Formats the time component of the timestamp, using a standard pattern - \see ::fmtTime
- * @param buf buffer to write to. If not null, it must have space for 9 characters
- * @param time the time to format, if not specified defaults to @see now()
- * @return number of characters written to the buffer for given time value
+ * Ensures the UDP client is properly instantiated for the timeService - if a new instance is made, timeService.begin() is also called
+ * Ensure this is called while WiFi is present - creating a WiFiUDP without WiFi connectivity may lead to unexpected behaviors
  */
-uint8_t formatTime(char *buf, time_t time) {
-    if (time == 0)
-        time = now();
-    tmElements_t tm;
-    timeService.breakTime(time, tm);
-    if (buf == nullptr)
-        return snprintf(buf, 0, fmtTime, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    return snprintf(buf, 9, fmtTime, tm.tm_hour, tm.tm_min, tm.tm_sec);   //8 chars + null terminating
-}
-
-/**
- * Formats the date component of the timestamp, using a standard pattern - \ref ::fmtDate
- * @param buf buffer to write to. If not null, it must have space for 11 characters
- * @param time the time to format, if not specified defaults to \code now()\endcode
- * @return number of characters written to the buffer for given time value
- */
-uint8_t formatDate(char *buf, time_t time) {
-    if (time == 0)
-        time = now();
-    tmElements_t tm;
-    timeService.breakTime(time, tm);
-    if (buf == nullptr)
-        return snprintf(buf, 0, fmtDate, tm.tm_year+TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday);
-    return snprintf(buf, 11, fmtDate, tm.tm_year+TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday);   //10 chars + null terminating
-}
-
-uint8_t formatDateTime(char *buf, time_t time) {
-    if (time == 0)
-        time = now();
-    uint8_t sz = formatDate(buf, time);
-    if (buf == nullptr)
-        sz += formatTime(buf, time) + 1;  //date - time separation character
-    else {
-        *(buf + sz) = ' ';  //date - time separation character
-        sz += formatTime( buf+sz+1, time) + 1;
+void timeBegin() {
+    //this requires WiFi!
+    if (ntpUDP == nullptr) {
+        ntpUDP = new WiFiUDP();
+        timeService.begin(ntpUDP);
+        log_info(F("NTP UDP client created"));
     }
-    return sz;
 }
 
 /**

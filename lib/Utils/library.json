@@ -1,7 +1,7 @@
 {
-  "name": "StringUtils",
+  "name": "Utils",
   "keywords": "string, utils",
-  "description": "Various string utilities",
+  "description": "Various general and string utilities",
   "version": "1.0.0",
   "authors": {
     "name": "Dan Luca",

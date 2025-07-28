@@ -9,6 +9,7 @@
 #ifndef TIMEZONE_H_INCLUDED
 #define TIMEZONE_H_INCLUDED
 #include <CoreTimeCalc.h>
+#include <fixed_queue.h>
 #include "TimeDef.h"
 
 // convenient constants for TimeChangeRules
@@ -30,7 +31,7 @@ struct dstTransitions {
     time_t m_stdUTC{};        // std time start for given year, given in UTC (seconds)
     time_t m_dstLoc{};        // dst start for the given year, given in local time (seconds)
     time_t m_stdLoc{};        // std time start for given year, given in local time (seconds)
-    uint16_t m_year{};        // year of the update
+    uint m_year{};            // year of the update
 };
 
 /**
@@ -67,13 +68,14 @@ class Timezone {
 
     protected:
         void calcTimeChanges(int year);
+        const dstTransitions* getTransitions(int year);
 
     private:
         char m_name[33]{};        // name of the timezone, e.g. "America/New_York", max 32 chars
         const TimeChangeRule m_dst;     // rule for the start of dst or summer-time for any year
         const TimeChangeRule m_std;     // rule for start of standard time for any year
         mutex_t mutex;
-        dstTransitions currentTransitions;  // current DST transitions for the last year inquired
+        FixedQueue<dstTransitions, 5> currentTransitions{};   // current DST transitions for the last 5 years inquired
 };
 
 extern Timezone utcZone;

@@ -61,13 +61,15 @@ static time_t transitionTime(const TimeChangeRule &r, int yr) {
  * @return a structure with time transition points; if DST is not observed, the fields are zeroed out
  */
 void Timezone::calcTimeChanges(const int year) {
-    currentTransitions.m_dstLoc = transitionTime(m_dst, year);
-    currentTransitions.m_stdLoc = transitionTime(m_std, year);
-    currentTransitions.m_dstUTC = currentTransitions.m_dstLoc - m_std.offsetMin * SECS_PER_MIN;
-    currentTransitions.m_stdUTC = currentTransitions.m_stdLoc - m_dst.offsetMin * SECS_PER_MIN;
-    currentTransitions.m_year = year;
+    dstTransitions transitions{};
+    transitions.m_dstLoc = transitionTime(m_dst, year);
+    transitions.m_stdLoc = transitionTime(m_std, year);
+    transitions.m_dstUTC = transitions.m_dstLoc - m_std.offsetMin * SECS_PER_MIN;
+    transitions.m_stdUTC = transitions.m_stdLoc - m_dst.offsetMin * SECS_PER_MIN;
+    transitions.m_year = year;
     log_info(F("DST transitions for %s updated for year %d: Local DST start %lld (%s - offset %d min); Local STD start %lld (%s - offset %d min); UTC DST start %lld; UTC STD start %lld"),
-        getName(), year, currentTransitions.m_dstLoc, getDSTShort(), m_dst.offsetMin, currentTransitions.m_stdLoc, getSTDShort(), m_std.offsetMin, currentTransitions.m_dstUTC, currentTransitions.m_stdUTC);
+        getName(), year, transitions.m_dstLoc, getDSTShort(), m_dst.offsetMin, transitions.m_stdLoc, getSTDShort(), m_std.offsetMin, transitions.m_dstUTC, transitions.m_stdUTC);
+    currentTransitions.push(transitions);
 }
 
 /**
@@ -134,6 +136,29 @@ time_t Timezone::toUTC(const time_t &local) {
 }
 
 /**
+ * Either finds the DST structure for the year requested in the internal currentTransitions cache, or
+ * it creates one for the year and pushes it to the cache (a fixed size queue)
+ * @param year year to find or create DST transitions for
+ * @return the pointer to the DST structure for year provided
+ */
+const dstTransitions * Timezone::getTransitions(const int year) {
+    // find a DST transitions structure for the year; make a new one if we don't have it
+    const dstTransitions *transitions = nullptr;
+    for (auto const &t : currentTransitions) {
+        if (t.m_year == year) {
+            transitions = &t;
+            break;
+        }
+    }
+    if (transitions == nullptr) {
+        CoreMutex coreMutex(&mutex);
+        calcTimeChanges(year);
+        transitions = &currentTransitions.back();   //last entry in the current transitions is the one we just made for the year yr
+    }
+    return transitions;
+}
+
+/**
  * Determine whether the given time_t is within the DST interval or the Standard time interval
  * @param time time to check - seconds since unix epoch (1/1/1970)
  * @param bLocal whether the time to check is in local time (default) or UTC
@@ -143,28 +168,26 @@ bool Timezone::isDST(const time_t &time, const bool bLocal) {
     if (!isDSTObserved())
         return false;
 
-    // Get year using CoreTimeCalc to avoid circular dependencies
-    // recalculate the time change points if needed
-    if (const int yr = CoreTimeCalc::calculateYear(time); yr != currentTransitions.m_year) {
-        CoreMutex coreMutex(&mutex);
-        calcTimeChanges(yr);
-    }
+    // Get year using CoreTimeCalc to avoid circular dependencies; recalculate the time change points if needed
+    const int yr = CoreTimeCalc::calculateYear(time);
+    // get the DST transitions structure for the year
+    const dstTransitions *transitions = getTransitions(yr);
 
     //time is local
     if (bLocal) {
         // Northern Hemisphere
-        if (currentTransitions.m_stdLoc > currentTransitions.m_dstLoc)
-            return (time >= currentTransitions.m_dstLoc && time < currentTransitions.m_stdLoc);
+        if (transitions->m_stdLoc > transitions->m_dstLoc)
+            return (time >= transitions->m_dstLoc && time < transitions->m_stdLoc);
         // Southern Hemisphere
-        return !(time >= currentTransitions.m_stdLoc && time < currentTransitions.m_dstLoc);
+        return !(time >= transitions->m_stdLoc && time < transitions->m_dstLoc);
     }
 
     //time is in utc
     // Northern Hemisphere
-    if (currentTransitions.m_stdUTC > currentTransitions.m_dstUTC)
-        return time >= currentTransitions.m_dstUTC && time < currentTransitions.m_stdUTC;
+    if (transitions->m_stdUTC > transitions->m_dstUTC)
+        return time >= transitions->m_dstUTC && time < transitions->m_stdUTC;
     // Southern Hemisphere
-    return !(time >= currentTransitions.m_stdUTC && time < currentTransitions.m_dstUTC);
+    return !(time >= transitions->m_stdUTC && time < transitions->m_dstUTC);
 }
 
 /**
@@ -176,13 +199,10 @@ void Timezone::updateZoneInfo(tmElements_t &tm, const time_t &time) {
     //DST flag
     bool isDst = false;
     if (isDSTObserved()) {
-         if ((tm.tm_year + TM_EPOCH_YEAR) != currentTransitions.m_year) {
-             CoreMutex coreMutex(&mutex);
-             calcTimeChanges(tm.tm_year + TM_EPOCH_YEAR);
-         }
+        const dstTransitions *transitions = getTransitions(tm.tm_year + TM_EPOCH_YEAR);
         // Northern Hemisphere
-        isDst = (time >= currentTransitions.m_dstLoc && time < currentTransitions.m_stdLoc);
-        if (currentTransitions.m_stdLoc <= currentTransitions.m_dstLoc) // Southern Hemisphere
+        isDst = (time >= transitions->m_dstLoc && time < transitions->m_stdLoc);
+        if (transitions->m_stdLoc <= transitions->m_dstLoc) // Southern Hemisphere
             isDst = !isDst;
     }
     tm.tm_isdst = isDst;

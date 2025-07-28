@@ -59,12 +59,13 @@ function getTasks() {
                         <td>${task.state}</td>
                         <td>${priority}</td>
                         <td>#${task.coreAffinity.toString(16).toUpperCase()}</td>
-                        <td>${task.stackHighWaterMark}</td>
-                        <td>${task.runTime.toLocaleString()}</td>
-                        <td>${task.runTimePct.toFixed(2)}</td>
+                        <td class="alignRight">${task.stackHighWaterMark}</td>
+                        <td class="alignRight">${task.runTime.toLocaleString()}</td>
+                        <td class="alignRight">${task.runTimePct.toFixed(2)}</td>
                     </tr>`)
 
             });
+            $('#totalCPULoad').html(`Total CPU Load:    ${data.totalCPULoadPct.toFixed(2)}%`);
             let memList = $('#memoryList');
             memList.empty();
             memList.append(`<li>Free Stack: <span>${data.heap.freeStack.toLocaleString()} bytes [stack pointer: #${data.heap.stackPointer.toString(16)}]</span></li>`);

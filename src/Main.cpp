@@ -157,8 +157,8 @@ void setup() {
     const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
     log_info(F("Basic components ok - CORE1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
 
-    wifi_setup();
-    taskDelay(2500);    //let the WiFi settle
+    wifi_setup();           // blocking until we get WiFi
+    taskDelay(2500);    // let the WiFi settle
     timeSetup();
     commSetup();
     web::server_setup();
@@ -174,7 +174,7 @@ void setup() {
     if (sysInfo->isSysStatus(SYS_STATUS_NTP))
         enqueueAlarmSetup();
     else
-        log_warn(F("System time not yet synchronized with NTP, skipping alarm setup"));
+        log_warn(F("System time not yet synchronized with NTP, skipping alarm setup; retrying later"));
 
     //wait for the other core to finish all initializations before allowing web server to respond to requests
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);

@@ -24,6 +24,8 @@ static constexpr auto unknown PROGMEM = "N/A";
 static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Total Stack:: ptr=%#X free=%d;\n  Total Heap :: size=%d free=%d used=%d\n";
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
+static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
+static constexpr auto idleTaskMarker PROGMEM = "idle";
 #endif
 constexpr CRGB CLR_ALL_OK = CRGB::Indigo;
 constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Green;
@@ -105,11 +107,16 @@ void logTaskStats() {
             uxTotalRunTime += (pxTaskStatusArray[x].ulRunTimeCounter);
         }
         uxTotalRunTime /= ((configRUN_TIME_COUNTER_TYPE)100U);    // For percentage calculations
-
+        double fTotalCPULoadPercentage = 0.0;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
             // configRUN_TIME_COUNTER_TYPE ulStatPercentage = (pxTaskStatusArray[x].ulRunTimeCounter >> 8)/ulTotalRunTime;
             // strTaskInfo.concat(pxTaskStatusArray[x].pcTaskName);
             const double fStatsAsPercentage = (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime;
+            //only add non-IDLE task percentages to total CPU load
+            String taskName(pxTaskStatusArray[x].pcTaskName);
+            taskName.toLowerCase();
+            if (taskName.indexOf(idleTaskMarker) < 0)
+                fTotalCPULoadPercentage += fStatsAsPercentage;
             const char prElevated = pxTaskStatusArray[x].uxCurrentPriority > pxTaskStatusArray[x].uxBasePriority ? '+' : pxTaskStatusArray[x].uxCurrentPriority < pxTaskStatusArray[x].uxBasePriority ? '-' : ' ';
             const uint coreAffinity = pxTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : pxTaskStatusArray[x].uxCoreAffinityMask;
             char buf[80];
@@ -120,6 +127,10 @@ void logTaskStats() {
         }
         /* The array is no longer needed, free the memory it consumes. */
         vPortFree( pxTaskStatusArray );
+        //add the total CPU load
+        char buf[80];
+        snprintf(buf, 80, fmtTotalCPULoad, fTotalCPULoadPercentage);
+        strTaskInfo.concat(buf);
         log_info(strTaskInfo.c_str());
         delay(12);
     }
@@ -344,9 +355,14 @@ void SysInfo::taskStats(JsonObject &doc) {
         }
         doc["tasksTotalRunTime"] = uxTotalRunTime;
         uxTotalRunTime /= ((configRUN_TIME_COUNTER_TYPE)100U);    // For percentage calculations
+        double fTotalCPULoadPercentage = 0.0;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
             JsonObject task = jsArray.add<JsonObject>();
             const double fStatsAsPercentage = (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime;
+            String taskName = pxTaskStatusArray[x].pcTaskName;
+            taskName.toLowerCase();
+            if (taskName.indexOf(idleTaskMarker) < 0)
+                fTotalCPULoadPercentage += fStatsAsPercentage;  //only add the non-idle tasks
             const uint coreAffinity = pxTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : pxTaskStatusArray[x].uxCoreAffinityMask;
 
             task["name"] = pxTaskStatusArray[x].pcTaskName;
@@ -359,6 +375,7 @@ void SysInfo::taskStats(JsonObject &doc) {
             task["runTime"] = pxTaskStatusArray[ x ].ulRunTimeCounter;
             task["runTimePct"] = fStatsAsPercentage;
         }
+        doc["totalCPULoadPct"] = fTotalCPULoadPercentage;
         /* The array is no longer needed, free the memory it consumes. */
         vPortFree( pxTaskStatusArray );
     }

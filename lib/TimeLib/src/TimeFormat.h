@@ -14,6 +14,8 @@ public:
     static String asString(const time_t &time, bool includeTZ = true);
     static String asStringMs(const time_t &timeMs, bool includeTZ = true);
     static String asString(const time_t &time, const char* formatter, bool includeTZ = true);
+    static String dateAsString(const time_t &time);
+    static String timeAsString(const time_t &time, bool includeTZ = false);
     /* date strings */
     static size_t monthStr(uint8_t month, char* buffer);
     static size_t dayStr(uint8_t day, char* buffer);

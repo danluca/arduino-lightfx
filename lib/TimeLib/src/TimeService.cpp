@@ -67,7 +67,7 @@ int hourFormat12() {
 }
 // the hour for the given time in 12-hour format
 int hourFormat12(const time_t t) {
-  tmElements_t tm;
+  tmElements_t tm{};
   timeService.breakTime(t, tm);
   if( tm.tm_hour == 0 )
     return 12; // 12 midnight
@@ -208,10 +208,48 @@ time_t nowMillis() {
   return utcMillis + offsetMillis;
 }
 
+/**
+ * Calculates the current UTC time in milliseconds.
+ * It computes the value based on the system clock, the synchronization offsets,
+ * and the drift adjustment.
+ *
+ * @return The current UTC time in milliseconds since January 1, 1970.
+ */
 time_t utcNowMillis() {
   const time_t sysClock = timeService.getLocalClockMillisFunc();  // current milliseconds since boot
   const time_t utcMillis = (sysClock - timeService.syncLocalMillis) + timeService.syncUnixMillis + timeService.drift;  //current UTC time in millis
   return utcMillis;
+}
+
+/**
+ * Converts the given RTC timestamp in milliseconds to UTC time in milliseconds.
+ * The calculation adjusts the provided rtcMillis value using the current synchronized
+ * local time (syncLocalMillis), the synchronized UTC time (syncUnixMillis),
+ * and the applied drift correction.
+ *
+ * This method operates similarly to utcNowMillis but avoids additional function
+ * calls for improved efficiency by reducing stack depth.
+ *
+ * @param rtcMillis A reference to the time in milliseconds, as retrieved from the RTC.
+ * @return The corresponding UTC time in milliseconds since January 1, 1970.
+ */
+time_t TimeService::utcFromRtcMillis(const time_t &rtcMillis) const {
+  // similar logic with the utcNowMillis - repeated rather than doing a function call for efficiency (less stack depth)
+  return (rtcMillis - syncLocalMillis) + syncUnixMillis + drift;  //current UTC time in millis
+}
+
+/**
+ * Converts the given real-time clock (RTC) time in milliseconds since the epoch
+ * to local time accounting for timezone offsets.
+ *
+ * @param rtcMillis A reference to the time_t value representing RTC milliseconds since the epoch.
+ * @return The equivalent local time as time_t in milliseconds since the epoch.
+ */
+time_t TimeService::localFromRtcMillis(const time_t &rtcMillis) const {
+  // similar logic with nowMillis
+  const time_t utcMillis = utcFromRtcMillis(rtcMillis);
+  const time_t offsetMillis = tz->getOffset(utcMillis / 1000, false) * 1000;
+  return utcMillis + offsetMillis;
 }
 
 /**
@@ -223,7 +261,7 @@ void TimeService::setTime(const time_t t) {
   syncLocalMillis = sysClock;
   syncUnixMillis = t * 1000;  //we store the absolute time in milliseconds
 #ifdef PICO_RP2040
-  tmElements_t tm;
+  tmElements_t tm{};
   breakTime(t, tm);
   datetime_t dt;
   rtc_get_datetime(&dt);
@@ -256,7 +294,7 @@ void TimeService::setTime(const time_t t) {
  * @return the time_t built from these elements
  */
 time_t TimeService::setTime(const uint16_t hr, const uint16_t min, const uint16_t sec, const uint16_t day, const uint16_t month, const int year, const int offset) {
-  tmElements_t tm;
+  tmElements_t tm{};
   tm.tm_year = year;
   tm.tm_mon = month == 0 ? month : month-1;  //per https://en.cppreference.com/w/c/chrono/tm.html the tm_mon field uses 0-11 range
   tm.tm_mday = day;
@@ -374,7 +412,7 @@ void TimeService::begin(UDP* udp) {
  * @return whether the NTP sync was successful and decoded valid time
  */
 bool TimeService::syncTimeNTP() {
-  time_t epochTime;
+  time_t epochTime = 0;
   int delay = 0; //milliseconds delay in processing the time data received; accounts for network lag
   const bool success = ntpClient.update(epochTime, delay);
   if (success) {
@@ -390,49 +428,49 @@ void TimeService::end() {
 
 // Timezone-aware versions of time component functions
 int localHour(const time_t t) {
-  tmElements_t tm;
+  tmElements_t tm{};
   timeService.breakTime(t, tm); // Use the timezone-aware version
   return tm.tm_hour;
 }
 
 int localMinute(const time_t t) {
-  tmElements_t tm;
+  tmElements_t tm{};
   timeService.breakTime(t, tm);
   return tm.tm_min;
 }
 
 int localSecond(const time_t t) {
-  tmElements_t tm;
+  tmElements_t tm{};
   timeService.breakTime(t, tm);
   return tm.tm_sec;
 }
 
 int localDay(const time_t t) {
-  tmElements_t tm;
+  tmElements_t tm{};
   timeService.breakTime(t, tm);
   return tm.tm_mday;
 }
 
 int localWeekday(const time_t t) {
-  tmElements_t tm;
+  tmElements_t tm{};
   timeService.breakTime(t, tm);
   return tm.tm_wday;
 }
 
 int localMonth(const time_t t) {
-  tmElements_t tm;
+  tmElements_t tm{};
   timeService.breakTime(t, tm);
   return tm.tm_mon;
 }
 
 int localYear(const time_t t) {
-  tmElements_t tm;
+  tmElements_t tm{};
   timeService.breakTime(t, tm);
   return tm.tm_year;
 }
 
 int localDayOfYear(const time_t t) {
-  tmElements_t tm;
+  tmElements_t tm{};
   timeService.breakTime(t, tm);
   return tm.tm_yday;
 }

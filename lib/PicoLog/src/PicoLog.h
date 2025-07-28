@@ -20,11 +20,24 @@ enum LogLevel:uint8_t {SILENT, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE};
 
 class PicoLog {
   public:
-    PicoLog() : m_queue(LOG_BUFFER_SIZE) {};
+    PicoLog() = default;
     ~PicoLog() = default;
 
     void begin(SerialUSB* serial, LogLevel level = INFO);
+
+    /**
+     * Sets the timebase used for logging operations - essentially an offset to be added to
+     * the system's real time clock to get the current calendar time
+     *
+     * @param time The time value to set as the timebase in milliseconds
+     */
     void setTimebase(time_t time);
+
+    /**
+     * Retrieves the current timebase used for logging operations.
+     *
+     * @return The timebase value in milliseconds.
+     */
     time_t getTimebase() const { return m_timebase; }
     void setLevel(const LogLevel level) { m_level = level; };
     LogLevel getLevel() const { return m_level; }
@@ -54,7 +67,7 @@ class PicoLog {
 
 private:
     LogLevel m_level{SILENT};
-    LogUtil::CircularBuffer<char> m_queue;
+    LogUtil::CircularBuffer<char> m_queue{LOG_BUFFER_SIZE};
     Print* m_stream{nullptr};
     time_t m_timebase{0};
     size_t m_maxBufferSize{0};
