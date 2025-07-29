@@ -78,10 +78,18 @@ bool handleNTPSuccess() {
     //update places where time has been captured before NTP sync - watchdog reboots
     for (auto &wdTime : sysInfo->watchdogReboots()) {
         if (wdTime < TWENTY_TWENTY)
-            wdTime = timeService.localFromRtcMillis(wdTime);
+            wdTime = timeService.utcFromRtcMillis(wdTime*1000);   //watchdog time is in seconds local; we're calling utc flavor as the time is already adjusted for local
     }
+    //update the timestamps of temp calibration structures - those time values, if captured (through now()) are already adjusted for local timezone, hence converting them
+    //to proper times is done using utcXYZ API to avoid double timezone offset adjustments
     if (calibCpuTemp.time > 0 && calibCpuTemp.time < TWENTY_TWENTY)
-        calibCpuTemp.time = timeService.localFromRtcMillis(calibCpuTemp.time);
+        calibCpuTemp.time = timeService.utcFromRtcMillis(calibCpuTemp.time * 1000);
+    if (calibTempMeasurements.ref.time > 0 && calibTempMeasurements.ref.time < TWENTY_TWENTY)
+        calibTempMeasurements.ref.time = timeService.utcFromRtcMillis(calibTempMeasurements.ref.time * 1000);
+    if (calibTempMeasurements.max.time > 0 && calibTempMeasurements.max.time < TWENTY_TWENTY)
+        calibTempMeasurements.max.time = timeService.utcFromRtcMillis(calibTempMeasurements.max.time * 1000);
+    if (calibTempMeasurements.min.time > 0 && calibTempMeasurements.min.time < TWENTY_TWENTY)
+        calibTempMeasurements.min.time = timeService.utcFromRtcMillis(calibTempMeasurements.min.time * 1000);
 
     return true;
 }
