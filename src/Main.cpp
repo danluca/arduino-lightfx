@@ -170,6 +170,11 @@ void setup() {
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
     taskDelay(250);         // leave reasonable time to the alarm task to set up
+    //enqueues the alarm setup event if time is ok
+    if (sysInfo->isSysStatus(SYS_STATUS_NTP))
+        enqueueAlarmSetup();
+    else
+        log_warn(F("System time not yet synchronized with NTP, skipping alarm setup; retrying later"));
 
     //wait for the other core to finish all initializations before allowing web server to respond to requests
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
