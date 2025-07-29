@@ -7,6 +7,7 @@
 #include "util.h"
 #include "sysinfo.h"
 #include "constants.hpp"
+#include "diag.h"
 #include "log.h"
 
 constexpr auto fmtDate PROGMEM = "%4d-%02d-%02d";
@@ -73,7 +74,15 @@ bool handleNTPSuccess() {
 
     const TimeSync tSync {.localMillis = static_cast<ulong>(timeService.syncLocalTimeMillis()), .unixMillis=timeService.syncUTCTimeMillis() };
     timeSyncs.push(tSync);
-    
+
+    //update places where time has been captured before NTP sync - watchdog reboots
+    for (auto &wdTime : sysInfo->watchdogReboots()) {
+        if (wdTime < TWENTY_TWENTY)
+            wdTime = timeService.localFromRtcMillis(wdTime);
+    }
+    if (calibCpuTemp.time > 0 && calibCpuTemp.time < TWENTY_TWENTY)
+        calibCpuTemp.time = timeService.localFromRtcMillis(calibCpuTemp.time);
+
     return true;
 }
 

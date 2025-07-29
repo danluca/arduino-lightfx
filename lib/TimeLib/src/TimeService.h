@@ -96,6 +96,8 @@ public:
     bool syncTimeNTP();
     [[nodiscard]] time_t syncLocalTimeMillis() const { return syncLocalMillis; }
     [[nodiscard]] time_t syncUTCTimeMillis() const { return syncUnixMillis; }
+    [[nodiscard]] time_t utcFromRtcMillis(const time_t &rtcMillis) const;
+    [[nodiscard]] time_t localFromRtcMillis(const time_t &rtcMillis) const;
 
     void breakTime(const time_t &timeInput, tmElements_t &tmItems) const; // break time_t into elements with timezone
     /** Break the given local time_t (seconds since 1/1/1970) into time components without timezone adjustments */

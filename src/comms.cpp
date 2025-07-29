@@ -321,10 +321,15 @@ void timeUpdate() {
  * Time setup re-attempt, in case we weren't successful during system bootstrap
  */
 void timeSetupCheck() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_NTP))
-        timeSetup();
-        //timeUpdate();    //attempt to sync time
-    else
+    if (!sysInfo->isSysStatus(SYS_STATUS_NTP)) {
+        if (timeSetup()) {
+            //enqueues the alarm setup event if time is ok
+            enqueueAlarmSetup();
+        } else {
+            log_warn(F("System time not yet synchronized with NTP, skipping alarm setup. Reattempting time sync later."));
+            startTimeSetupTimer();
+        }
+    } else
         log_info(F("Time was already properly setup, event fired in excess. System status: %#hX"), sysInfo->getSysStatus());
 }
 

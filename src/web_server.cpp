@@ -116,15 +116,11 @@ void web::handleGetStatus(WebClient &client) {
     // System
     doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
     doc["cleanBoot"] = sysInfo->isCleanBoot();
-    if (!sysInfo->watchdogReboots().empty()) {
-        time_t &lastReboot = sysInfo->watchdogReboots().back();
-        //fix last reboot timestamp if was captured before NTP sync occurred
-        if (timeSyncs.size() > 0 && lastReboot < TWENTY_TWENTY) {
-            const auto &[lastSyncLocalMillis, lastSyncUnixSeconds] = timeSyncs.back();
-            lastReboot = lastSyncUnixSeconds - (lastSyncLocalMillis / 1000 - lastReboot);
-        }
-        doc["lastWatchdogReboot"] = TimeFormat::asString(lastReboot);
-    }
+    if (!sysInfo->watchdogReboots().empty())
+        doc["lastWatchdogReboot"] = TimeFormat::asString(sysInfo->watchdogReboots().back());
+    const auto wdReboots = doc["watchdogReboots"].to<JsonArray>();
+    for (const auto &wd: sysInfo->watchdogReboots())
+        wdReboots.add<String>(TimeFormat::asString(wd));
 
     // WiFi
     const auto wifi = doc["wifi"].to<JsonObject>();

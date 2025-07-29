@@ -57,9 +57,9 @@ function getTasks() {
                         <td>${task.state}</td>
                         <td>${priority}</td>
                         <td>#${task.coreAffinity.toString(16).toUpperCase()}</td>
-                        <td>${task.stackHighWaterMark}</td>
-                        <td>${task.runTime.toLocaleString()}</td>
-                        <td>${task.runTimePct.toFixed(2)}</td>
+                        <td class="alignRight">${task.stackHighWaterMark}</td>
+                        <td class="alignRight">${task.runTime.toLocaleString()}</td>
+                        <td class="alignRight">${task.runTimePct.toFixed(2)}</td>
                     </tr>`)
 
             });

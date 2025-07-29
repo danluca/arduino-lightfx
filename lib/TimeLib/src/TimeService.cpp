@@ -214,6 +214,18 @@ time_t utcNowMillis() {
   return utcMillis;
 }
 
+time_t TimeService::utcFromRtcMillis(const time_t &rtcMillis) const {
+  // similar logic with the utcNowMillis - repeated rather than doing a function call for efficiency (less stack depth)
+  return (rtcMillis - syncLocalMillis) + syncUnixMillis + drift;  //current UTC time in millis
+}
+
+time_t TimeService::localFromRtcMillis(const time_t &rtcMillis) const {
+  // similar logic with nowMillis
+  const time_t utcMillis = utcFromRtcMillis(rtcMillis);
+  const time_t offsetMillis = tz->getOffset(utcMillis / 1000, false) * 1000;
+  return utcMillis + offsetMillis;
+}
+
 /**
  * Sets the current time from a UTC value
  * @param t current UTC time to set - seconds since 1/1/1970

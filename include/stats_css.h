@@ -157,4 +157,8 @@ main {
 .canvasjs-chart-credit {
     display: none;
 }
+.alignRight {
+    text-align: right;
+    padding-right: 1em;
+}
 )~~~";
