@@ -242,7 +242,7 @@ void startTimeSetupTimer() {
             log_error(F("Cannot reset the timeSetup timer - Ignored."));
         return;
     }
-    thTimeSetupTimer = xTimerCreate("timeSetup", pdMS_TO_TICKS(5 * 1000), pdFALSE, &tmrTimeSetup, enqueueTimeSetup);
+    thTimeSetupTimer = xTimerCreate("timeSetup", pdMS_TO_TICKS(60 * 1000), pdFALSE, &tmrTimeSetup, enqueueTimeSetup);
     if (thTimeSetupTimer == nullptr) {
         log_error(F("Cannot create timeSetup timer - Ignored."));
         return;
