@@ -47,9 +47,9 @@ void logTimeStatus(const time_t curTime, const Holiday& holiday) {
     const String strTime = TimeFormat::asString(curTime);
     
     log_info(F("%s %s time, time offset set to %d s, current time %s. NTP sync %s."), timeService.timezone()->getName(), savingsType,
-        offset, strTime.c_str(), sysInfo->isSysStatus(SYS_STATUS_NTP) ? "ok" : "failed (fallback to WiFi time)");
-    log_info(F("Current time %s %s (holiday adjusted to %s); system status %#hX"), strTime.c_str(), timeService.timezone()->getShort(curTime),
-        holidayToString(holiday), sysInfo->getSysStatus());
+        offset, strTime.c_str(), sysInfo->isSysStatus(SYS_STATUS_NTP) ? "ok" : "failed (fallback to other source)");
+    log_info(F("Current time %s (holiday adjusted to %s); system status %#hX"), strTime.c_str(), holidayToString(holiday), sysInfo->getSysStatus());
+    log_info(F("Time Sync: local millis RTC %lld to unix millis %lld"), timeService.syncLocalTimeMillis(), timeService.syncUTCTimeMillis());
 #endif
 }
 
@@ -111,11 +111,11 @@ void handleNTPFailure() {
         const bool isDaylightSavings = timeService.timezone()->isDST(wifiTime, false);
         if (isDaylightSavings)
             sysInfo->setSysStatus(SYS_STATUS_DST);
-        log_warn(F("NTP sync failed. Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), TimeFormat::asString(curTime).c_str(),
+        log_warn(F("No NTP; Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), TimeFormat::asString(curTime).c_str(),
             isDaylightSavings ? timeService.timezone()->getDSTShort() : timeService.timezone()->getSTDShort(), holidayToString(holiday));
         logTimeStatus(curTime, holiday);
     } else {
-        log_error(F("NTP sync failed, WiFi time not available. Current time from raw clock: %s (holiday adjusted to %s)"),
+        log_error(F("No NTP, WiFi time not available. Current time from raw clock: %s (holiday adjusted to %s)"),
                   TimeFormat::asString(now()).c_str(), holidayToString(paletteFactory.getHoliday()));
     }
     

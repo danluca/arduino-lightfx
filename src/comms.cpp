@@ -269,10 +269,10 @@ void timeUpdate() {
     if (result) {
         const TimeSync tSync {.localMillis = static_cast<ulong>(timeService.syncLocalTimeMillis()), .unixMillis=timeService.syncUTCTimeMillis() };
         timeSyncs.push(tSync);
+        log_info(F("NTP sync success; current time %s"), TimeFormat::asStringMs(nowMillis()).c_str());
     } else {
-        log_warn(F("NTP sync failed; Current time %s."), TimeFormat::asStringMs(nowMillis()).c_str());
+        log_warn(F("No NTP; Current time %s."), TimeFormat::asStringMs(nowMillis()).c_str());
     }
-    log_info(F("Time NTP sync performed; success = %s; current time %s"), StringUtils::asString(result), TimeFormat::asStringMs(nowMillis()).c_str());
     result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
     const time_t curTime = nowMillis();
     const time_t nixTime = curTime / 1000;
