@@ -272,7 +272,7 @@ void timeUpdate() {
     } else {
         log_warn(F("NTP sync failed; Current time %s."), TimeFormat::asStringMs(nowMillis()).c_str());
     }
-    log_info(F("Time NTP sync performed; success = %s; current time %s"), StringUtils::asString(result), TimeFormat::asStringMs(nowMillis()));
+    log_info(F("Time NTP sync performed; success = %s; current time %s"), StringUtils::asString(result), TimeFormat::asStringMs(nowMillis()).c_str());
     result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
     const time_t curTime = nowMillis();
     const time_t nixTime = curTime / 1000;
