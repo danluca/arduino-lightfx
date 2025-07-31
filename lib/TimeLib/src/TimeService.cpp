@@ -208,17 +208,43 @@ time_t nowMillis() {
   return utcMillis + offsetMillis;
 }
 
+/**
+ * Calculates the current UTC time in milliseconds.
+ * It computes the value based on the system clock, the synchronization offsets,
+ * and the drift adjustment.
+ *
+ * @return The current UTC time in milliseconds since January 1, 1970.
+ */
 time_t utcNowMillis() {
   const time_t sysClock = timeService.getLocalClockMillisFunc();  // current milliseconds since boot
   const time_t utcMillis = (sysClock - timeService.syncLocalMillis) + timeService.syncUnixMillis + timeService.drift;  //current UTC time in millis
   return utcMillis;
 }
 
+/**
+ * Converts the given RTC timestamp in milliseconds to UTC time in milliseconds.
+ * The calculation adjusts the provided rtcMillis value using the current synchronized
+ * local time (syncLocalMillis), the synchronized UTC time (syncUnixMillis),
+ * and the applied drift correction.
+ *
+ * This method operates similarly to utcNowMillis but avoids additional function
+ * calls for improved efficiency by reducing stack depth.
+ *
+ * @param rtcMillis A reference to the time in milliseconds, as retrieved from the RTC.
+ * @return The corresponding UTC time in milliseconds since January 1, 1970.
+ */
 time_t TimeService::utcFromRtcMillis(const time_t &rtcMillis) const {
   // similar logic with the utcNowMillis - repeated rather than doing a function call for efficiency (less stack depth)
   return (rtcMillis - syncLocalMillis) + syncUnixMillis + drift;  //current UTC time in millis
 }
 
+/**
+ * Converts the given real-time clock (RTC) time in milliseconds since the epoch
+ * to local time accounting for timezone offsets.
+ *
+ * @param rtcMillis A reference to the time_t value representing RTC milliseconds since the epoch.
+ * @return The equivalent local time as time_t in milliseconds since the epoch.
+ */
 time_t TimeService::localFromRtcMillis(const time_t &rtcMillis) const {
   // similar logic with nowMillis
   const time_t utcMillis = utcFromRtcMillis(rtcMillis);
