@@ -29,6 +29,7 @@ int getAverageTimeDrift();
 int getLastTimeDrift();
 int getTotalDrift();
 int getDrift(const TimeSync &from, const TimeSync &to);
+void updateLoggingTimebase();
 
 extern FixedQueue<TimeSync, 8> timeSyncs;
 extern WiFiUDP* ntpUDP;

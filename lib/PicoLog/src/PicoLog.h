@@ -24,7 +24,20 @@ class PicoLog {
     ~PicoLog() = default;
 
     void begin(SerialUSB* serial, LogLevel level = INFO);
+
+    /**
+     * Sets the timebase used for logging operations - essentially an offset to be added to
+     * the system's real time clock to get the current calendar time
+     *
+     * @param time The time value to set as the timebase in milliseconds
+     */
     void setTimebase(time_t time);
+
+    /**
+     * Retrieves the current timebase used for logging operations.
+     *
+     * @return The timebase value in milliseconds.
+     */
     time_t getTimebase() const { return m_timebase; }
     void setLevel(const LogLevel level) { m_level = level; };
     LogLevel getLevel() const { return m_level; }

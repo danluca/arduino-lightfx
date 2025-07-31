@@ -23,13 +23,18 @@ TimeService timeService;
 
 void updateLoggingTimebase() {
 #if LOGGING_ENABLED == 1
-    if (Log.getTimebase() == 0) {
-        const time_t currentTime = nowMillis();
-        const time_t currentMillis = millis();
-        log_warn(F("Logging time reference updated from %lld ms (%s) to %s"),
-                currentMillis, TimeFormat::asStringMs(currentMillis, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
+    const time_t currentTime = nowMillis();
+    const time_t currentMillis = millis();
+    // if the log is off by more than 5 minutes, adjust it
+    if (const time_t timeLog = currentMillis + Log.getTimebase(); abs(currentTime - timeLog) > 5 * SECS_PER_MIN * 1000 ) {
+        const time_t logTimebase = Log.getTimebase();
+        log_info(F("Logging time reference updated at RTC %lld ms from %s to %s"),
+                logTimebase, TimeFormat::asStringMs(timeLog, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
         Log.setTimebase(currentTime - currentMillis);
-    }
+        log_info(F("Logging timebase offset updated from %lld ms to %lld ms"), logTimebase, Log.getTimebase());
+    } else
+        log_info(F("Logging timebase offset not updated - log time %s is within 5 minutes of current time %s"),
+            TimeFormat::asStringMs(timeLog, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
 #endif
 }
 

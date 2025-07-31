@@ -270,22 +270,11 @@ void timeUpdate() {
         const TimeSync tSync {.localMillis = static_cast<ulong>(timeService.syncLocalTimeMillis()), .unixMillis=timeService.syncUTCTimeMillis() };
         timeSyncs.push(tSync);
         log_info(F("NTP sync success; current time %s"), TimeFormat::asStringMs(nowMillis()).c_str());
-    } else {
+        updateLoggingTimebase();
+    } else
         log_warn(F("No NTP; Current time %s."), TimeFormat::asStringMs(nowMillis()).c_str());
-    }
     result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
-    const time_t curTime = nowMillis();
-    const time_t nixTime = curTime / 1000;
-#if LOGGING_ENABLED == 1
-    const time_t curMs = millis();
-    const time_t logTimeMs = Log.getTimebase() + curMs;
-    if (const bool bNeedsUpdate = Log.getTimebase() == 0 || abs(curTime - logTimeMs) > 60000; result && bNeedsUpdate) {
-        log_warn(F("Logging time reference updated from %llu ms (%s) to %s"), logTimeMs, TimeFormat::asString(logTimeMs/1000).c_str(),
-            TimeFormat::asString(nixTime).c_str());
-        Log.setTimebase(curTime - curMs);
-    }
     log_info(F("System status: %#hX"), sysInfo->getSysStatus());
-#endif
 
     // if we did not have NTP sync before, react to the current attempt result - if failed, schedule a timer to try again; if succeeded, notify the alarm task for setup
     if (!bHadNtpSync) {
@@ -299,6 +288,7 @@ void timeUpdate() {
     }
 
     //check for a DST transition
+    const time_t nixTime = now();
     if (const bool dst = timeService.timezone()->isDST(nixTime); dst != sysInfo->isSysStatus(SYS_STATUS_DST)) {
         dst ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
 #if LOGGING_ENABLED == 1
@@ -306,7 +296,7 @@ void timeUpdate() {
             TimeFormat::asString(nixTime).c_str());
 #endif
     }
-    if (timeSyncs.size() > 2) {
+    if (timeSyncs.size() > 1) {
         //log the current drift
         const auto fromSync = timeSyncs.end()[-2];  //second before last
         const auto toSync = timeSyncs.end()[-1];    //last
