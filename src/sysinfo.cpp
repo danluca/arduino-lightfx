@@ -25,8 +25,8 @@ static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Total Stack
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
 static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
-static constexpr auto idleTaskMarker PROGMEM = "idle";
 #endif
+static constexpr auto idleTaskMarker PROGMEM = "idle";
 constexpr CRGB CLR_ALL_OK = CRGB::Indigo;
 constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Green;
 constexpr CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
