@@ -65,6 +65,7 @@ function getTasks() {
                     </tr>`)
 
             });
+            $('#totalCPULoad').html(`Total CPU Load:    ${data.totalCPULoadPct.toFixed(2)}%`);
             let memList = $('#memoryList');
             memList.empty();
             memList.append(`<li>Free Stack: <span>${data.heap.freeStack.toLocaleString()} bytes [stack pointer: #${data.heap.stackPointer.toString(16)}]</span></li>`);

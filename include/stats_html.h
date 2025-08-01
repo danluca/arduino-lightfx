@@ -45,7 +45,8 @@ inline constexpr auto stats_html PROGMEM = R"~~~(
                 <tbody id="taskTableBody">
                 </tbody>
             </table>
-
+            <h2>Summary</h2>
+            <p id="totalCPULoad"></p>
         </div>
         <h1>Memory</h1>
         <div id="memoryDetailArea">

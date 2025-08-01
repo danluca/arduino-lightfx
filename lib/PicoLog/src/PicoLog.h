@@ -20,7 +20,7 @@ enum LogLevel:uint8_t {SILENT, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE};
 
 class PicoLog {
   public:
-    PicoLog() : m_queue(LOG_BUFFER_SIZE) {};
+    PicoLog() = default;
     ~PicoLog() = default;
 
     void begin(SerialUSB* serial, LogLevel level = INFO);
@@ -67,7 +67,7 @@ class PicoLog {
 
 private:
     LogLevel m_level{SILENT};
-    LogUtil::CircularBuffer<char> m_queue;
+    LogUtil::CircularBuffer<char> m_queue{LOG_BUFFER_SIZE};
     Print* m_stream{nullptr};
     time_t m_timebase{0};
     size_t m_maxBufferSize{0};

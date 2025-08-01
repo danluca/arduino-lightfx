@@ -29,7 +29,7 @@ void updateLoggingTimebase() {
     if (const time_t timeLog = currentMillis + Log.getTimebase(); abs(currentTime - timeLog) > 5 * SECS_PER_MIN * 1000 ) {
         const time_t logTimebase = Log.getTimebase();
         log_info(F("Logging time reference updated at RTC %lld ms from %s to %s"),
-                logTimebase, TimeFormat::asStringMs(timeLog, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
+                currentMillis, TimeFormat::asStringMs(timeLog, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
         Log.setTimebase(currentTime - currentMillis);
         log_info(F("Logging timebase offset updated from %lld ms to %lld ms"), logTimebase, Log.getTimebase());
     } else
