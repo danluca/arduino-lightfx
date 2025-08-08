@@ -163,7 +163,7 @@ TaskWrapper::TaskWrapper(const TaskDefPtr taskDef, const int16_t x) : fnSetup(ta
         id = new char[sz + 1]();   //zero initialized array
         strncpy(id, taskDef->threadName, sz);
     } else {
-        const size_t sz = sprintf(nullptr, fmtTaskName, index);
+        const size_t sz = snprintf(nullptr, 0, fmtTaskName, index);
         id = new char[sz + 1](); //zero initialized array
         snprintf(id, sz, fmtTaskName, index);
     }

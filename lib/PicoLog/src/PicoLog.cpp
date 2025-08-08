@@ -17,8 +17,8 @@ TaskWrapper *twStream;
 
 #define SERIAL_BUFFER_SIZE 256
 static constexpr char fmtTimestamp[] PROGMEM = "%02lu:%02lu:%02lu.%03lu";
-static constexpr char fmtTaskPriorityChanged[] PROGMEM = " [%s-%u/%u]";
-static constexpr char fmtTaskPriorityRegular[] PROGMEM = " [%s-%u]";
+static constexpr char fmtTaskPriorityChanged[] PROGMEM = " [C%u-%s-%u/%u]";
+static constexpr char fmtTaskPriorityRegular[] PROGMEM = " [C%u-%s-%u]";
 static constexpr char logLevelTags[] PROGMEM = "SFEWIDT";    //NOTE this string must be as long as LogLevel enum!
 static constexpr char fmtLevel[] PROGMEM = " %c: ";
 
@@ -44,10 +44,10 @@ void flushData() {
     Log.m_stream->flush();
 }
 
-TaskDef tdStream {nullptr, flushData, 640, "SRL", 255, CORE_ALL};
+TaskDef tdStream {nullptr, flushData, 1024, "SRL", 255, CORE_ALL};
 #else
 void noop() {}
-TaskDef tdStream {nullptr, noop, 128, "NOP", 255, CORE_ALL};
+TaskDef tdStream {nullptr, noop, 512, "NOP", 255, CORE_ALL};
 #endif
 
 
@@ -143,12 +143,13 @@ size_t PicoLog::printTimestamp(char *msg) const {
 size_t PicoLog::printThread(char *msg) {
     TaskStatus_t taskStatus;
     vTaskGetInfo(nullptr, &taskStatus, pdFALSE, eRunning);
+    const uint coreNumber = get_core_num();
     if (taskStatus.uxCurrentPriority == taskStatus.uxBasePriority) {
-        const size_t sz = snprintf(nullptr, 0, fmtTaskPriorityRegular, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
-        return snprintf(msg, sz + 1, fmtTaskPriorityRegular, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
+        const size_t sz = snprintf(nullptr, 0, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
+        return snprintf(msg, sz + 1, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
     }
-    const size_t sz = snprintf(nullptr, 0, fmtTaskPriorityChanged, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
-    return snprintf(msg, sz + 1, fmtTaskPriorityChanged, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+    const size_t sz = snprintf(nullptr, 0, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+    return snprintf(msg, sz + 1, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
 }
 
 /**

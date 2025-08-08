@@ -7,7 +7,7 @@
 String Util::getRandomHexString() {
     char buffer[33];  // buffer to hold 32 Hex Digit + /0
     for (int i = 0; i < 4; i++) {
-        sprintf(buffer + (i * 8), "%08lx", rp2040.hwrand32());
+        snprintf(buffer + (i * 8), 9, "%08lx", rp2040.hwrand32());
     }
     return {buffer};
 }

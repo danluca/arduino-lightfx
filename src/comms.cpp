@@ -174,9 +174,9 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     client.connectionKeepAlive();
     client.noDefaultRequestHeaders();
 
-    const size_t sz = sprintf(nullptr, fmtFxChange, fxIndex);
-    char buf[sz+1];
-    sprintf(buf, fmtFxChange, fxIndex);
+    const size_t sz = snprintf(nullptr, 0, fmtFxChange, fxIndex) + 1;
+    char buf[sz];
+    snprintf(buf, sz, fmtFxChange, fxIndex);
     buf[sz] = 0;    //null-terminated string
 
     client.beginRequest();

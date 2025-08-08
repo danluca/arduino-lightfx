@@ -110,32 +110,61 @@ int CoreTimeCalc::calculateYear(const time_t &time) {
     return year;
 }
 
-// Implement the core time component extractors
+/**
+ * Return the hour of the given time
+ * @param t time
+ * @return hour 0-23
+ */
 int CoreTimeCalc::hourCore(const time_t t) {
     return static_cast<int>((t % SECS_PER_DAY) / SECS_PER_HOUR);
 }
 
+/**
+ * Return the minute of the hour for the given time
+ * @param t time
+ * @return minute of the hour 0-59
+ */
 int CoreTimeCalc::minuteCore(const time_t t) {
     return static_cast<int>((t % SECS_PER_HOUR) / SECS_PER_MIN);
 }
 
+/**
+ * Return the second of the minute for the given time
+ * @param t time
+ * @return second of the minute 0-59
+ */
 int CoreTimeCalc::secondCore(const time_t t) {
     return static_cast<int>(t % SECS_PER_MIN);
 }
 
+/**
+ * Return the day of the month for the given time
+ * @param t time
+ * @return day of the month 1-31
+ */
 int CoreTimeCalc::dayCore(const time_t t) {
     tmElements_t tm;
     breakTimeCore(t, tm);
     return tm.tm_mday;
 }
 
+/**
+ * Return the weekday of the week for the given time
+ * @param t time
+ * @return day of the week 0-6, Sunday is 0
+ */
 int CoreTimeCalc::weekdayCore(const time_t t) {
     // Direct calculation without using full breakTime, handling negative values
     return static_cast<int>(((t / SECS_PER_DAY + 4) % 7 + 7) % 7);  // Sunday is day 0
 }
 
+/**
+ * Return the month of the year for the given time
+ * @param t time
+ * @return month of the year 0-11, January is 0
+ */
 int CoreTimeCalc::monthCore(const time_t t) {
-    tmElements_t tm;
+    tmElements_t tm{};
     breakTimeCore(t, tm);
     return tm.tm_mon;
 }
@@ -145,7 +174,7 @@ int CoreTimeCalc::yearCore(const time_t t) {
 }
 
 int CoreTimeCalc::dayOfYearCore(const time_t t) {
-    tmElements_t tm;
+    tmElements_t tm{};
     breakTimeCore(t, tm);
     return tm.tm_yday;
 }

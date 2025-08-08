@@ -40,7 +40,7 @@
 
 #define INFO(format, args...) do { \
 	char buf[250];	\
-	sprintf(buf, format, args); \
+	snprintf(buf, 250, format, args); \
 	Serial.println(buf); \
 } while(0);
 

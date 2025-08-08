@@ -266,14 +266,16 @@ const char *holidayToString(const Holiday hday) {
 }
 
 /**
- * Encodes month and day (in this order) into a short unsigned int (2 bytes) such that it can be easily used
+ * Encodes month (1-12; 0x01-0x0C) and day (1-31, 0x01-0x1F) (in this order) into a short unsigned int (2 bytes) such that it can be easily used
  * for comparisons
  * @param time (optional) specific time to encode for. If not specified, current time is used.
  * @return 2 byte encoded month and day
  */
 uint16_t encodeMonthDay(const time_t time) {
     const time_t theTime = time == 0 ? now() : time;
-    return ((month(theTime) & 0xFF) << 8) + (day(theTime) & 0xFF);
+    tmElements_t tm{};
+    CoreTimeCalc::breakTimeCore(theTime, tm);
+    return (((tm.tm_mon+1) & 0xFF) << 8) + (tm.tm_mday & 0xFF);
 }
 
 /**

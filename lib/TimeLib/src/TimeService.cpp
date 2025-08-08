@@ -91,23 +91,23 @@ uint8_t isPM() {
 uint8_t isPM(const time_t t) {
   return hour(t) >= 12;
 }
-// the minute now
+// the minute now (0-59)
 int minute() {
   return minute(now()); 
 }
-// the minute for the given time
+// the minute for the given time (0-59)
 int minute(const time_t t) {
   return CoreTimeCalc::minuteCore(t);
 }
-// the second now
+// the second now (0-59)
 int second() {
   return second(now()); 
 }
-// the second for the given time
+// the second for the given time (0-59)
 int second(const time_t t) {
   return CoreTimeCalc::secondCore(t);
 }
-// the day now
+// the day now (1-31)
 int day(){
   return(day(now())); 
 }
@@ -115,15 +115,15 @@ int day(){
 int day(const time_t t) {
   return CoreTimeCalc::dayCore(t);
 }
-// the week day now; Sunday is 1
+// the week day now (0-6), Sunday is 0
 int weekday() {
   return weekday(now());
 }
-// the week day for the given time (1-7), Sunday is 1
+// the week day for the given time (0-6), Sunday is 0
 int weekday(const time_t t) {
   return CoreTimeCalc::weekdayCore(t);
 }
-// the month now (1-12)
+// the month now (0-11)
 int month(){
   return month(now()); 
 }
@@ -139,11 +139,11 @@ int year() {
 int year(const time_t t) {
   return CoreTimeCalc::yearCore(t);
 }
-
+// the day of the year for now (1-366)
 int dayOfYear() {
   return dayOfYear(now());
 }
-
+// the day of the year for the given time (1-366)
 int dayOfYear(const time_t t) {
   return CoreTimeCalc::dayOfYearCore(t);
 }

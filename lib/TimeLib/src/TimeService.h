@@ -16,11 +16,11 @@ typedef time_t (*getSystemLocalClock)();
 
 /*============================================================================*/
 /*  global time and date functions   */
-int hour(); // the hour now
-int hour(time_t t); // the hour for the given time
+int hour(); // the hour now (0-23)
+int hour(time_t t); // the hour for the given time (0-23)
 
-int hourFormat12(); // the hour now in 12-hour format
-int hourFormat12(time_t t); // the hour for the given time in 12-hour format
+int hourFormat12(); // the hour now in 12-hour format (1-12)
+int hourFormat12(time_t t); // the hour for the given time in 12-hour format (1-12)
 
 uint8_t isAM(); // returns true if time now is AM
 uint8_t isAM(time_t t); // returns true the given time is AM
@@ -28,36 +28,36 @@ uint8_t isAM(time_t t); // returns true the given time is AM
 uint8_t isPM(); // returns true if time now is PM
 uint8_t isPM(time_t t); // returns true the given time is PM
 
-int minute(); // the minute now
-int minute(time_t t); // the minute for the given time
+int minute(); // the minute now (0-59)
+int minute(time_t t); // the minute for the given time (0-59)
 
-int second(); // the second now
-int second(time_t t); // the second for the given time
+int second(); // the second now (0-59)
+int second(time_t t); // the second for the given time (0-59)
 
-int day(); // the day now
-int day(time_t t); // the day for the given time
+int day(); // the day now (1-31)
+int day(time_t t); // the day for the given time (1-31)
 
-int weekday(); // the weekday now (Sunday is day 1)
-int weekday(time_t t); // the weekday for the given time
+int weekday(); // the weekday now (0-6, Sunday is day 0)
+int weekday(time_t t); // the weekday for the given time (0-6, Sunday is day 0)
 
-int month(); // the month now (Jan is month 1)
-int month(time_t t); // the month for the given time
+int month(); // the month now (0-11, Jan is month 0)
+int month(time_t t); // the month for the given time (0-11, Jan is month 0)
 
 int year(); // the full four-digit year: (2009, 2010 etc)
 int year(time_t t); // the year for the given time
 
 int dayOfYear(); // the day of the year (1-366)
-int dayOfYear(time_t t); // the day of the year for the given time
+int dayOfYear(time_t t); // the day of the year for the given time (1-366)
 
 // Timezone-aware versions of time component functions
-int localHour(time_t t); // the hour for the given time in local timezone
-int localMinute(time_t t); // the minute for the given time in local timezone
-int localSecond(time_t t); // the second for the given time in local timezone
-int localDay(time_t t); // the day for the given time in local timezone
-int localWeekday(time_t t); // the weekday for the given time in local timezone
-int localMonth(time_t t); // the month for the given time in local timezone
+int localHour(time_t t); // the hour for the given time in local timezone (0-23)
+int localMinute(time_t t); // the minute for the given time in local timezone (0-59)
+int localSecond(time_t t); // the second for the given time in local timezone (0-59)
+int localDay(time_t t); // the day for the given time in local timezone (1-31)
+int localWeekday(time_t t); // the weekday for the given time in local timezone (1-7, Sunday is 1)
+int localMonth(time_t t); // the month for the given time in local timezone (1-12, Jan is 1)
 int localYear(time_t t); // the year for the given time in local timezone
-int localDayOfYear(time_t t); // the day of the year for the given time in local timezone
+int localDayOfYear(time_t t); // the day of the year for the given time in local timezone (1-366)
 
 time_t now();           // return the current local time as seconds since Jan 1 1970 (aka local unix time)
 time_t nowMillis();     // return the current local time as milliseconds since Jan 1 1970

@@ -298,7 +298,7 @@ size_t WebClient::sendContent(const char *content, const size_t contentLength) {
     size_t contentSent = 0;
     if (_chunked) {
         char chunkSize[11];
-        sprintf(chunkSize, "%x%s", contentLength, footer);
+        snprintf(chunkSize, 11, "%x%s", contentLength, footer);
         contentSent += _currentClientWrite(chunkSize, strlen(chunkSize));
     }
     contentSent += _currentClientWrite(content, contentLength);
@@ -321,7 +321,7 @@ size_t WebClient::sendContent_P(PGM_P content, const size_t size) {
     size_t contentSent = 0;
     if (_chunked) {
         char chunkSize[11];
-        sprintf(chunkSize, "%x%s", size, footer);
+        snprintf(chunkSize, 11, "%x%s", size, footer);
         contentSent += _currentClientWrite(chunkSize, strlen(chunkSize));
     }
     contentSent += _currentClientWrite_P(content, size);

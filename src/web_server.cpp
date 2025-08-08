@@ -69,9 +69,11 @@ static const std::map<std::string, const char *> inFlashResources PROGMEM = {
  */
 void dateHeader(WebClient &client) {
     const time_t curTime = now();
-    const int szBuf = snprintf(nullptr, 0, hdFmtDate, year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime)) + 1;
+    tmElements_t tm{};
+    timeService.breakTime(curTime, tm);
+    const int szBuf = snprintf(nullptr, 0, hdFmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec) + 1;
     char buf[szBuf];
-    snprintf(buf, szBuf, hdFmtDate, year(curTime), month(curTime), day(curTime), hour(curTime), minute(curTime), second(curTime));
+    snprintf(buf, szBuf, hdFmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     client.sendHeader(F("Date"), buf);
 }
 

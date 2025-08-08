@@ -28,7 +28,7 @@ void fsExecute();
 void fsInit();
 
 // filesystem task definition - priority is overwritten during setup, see fsSetup
-TaskDef fsDef {fsInit, fsExecute, 1024, "FS", 1, CORE_0};
+TaskDef fsDef {fsInit, fsExecute, 1536, "FS", 1, CORE_0};
 
 /**
  * Structure of filesystem function arguments - the filesystem task receives a pointer to this structure in the
