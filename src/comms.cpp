@@ -300,10 +300,14 @@ void timeUpdate() {
         //log the current drift
         const auto fromSync = timeSyncs.end()[-2];  //second before last
         const auto toSync = timeSyncs.end()[-1];    //last
-        const int driftMs = getDrift(fromSync, toSync);
-        timeService.addDrift(-driftMs); //adjust for the drift
-        log_info(F("Current drift between %s and %s (%lld ms) measured as %d ms"), TimeFormat::asStringMs(fromSync.unixMillis).c_str(),
-            TimeFormat::asStringMs(toSync.unixMillis).c_str(), toSync.unixMillis-fromSync.unixMillis, driftMs);
+        if (const int driftMs = getDrift(fromSync, toSync); abs(driftMs) > SECS_PER_HOUR * 1000) {
+            log_warn(F("Drift between %s and %s (%lld ms) is too high (%d ms; threshold is 1 hr) - no adjustments made to time base"), TimeFormat::asStringMs(fromSync.unixMillis).c_str(),
+                TimeFormat::asStringMs(toSync.unixMillis).c_str(), toSync.unixMillis-fromSync.unixMillis, driftMs);
+        } else {
+            timeService.addDrift(-driftMs); //adjust for the drift
+            log_info(F("Current drift between %s and %s (%lld ms) measured as %d ms - time base adjusted"), TimeFormat::asStringMs(fromSync.unixMillis).c_str(),
+                TimeFormat::asStringMs(toSync.unixMillis).c_str(), toSync.unixMillis-fromSync.unixMillis, driftMs);
+        }
     }
 }
 

@@ -263,10 +263,10 @@ void TimeService::setTime(const time_t t) {
 #ifdef PICO_RP2040
   tmElements_t tm{};
   breakTime(t, tm);
-  datetime_t dt;
+  datetime_t dt {};
   rtc_get_datetime(&dt);
   const bool timeNeedsUpdate = dt.year != tm.tm_year || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
-                          dt.hour != tm.tm_hour || dt.min != tm.tm_min || dt.sec != tm.tm_sec;
+                          dt.hour != tm.tm_hour || dt.min != tm.tm_min; //tolerate 1 min drift
 
   if (timeNeedsUpdate) {
     dt.year = static_cast<int16_t>(tm.tm_year);
@@ -308,10 +308,10 @@ time_t TimeService::setTime(const uint16_t hr, const uint16_t min, const uint16_
   syncLocalMillis = sysClock;
   syncUnixMillis = t * 1000;  //we store the absolute time in milliseconds
 #ifdef PICO_RP2040
-  datetime_t dt;
+  datetime_t dt{};
   rtc_get_datetime(&dt);
   const bool timeNeedsUpdate = dt.year != tm.tm_year || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
-                          dt.hour != tm.tm_hour || dt.min != tm.tm_min || dt.sec != tm.tm_sec;
+                          dt.hour != tm.tm_hour || dt.min != tm.tm_min; // tolerate 1 min drift
 
   if (timeNeedsUpdate) {
     dt.year = static_cast<int16_t>(tm.tm_year);

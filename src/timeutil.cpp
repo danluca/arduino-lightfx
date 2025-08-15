@@ -137,9 +137,19 @@ bool timeSetup() {
     timeBegin();
     timeService.applyTimezone(centralTime);
     if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
-        const bool ntpTimeAvailable = timeService.syncTimeNTP();
-    
-        log_warn(F("Acquiring NTP time, attempt %s"), ntpTimeAvailable ? "was successful" : "has FAILED, retrying later...");
+        // if we have time already acquired through WiFi, use it - WiFi module got it from NTP as well
+        bool ntpTimeAvailable = false;
+        if (const time_t wifiTime = WiFi.getTime(); wifiTime > 0) {
+            timeService.setTime(wifiTime);
+            ntpTimeAvailable = true;
+            log_info(F("Time service seeded from WiFi time (NTP based): %s"), TimeFormat::asString(wifiTime).c_str());
+        } else {
+            ntpTimeAvailable = timeService.syncTimeNTP();
+            if (ntpTimeAvailable)
+                log_info(F("Time service seeded from NTP pool: %s"), TimeFormat::asStringMs(timeService.syncUTCTimeMillis()).c_str());
+            else
+                log_warn(F("Acquiring NTP time has FAILED, retrying later..."));
+        }
 
         if (ntpTimeAvailable)
             return handleNTPSuccess();
