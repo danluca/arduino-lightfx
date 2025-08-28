@@ -33,6 +33,7 @@
 #include "Timezone.h"
 #include "TimeLib.h"
 #include "LogProxy.h"
+#include "../../RP2040WiFiNina/src/WiFi.h"
 #ifdef PICO_RP2040
 #include <hardware/rtc.h>
 #include "pico/util/datetime.h"
@@ -412,14 +413,20 @@ void TimeService::begin(UDP* udp) {
  * @return whether the NTP sync was successful and decoded valid time
  */
 bool TimeService::syncTimeNTP() {
-  time_t epochTime = 0;
-  int delay = 0; //milliseconds delay in processing the time data received; accounts for network lag
-  const bool success = ntpClient.update(epochTime, delay);
-  if (success) {
+  // time_t epochTime = 0;
+  // int delay = 0; //milliseconds delay in processing the time data received; accounts for network lag
+  // const bool success = ntpClient.update(epochTime, delay);
+  // if (success) {
+  //   setTime(epochTime);
+  //   syncLocalMillis -= delay; //the sys millis is set to now in the call above, adjust it with the delay reported by the NTP service
+  // }
+  // return success;
+  // temporarily ntp disable
+  if (const time_t epochTime = WiFi.getTime(); epochTime > 0) {
     setTime(epochTime);
-    syncLocalMillis -= delay; //the sys millis is set to now in the call above, adjust it with the delay reported by the NTP service
+    return true;
   }
-  return success;
+  return false;
 }
 
 void TimeService::end() {
