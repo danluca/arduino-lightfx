@@ -7,7 +7,7 @@
 
 #include <WiFiNINA.h>
 #include <TimeLib.h>
-#include "../lib/Utils/src/fixed_queue.h"
+#include <fixed_queue.h>
 
 enum Holiday { None, Party, ValentineDay, StPatrick, MemorialDay, IndependenceDay, Halloween, Thanksgiving, Christmas, NewYear };
 Holiday buildHoliday(time_t time);

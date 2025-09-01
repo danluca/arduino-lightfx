@@ -6,7 +6,6 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #include <LittleFS.h>
 #include <SchedulerExt.h>
-#include <queue.h>
 #include "filesystem.h"
 #include "net_setup.h"
 #include "efx_setup.h"
@@ -17,6 +16,7 @@
 #include "log.h"
 #include "mic.h"
 #include "util.h"
+#include "task_msg.h"
 #include "web_server.h"
 #include "ota_upgrade.h"
 
@@ -51,7 +51,6 @@ constexpr TaskDef fxTasks {fx_setup, fx_run, 1536, csFxTask, 255, CORE_1};
 constexpr TaskDef micTasks {mic_setup, mic_run, 1024, "Mic", 5, CORE_1};
 constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1280, "ALM", 5, CORE_0};
 bool core1_separate_stack = true;
-QueueHandle_t almQueue;
 
 /**
  * Sends the ALARM_SETUP message to the ALM task via the alarm queue.
@@ -66,7 +65,7 @@ QueueHandle_t almQueue;
  * - Logs an error if the message could not be enqueued.
  */
 void enqueueAlarmSetup() {
-    constexpr MiscAction msgSetup = ALARM_SETUP;
+    constexpr AlmAction msgSetup = ALARM_SETUP;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msgSetup, 0); qResult != pdTRUE)
         log_error(F("Error sending ALARM_SETUP message to ALM queue - error %d"), qResult);
 }
@@ -101,7 +100,7 @@ void alarm_misc_begin() {
  * - Executes on the ALM task, typically assigned to CORE_1 in the system configuration.
  */
 void alarm_misc_run() {
-    MiscAction action;
+    AlmAction action;
     // wait indefinitely for a message to be received
     if (pdFALSE == xQueueReceive(almQueue, &action, portMAX_DELAY)) {
         return;
@@ -147,7 +146,8 @@ void setup() {
     filesystem_setup();
     sysInfo->begin();
 
-    almQueue = xQueueCreate(10, sizeof(MiscAction));    //create a receiving queue for the ALM task for communication between cores
+    task_msg_setup();
+
     Scheduler.startTask(&alarmTasks);
 
     readSysInfo();

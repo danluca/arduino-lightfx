@@ -15,7 +15,7 @@
 #include "fxutil.h"
 #include "log.h"
 #if LOGGING_ENABLED == 1
-#include "stringutils.h"
+#include <stringutils.h>
 #endif
 
 using namespace fx;

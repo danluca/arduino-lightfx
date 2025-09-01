@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
-
+#pragma once
 #ifndef ARDUINO_LIGHTFX_UTIL_H
 #define ARDUINO_LIGHTFX_UTIL_H
 
@@ -17,8 +17,6 @@
 
 #define TWENTY_TWENTY    1577836800L    //2020-01-01 00:00
 #define TWENTY_SEVENTY   3155760000L    //2070-01-01 00:00 - if this code is still relevant in 2070, something is wrong...
-
-enum MiscAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO, HOLIDAY_UPDATE};
 
 ulong adcRandom();
 

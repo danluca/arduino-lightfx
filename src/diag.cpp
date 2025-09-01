@@ -14,9 +14,9 @@
 #include "diag.h"
 #include "util.h"
 #include "filesystem.h"
-#include "FxSchedule.h"
 #include "sysinfo.h"
 #include "constants.hpp"
+#include "task_msg.h"
 #include "log.h"
 #if LOGGING_ENABLED == 1
 #include "stringutils.h"
@@ -55,7 +55,6 @@ void enqueueDiagInfo(TimerHandle_t xTimer);
 
 // diag task definition - priority is overwritten during setup, see diagSetup
 // TaskDef diagDef {deviceSetup, diagExecute, 3072, "Diag", 1, CORE_1};
-enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO} event;
 
 /**
  * Initializes the Inertial Measurement Unit - IMU
@@ -147,7 +146,6 @@ void diagSetup() {
         log_error(F("Cannot start the saveSysInfo timer - Ignored."));
 
     //setup the diagnostic thread, higher priority to avoid interruption during I2C communication
-    diagQueue = xQueueCreate(20, sizeof(DiagAction));
     deviceSetup();
     // diagDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle()) + 1;
     // diagTask = Scheduler.startTask(&diagDef);
@@ -196,7 +194,7 @@ void enqueueSysVoltage(TimerHandle_t xTimer) {
  * @param xTimer the saveSysInfo timer that fired the callback
  */
 void enqueueSaveSysInfo(TimerHandle_t xTimer) {
-    constexpr MiscAction msg = SAVE_SYS_INFO;
+    constexpr AlmAction msg = SAVE_SYS_INFO;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending SAVE_SYS_INFO message to ALM queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
@@ -231,6 +229,15 @@ void diagExecute() {
         case RND_ENTROPY: updateSecEntropy(); break;
         case SYS_TEMP: updateSystemTemp(); break;
         case SYS_VOLTAGE: updateLineVoltage(); break;
+        case RESET_CALIBRATION: {
+            //reset the calibration parameters
+            calibTempMeasurements.reset();
+            calibCpuTemp.reset();
+            cpuTempRange.reset();
+            SyncFsImpl.remove(calibFileName);
+            log_info(F("Calibration parameters reset for CPU & Board temperature, %s file removed"), calibFileName);
+            break;
+        }
 #if LOGGING_ENABLED == 1
         case DIAG_INFO: logDiagInfo(); break;
 #endif

@@ -35,9 +35,9 @@ TaskDef fsDef {fsInit, fsExecute, 1536, "FS", 1, CORE_0};
  * message and it uses the data to call the actual methods involved
  */
 struct fsOperationData {
-    const char* const name;
-    String* const content;
-    void* const data;
+    const char* const name{};
+    String* const content{};
+    void* const data{};
     size_t size=0;
 };
 

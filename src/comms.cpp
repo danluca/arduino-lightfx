@@ -11,6 +11,7 @@
 #include "net_setup.h"
 #include "sysinfo.h"
 #include "util.h"
+#include "task_msg.h"
 #if LOGGING_ENABLED == 1
 #include "stringutils.h"
 #include "log.h"
@@ -48,14 +49,6 @@ FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
 TimerHandle_t thTimeSetupTimer = nullptr;
 
 /**
- * Structure of the message sent to the broadcast task - internal use only
- */
-struct bcTaskMessage {
-    enum Action:uint8_t {TIME_SETUP, TIME_UPDATE, FX_SYNC, WIFI_ENSURE, WIFI_TEMP, STATUS_LED_CHECK} event;
-    uint16_t data;
-};
-
-/**
  * Preparations for broadcast effect changes - set up the recipient clients (others than self), the event posting attributes
  */
 void commInit() {
@@ -87,12 +80,20 @@ void commRun() {
         return;
     //the reception was successful, hence the msg is not null anymore
     switch (msg->event) {
-        case bcTaskMessage::TIME_SETUP: timeSetupCheck(); break;
-        case bcTaskMessage::TIME_UPDATE: timeUpdate(); break;
-        case bcTaskMessage::FX_SYNC: fxBroadcast(msg->data); break;
-        case bcTaskMessage::WIFI_ENSURE: wifi_ensure(); break;
-        case bcTaskMessage::WIFI_TEMP: wifi_temp(); break;
-        case bcTaskMessage::STATUS_LED_CHECK: state_led_update(); break;
+        case TIME_SETUP: timeSetupCheck(); break;
+        case TIME_UPDATE: timeUpdate(); break;
+        case FX_SYNC: fxBroadcast(msg->data); break;
+        case WIFI_ENSURE: wifi_ensure(); break;
+        case WIFI_TEMP: wifi_temp(); break;
+        case STATUS_LED_CHECK: state_led_update(); break;
+        case ENABLE_BROADCAST: {
+            const bool syncMode = static_cast<bool>(msg->data);
+            const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
+            fxBroadcastEnabled = syncMode; //we need this enabled before we post the event, if we're doing that
+            if (masterEnabled)
+                postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
+            break;
+        }
         default:
             log_error(F("Event type %hd not supported"), msg->event);
             break;
@@ -106,7 +107,7 @@ void commRun() {
  * @param xTimer the timeUpdate timer that fired the callback
  */
 void enqueueTimeUpdate(TimerHandle_t xTimer) {
-    auto *msg = new bcTaskMessage{bcTaskMessage::TIME_UPDATE, 0};   //gets deleted in execute method upon message receipt
+    auto *msg = new bcTaskMessage{TIME_UPDATE, 0};   //gets deleted in execute method upon message receipt
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE)
         log_error(F("Error sending TIME_UPDATE message to broadcast task for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
     // else
@@ -117,7 +118,7 @@ void enqueueTimeUpdate(TimerHandle_t xTimer) {
  * Enqueues a FX_SYNC event onto the broadcast task - called from FX task.
  */
 void enqueueFxUpdate(const uint16_t index) {
-    auto *msg = new bcTaskMessage{bcTaskMessage::FX_SYNC, index};
+    auto *msg = new bcTaskMessage{FX_SYNC, index};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT)); qResult == pdFALSE)
         log_error(F("Error sending FX_SYNC message to broadcast task for FX %d - error %ld"), index, qResult);
     // else
@@ -129,7 +130,7 @@ void enqueueFxUpdate(const uint16_t index) {
  * @param xTimer the timeSetup timer that fired the callback
  */
 void enqueueTimeSetup(TimerHandle_t xTimer) {
-    auto *msg = new bcTaskMessage{bcTaskMessage::TIME_SETUP, 0};
+    auto *msg = new bcTaskMessage{TIME_SETUP, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending TIME_SETUP message to BC queue for timer %s - error %ld"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer), qResult);
     // else
@@ -137,13 +138,13 @@ void enqueueTimeSetup(TimerHandle_t xTimer) {
 }
 
 void enqueueWifiEnsure(TimerHandle_t xTimer) {
-    auto *msg = new bcTaskMessage{bcTaskMessage::WIFI_ENSURE, 0};
+    auto *msg = new bcTaskMessage{WIFI_ENSURE, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending WIFI_ENSURE message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
 }
 
 void enqueueWifiTempRead(TimerHandle_t xTimer) {
-    auto *msg = new bcTaskMessage{bcTaskMessage::WIFI_TEMP, 0};
+    auto *msg = new bcTaskMessage{WIFI_TEMP, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending WIFI_TEMP message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
 }
@@ -153,7 +154,7 @@ void enqueueWifiTempRead(TimerHandle_t xTimer) {
  * @param xTimer the statusLEDCheck timer that fired the callback
  */
 void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
-    auto *msg = new bcTaskMessage{bcTaskMessage::STATUS_LED_CHECK, 0};
+    auto *msg = new bcTaskMessage{STATUS_LED_CHECK, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
@@ -335,8 +336,6 @@ void commSetup() {
         log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot setup broadcasting. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
-    // create the broadcast queue, used by enqueue methods to send actions and execute method to receive and execute actions
-    bcQueue = xQueueCreate(10, sizeof(bcTaskMessage*));
 
     //time update event - sync - repeat every 17h
     if (TimerHandle_t thSync = xTimerCreate("timeUpdate", pdMS_TO_TICKS(17 * 3600 * 1000), pdTRUE, &tmrTimeUpdateId, enqueueTimeUpdate); thSync == nullptr)

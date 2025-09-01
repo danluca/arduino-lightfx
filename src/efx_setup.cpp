@@ -7,6 +7,7 @@
 #include "FxSchedule.h"
 #include "transition.h"
 #include "util.h"
+#include "task_msg.h"
 
 //~ Global variables definition
 using namespace fx;
@@ -17,6 +18,7 @@ volatile bool fxBump = false;
 volatile uint16_t speed = 100;
 volatile uint16_t curPos = 0;
 
+QueueHandle_t fxQueue;
 EffectRegistry fxRegistry;
 CRGB leds[NUM_PIXELS];                                    //the main LEDs array of CRGB type
 CRGBSet ledSet(leds, NUM_PIXELS);                     //the entire leds CRGB array as a CRGBSet
@@ -227,7 +229,25 @@ void switchToRandomEffect() {
 void fx_run() {
     static bool isFirmwareUpgrading = false;
 
-    if (ulTaskNotifyTake(pdTRUE, 0) == OTA_UPGRADE_NOTIFY) {
+    FxActionMessage *msg;
+    if (pdTRUE == xQueueReceive(fxQueue, &msg, 0)) {
+        switch (msg->action) {
+            case AUTO_FX: fxRegistry.autoRoll(static_cast<bool>(msg->data)); break;
+            case MANUAL_FX: fxRegistry.nextEffectPos(static_cast<uint16_t>(msg->data)); break;
+            case COLOR_THEME: paletteFactory.setHoliday(static_cast<Holiday>(msg->data)); break;
+            case SLEEP_ENABLED: fxRegistry.enableSleep(static_cast<bool>(msg->data)); break;
+            case STRIP_BRIGHTNESS: {
+                const auto br = static_cast<uint8_t>(msg->data);
+                stripBrightnessLocked = br > 0;
+                stripBrightness = stripBrightnessLocked ? br : adjustStripBrightness();
+                break;
+            }
+            default:
+                log_error(F("Fx Action %hu not supported"), msg->action);
+        }
+    }
+
+    if (ulTaskNotifyTake(pdTRUE, 1) == OTA_UPGRADE_NOTIFY) {
         log_info(F("OTA upgrade light pattern"));
         isFirmwareUpgrading = true;
     }

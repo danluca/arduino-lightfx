@@ -4,7 +4,7 @@
 #ifndef LIGHTFX_NET_SETUP_H
 #define LIGHTFX_NET_SETUP_H
 
-#include "PaletteFactory.h"
+#include <Arduino.h>
 #include "secrets.h"
 
 bool wifi_setup();

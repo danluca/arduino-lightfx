@@ -5,6 +5,7 @@
 #ifndef ARDUINO_LIGHTFX_DIAG_H
 #define ARDUINO_LIGHTFX_DIAG_H
 
+#include <Arduino.h>
 #include "config.h"
 
 #define IMU_TEMPERATURE_NOT_AVAILABLE   0.001f
@@ -77,7 +78,7 @@ struct CalibrationMeasurement {
     MeasurementPair max;
     MeasurementPair ref;
 
-    CalibrationMeasurement() {};
+    CalibrationMeasurement() = default;
     void setMeasurement(const MeasurementPair& msmt);
 
     void reset() {

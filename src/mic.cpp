@@ -3,13 +3,12 @@
 //
 
 #include <PDM.h>
-#include <FreeRTOS.h>
-#include <task.h>
 #include "mic.h"
 #include "efx_setup.h"
 #include "sysinfo.h"
 #include "log.h"
 #include "util.h"
+#include "task_msg.h"
 
 #define MIC_SAMPLE_SIZE 512
 // one channel - mono mode for Nano RP2040 microphone, MP34DT06JTR
@@ -24,7 +23,7 @@ volatile uint16_t maxAudio[10] {};              // audio max levels histogram
 volatile uint16_t audioBumpThreshold = 5000;    // the audio signal level beyond which entropy is added and an effect change is triggered
 
 CircularBuffer<short> *audioData = new CircularBuffer<short>(1024);
-
+QueueHandle_t micQueue;
 
 void clearLevelHistory() {
     for (auto &l : maxAudio)
@@ -93,4 +92,12 @@ void mic_run() {
         // Clear the read count
         samplesRead = 0;
     }
+    AudioActionMessage *msg;
+    if (pdTRUE == xQueueReceive(micQueue, &msg, 0)) {
+        switch (msg->action) {
+            case AUDIO_THRESHOLD_UPDATE: audioBumpThreshold = msg->data; break;
+            default: log_error(F("Mic Action %hu not supported"), msg->action);
+        }
+    }
+
 }

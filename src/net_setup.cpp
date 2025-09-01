@@ -3,8 +3,6 @@
 //
 #include "net_setup.h"
 #include <WiFiNINA.h>
-#include <queue.h>
-#include <timers.h>
 #include "config.h"
 #include "sysinfo.h"
 #include "timeutil.h"
@@ -13,7 +11,7 @@
 #include "log.h"
 #include "web_server.h"
 
-using namespace colTheme;
+// using namespace colTheme;
 constexpr auto ssid PROGMEM = WF_SSID;
 constexpr auto pass PROGMEM = WF_PSW;
 constexpr auto hostname PROGMEM = "lightfx-" DEVICE_NAME;

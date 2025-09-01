@@ -6,7 +6,7 @@
 
 #include <Arduino.h>
 #include "LedEffect.h"
-#include "../lib/Utils/src/fixed_queue.h"
+#include <fixed_queue.h>
 #include "global.h"
 
 class EffectRegistry {

@@ -16,8 +16,6 @@ void bedtime();
 void adjustCurrentEffect(time_t time);
 bool isAwakeTime(time_t time);
 
-extern QueueHandle_t almQueue;
-
 typedef void (*AlarmHandlerPtr)();  // alarm callback function typedef
 
 enum AlarmType:uint8_t {

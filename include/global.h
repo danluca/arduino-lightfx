@@ -4,6 +4,8 @@
 #ifndef ARDUINO_LIGHTFX_GLOBAL_H
 #define ARDUINO_LIGHTFX_GLOBAL_H
 
+#include <Arduino.h>
+
 #define capd(x, d) (((x)<=(d))?(d):(x))
 #define capu(x, u) (((x)>=(u))?(u):(x))
 #define capr(x, d, u) (capu(capd(x,d),u))

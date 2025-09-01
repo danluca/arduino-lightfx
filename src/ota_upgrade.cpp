@@ -25,8 +25,8 @@ void notifyFx();
  */
 void handle_fw_upgrade() {
     if (upgrade_check()) {
-        notifyFx();     //we're starting an upgrade - set the lights on the upgrade mode
         log_info(F("=====================================UPGRADE===================================="));
+        notifyFx();     //we're starting an upgrade - set the lights on the upgrade mode
         log_info(F("Firmware upgrade available, proceeding to disable watchdog, stop all tasks and write the command file. System will reboot and flash - see ya on the other side!"));
         fw_upgrade();
     }

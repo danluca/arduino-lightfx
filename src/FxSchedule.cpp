@@ -11,6 +11,7 @@
 #include "stringutils.h"
 #include "sysinfo.h"
 #include "util.h"
+#include "task_msg.h"
 #include "log.h"
 
 constexpr uint16_t dailyBedTime = 30*SECS_PER_MIN;          //12:30am bedtime
@@ -18,6 +19,7 @@ constexpr uint16_t dailyWakeupTime = 6*SECS_PER_HOUR;       //6:00am wakeup time
 static uint16_t tmrAlarmCheck = 30;
 static uint16_t tmrHolidayUpdateId = 31;
 static bool alarmSetup = false;
+QueueHandle_t almQueue;
 
 uint16_t currentDay = 0;
 
@@ -146,7 +148,7 @@ bool isAwakeTime(const time_t time) {
  * @param xTimer the timer that triggered the alarm check
  */
 void enqueueAlarmCheck(TimerHandle_t xTimer) {
-    constexpr MiscAction action = ALARM_CHECK;
+    constexpr AlmAction action = ALARM_CHECK;
     if (const BaseType_t qResult = xQueueSend(almQueue, &action, 0); qResult != pdTRUE)
         log_error(F("Error sending ALARM_CHECK message to ALM queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
 }
@@ -220,7 +222,7 @@ void alarm_check() {
  * @param xTimer the holidayUpdate timer that fired the callback; nullptr when called on-demand (from main)
  */
 void enqueueHoliday(TimerHandle_t xTimer) {
-    constexpr MiscAction msg = HOLIDAY_UPDATE;
+    constexpr AlmAction msg = HOLIDAY_UPDATE;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult == pdFALSE)
         log_error(F("Error sending HOLIDAY_UPDATE message to ALM queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
