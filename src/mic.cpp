@@ -95,9 +95,13 @@ void mic_run() {
     AudioActionMessage *msg;
     if (pdTRUE == xQueueReceive(micQueue, &msg, 0)) {
         switch (msg->action) {
-            case AUDIO_THRESHOLD_UPDATE: audioBumpThreshold = msg->data; break;
+            case AUDIO_THRESHOLD_UPDATE:
+                audioBumpThreshold = msg->data;
+                clearLevelHistory();
+                break;
             default: log_error(F("Mic Action %hu not supported"), msg->action);
         }
+        delete msg;
     }
 
 }

@@ -255,17 +255,18 @@ void web::handlePutConfig(WebClient &client) {
     }
     JsonDocument resp;
     const auto upd = resp["updates"].to<JsonObject>();
+    BaseType_t qResult = pdTRUE;
     if (doc[csAuto].is<bool>()) {
         const bool autoAdvance = doc[csAuto].as<bool>();
         const FxActionMessage msg = {AUTO_FX, autoAdvance};
-        if (const BaseType_t qResult = xQueueSend(fxQueue, &msg, 0) != pdTRUE)
+        if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
             log_error(F("Error sending AUTO_FX message to FX queue with value %d - error %ld"), autoAdvance, qResult);
         upd[csAuto] = autoAdvance;
     }
     if (doc[strEffect].is<uint16_t>()) {
         const auto nextFx = doc[strEffect].as<uint16_t>();
         const FxActionMessage msg = {MANUAL_FX, nextFx};
-        if (const BaseType_t qResult = xQueueSend(fxQueue, &msg, 0) != pdTRUE)
+        if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
             log_error(F("Error sending MANUAL_FX message to FX queue with value %d - error %ld"), nextFx, qResult);
         upd[strEffect] = nextFx;
     }
@@ -273,54 +274,56 @@ void web::handlePutConfig(WebClient &client) {
         const auto userHoliday = doc[csHoliday].as<String>();
         const uint holiday = parseHoliday(&userHoliday);
         const FxActionMessage msg = {COLOR_THEME, holiday};
-        if (const BaseType_t qResult = xQueueSend(fxQueue, &msg, 0) != pdTRUE)
+        if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
             log_error(F("Error sending COLOR_THEME message to FX queue with value %u - error %ld"), holiday, qResult);
-        upd[csHoliday] = paletteFactory.getHoliday();
+        upd[csHoliday] = holiday;
     }
     if (doc[csBrightness].is<uint8_t>()) {
         const auto br = doc[csBrightness].as<uint8_t>();
         const FxActionMessage msg = {STRIP_BRIGHTNESS, br};
-        if (const BaseType_t qResult = xQueueSend(fxQueue, &msg, 0) != pdTRUE)
+        if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
             log_error(F("Error sending COLOR_THEME message to FX queue with value %u - error %ld"), br, qResult);
         upd[csBrightness] = br;
         upd[csBrightnessLocked] = br > 0;
     }
     if (doc[csAudioThreshold].is<uint16_t>()) {
         const uint16_t audioThreshold = doc[csAudioThreshold].as<uint16_t>();
-        const AudioActionMessage msg = {AUDIO_THRESHOLD_UPDATE, audioThreshold};
-        if (const BaseType_t qResult = xQueueSend(micQueue, &msg, 0) != pdTRUE)
+        auto *msg = new AudioActionMessage{AUDIO_THRESHOLD_UPDATE, audioThreshold};
+        if ((qResult = xQueueSend(micQueue, &msg, 0)) != pdTRUE) {
             log_error(F("Error sending AUDIO_THRESHOLD_UPDATE message to MIC queue with value %u - error %ld"), audioThreshold, qResult);
+            delete msg;
+        }
         upd[csAudioThreshold] = audioThreshold;
-        clearLevelHistory();
     }
     if (doc[csSleepEnabled].is<bool>()) {
         const bool sleepEnabled = doc[csSleepEnabled].as<bool>();
         const FxActionMessage msg = {SLEEP_ENABLED, sleepEnabled};
-        if (const BaseType_t qResult = xQueueSend(fxQueue, &msg, 0) != pdTRUE)
+        if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
             log_error(F("Error sending SLEEP_ENABLED message to FX queue with value %d - error %ld"), sleepEnabled, qResult);
         upd[csSleepEnabled] = sleepEnabled;
-        upd["asleep"] = fxRegistry.isAsleep();
     }
     if (doc[csResetCal].is<bool>()) {
         if (const bool resetCal = doc[csResetCal].as<bool>()) {
             constexpr DiagAction msg = RESET_CALIBRATION;
-            if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0) != pdTRUE)
+            if ((qResult = xQueueSend(diagQueue, &msg, 0)) != pdTRUE)
                 log_error(F("Error sending RESET_CALIBRATION message to DIAG queue with value %d - error %ld"), resetCal, qResult);
             upd[csResetCal] = resetCal;
         }
     }
     if (doc[csBroadcast].is<bool>()) {
         const bool syncMode = doc[csBroadcast].as<bool>();
-        const bcTaskMessage msg = {ENABLE_BROADCAST, syncMode};
-        if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0) != pdTRUE)
+        auto *msg = new bcTaskMessage{ENABLE_BROADCAST, static_cast<uint16_t>(syncMode)};
+        if ((qResult = xQueueSend(bcQueue, &msg, 0)) != pdTRUE) {
             log_error(F("Error sending ENABLE_BROADCAST message to COMM queue with value %d - error %ld"), syncMode, qResult);
+            delete msg;
+        }
     }
-    log_info(F("FX: Current config updated effect %hu, autoswitch %s, holiday %s, brightness %hu, brightness adjustment %s"),
-        fxRegistry.curEffectPos(), StringUtils::asString(fxRegistry.isAutoRoll()),
+    log_info(F("FX: Current config updated effect %hu, autoswitch %s, sleep %s, holiday %s, brightness %hu, brightness adjustment %s"),
+        fxRegistry.curEffectPos(), StringUtils::asString(fxRegistry.isAutoRoll()), StringUtils::asString(fxRegistry.isSleepEnabled()),
         holidayToString(paletteFactory.getHoliday()), stripBrightness, stripBrightnessLocked?"fixed":"automatic");
 
     //main status and headers
-    resp["status"] = true;
+    resp["status"] = qResult == pdTRUE;
 
     contentDispositionHeader(client, statusJsonFilename);
     //send it out

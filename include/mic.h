@@ -13,6 +13,4 @@ void mic_setup();
 
 void mic_run();
 
-void clearLevelHistory();
-
 #endif //ARDUINO_LIGHTFX_MIC_H

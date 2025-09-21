@@ -108,8 +108,10 @@ void commRun() {
  */
 void enqueueTimeUpdate(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{TIME_UPDATE, 0};   //gets deleted in execute method upon message receipt
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE)
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE) {
         log_error(F("Error sending TIME_UPDATE message to broadcast task for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
+        delete msg;
+    }
     // else
     //     log_infoln(F("Sent TIME_UPDATE event successfully to broadcast task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
@@ -119,8 +121,10 @@ void enqueueTimeUpdate(TimerHandle_t xTimer) {
  */
 void enqueueFxUpdate(const uint16_t index) {
     auto *msg = new bcTaskMessage{FX_SYNC, index};
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT)); qResult == pdFALSE)
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT)); qResult == pdFALSE) {
         log_error(F("Error sending FX_SYNC message to broadcast task for FX %d - error %ld"), index, qResult);
+        delete msg;
+    }
     // else
     //     log_infoln(F("Sent FX_SYNC event successfully to broadcast task for FX %d"), index);
 }
@@ -131,22 +135,28 @@ void enqueueFxUpdate(const uint16_t index) {
  */
 void enqueueTimeSetup(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{TIME_SETUP, 0};
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending TIME_SETUP message to BC queue for timer %s - error %ld"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer), qResult);
+        delete msg;
+    }
     // else
     //     log_infoln(F("Sent TIME_SETUP event successfully to BC queue for timer %s"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer));
 }
 
 void enqueueWifiEnsure(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{WIFI_ENSURE, 0};
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending WIFI_ENSURE message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        delete msg;
+    }
 }
 
 void enqueueWifiTempRead(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{WIFI_TEMP, 0};
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending WIFI_TEMP message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        delete msg;
+    }
 }
 
 /**
@@ -155,8 +165,10 @@ void enqueueWifiTempRead(TimerHandle_t xTimer) {
  */
 void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{STATUS_LED_CHECK, 0};
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE)
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        delete msg;
+    }
     // else
     //     log_info(F("Sent STATUS_LED_CHECK event successfully to BC queue for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
 }
