@@ -3,6 +3,7 @@
 //
 
 #include <PDM.h>
+#include <cstring>
 #include "mic.h"
 #include "efx_setup.h"
 #include "sysinfo.h"
@@ -19,7 +20,7 @@
 short sampleBuffer[MIC_SAMPLE_SIZE];
 
 volatile size_t samplesRead;                    // Number of audio samples read
-volatile uint16_t maxAudio[10] {};              // audio max levels histogram
+volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT] {}; // audio max levels histogram
 volatile uint16_t audioBumpThreshold = 5000;    // the audio signal level beyond which entropy is added and an effect change is triggered
 
 CircularBuffer<short> *audioData = new CircularBuffer<short>(1024);
@@ -62,14 +63,27 @@ void mic_setup() {
 }
 
 void mic_run() {
-    // Wait for samples to be read
-    if (samplesRead) {
-        audioData->push_back(sampleBuffer, samplesRead);
-        //log_info(F("Audio data - added %d samples to circular buffer, size updated to %d items"), samplesRead, audioData->size());
+    static short localBuffer[MIC_SAMPLE_SIZE];
+
+    // Atomically snapshot the samples read and copy the buffer to a local buffer to avoid ISR races
+    size_t count = 0;
+    noInterrupts();
+    count = samplesRead;
+    if (count) {
+        if (count > MIC_SAMPLE_SIZE) count = MIC_SAMPLE_SIZE; // safety clamp
+        memcpy(localBuffer, sampleBuffer, count * sizeof(short));
+        samplesRead = 0; // acknowledge we've consumed this batch
+    }
+    interrupts();
+
+    // Process the batch, if any
+    if (count) {
+        audioData->push_back(localBuffer, count);
+        //log_info(F("Audio data - added %d samples to circular buffer, size updated to %d items"), count, audioData->size());
         short maxSample = INT16_MIN;
-        for (uint i = 0; i < samplesRead; i++) {
-            if (sampleBuffer[i] > maxSample)
-                maxSample = sampleBuffer[i];
+        for (size_t i = 0; i < count; i++) {
+            if (localBuffer[i] > maxSample)
+                maxSample = localBuffer[i];
         }
         if (maxSample > audioBumpThreshold) {
             fxBump = true;
@@ -89,9 +103,8 @@ void mic_run() {
             if (!bFoundBin)
                 maxAudio[AUDIO_HIST_BINS_COUNT-1]++;
         }
-        // Clear the read count
-        samplesRead = 0;
     }
+
     AudioActionMessage *msg;
     if (pdTRUE == xQueueReceive(micQueue, &msg, 0)) {
         switch (msg->action) {
