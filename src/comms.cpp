@@ -189,8 +189,8 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
 
     const size_t sz = snprintf(nullptr, 0, fmtFxChange, fxIndex) + 1;
     char buf[sz];
+    // snprintf writes at most sz bytes and null-terminates the output string
     snprintf(buf, sz, fmtFxChange, fxIndex);
-    buf[sz] = 0;    //null-terminated string
 
     client.beginRequest();
     //client.put is where the connection is established

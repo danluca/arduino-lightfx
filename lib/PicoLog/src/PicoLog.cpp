@@ -36,9 +36,9 @@ void flushData() {
         Log.m_maxBufferSize = logSize;
     while (!Log.m_queue.empty()) {
         char buf[SERIAL_BUFFER_SIZE]{0};    //zero-initialized buffer
-        const size_t sz = min(Log.m_queue.size(), SERIAL_BUFFER_SIZE);    //leave room for null terminator
+        const size_t sz = min(Log.m_queue.size(), SERIAL_BUFFER_SIZE - 1);    //leave room for null terminator
         Log.m_queue.pop_front(buf, sz);
-        buf[sz] = '\0'; //may not be needed, we're writing out the exact size of buffer read
+        buf[sz] = '\0'; //null-terminate for safety (not strictly required since we control write length)
         Log.m_stream->write(buf, sz);
     }
     Log.m_stream->flush();
