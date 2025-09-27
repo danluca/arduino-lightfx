@@ -183,13 +183,3 @@ void taskDelay(const uint32_t ms) {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-/**
- * Retrieves the current runtime counter value used for task monitoring and profiling.
- * The value is derived by converting the tick count to milliseconds.
- *
- * @return the runtime counter value in milliseconds, representing the time since the system start-up.
- */
-unsigned long ulMainGetRunTimeCounterValue() {
-    return xTaskGetTickCount()/pdMS_TO_TICKS(1);
-}
-

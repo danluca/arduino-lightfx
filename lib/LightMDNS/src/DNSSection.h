@@ -8,6 +8,7 @@
 #include <numeric>
 #include <array>
 #include <algorithm>
+#include <vector>
 #include <LogProxy.h>
 
 typedef enum {

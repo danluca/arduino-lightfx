@@ -5,6 +5,8 @@
 #define WEBREQUEST_H
 
 #include <Arduino.h>
+#include <deque>
+#include <vector>
 #include "WiFiNINA.h"
 #include "HTTP_Method.h"
 
