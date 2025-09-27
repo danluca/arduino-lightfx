@@ -229,21 +229,21 @@ void switchToRandomEffect() {
 void fx_run() {
     static bool isFirmwareUpgrading = false;
 
-    FxActionMessage *msg;
+    FxActionMessage msg{};
     if (pdTRUE == xQueueReceive(fxQueue, &msg, 0)) {
-        switch (msg->action) {
-            case AUTO_FX: fxRegistry.autoRoll(static_cast<bool>(msg->data)); break;
-            case MANUAL_FX: fxRegistry.nextEffectPos(static_cast<uint16_t>(msg->data)); break;
-            case COLOR_THEME: paletteFactory.setHoliday(static_cast<Holiday>(msg->data)); break;
-            case SLEEP_ENABLED: fxRegistry.enableSleep(static_cast<bool>(msg->data)); break;
+        switch (msg.action) {
+            case AUTO_FX: fxRegistry.autoRoll(static_cast<bool>(msg.data)); break;
+            case MANUAL_FX: fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data)); break;
+            case COLOR_THEME: paletteFactory.setHoliday(static_cast<Holiday>(msg.data)); break;
+            case SLEEP_ENABLED: fxRegistry.enableSleep(static_cast<bool>(msg.data)); break;
             case STRIP_BRIGHTNESS: {
-                const auto br = static_cast<uint8_t>(msg->data);
+                const auto br = static_cast<uint8_t>(msg.data);
                 stripBrightnessLocked = br > 0;
                 stripBrightness = stripBrightnessLocked ? br : adjustStripBrightness();
                 break;
             }
             default:
-                log_error(F("Fx Action %hu not supported"), msg->action);
+                log_error(F("Fx Action %hu not supported"), msg.action);
         }
     }
 
