@@ -160,7 +160,7 @@ void diagSetup() {
 void enqueueRndEntropy(TimerHandle_t xTimer) {
     constexpr DiagAction msg = RND_ENTROPY;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        log_error(F("Error sending RND_ENTROPY message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending RND_ENTROPY message to diagnostic task for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     log_info(F("Sent RND_ENTROPY event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
@@ -172,7 +172,7 @@ void enqueueRndEntropy(TimerHandle_t xTimer) {
 void enqueueSysTemp(TimerHandle_t xTimer) {
     constexpr DiagAction msg = SYS_TEMP;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        log_error(F("Error sending SYS_TEMP message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending SYS_TEMP message to diagnostic task for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     log_info(F("Sent SYS_TEMP event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
@@ -184,7 +184,7 @@ void enqueueSysTemp(TimerHandle_t xTimer) {
 void enqueueSysVoltage(TimerHandle_t xTimer) {
     constexpr DiagAction msg = SYS_VOLTAGE;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        log_error(F("Error sending SYS_VOLTAGE message to diagnostic task for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending SYS_VOLTAGE message to diagnostic task for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     log_info(F("Sent SYS_VOLTAGE event successfully to diagnostic task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
@@ -196,7 +196,7 @@ void enqueueSysVoltage(TimerHandle_t xTimer) {
 void enqueueSaveSysInfo(TimerHandle_t xTimer) {
     constexpr AlmAction msg = SAVE_SYS_INFO;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
-        log_error(F("Error sending SAVE_SYS_INFO message to ALM queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending SAVE_SYS_INFO message to ALM queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     log_info(F("Sent SAVE_SYS_INFO event successfully to ALM queue for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
 }
@@ -209,7 +209,7 @@ void enqueueSaveSysInfo(TimerHandle_t xTimer) {
 void enqueueDiagInfo(TimerHandle_t xTimer) {
     constexpr DiagAction msg = DIAG_INFO;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
-        log_error(F("Error sending DIAG_INFO message to DIAG queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending DIAG_INFO message to DIAG queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
     // else
     //     log_info(F("Sent DIAG_INFO event successfully to DIAG queue for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
 }

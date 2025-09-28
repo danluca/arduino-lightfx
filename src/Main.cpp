@@ -67,7 +67,7 @@ bool core1_separate_stack = true;
 void enqueueAlarmSetup() {
     constexpr AlmAction msgSetup = ALARM_SETUP;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msgSetup, 0); qResult != pdTRUE)
-        log_error(F("Error sending ALARM_SETUP message to ALM queue - error %d"), qResult);
+        log_error(F("Error sending ALARM_SETUP message to ALM queue - error %ld"), qResult);
 }
 
 /**

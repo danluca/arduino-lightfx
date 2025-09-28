@@ -166,7 +166,7 @@ void enqueueWifiTempRead(TimerHandle_t xTimer) {
 void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{STATUS_LED_CHECK, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
-        log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %d [%s] - error %d"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
         delete msg;
     }
     // else
@@ -187,17 +187,17 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     client.connectionKeepAlive();
     client.noDefaultRequestHeaders();
 
-    const size_t sz = snprintf(nullptr, 0, fmtFxChange, fxIndex) + 1;
-    char buf[sz];
-    // snprintf writes at most sz bytes and null-terminates the output string
-    snprintf(buf, sz, fmtFxChange, fxIndex);
+    const size_t bodyLen = snprintf(nullptr, 0, fmtFxChange, fxIndex);
+    char buf[bodyLen + 1];
+    // snprintf writes at most bodyLen+1 bytes and null-terminates the output string
+    snprintf(buf, bodyLen + 1, fmtFxChange, fxIndex);
 
     client.beginRequest();
     //client.put is where the connection is established
     if (HTTP_SUCCESS == client.put("/fx")) {
         client.sendHeader(hdContentJson);
         client.sendHeader(hdUserAgent);
-        client.sendHeader("Content-Length", sz);
+        client.sendHeader("Content-Length", static_cast<int>(bodyLen));
         client.sendHeader(hdKeepAlive);
         client.beginBody();
         client.print(buf);
@@ -236,10 +236,10 @@ void fxBroadcast(const uint16_t index) {
         return;
     }
     broadcastState = Broadcasting;
-    log_info(F("Fx change event - start broadcasting %s [%hu] to %d recipients"), fx->name(), fx->getRegistryIndex(), fxBroadcastRecipients.size());
+    log_info(F("Fx change event - start broadcasting %s [%hu] to %u recipients"), fx->name(), fx->getRegistryIndex(), static_cast<unsigned>(fxBroadcastRecipients.size()));
     for (const auto &client : fxBroadcastRecipients)
         clientUpdate(client, fx->getRegistryIndex());
-    log_info(F("Finished broadcasting to %hu recipients - check individual log statements for status of each recipient"), fxBroadcastRecipients.size());
+    log_info(F("Finished broadcasting to %u recipients - check individual log statements for status of each recipient"), static_cast<unsigned>(fxBroadcastRecipients.size()));
     broadcastState = Waiting;
 }
 
