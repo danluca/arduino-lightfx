@@ -64,8 +64,11 @@ static inline constexpr auto defaultOffsetPattern PROGMEM = "%+03d:%02d %s";
  */
 size_t TimeFormat::monthStr(const uint8_t month, char *buffer) {
    PGM_P pgm_ptr = static_cast<const char *>(pgm_read_ptr(&(monthNames_P[month])));
-   strcpy_P(buffer, pgm_ptr);
-   return strlen_P(pgm_ptr);
+   // Copy at most dt_MAX_STRING_LEN characters and ensure null termination
+   strncpy_P(buffer, pgm_ptr, dt_MAX_STRING_LEN);
+   buffer[dt_MAX_STRING_LEN] = '\0';
+   const size_t actual = strnlen_P(pgm_ptr, dt_MAX_STRING_LEN);
+   return actual;
 }
 /**
  * Converts the numeric month value into its short string representation - e.g. 1 -> Feb
@@ -90,8 +93,11 @@ size_t TimeFormat::monthShortStr(const uint8_t month, char *buffer) {
  */
 size_t TimeFormat::dayStr(const uint8_t day, char *buffer) {
    PGM_P pgm_ptr = static_cast<const char *>(pgm_read_ptr(&(dayNames_P[day])));
-   strcpy_P(buffer, pgm_ptr);
-   return strlen_P(pgm_ptr);
+   // Copy at most dt_MAX_STRING_LEN characters and ensure null termination
+   strncpy_P(buffer, pgm_ptr, dt_MAX_STRING_LEN);
+   buffer[dt_MAX_STRING_LEN] = '\0';
+   const size_t actual = strnlen_P(pgm_ptr, dt_MAX_STRING_LEN);
+   return actual;
 }
 
 /**

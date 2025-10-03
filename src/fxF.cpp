@@ -103,12 +103,23 @@ void FxF2::makePattern(uint8_t hue) {
     pattern = CRGB::Black;
     const uint16_t s0 = random8(17);
     // pattern of XXX--XX-X-XX--XXX
-    for (uint16_t i = 0; i < pattern.size(); i+=17) {
-        pattern(i, i+2) = CRGB::White;
-        pattern(i+5, i+6) = CRGB::White;
-        pattern[i+8] = CRGB::White;
-        pattern(i+10, i+11) = CRGB::White;
-        pattern(i+14, i+16) = CRGB::White;
+    const uint16_t last = pattern.size() ? static_cast<uint16_t>(pattern.size() - 1) : 0;
+    for (uint16_t i = 0; i < pattern.size(); i += 17) {
+        // segment [i, i+2]
+        if (i <= last)
+            pattern(i, std::min<uint16_t>(i + 2, last)) = CRGB::White;
+        // segment [i+5, i+6]
+        if (i + 5u <= last)
+            pattern(std::min<uint16_t>(i + 5, last), std::min<uint16_t>(i + 6, last)) = CRGB::White;
+        // single at i+8
+        if (i + 8u <= last)
+            pattern[i + 8] = CRGB::White;
+        // segment [i+10, i+11]
+        if (i + 10u <= last)
+            pattern(std::min<uint16_t>(i + 10, last), std::min<uint16_t>(i + 11, last)) = CRGB::White;
+        // segment [i+14, i+16]
+        if (i + 14u <= last)
+            pattern(std::min<uint16_t>(i + 14, last), std::min<uint16_t>(i + 16, last)) = CRGB::White;
     }
     loopRight(pattern, (Viewport)0, s0);
 }

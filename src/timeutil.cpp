@@ -83,7 +83,7 @@ bool handleNTPSuccess() {
     //update places where time has been captured before NTP sync - watchdog reboots
     for (auto &wdTime : sysInfo->watchdogReboots()) {
         if (wdTime < TWENTY_TWENTY)
-            wdTime = timeService.utcFromRtcMillis(wdTime*1000)/1000;   //watchdog time is in seconds local; we're calling utc flavor as the time is already adjusted for local
+            wdTime = timeService.localFromRtcMillis(wdTime*1000)/1000;   // convert early-captured RTC seconds to local epoch seconds (with DST)
     }
     //update the timestamps of temp calibration structures - those time values, if captured (through now()) are already adjusted for local timezone, hence converting them
     //to proper times is done using utcXYZ API to avoid double timezone offset adjustments
