@@ -85,16 +85,15 @@ bool handleNTPSuccess() {
         if (wdTime < TWENTY_TWENTY)
             wdTime = timeService.localFromRtcMillis(wdTime*1000)/1000;   // convert early-captured RTC seconds to local epoch seconds (with DST)
     }
-    //update the timestamps of temp calibration structures - those time values, if captured (through now()) are already adjusted for local timezone, hence converting them
-    //to proper times is done using utcXYZ API to avoid double timezone offset adjustments
+    //update the timestamps of temp calibration structures
     if (calibCpuTemp.time > 0 && calibCpuTemp.time < TWENTY_TWENTY)
-        calibCpuTemp.time = timeService.utcFromRtcMillis(calibCpuTemp.time * 1000)/1000;
+        calibCpuTemp.time = timeService.localFromRtcMillis(calibCpuTemp.time * 1000)/1000;
     if (calibTempMeasurements.ref.time > 0 && calibTempMeasurements.ref.time < TWENTY_TWENTY)
-        calibTempMeasurements.ref.time = timeService.utcFromRtcMillis(calibTempMeasurements.ref.time * 1000)/1000;
+        calibTempMeasurements.ref.time = timeService.localFromRtcMillis(calibTempMeasurements.ref.time * 1000)/1000;
     if (calibTempMeasurements.max.time > 0 && calibTempMeasurements.max.time < TWENTY_TWENTY)
-        calibTempMeasurements.max.time = timeService.utcFromRtcMillis(calibTempMeasurements.max.time * 1000)/1000;
+        calibTempMeasurements.max.time = timeService.localFromRtcMillis(calibTempMeasurements.max.time * 1000)/1000;
     if (calibTempMeasurements.min.time > 0 && calibTempMeasurements.min.time < TWENTY_TWENTY)
-        calibTempMeasurements.min.time = timeService.utcFromRtcMillis(calibTempMeasurements.min.time * 1000)/1000;
+        calibTempMeasurements.min.time = timeService.localFromRtcMillis(calibTempMeasurements.min.time * 1000)/1000;
 
     return true;
 }

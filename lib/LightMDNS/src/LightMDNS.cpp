@@ -1000,36 +1000,84 @@ static void writeStringLengthAndContent(UDP* _udp, const String& str, const size
 
 // TODO compression
 static void writeDNSName(UDP* _udp, const String& name) {
-    if (const size_t len = std::min(name.length(), DNS_LABEL_LENGTH_MAX); !len)
+    // Build DNS name as sequence of labels: [len][label bytes]... 0x00
+    // Enforce per-label length (DNS_LABEL_LENGTH_MAX) and overall name length semantics without VLAs.
+    if (name.isEmpty()) {
         UDP_WRITE_BYTE(0);
-    else {
-        uint8_t buffer[len + 2];    // stack usage up to ~64 bytes
-        uint16_t write_pos = 1, length_pos = 0;
-        for (size_t i = 0; i < len; i++) {
-            if (name[i] == '.') {
-                buffer[length_pos] = static_cast<uint8_t>(write_pos - (length_pos + 1));
-                length_pos = write_pos;
-            } else
-                buffer[write_pos] = name[i];
-            write_pos++;
-        }
-        if ((write_pos - (length_pos + 1)) > 0) {
-            buffer[length_pos] = static_cast<uint8_t>(write_pos - (length_pos + 1));
-            // length_pos = write_pos;
-            write_pos++;
-        }
-        buffer[--write_pos] = 0;    // null terminator
-        UDP_WRITE_DATA(buffer, write_pos + 1);
+        return;
     }
+    std::vector<uint8_t> buffer;
+    buffer.reserve(name.length() + 2); // worst case (no compression)
+
+    // Reserve first length byte for the initial label
+    buffer.push_back(0);
+    uint16_t length_pos = 0;
+    uint16_t label_len = 0;
+
+    auto flush_label = [&]() {
+        // Write current label length at reserved position
+        buffer[length_pos] = static_cast<uint8_t>(label_len);
+        // Prepare for next label length byte placeholder
+        buffer.push_back(0);
+        length_pos = static_cast<uint16_t>(buffer.size() - 1);
+        label_len = 0;
+    };
+
+    for (size_t i = 0; i < name.length(); i++) {
+        const char ch = name[i];
+        if (ch == '.') {
+            // Finish current label (even if zero-length label -> RFC allows empty? We'll treat consecutive dots as empty label length 0)
+            flush_label();
+        } else {
+            if (label_len < DNS_LABEL_LENGTH_MAX) {
+                buffer.push_back(static_cast<uint8_t>(ch));
+                label_len++;
+            } else {
+                // Skip extra characters beyond per-label max to avoid malformed records
+                // Alternatively, could split or truncate; here we truncate the label.
+            }
+        }
+    }
+
+    // Flush the final label
+    buffer[length_pos] = static_cast<uint8_t>(label_len);
+
+    // Append root label terminator
+    buffer.push_back(0);
+
+    // Write out
+    UDP_WRITE_DATA(buffer.data(), buffer.size());
 }
 
 static size_t sizeofDNSName(const String& name) {
-    return name.length() + 2;    // string length + length byte + null terminator ('.'s just turn into byte lengths)
+    if (name.isEmpty()) return 1; // just the root terminator
+    size_t bytes = 1; // first label length byte
+    uint16_t label_len = 0;
+    for (size_t i = 0; i < name.length(); i++) {
+        if (name[i] == '.') {
+            // finish current label and start next label length byte
+            bytes += label_len; // add the bytes of the label accumulated so far
+            label_len = 0;
+            bytes += 1; // next label length byte
+        } else {
+            if (label_len < DNS_LABEL_LENGTH_MAX) {
+                label_len++;
+                bytes++;
+            } else {
+                // exceed per-label length, ignore extra characters
+            }
+        }
+    }
+    // add remaining label bytes
+    bytes += 0; // label bytes already counted during the loop
+    // add root terminator
+    bytes += 1;
+    return bytes;
 }
 
 //
 static void writeNameLengthAndContent(UDP* _udp, const String& name) {
-    writeLength(_udp, name.length() + 2);
+    writeLength(_udp, sizeofDNSName(name));
     writeDNSName(_udp, name);
 }
 
