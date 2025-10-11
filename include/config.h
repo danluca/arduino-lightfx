@@ -23,6 +23,13 @@
 #define IP_SUBNET 255,255,255,0     // usual subnet mask
 #define BROADCAST_CLIENTS     10, 11, 12        //this is a CSV of last byte of board IP addresses
 
+// in some networks, reaching the default NTP server pool may be challenging due to the simple UDP client we use and stricter control imposed on the network traffic
+// in those cases the best option is to define a local NTP server as proxy
+// NTP options - if using local NTP server specify its IP address here; the default NTP server pool is set at 'pool.ntp.org'
+#ifdef LOCAL_NTP_SERVER
+#define NTP_SERVER_IP 192,168,0,58      //nas02.local has an NTP service running
+#endif
+
 // MODE 0 = connect to wifi
 // MODE 1 = Access point mode
 // #define MODE 0

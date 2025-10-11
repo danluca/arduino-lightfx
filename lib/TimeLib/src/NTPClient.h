@@ -10,12 +10,14 @@
 #define NTP_PACKET_SIZE 48
 #define NTP_DEFAULT_LOCAL_PORT 1337
 
+inline constexpr auto defaultNTPServerPool PROGMEM = "pool.ntp.org";
+
 class NTPClient {
     UDP*          _udp = nullptr;
     bool          _udpSetup = false;
 
-    const char*   _poolServerName = "pool.ntp.org"; // Default time server
-    IPAddress     _poolServerIP;
+    const char*   _poolServerName = defaultNTPServerPool;
+    IPAddress     _poolServerIP{};
     unsigned int  _port = NTP_DEFAULT_LOCAL_PORT;
 
     byte          _packetBuffer[NTP_PACKET_SIZE]{};
@@ -29,10 +31,17 @@ class NTPClient {
 
     /**
      * Set time-server name
-     *
+     * Mutually exclusive with setPoolServerIP
      * @param poolServerName
      */
     void setPoolServerName(const char* poolServerName);
+
+    /**
+     * Set time-server IP address
+     * Mutually exclusive with setPoolServerName
+     * @param ntpServerAddress The IP address of the NTP server
+     */
+    void setPoolServerIP(const IPAddress& ntpServerAddress);
 
      /**
       * Set a random local port

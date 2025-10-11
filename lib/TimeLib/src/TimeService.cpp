@@ -408,6 +408,14 @@ void TimeService::begin(UDP* udp) {
 #endif
 }
 
+void TimeService::setNTPServer(const char *poolServerName) {
+  ntpClient.setPoolServerName(poolServerName);
+}
+
+void TimeService::setNTPServer(const IPAddress &poolServerIP) {
+  ntpClient.setPoolServerIP(poolServerIP);
+}
+
 /**
  * If the NTP time sync is due, perform NTP time synchronization
  * @return whether the NTP sync was successful and decoded valid time

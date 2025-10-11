@@ -168,6 +168,10 @@ void timeBegin() {
     //this requires WiFi!
     if (ntpUDP == nullptr) {
         ntpUDP = new WiFiUDP();
+
+#ifdef NTP_SERVER_IP
+        timeService.setNTPServer(IPAddress(NTP_SERVER_IP));
+#endif
         timeService.begin(ntpUDP);
         log_info(F("NTP UDP client created"));
     }

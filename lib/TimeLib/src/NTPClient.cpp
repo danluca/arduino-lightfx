@@ -66,7 +66,15 @@ void NTPClient::begin(const unsigned int port, UDP* udp) {
 }
 
 bool NTPClient::update(time_t &epochTime, int &wait) {
-  log_debug(F("Update time from NTP Server %s"), _poolServerName);
+  //figure out if we have a server pool to request time from
+  if (_poolServerName)
+    log_debug(F("Update time from NTP Server %s"), _poolServerName);
+  else if (_poolServerIP.isSet())
+    log_debug(F("Update time from NTP Server IP Address %s"), _poolServerIP.toString().c_str());
+  else {
+    log_error(F("NO NTP server configured (name or IP address) - abort"));
+    return false;
+  }
 
   // flush any existing packets
   while(_udp->parsePacket() != 0)
@@ -135,6 +143,12 @@ void NTPClient::end() {
 
 void NTPClient::setPoolServerName(const char* poolServerName) {
   _poolServerName = poolServerName;
+  //pool server name takes priority over _poolServerIP, if both are present
+}
+
+void NTPClient::setPoolServerIP(const IPAddress &ntpServerAddress) {
+  _poolServerIP = ntpServerAddress;
+  _poolServerName = nullptr;
 }
 
 void NTPClient::sendNTPPacket() {
@@ -154,9 +168,10 @@ void NTPClient::sendNTPPacket() {
   // all NTP fields have been given values; now you can send a packet requesting a timestamp:
   if (_poolServerName) {
     _udp->beginPacket(_poolServerName, 123);
-  } else {
+  } else if (_poolServerIP.isSet()) {
     _udp->beginPacket(_poolServerIP, 123);
-  }
+  } else
+    log_error(F("NTPClient: no pool server name or IP address set - cannot send NTP packet. Abort!"));
   _udp->write(_packetBuffer, NTP_PACKET_SIZE);
   _udp->endPacket();
 }

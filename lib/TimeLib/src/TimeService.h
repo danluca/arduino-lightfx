@@ -80,6 +80,9 @@ public:
 
     void begin(UDP* udp = nullptr);
 
+    void setNTPServer(const char* poolServerName);
+    void setNTPServer(const IPAddress& poolServerIP);
+
     void setTime(time_t t);
     time_t setTime(uint16_t hr, uint16_t min, uint16_t sec, uint16_t day, uint16_t month, int year, int offset);
 
