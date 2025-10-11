@@ -421,20 +421,25 @@ void TimeService::setNTPServer(const IPAddress &poolServerIP) {
  * @return whether the NTP sync was successful and decoded valid time
  */
 bool TimeService::syncTimeNTP() {
-  // time_t epochTime = 0;
-  // int delay = 0; //milliseconds delay in processing the time data received; accounts for network lag
-  // const bool success = ntpClient.update(epochTime, delay);
-  // if (success) {
-  //   setTime(epochTime);
-  //   syncLocalMillis -= delay; //the sys millis is set to now in the call above, adjust it with the delay reported by the NTP service
-  // }
-  // return success;
-  // temporarily ntp disable
+#ifdef LOCAL_NTP_SERVER
+  //when using a local network NTP server, we can favor it over WiFi time due to its local availability.
+  //in some networks, the WiFi module is not able to reach the default NTP server pool, hence prompting for a local NTP server
+  time_t epochTime = 0;
+  int delay = 0; //milliseconds delay in processing the time data received; accounts for network lag
+  const bool success = ntpClient.update(epochTime, delay);
+  if (success) {
+    setTime(epochTime);
+    syncLocalMillis -= delay; //the sys millis is set to now in the call above, adjust it with the delay reported by the NTP service
+  }
+  return success;
+#else
+  // leverage the WiFi time - in the case of leveraging the global NTP server pool, the WiFi module would also succeed in getting time from NTP
   if (const time_t epochTime = WiFi.getTime(); epochTime > 0) {
     setTime(epochTime);
     return true;
   }
   return false;
+#endif
 }
 
 void TimeService::end() {
