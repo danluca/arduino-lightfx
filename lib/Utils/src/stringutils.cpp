@@ -8,10 +8,10 @@ static inline constexpr auto FS_PATH_SEPARATOR PROGMEM = "/";
 String StringUtils::asString(const CRGB &rgb) {
     //conversion to uint32 uses 0xFF for the alpha channel - we're not interested in the alpha channel
     const uint32_t numClr = rgb.as_uint32_t() & 0xFFFFFF;
-    const size_t sz = snprintf(nullptr, 0, "%06X", numClr)+1;   //+1 for null terminator
-    char buf[sz]{};
-    snprintf(buf, sz, "%06X", numClr);
-    String str(buf);
+    char buf[11];   //max hex character for a 32bit number - 2 chars for 0X, 8 hex chars, and null terminator
+    // "%06X" produces exactly 6 chars plus null terminator
+    const int sz = snprintf(buf, 7, "%06X", numClr);
+    String str(buf, sz);
     return str;
 }
 
@@ -72,12 +72,23 @@ size_t StringUtils::toString(const CRGBSet &rgbSet, String &str) {
 }
 
 size_t prvAppend(String &str, const char *fmt, va_list args) {
-    const size_t sz = vsnprintf(nullptr, 0, fmt, args)+1;   //+1 for the null terminator
-    char buf[sz];
-    vsnprintf(buf, sz, fmt, args);
-    str.reserve(str.length() + sz);
+    // Compute the required size without consuming the original va_list
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+    const size_t sz = vsnprintf(nullptr, 0, fmt, argsCopy) + 1; //account for '/n' terminating char
+    va_end(argsCopy);
+
+    // Allocate exact-size temporary buffer on heap to avoid large stack frames
+    const auto buf = static_cast<char*>(pvPortMalloc(sz));
+    if (!buf) {
+        return 0; // allocation failed, nothing appended
+    }
+
+    const int written = vsnprintf(buf, sz, fmt, args);
+    str.reserve(str.length() + written);
     str.concat(buf);
-    return sz-1;    //not accounting the null terminator
+    vPortFree(buf);
+    return written;    // not accounting the null terminator
 }
 
 size_t StringUtils::append(String &str, const char *fmt, ...) {

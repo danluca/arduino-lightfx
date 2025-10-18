@@ -89,14 +89,49 @@ size_t PicoLog::print(const LogLevel level, const __FlashStringHelper *format, v
  * @return size of the string written
  */
 size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
-    const size_t szMsg = vsnprintf(nullptr, 0, format, args) + 1;
-    //TODO: when szMsg is large (kilobytes), consider moving the buffer to the heap
-    char buf[szMsg+48];  //sufficient for the header, e.g. '00:00:05.338 [CORE0-5.5] I: ' - 28 chars
+    // Compute size using a copy of args to avoid consuming the original list
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+    const size_t szMsg = vsnprintf(nullptr, 0, format, argsCopy);
+    va_end(argsCopy);
+
+    // Prepare buffer: small messages on stack, large on heap to avoid large stack frames
+    constexpr size_t HEADER_EXTRA = 48; // timestamp + thread + level + spacing
+    constexpr size_t STACK_CAP = 640;   // conservative stack allocation limit
+    const size_t needed = szMsg + HEADER_EXTRA + 1; // +1 for the '\0' we append
+
+    char stackBuf[STACK_CAP];
+    char *buf = nullptr;
+    bool heapUsed = false;
+
+    if (needed <= STACK_CAP)
+        buf = stackBuf;
+    else {
+        buf = static_cast<char *>(pvPortMalloc(needed));    //use new instead?
+        if (!buf) {
+            // Allocation failed; fall back to truncation into stack buffer to keep the system alive
+            buf = stackBuf;
+        } else
+            heapUsed = true;
+    }
+
     size_t sz = printTimestamp(buf);
     sz += printThread(buf + sz);
     sz += printLevel(level, buf + sz);
-    sz += vsnprintf(buf + sz, szMsg, format, args);
-    buf[sz] = '\n'; //new line ending - no null terminator as we control exactly the number of characters written into the m_queue
+
+    // Format the payload; if the buffer is smaller than needed, truncate safely
+    const size_t payloadCap = (heapUsed ? needed : STACK_CAP) - sz;
+    // Use a fresh copy of args for formatting to be safe
+    va_list argsFormat;
+    va_copy(argsFormat, args);
+    sz += vsnprintf(buf + sz, payloadCap, format, argsFormat);  //at most payloadCap-1 bytes are written; terminated with null character
+    va_end(argsFormat);
+
+    // Ensure we don't write past our buffer; clamp sz to actual capacity
+    if (const size_t maxWritable = (heapUsed ? needed : STACK_CAP) - 1; sz > maxWritable) sz = maxWritable;
+
+    buf[sz] = '\n'; //new line ending - no null terminator as we control exactly the number of characters written into the m_queue or output stream
+
 #if LOG_BYPASS_BUFFER
     CoreMutex mtx(&m_mutex);
     if (isStreamingEnabled())
@@ -104,6 +139,8 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
 #else
     m_queue.push_back(buf, sz + 1);
 #endif
+
+    if (heapUsed) vPortFree(buf);
 
     return sz;
 }
@@ -129,7 +166,7 @@ size_t PicoLog::printTimestamp(char *msg) const {
     const unsigned long Minutes = (secs / SECS_PER_MIN) % SECS_PER_MIN;
     const unsigned long Hours = (secs % SECS_PER_DAY) / SECS_PER_HOUR;
 
-    // Time as string
+    // Time as a string
     return snprintf(msg, 20, fmtTimestamp, Hours, Minutes, Seconds, MilliSeconds);
 }
 

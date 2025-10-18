@@ -73,9 +73,8 @@ void dateHeader(WebClient &client) {
     const time_t curTime = now();
     tmElements_t tm{};
     timeService.breakTime(curTime, tm);
-    const int szBuf = snprintf(nullptr, 0, hdFmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec) + 1;
-    char buf[szBuf];
-    snprintf(buf, szBuf, hdFmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    char buf[64];   //sufficient size for this header; see hdFmtDate value
+    snprintf(buf, sizeof(buf), hdFmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     client.sendHeader(F("Date"), buf);
 }
 
@@ -85,9 +84,8 @@ void dateHeader(WebClient &client) {
  * @param fname file name
  */
 void contentDispositionHeader(WebClient &client, const char *fname) {
-    const int szBuf = snprintf(nullptr, 0, hdFmtContentDisposition, fname) + 1;
-    char buf[szBuf];
-    snprintf(buf, szBuf, hdFmtContentDisposition, fname);
+    char buf[160];  //deemed sufficient size for this header and expected file names length; see hdFmtContentDisposition value
+    snprintf(buf, sizeof(buf), hdFmtContentDisposition, fname);
     client.sendHeader(F("Content-Disposition"), buf);
 }
 

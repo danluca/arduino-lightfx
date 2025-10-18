@@ -187,17 +187,16 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     client.connectionKeepAlive();
     client.noDefaultRequestHeaders();
 
-    const size_t bodyLen = snprintf(nullptr, 0, fmtFxChange, fxIndex);
-    char buf[bodyLen + 1];
-    // snprintf writes at most bodyLen+1 bytes and null-terminates the output string
-    snprintf(buf, bodyLen + 1, fmtFxChange, fxIndex);
+    char buf[64];   //size deemed enough based on fmtFxChange pattern and fxIndex values (16bit int)
+    const int written = snprintf(buf, sizeof(buf), fmtFxChange, fxIndex);
+    const int bodyLen = written < 0 ? 0 : (written >= sizeof(buf) ? static_cast<int>(sizeof(buf) - 1) : written);
 
     client.beginRequest();
     //client.put is where the connection is established
     if (HTTP_SUCCESS == client.put("/fx")) {
         client.sendHeader(hdContentJson);
         client.sendHeader(hdUserAgent);
-        client.sendHeader("Content-Length", static_cast<int>(bodyLen));
+        client.sendHeader("Content-Length", bodyLen);
         client.sendHeader(hdKeepAlive);
         client.beginBody();
         client.print(buf);
