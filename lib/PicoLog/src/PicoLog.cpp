@@ -97,7 +97,7 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
 
     // Prepare buffer: small messages on stack, large on heap to avoid large stack frames
     constexpr size_t HEADER_EXTRA = 48; // timestamp + thread + level + spacing
-    constexpr size_t STACK_CAP = 640;   // conservative stack allocation limit
+    constexpr size_t STACK_CAP = 256;   // conservative stack allocation limit
     const size_t needed = szMsg + HEADER_EXTRA + 1; // +1 for the '\0' we append
 
     char stackBuf[STACK_CAP];
