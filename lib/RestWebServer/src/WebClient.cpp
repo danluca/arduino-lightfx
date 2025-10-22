@@ -561,7 +561,7 @@ bool WebClient::_parseRequest() {
         log_debug(F("=== Body ===\n%s====="), request()._requestBody.c_str());
     } else if (!(request().method() == HTTP_GET || request().method() == HTTP_HEAD))
         log_warn(F("Web Request %s %s Content length not specified; body - if any - ignored"), methodStr.c_str(), request().uri().c_str());
-    log_info(F("===== Web Request %s %s parsed"), methodStr.c_str(), request().uri().c_str());
+    log_info(F("===== Web Request %s %s from %s successfully parsed"), methodStr.c_str(), request().uri().c_str(), _rawWifiClient.remoteIP().toString().c_str());
     return true;
 }
 

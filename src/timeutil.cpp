@@ -106,7 +106,6 @@ bool handleNTPSuccess() {
  */
 void handleNTPFailure() {
     sysInfo->resetSysStatus(SYS_STATUS_NTP);
-    paletteFactory.setHoliday(Party);
 
     if (const time_t wifiTime = WiFi.getTime(); wifiTime > 0) {
         timeService.setTime(wifiTime);
