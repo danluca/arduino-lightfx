@@ -73,6 +73,10 @@ void FxI1::reWall() {
 }
 
 static void updateWall(uint16_t &prevWall, const uint16_t wallLimit, const CRGB color, const CRGB bg) {
+    if (prevWall >= tpl.size() || wallLimit >= tpl.size()) {
+        log_warn(F("UpdateWall parameters out of bounds for tpl size %d: prevWall=%d, wallLimit=%d. No changes made."), tpl.size(), prevWall, wallLimit);
+        return;
+    }
     if (prevWall != wallLimit) {
         if (prevWall > wallLimit)
             tpl[prevWall--] = color;

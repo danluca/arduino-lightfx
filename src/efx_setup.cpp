@@ -18,6 +18,8 @@ volatile bool fxBump = false;
 volatile uint16_t speed = 100;
 volatile uint16_t curPos = 0;
 
+static_assert(FRAME_SIZE < NUM_PIXELS, "FRAME_SIZE must not exceed NUM_PIXELS");
+
 QueueHandle_t fxQueue;
 EffectRegistry fxRegistry;
 CRGB leds[NUM_PIXELS];                                    //the main LEDs array of CRGB type

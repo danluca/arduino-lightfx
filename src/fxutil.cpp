@@ -98,13 +98,14 @@ void fx::loopRight(CRGBSet &set, Viewport vwp, uint16_t pos) {
         vwp = static_cast<Viewport>(set.size());
     const uint16_t hiMark = capu(vwp.high, set.size());
     pos = pos % vwp.size();
-    CRGB buf[pos];
-    for (uint16_t x = hiMark; x > vwp.low; x--) {
-        const uint16_t y = x - 1;
-        if (hiMark-x < pos)
-            buf[hiMark-x] = set[y];
-        set[y] = y < pos ? buf[pos-y-1] : set[y-pos];
-    }
+    if (pos == 0)
+        return;
+    auto rev = [&](uint16_t lo, uint16_t hi){ while (lo < hi) { const CRGB tmp = set[lo]; set[lo] = set[hi]; set[hi] = tmp; ++lo; --hi; } };
+    const uint16_t lo = vwp.low;
+    const uint16_t hi = hiMark - 1;
+    rev(lo, hi);
+    rev(lo, lo + pos - 1);
+    rev(lo + pos, hi);
 }
 
 /**

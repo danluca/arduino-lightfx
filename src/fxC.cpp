@@ -44,7 +44,7 @@ void FxC1::setup() {
 void FxC1::run() {
     animationA();
     animationB();
-    CRGBSet others(leds, setB.size(), NUM_PIXELS);
+    CRGBSet others(leds, setB.size(), NUM_PIXELS-1);
 
     //combine all into setB (it is backed by the strip)
     const uint8_t ratio = beatsin8(2);
