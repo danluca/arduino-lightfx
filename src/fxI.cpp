@@ -6,6 +6,8 @@
  *
  */
 #include "fxI.h"
+#include "filesystem.h"
+#include <algorithm>
 
 using namespace FxI;
 using namespace colTheme;
@@ -14,6 +16,7 @@ using namespace colTheme;
 constexpr auto fxi1Desc PROGMEM = "FXI1: Ping Pong";
 constexpr auto fxi2Desc PROGMEM = "FXI2: Pacifica - gentle ocean waves";
 constexpr auto fxi3Desc PROGMEM = "FXI3: Bouncy Ball";
+constexpr auto fxi4Desc PROGMEM = "FXI4: Audio-seeded VU meter";
 
 /**
  * Register FxI effects
@@ -22,6 +25,7 @@ void FxI::fxRegister() {
     new FxI1();
     new FxI2();
     new FxI3();
+    new FxI4();
 }
 
 //FXI1
@@ -393,3 +397,174 @@ void FxI3::run() {
 uint8_t FxI3::selectionWeight() const {
     return 10;
 }
+
+// FXI4 - Audio-seeded VU meter
+FxI4::FxI4() : LedEffect(fxi4Desc) {}
+
+void FxI4::loadSeedFromFile() {
+    seed.clear();
+    String content;
+    if (const size_t sz = SyncFsImpl.readFile(seedFile, &content); sz == 0 || content.length() == 0) {
+        log_warn(F("FxI4: seed file '%s' not found or empty. Using pseudo-random seed."), seedFile);
+        // Fill with a pseudo-random envelope so the effect still works
+        seed.reserve(1024);
+        uint8_t val = random8();
+        for (int i = 0; i < 1024; ++i) { val = qadd8(scale8(val, 200), random8(55)); seed.push_back(val); }
+        // pseudo-random mono envelope
+        seedHasBands = false;
+        frames = 0;
+        seedPos = 0;
+        framePos = 0;
+        return;
+    }
+
+    // Parse numbers 0..255 separated by non-digit characters
+    uint16_t acc = 0;
+    bool inNum = false;
+    for (size_t i = 0; i < content.length(); ++i) {
+        char c = content.charAt(i);
+        if (c >= '0' && c <= '9') {
+            acc = (uint16_t)acc * 10u + (uint16_t)(c - '0');
+            inNum = true;
+        } else {
+            if (inNum) {
+                seed.push_back((uint8_t)min<uint16_t>(acc, 255));
+                acc = 0; inNum = false;
+            }
+        }
+    }
+    if (inNum) seed.push_back((uint8_t)min<uint16_t>(acc, 255));
+
+    if (seed.empty()) {
+        log_warn(F("FxI4: seed parse yielded no values. Falling back to noise."));
+        seed.reserve(512);
+        for (int i = 0; i < 512; ++i) seed.push_back(random8());
+    }
+
+    // Determine if seed provides per-band frames: must be divisible by current segment count
+    if (segments > 0 && (seed.size() % segments) == 0) {
+        seedHasBands = true;
+        frames = seed.size() / segments;
+    } else {
+        if (segments > 0)
+            log_warn(F("FxI4: seed size %u not divisible by segments %u. Using mono envelope mode."), (unsigned)seed.size(), segments);
+        seedHasBands = false;
+        frames = 0;
+    }
+    seedPos = 0;
+    framePos = 0;
+}
+
+uint8_t FxI4::levelFromSeed(const uint8_t band) {
+    if (seed.empty()) return random8();
+    if (seedHasBands && segments > 0) {
+        // Row-major: frame0_band0..bandN-1, frame1_...
+        const size_t idx = (framePos % max<size_t>(1, frames)) * segments + (band % segments);
+        return seed[idx % seed.size()];
+    }
+    // Legacy mono envelope: advance position per sample
+    const uint8_t v = seed[seedPos++];
+    if (seedPos >= seed.size()) seedPos = 0;
+    return v;
+}
+
+void FxI4::setup() {
+    LedEffect::setup();
+    baseHue = random8();
+
+    // Decide segment count based on strip size if needed
+    const uint16_t n = tpl.size();
+    if (n >= 90) segments = 12;
+    else if (n >= 60) segments = 10;
+    else if (n >= 40) segments = 8;
+    else if (n >= 20) segments = 6;
+    else segments = 4;
+
+    hist.assign(segments, 0);
+    peaks.assign(segments, 0);
+    peakTs.assign(segments, 0);
+
+    loadSeedFromFile();
+
+    tpl.fill_solid(BKG);
+}
+
+void FxI4::drawSegments() {
+    const uint16_t total = tpl.size();
+    if (total == 0) return;
+
+    const uint16_t gapsTotal = (segments > 0 ? (segments - 1) : 0) * segmentGap;
+    const uint16_t usable = total > gapsTotal ? (total - gapsTotal) : total;
+    const uint16_t segWidth = segments ? max<uint16_t>(1, usable / segments) : usable;
+
+    // Background fade for trailing effect
+    tpl.fadeToBlackBy(40);
+
+    uint16_t x = 0;
+    for (uint8_t s = 0; s < segments; ++s) {
+        const uint16_t segStart = x;
+        const uint16_t segEnd = min<uint16_t>(segStart + segWidth, total);
+        const uint16_t height = segEnd - segStart;
+
+        // Compute smoothed level per segment by sampling next seed value and applying IIR
+        const uint8_t raw = levelFromSeed(s);
+        const uint8_t prev = hist[s];
+        const uint16_t sm = ((uint16_t)prev * (uint16_t)(255 - smoothing) + (uint16_t)raw * (uint16_t)smoothing) / 255u;
+        const uint8_t lvl = (uint8_t)sm;
+        hist[s] = lvl;
+
+        // Peak hold logic per segment
+        if (lvl >= peaks[s]) { peaks[s] = lvl; peakTs[s] = millis(); }
+        else if (millis() - peakTs[s] > peakHoldMs) { peaks[s] = qsub8(peaks[s], 2); }
+
+        // Map level 0..255 to number of lit pixels in this segment
+        const uint16_t lit = (uint32_t)lvl * height / 255u;
+        const uint16_t peakPix = (uint32_t)peaks[s] * height / 255u;
+
+        // Choose color per segment and gradient by height using palette
+        const uint8_t segHue = baseHue + s * (240 / max<uint8_t>(1, segments));
+
+        // Draw from bottom (segStart) upwards
+        for (uint16_t i = 0; i < height; ++i) {
+            const uint16_t idx = segStart + i;
+            if (idx >= total) break;
+            if (i < lit) {
+                // Brightness increases toward the top; color varies slightly with i
+                const uint8_t bri = scale8(40 + (i * 215) / max<uint16_t>(1, height - 1), stripBrightness);
+                const CRGB col = ColorFromPalette(palette, segHue + i * 3, bri, LINEARBLEND);
+                tpl[idx] = col;
+            } else {
+                // base background, slightly tinted by palette
+                const CRGB col = ColorFromPalette(palette, segHue, 4, LINEARBLEND);
+                tpl[idx] = col;
+            }
+        }
+        // Peak marker: a bright thin line
+        if (peakPix < height) {
+            const uint16_t pidx = segStart + peakPix;
+            if (pidx < total) {
+                CRGB peakColor = ColorFromPalette(palette, segHue + 16, 255, LINEARBLEND);
+                tpl[pidx] = peakColor;
+            }
+        }
+
+        x = segEnd + segmentGap; // advance with gap
+    }
+
+    // Advance to next frame if seed provides per-band frames
+    if (seedHasBands && frames > 0) {
+        framePos = (framePos + 1) % frames;
+    }
+
+    baseHue += 1; // slow drift across palette
+}
+
+void FxI4::run() {
+    EVERY_N_MILLISECONDS_I(speed, frameMs) {
+        drawSegments();
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+}
+
+uint8_t FxI4::selectionWeight() const { return 12; }
