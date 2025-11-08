@@ -13,7 +13,7 @@ using namespace colTheme;
 //~ Effect description strings stored in flash
 constexpr auto fxi1Desc PROGMEM = "FXI1: Ping Pong";
 constexpr auto fxi2Desc PROGMEM = "FXI2: Pacifica - gentle ocean waves";
-constexpr auto fxi3Desc PROGMEM = "FXI3: Three overlay segments";
+constexpr auto fxi3Desc PROGMEM = "FXI3: Bouncy Ball";
 
 /**
  * Register FxI effects
@@ -21,6 +21,7 @@ constexpr auto fxi3Desc PROGMEM = "FXI3: Three overlay segments";
 void FxI::fxRegister() {
     new FxI1();
     new FxI2();
+    new FxI3();
 }
 
 //FXI1
@@ -288,4 +289,107 @@ uint8_t FxI2::selectionWeight() const {
     return 9;
 }
 
-//FXI3 - three segments running at different speeds & directions in sawtooth style (allows motion to look contiguous in segments)
+//FXI3 - Bouncy Ball
+FxI3::FxI3() : LedEffect(fxi3Desc) {}
+
+void FxI3::setup() {
+    LedEffect::setup();
+    // Soft background from target palette to make colors pop
+    const uint8_t bgIdx = random8();
+    const CRGB bg = ColorFromPalette(targetPalette, bgIdx, 6, LINEARBLEND);
+    tpl.fill_solid(bg);
+
+    // Physics init
+    const uint16_t maxIdx = tpl.size() > 0 ? tpl.size() - 1 : 0;
+    const int32_t maxPos = static_cast<int32_t>(maxIdx) * 256;
+    pos256 = (random16(maxIdx + 1) * 256);
+    dirRight = random8() & 0x01;
+    vel256 = dirRight ? (random16(60, 220)) : -(int32_t)random16(60, 220); // initial speed
+    gravity = random8(12, 40);            // pull per tick
+    loss = random8(180, 230);             // 70%..90% energy retained on bounce
+    trail = random8(3, 7);                // glow radius
+    fadeAmt = random8(40, 80);            // trail fade amount
+    hueIdx = random8();
+    sparkTicks = 0;
+}
+
+void FxI3::run() {
+    EVERY_N_MILLISECONDS_I(speed, 18) {
+        // Fade and slight blur for glow trail
+        tpl.fadeToBlackBy(fadeAmt);
+        tpl.blur1d(48);
+
+        // Physics update
+        vel256 += (dirRight ? gravity : -gravity);
+        pos256 += vel256;
+
+        const uint16_t size = tpl.size();
+        if (size == 0) return;
+        const int32_t maxPos = static_cast<int32_t>(size - 1) * 256;
+
+        bool bounced = false;
+        if (pos256 < 0) {
+            pos256 = 0;
+            vel256 = -((int32_t)scale8((uint32_t)(vel256 >= 0 ? vel256 : -vel256), loss));
+            dirRight = true;
+            bounced = true;
+        } else if (pos256 > maxPos) {
+            pos256 = maxPos;
+            vel256 = (int32_t)scale8((uint32_t)(vel256 >= 0 ? vel256 : -vel256), loss);
+            vel256 = -vel256;
+            dirRight = false;
+            bounced = true;
+        }
+
+        if (bounced) {
+            sparkTicks = 3;
+            hueIdx += random8(12, 28); // shift color on bounce
+        }
+
+        // Draw bright core with glow using palette
+        const uint16_t center = static_cast<uint16_t>(pos256 >> 8);
+        const uint8_t frac = static_cast<uint8_t>(pos256 & 0xFF);
+        const CRGB core = ColorFromPalette(palette, hueIdx, 255, LINEARBLEND);
+
+        // Cross-fade between two adjacent pixels based on fractional position
+        if (center < size) {
+            const uint8_t briL = 255 - frac;
+            const uint8_t briR = frac;
+            CRGB leftPix = core; leftPix.nscale8_video(briL);
+            tpl[center] += leftPix;
+            if (center + 1 < size) { CRGB rightPix = core; rightPix.nscale8_video(briR); tpl[center + 1] += rightPix; }
+        }
+
+        // Radial trail falloff
+        const uint8_t baseGlow = 160;
+        for (uint8_t r = 1; r <= trail; ++r) {
+            const uint8_t glowBri = scale8(baseGlow, qsub8(255, r * (255 / (trail + 1))));
+            const CRGB glow = ColorFromPalette(palette, hueIdx + r * 6, glowBri, LINEARBLEND);
+            const int32_t li = (int32_t)center - r;
+            const int32_t ri = (int32_t)center + r + 1; // account for subpixel leaning to the right
+            if (li >= 0 && (uint16_t)li < size) tpl[(uint16_t)li] += glow;
+            if (ri >= 0 && (uint16_t)ri < size) tpl[(uint16_t)ri] += glow;
+        }
+
+        // Brief spark/flash on bounce for eye-catching pop
+        if (sparkTicks > 0) {
+            sparkTicks--;
+            const uint8_t flashBri = 200;
+            const CRGB flash = CHSV(hueIdx, 40, 255) + CRGB(flashBri, flashBri, flashBri);
+            const uint16_t c = center;
+            if (c < size) tpl[c] = tpl[c] + flash;
+            if (c > 0) tpl[c - 1] += flash;
+            if (c + 1 < size) tpl[c + 1] += flash;
+        }
+
+        hueIdx += 2; // gentle hue drift
+
+        // Output
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+}
+
+uint8_t FxI3::selectionWeight() const {
+    return 10;
+}

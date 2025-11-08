@@ -45,5 +45,24 @@ namespace FxI {
         uint32_t sLastMs = 0;
     };
 
+    class FxI3 : public LedEffect {
+    public:
+        FxI3();
+        void setup() override;
+        void run() override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
+    private:
+        // Fixed-point physics (8 fractional bits)
+        int32_t pos256{};   // position * 256
+        int32_t vel256{};   // velocity * 256 per tick
+        int16_t gravity{};  // gravity per tick (positive pulls to the right by convention)
+        uint8_t hueIdx{};   // color index for palette
+        uint8_t trail{};    // glow radius
+        uint8_t fadeAmt{};  // trail fade per frame
+        uint8_t loss{};     // bounce energy loss (0..255), e.g., 200 = ~78%
+        bool dirRight{};    // initial direction
+        uint8_t sparkTicks{}; // brief flash on bounce
+    };
+
 }
 #endif //ARDUINO_LIGHTFX_FXI_H
