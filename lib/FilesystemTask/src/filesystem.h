@@ -66,7 +66,7 @@ public:
     size_t appendFile(const char *fname, String *s) const;
     size_t appendFile(const char *fname, uint8_t *buffer, size_t size) const;
     bool writeFileAsync(const char *fname, String *s) const;
-    bool list(const char *path, std::deque<FileInfo*> *list) const;
+    bool list(const char *path, std::deque<FileInfo> *list) const;
 
 protected:
     size_t prvReadFile(const char *fname, String *s) const;
@@ -77,8 +77,8 @@ protected:
     bool prvRemove(const char *path) const;
     bool prvRename(const char *fromName, const String *toName) const;
     bool prvExists(const char *path) const;
-    bool prvFormat() const;
-    bool prvList(const char *path, std::deque<FileInfo *> *fiList) const;
+    [[nodiscard]] bool prvFormat() const;
+    bool prvList(const char *path, std::deque<FileInfo> *fiList) const;
     bool prvInfo(const char *path, FileInfo *fileInfo) const;
     bool prvStat(const char *path, FSStat *fs) const;
     bool prvMakeDir(const char *path) const;
@@ -86,7 +86,6 @@ protected:
 
     friend void fsInit();
     friend void fsExecute();
-    friend void listFiles(Dir &dir, String &path, const std::function<void(FileInfo*)> &callback);
 };
 
 extern SynchronizedFS SyncFsImpl;

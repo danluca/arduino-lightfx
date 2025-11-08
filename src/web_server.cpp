@@ -22,6 +22,8 @@
 #include "stats_html.h"
 #include "stats_css.h"
 #include "stats_js.h"
+// not including this file as the regex subsystem has a large codebase and increases the flash use by ~300kB; this would be the only use of regex and there are workarounds
+// #include "uri/UriRegex.h"
 
 // #include <detail/base64.hpp>
 
@@ -37,6 +39,8 @@ static constexpr auto msgRequestNotMapped PROGMEM = "URI not mapped to a handler
 // static constexpr auto configJsonFilename PROGMEM = "config.json";
 static constexpr auto statusJsonFilename PROGMEM = "status.json";
 static constexpr auto tasksJsonFilename PROGMEM = "tasks.json";
+static constexpr auto filesJsonFilename PROGMEM = "files.json";
+static constexpr auto authToken PROGMEM = "KlFpc1dAdFd0eDRXdkVSZg";
 static constexpr uint16_t serverPort PROGMEM = 80;
 #if MDNS_ENABLED==1
 static auto mdnsStatus = MDNS::Status::TryLater;
@@ -388,7 +392,7 @@ void handleFWImageUpload(WebClient &client) {
             const auto fwData = new FWUploadData();
             raw.data = fwData;
             // *auth = req.header("X-Token").equals("*QisW@tWtx4WvERf") ? 0x01 : 0x00;
-            fwData->auth = req.header("X-Token").equals("KlFpc1dAdFd0eDRXdkVSZg");
+            fwData->auth = req.header("X-Token").equals(authToken);
             fwData->checkSum = req.header("X-Check");
             fwData->checkSum.toLowerCase();
             fwData->fileName = csFWImageFilename;
@@ -451,6 +455,218 @@ void handleFWImageUpload(WebClient &client) {
  */
 void noop(WebClient &client) {}
 
+struct FileUploadData {
+    bool auth{};
+    String checkSum;
+    String fileName;
+};
+
+static bool isSafePath(const String &p) {
+    if (p.length() == 0) return false;
+    if (p[0] != '/') return false;
+    if (p.indexOf("..") >= 0) return false;
+    if (p.endsWith("/")) return false;
+    if (!p.startsWith("/ext/")) return false; // confine all generic uploads under /ext
+    if (p.equals(csFWImageFilename)) return false; // do not allow clobbering firmware image via generic upload
+    return true;
+}
+
+static String normalizePath(String p) {
+    // collapse duplicate slashes
+    while (p.indexOf("//") >= 0) p.replace("//", "/");
+    return p;
+}
+
+static bool ensureParentDirs(const String &filePath) {
+    int lastSlash = filePath.lastIndexOf('/');
+    if (lastSlash <= 0) return true; // root or no dir
+    String dir = filePath.substring(0, lastSlash);
+    // build progressively
+    String cur;
+    int start = 0;
+    while (start < dir.length()) {
+        int slash = dir.indexOf('/', start);
+        if (slash < 0) slash = dir.length();
+        String part = dir.substring(start, slash);
+        if (part.length() > 0) {
+            cur += "/";
+            cur += part;
+            // try to create; ignore failure (may already exist)
+            SyncFsImpl.mkdir(cur.c_str());
+        }
+        start = slash + 1;
+    }
+    return true;
+}
+
+void handleFileUploadRaw(WebClient &client) {
+    const WebRequest &req = client.request();
+    switch (HTTPRaw &raw = client.raw(); raw.status) {
+        case RAW_START: {
+            const auto ud = new FileUploadData();
+            raw.data = ud;
+            ud->auth = req.header("X-Token").equals(authToken);
+            ud->checkSum = req.header("X-Check");
+            ud->checkSum.toLowerCase();
+            // derive destination path: prefer header X-Path, else first path arg from URI
+            String path = req.header("X-Path");
+            if (path.length() == 0) {
+                // try URI captured group 0
+                path = req.pathArg(0);
+            }
+            if (path.length() > 0) {
+                path = Uri::urlDecode(path);
+                path = normalizePath(path);
+            }
+            // Map provided path to /ext root to avoid overwriting system files
+            const String userPath = path; // keep for logs
+            // Normalize to a relative component under /ext
+            if (path.startsWith("/ext/")) {
+                path = path.substring(5); // strip "/ext/" prefix if provided
+            } else if (path.startsWith("/")) {
+                path = path.substring(1); // strip leading slash
+            }
+            // basic validations on the relative part
+            if (path.length() == 0 || path.endsWith("/") || path.indexOf("..") >= 0) {
+                ud->auth = false; // force rejection
+                client.send(400, mime::mimeTable[mime::txt].mimeType, R"({"error": "Invalid or unsafe path"})");
+                log_error(F("Generic upload rejected due to unsafe path '%s'"), userPath.c_str());
+                break;
+            }
+            String fullPath = String("/ext/") + path;
+            fullPath = normalizePath(fullPath);
+            if (!isSafePath(fullPath)) {
+                ud->auth = false; // force rejection
+                client.send(400, mime::mimeTable[mime::txt].mimeType, R"({"error": "Invalid or unsafe path"})");
+                log_error(F("Generic upload rejected: mapped path outside /ext: '%s' (from '%s')"), fullPath.c_str(), userPath.c_str());
+                break;
+            }
+            ud->fileName = fullPath;
+            if (!ensureParentDirs(ud->fileName)) {
+                ud->auth = false;
+                client.send(500, mime::mimeTable[mime::txt].mimeType, R"({"error": "Failed to create parent directories"})");
+                log_error(F("Generic upload failed to ensure parent directories for '%s'"), ud->fileName.c_str());
+                break;
+            }
+            if (ud->auth) {
+                if (SyncFsImpl.exists(ud->fileName.c_str()))
+                    SyncFsImpl.remove(ud->fileName.c_str());
+            }
+            log_info(F("File upload start auth %s, dest %s, size expected %zu, sha-256 expected %s"),
+                     ud->auth ? "OK" : "failed", ud->fileName.c_str(), req.contentLength(), ud->checkSum.c_str());
+        }
+        break;
+        case RAW_WRITE:
+            if (const auto *ud = static_cast<FileUploadData *>(raw.data); ud->auth) {
+                SyncFsImpl.appendFile(ud->fileName.c_str(), raw.buf, raw.currentSize);
+            }
+            break;
+        case RAW_END: {
+            const auto *ud = static_cast<FileUploadData *>(raw.data);
+            if (ud->auth) {
+                if (ud->checkSum.length() > 0) {
+                    const String sha256 = SyncFsImpl.sha256(ud->fileName.c_str());
+                    if (!sha256.equals(ud->checkSum)) {
+                        client.send(406, mime::mimeTable[mime::txt].mimeType, R"({"error": "Upload data integrity failed - Checksum does not match"})");
+                        log_error(F("Generic upload failed checksum for %s: expected %s, actual %s"), ud->fileName.c_str(), ud->checkSum.c_str(), sha256.c_str());
+                        delete ud; break;
+                    }
+                }
+                String body;
+                body.reserve(96 + ud->fileName.length());
+                body += F("{");
+                body += F("\"status\": \"OK\", ");
+                body += F("\"path\": \"");
+                body += ud->fileName;
+                body += F("\", \"size\": ");
+                body += String(raw.totalSize);
+                body += F("}");
+                client.send(200, mime::mimeTable[mime::txt].mimeType, body);
+                log_info(F("Generic upload stored %s, size %zu bytes"), ud->fileName.c_str(), raw.totalSize);
+            } else {
+                client.send(401, mime::mimeTable[mime::txt].mimeType, R"({"error": "Unauthorized call"})");
+                log_error(F("Generic upload failed - authorization failed, size expected %zu bytes"), req.contentLength());
+            }
+            delete ud;
+        }
+        break;
+        case RAW_ABORTED: {
+            client.send(400, mime::mimeTable[mime::txt].mimeType, R"({"error": "Bad Request or Read - Aborted"})");
+            log_error(F("Generic upload aborted, size read/expected %zu/%zu bytes"), raw.totalSize, req.contentLength());
+            const auto ud = static_cast<FileUploadData *>(raw.data);
+            if (ud && SyncFsImpl.exists(ud->fileName.c_str()))
+                SyncFsImpl.remove(ud->fileName.c_str());
+            delete ud;
+        }
+        break;
+        default: break;
+    }
+}
+
+/**
+ * Web request handler - GET /files.json. Returns the list of files/directories on the local filesystem.
+ * Path is confined under /ext for safety; optional query parameter `path` can specify a subdirectory.
+ */
+void handleGetFiles(WebClient &client) {
+    dateHeader(client);
+    contentDispositionHeader(client, filesJsonFilename);
+    client.sendHeader(hdCacheControl, hdCacheJson);
+
+    const WebRequest &req = client.request();
+    String q = req.arg("path");
+    if (q.length() > 0) {
+        q = Uri::urlDecode(q);
+    }
+    // Normalize and map to /ext
+    if (q.length() == 0) {
+        q = "/"; // default root for listings
+    } else {
+        q = normalizePath(q);
+        if (!q.startsWith("/")) {
+            // relative path -> under /
+            q = String("/") + q;
+        }
+    }
+
+    // Safety checks
+    if (q.indexOf("..") >= 0 || !q.startsWith("/") ) {
+        client.send(400, mime::mimeTable[mime::txt].mimeType, R"({"error": "Invalid or unsafe path"})");
+        log_error(F("File list rejected due to unsafe path '%s'"), q.c_str());
+        return;
+    }
+
+    std::deque<FileInfo> entries{};
+    JsonDocument doc;
+    const bool ok = SyncFsImpl.list(q.c_str(), &entries);
+    doc["basePath"] = q;
+    doc["status"] = ok;
+
+    const auto arr = doc["files"].to<JsonArray>();
+    if (ok) {
+        for (const auto &[name, path, size, modTime, isDir] : entries) {
+            auto o = arr.add<JsonObject>();
+            // full path and name
+            o["path"] = path;
+            o["name"] = name;
+            o["size"] = static_cast<uint32_t>(size);
+            o["isDir"] = isDir;
+            // last modified
+            o["modifiedEpoch"] = static_cast<long>(modTime);
+            if (modTime > 0) {
+                o["modified"] = TimeFormat::asString(modTime);
+            } else {
+                o["modified"] = "";
+            }
+        }
+    }
+
+    entries.clear();
+
+    const size_t sz = marshalJson(doc, client);
+    (void)sz;
+    log_info(F("Handler handleGetFiles invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
+}
+
 /**
  * Configures the web server with specific dynamic and static request handlers
  * This method can be called again upon WiFi reconnecting
@@ -464,13 +680,21 @@ void web::server_setup() {
         server.on("/status.json", HTTP_GET, handleGetStatus);
         server.on("/fx", HTTP_PUT, handlePutConfig);
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
+        // Filesystem listing (confined to /ext)
+        server.on("/files.json", HTTP_GET, handleGetFiles);
+        // Firmware image upload (fixed destination)
         server.on("/fw", HTTP_POST, noop, handleFWImageUpload);
+        // Generic file upload: destination via header X-Path or URI context
+        server.on("/upload", HTTP_POST, noop, handleFileUploadRaw);
+        server.on("/upload", HTTP_PUT, noop, handleFileUploadRaw);
+        // server.on(UriRegex("^/upload/(.*)$"), HTTP_POST, noop, handleFileUploadRaw);
+        // server.on(UriRegex("^/upload/(.*)$"), HTTP_PUT, noop, handleFileUploadRaw);
         server.onNotFound(handleNotFound);
         server.enableDelay(false); //the task that runs the web-server also runs other services, do not want to introduce unnecessary delays
         server_handlers_configured = true;
         log_info(F("Completed Web server setup"));
     }
-    server.collectHeaders("Host", "Accept", "Referer", "User-Agent", "X-Token", "X-Check");
+    server.collectHeaders("Host", "Accept", "Referer", "User-Agent", "X-Token", "X-Check", "X-Path");
     server.begin(serverPort);
     log_info(F("Web server started"));
 }

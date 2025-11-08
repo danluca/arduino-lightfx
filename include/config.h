@@ -39,7 +39,7 @@
 #define BOARD_ID    1
 #endif
 
-// Board specific configurations
+// DEV Board specific configurations
 #if BOARD_ID == 1
 
 #define NUM_PIXELS  170      //the number of pixels on the office window edge is 166
@@ -57,6 +57,7 @@
 
 #endif
 
+// FX01 Board specific configurations
 #if BOARD_ID == 2
 
 #define NUM_PIXELS  320      //number of pixels on the house edge (300 measured + reserve)
@@ -75,6 +76,7 @@
 
 #endif
 
+// FX02 Board specific configurations
 #if BOARD_ID == 3
 
 #define NUM_PIXELS  170      //number of pixels on the office window edge is 166

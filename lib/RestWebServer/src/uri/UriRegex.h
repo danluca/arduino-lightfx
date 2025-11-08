@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Uri.h"
-#include <regex>
+#include <regex>    // note the regex subsystem brings a lot of dependencies, adding up to ~300kB of code
 
 class UriRegex : public Uri {
 

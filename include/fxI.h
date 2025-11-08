@@ -79,7 +79,7 @@ namespace FxI {
         uint8_t levelFromSeed(uint8_t band);
 
         // configuration
-        const char* seedFile = "/audio_seed.txt"; // text file with integers [0..255] separated by comma/space/newline
+        constexpr static auto seedFile = "/ext/fx/fxi4_seed.txt"; // text file with integers [0..255] separated by comma/space/newline
         uint8_t segments = 8;                      // number of VU segments across the strip
         uint8_t smoothing = 32;                    // IIR smoothing factor (higher = smoother)
         uint16_t segmentGap = 1;                   // pixels gap between segments

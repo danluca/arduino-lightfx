@@ -54,47 +54,76 @@ struct fsTaskMessage {
  * Lists all the files - recursively - from the directory provided for logging purposes
  * Maximum depth of recursive calls is limited to MAX_DIR_LEVELS (to protect from stack overflow)
  * @param fs the filesystem object
- * @param dir directory object to start from
+ * @param path directory path to start from
  * @param s string that collects the listings
- * @param level the depth level of directory listing
+ * @param depth the depth level of directory listing
  * @param callback callback to act on a directory entry as the tree is traversed
  */
-void logFiles(FS& fs, Dir &dir, String &s, const uint8_t level, const std::function<void(Dir&)> &callback) {
-    if (level/2 > MAX_DIR_LEVELS)
-        return;    //prevent stack overflow - the recursion is limited to MAX_DIR_LEVELS levels (level increments by 2)
+static void logFilesRecurse(FS &fs, const String &path, String &s, const uint8_t depth, const std::function<void(Dir&)> &callback) {
+    if (depth > MAX_DIR_LEVELS) return;
+
+    const uint8_t level = depth * 2;
+    Dir dir = fs.openDir(path.c_str());
     while (dir.next()) {
         callback(dir);
         if (dir.isFile()) {
             File f = dir.openFile("r");
             String ts = TimeFormat::asString(f.getLastWrite());
+            const size_t sz = dir.fileSize();
+            String name = dir.fileName();
             f.close();
-            StringUtils::append(s, F("%*c%s\t[%zu]  %s\n"), level, ' ', ts.c_str(), dir.fileSize(), dir.fileName().c_str());
+            StringUtils::append(s, F("%*c%s\t[%zu]  %s\n"), level, ' ', ts.c_str(), sz, name.c_str());
         } else if (dir.isDirectory()) {
             String ts = TimeFormat::asString(dir.fileCreationTime());
-            StringUtils::append(s, F("%*c%s\t<DIR>  %s\n"), level, ' ', ts.c_str(), dir.fileName().c_str());
-            Dir d = fs.openDir(dir.fileName());
-            logFiles(fs, d, s, level+2, callback);
-        } else
-            StringUtils::append(s, F("%*c????\t??%zu?? %s\n"), level, ' ', dir.fileSize(), dir.fileName().c_str());
+            String name = dir.fileName();
+            StringUtils::append(s, F("%*c%s\t<DIR>  %s\n"), level, ' ', ts.c_str(), name.c_str());
+
+            // Build child absolute path
+            String childPath = path;
+            if (!(childPath.length() == 1 && childPath[0] == '/')) childPath.concat(FS_PATH_SEPARATOR);
+            childPath.concat(name);
+
+            logFilesRecurse(fs, childPath, s, depth + 1, callback);
+        } else {
+            StringUtils::append(s, F("%*c????\t???????? %s\n"), level, ' ', dir.fileName().c_str());
+        }
     }
+}
+
+static void logFiles(FS& fs, const char *startPath, String &s, const std::function<void(Dir&)> &callback) {
+    String base = (startPath && *startPath) ? String(startPath) : String(FS_PATH_SEPARATOR);
+    // Normalize: remove trailing slash except root
+    if (base.length() > 1 && base.endsWith(FS_PATH_SEPARATOR)) {
+        base.remove(base.length()-1);
+    }
+
+    if (!fs.exists(base.c_str())) {
+        StringUtils::append(s, F("Path does not exist: %s\n"), base.c_str());
+        return;
+    }
+
+    // Header for the starting directory
+    StringUtils::append(s, F("%*c<DIR>  %s\n"), 0, ' ', base.c_str());
+    logFilesRecurse(fs, base, s, 1, callback);
 }
 
 /**
  * Lists all files recursively from the directory provided. No maximum level of depth for recursive calls is enforced.
  * Ensure enough stack is available if the provided structure has a deep nested structure
- * @param dir directory object to start from
+ * @param fs file system object
  * @param path accumulated absolute path of the directory
  * @param callback callback to execute for each directory entry
  */
-void listFiles(Dir &dir, String &path, const std::function<void(FileInfo*)> &callback) {
+static void listFiles(FS& fs, String &path, const std::function<void(const FileInfo&)> &callback) {
+    Dir dir = fs.openDir(path);
     while (dir.next()) {
         FileInfo fInfo {dir.fileName(), path, dir.fileSize(), dir.fileTime(), dir.isDirectory()};
-        callback(&fInfo);
+        callback(fInfo);
         if (fInfo.isDir) {
             path.concat(FS_PATH_SEPARATOR);
             path.concat(fInfo.name);
-            Dir d = SyncFsImpl.fsPtr->openDir(path);
-            listFiles(d, path, callback);
+            Dir d = fs.openDir(path);
+            listFiles(fs, path, callback);
             path.remove(path.length()-fInfo.name.length()-1);
         }
     }
@@ -125,11 +154,9 @@ void fsInit() {
     };
 
     String dirContent;
-    dirContent.reserve(512);
+    dirContent.reserve(640);
     dirContent.concat(F("Filesystem content:\n"));
-    Dir d = SyncFsImpl.fsPtr->openDir(rootDir);
-    StringUtils::append(dirContent, F("%*c<ROOT-DIR> %s\n"), 2, ' ', d.fileName());
-    logFiles(*SyncFsImpl.fsPtr, d, dirContent, 2, collectCorruptedFiles);
+    logFiles(*SyncFsImpl.fsPtr, rootDir, dirContent, collectCorruptedFiles);
     dirContent.concat(F("End of filesystem content.\n"));
 
     if (!corruptedFiles.empty()) {
@@ -203,7 +230,7 @@ void fsExecute() {
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::LIST_FIlES:
-            success = SyncFsImpl.prvList(msg->data->name, static_cast<std::deque<FileInfo *> *>(msg->data->data));
+            success = SyncFsImpl.prvList(msg->data->name, static_cast<std::deque<FileInfo> *>(msg->data->data));
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         case fsTaskMessage::INFO:
@@ -473,7 +500,7 @@ bool SynchronizedFS::format() {
  * @param path path to list files from (recursively)
  * @param list list to collect all file info
  */
-bool SynchronizedFS::list(const char *path, std::deque<FileInfo*> *list) const {
+bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
     auto *args = new fsOperationData {path, nullptr, list};
     auto *msg = new fsTaskMessage{fsTaskMessage::LIST_FIlES, xTaskGetCurrentTaskHandle(), args};
 
@@ -592,6 +619,7 @@ size_t SynchronizedFS::prvReadFile(const char *fname, String *s) const {
         return 0;
     }
     File f = fsPtr->open(fname, "r");
+    s->reserve(f.size());
     size_t fSize = 0;
     char buf[FILE_BUF_SIZE]{};
     while (const size_t charsRead = f.readBytes(buf, FILE_BUF_SIZE)) {
@@ -707,11 +735,14 @@ bool SynchronizedFS::prvFormat() const {
     return formatted;
 }
 
-bool SynchronizedFS::prvList(const char *path, std::deque<FileInfo *> *fiList) const {
-    Dir d = fsPtr->openDir(path);
+bool SynchronizedFS::prvList(const char *path, std::deque<FileInfo> *fiList) const {
+    if (!fsPtr->exists(path)) {
+        log_error(F("Path %s does not exist, no files listed"), path);
+        return false;
+    }
     String dirPath = path;
-    auto captureFile = [&fiList](FileInfo *info) {fiList->push_back(info);};
-    listFiles(d, dirPath, captureFile);
+    auto captureFile = [&fiList](const FileInfo &info) { fiList->push_back(info); };
+    listFiles(*fsPtr, dirPath, captureFile);
     return true;
 }
 

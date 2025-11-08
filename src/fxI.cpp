@@ -403,8 +403,8 @@ FxI4::FxI4() : LedEffect(fxi4Desc) {}
 
 void FxI4::loadSeedFromFile() {
     seed.clear();
-    String content;
-    if (const size_t sz = SyncFsImpl.readFile(seedFile, &content); sz == 0 || content.length() == 0) {
+    auto* content = new String();   //allocate on the heap, potentially large file size
+    if (const size_t sz = SyncFsImpl.readFile(seedFile, content); sz == 0 || content->length() == 0) {
         log_warn(F("FxI4: seed file '%s' not found or empty. Using pseudo-random seed."), seedFile);
         // Fill with a pseudo-random envelope so the effect still works
         seed.reserve(1024);
@@ -415,15 +415,15 @@ void FxI4::loadSeedFromFile() {
         frames = 0;
         seedPos = 0;
         framePos = 0;
+        delete content;
         return;
     }
 
     // Parse numbers 0..255 separated by non-digit characters
     uint16_t acc = 0;
     bool inNum = false;
-    for (size_t i = 0; i < content.length(); ++i) {
-        char c = content.charAt(i);
-        if (c >= '0' && c <= '9') {
+    for (size_t i = 0; i < content->length(); ++i) {
+        if (const char c = content->charAt(i); c >= '0' && c <= '9') {
             acc = (uint16_t)acc * 10u + (uint16_t)(c - '0');
             inNum = true;
         } else {
@@ -453,6 +453,7 @@ void FxI4::loadSeedFromFile() {
     }
     seedPos = 0;
     framePos = 0;
+    delete content;
 }
 
 uint8_t FxI4::levelFromSeed(const uint8_t band) {
@@ -473,8 +474,7 @@ void FxI4::setup() {
     baseHue = random8();
 
     // Decide segment count based on strip size if needed
-    const uint16_t n = tpl.size();
-    if (n >= 90) segments = 12;
+    if (const uint16_t n = tpl.size(); n >= 90) segments = 12;
     else if (n >= 60) segments = 10;
     else if (n >= 40) segments = 8;
     else if (n >= 20) segments = 6;
