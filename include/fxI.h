@@ -81,7 +81,7 @@ namespace FxI {
         // configuration
         constexpr static auto seedFile = "/ext/fx/fxi4_seed.txt"; // text file with integers [0..255] separated by comma/space/newline
         uint8_t segments = 8;                      // number of VU segments across the strip
-        uint8_t smoothing = 32;                    // IIR smoothing factor (higher = smoother)
+        uint8_t smoothing = 255;                    // IIR smoothing factor (higher = smoother)
         uint16_t segmentGap = 1;                   // pixels gap between segments
         uint16_t frameMs = 40;                     // update interval in milliseconds (~25 FPS)
         uint16_t peakHoldMs = 250;                 // peak hold duration per segment
