@@ -473,12 +473,8 @@ void FxI4::setup() {
     LedEffect::setup();
     baseHue = random8();
 
-    // Decide segment count based on strip size if needed
-    if (const uint16_t n = tpl.size(); n >= 90) segments = 12;
-    else if (n >= 60) segments = 10;
-    else if (n >= 40) segments = 8;
-    else if (n >= 20) segments = 6;
-    else segments = 4;
+    // Decide segment count based on strip size if needed - 4 longer segments are better though
+    segments = 4;
 
     hist.assign(segments, 0);
     peaks.assign(segments, 0);
