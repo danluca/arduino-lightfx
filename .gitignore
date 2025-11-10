@@ -6,3 +6,6 @@ CMakeListsPrivate.txt
 cmake-build-*/ 
 secrets.h
 www/*.json
+scripts/
+!scripts/*.py
+!scripts/*.sh

@@ -478,17 +478,16 @@ static String normalizePath(String p) {
 }
 
 static bool ensureParentDirs(const String &filePath) {
-    int lastSlash = filePath.lastIndexOf('/');
+    const int lastSlash = filePath.lastIndexOf('/');
     if (lastSlash <= 0) return true; // root or no dir
-    String dir = filePath.substring(0, lastSlash);
+    const String dir = filePath.substring(0, lastSlash);
     // build progressively
     String cur;
     int start = 0;
     while (start < dir.length()) {
         int slash = dir.indexOf('/', start);
         if (slash < 0) slash = dir.length();
-        String part = dir.substring(start, slash);
-        if (part.length() > 0) {
+        if (String part = dir.substring(start, slash); part.length() > 0) {
             cur += "/";
             cur += part;
             // try to create; ignore failure (may already exist)

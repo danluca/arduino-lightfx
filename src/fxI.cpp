@@ -404,7 +404,10 @@ FxI4::FxI4() : LedEffect(fxi4Desc) {}
 void FxI4::loadSeedFromFile() {
     seed.clear();
     auto* content = new String();   //allocate on the heap, potentially large file size
-    if (const size_t sz = SyncFsImpl.readFile(seedFile, content); sz == 0 || content->length() == 0) {
+    String seedFile(seedFiles_prefix);
+    seedFile += (random8() % 4 + 1);
+    seedFile += seedFile_extension;
+    if (const size_t sz = SyncFsImpl.readFile(seedFile.c_str(), content); sz == 0 || content->length() == 0) {
         log_warn(F("FxI4: seed file '%s' not found or empty. Using pseudo-random seed."), seedFile);
         // Fill with a pseudo-random envelope so the effect still works
         seed.reserve(1024);
