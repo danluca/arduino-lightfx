@@ -128,8 +128,8 @@ namespace FxI {
         // palette motion
         uint8_t seaHueBase = 0;          // base index for sea color from targetPalette
 
-        void drawSeaBackground();
-        void drawSwell(uint16_t center, uint16_t width, uint8_t crestBri, int8_t dirSign);
+        void drawSeaBackground() const;
+        void drawSwell(uint16_t center, uint16_t width, uint8_t crestBri, int8_t dirSign) const;
         void drawFoamAtShore(uint8_t level);
     };
 

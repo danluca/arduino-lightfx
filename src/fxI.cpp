@@ -565,6 +565,7 @@ void FxI4::run() {
         drawSegments();
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
+        speed.setPeriod(frameMs);
     }
 }
 
@@ -591,7 +592,7 @@ void FxI5::setup() {
     tpl.fill_solid(BKG);
 }
 
-void FxI5::drawSeaBackground() {
+void FxI5::drawSeaBackground() const {
     const uint16_t n = tpl.size();
     if (!n) return;
     // Dim base using palette hues; darker near shore (index 0), slightly brighter offshore
@@ -603,11 +604,11 @@ void FxI5::drawSeaBackground() {
     }
 }
 
-void FxI5::drawSwell(const uint16_t center, const uint16_t width, const uint8_t crestBri, const int8_t dirSign) {
+void FxI5::drawSwell(const uint16_t center, const uint16_t width, const uint8_t crestBri, const int8_t dirSign) const {
     const uint16_t n = tpl.size();
     if (!n || width == 0) return;
     const int16_t half = width / 2;
-    const int16_t c = (int16_t)center;
+    const auto c = (int16_t)center;
     // Draw a soft bell curve; add cool tint from palette and a whitecap at crest
     for (int16_t dx = -half; dx <= half; ++dx) {
         const int16_t pos = c + dx;
@@ -653,8 +654,7 @@ void FxI5::run() {
         }
 
         // Impact at shore triggers foam and backwash
-        const bool impact = (swellPos <= swellWidth / 2);
-        if (impact) {
+        if (swellPos <= swellWidth / 2) {
             foamLevel = qadd8(foamLevel, 140);
             if (!backwashActive) {
                 backwashActive = true;
@@ -689,7 +689,7 @@ void FxI5::run() {
         if (swellPos == 0) {
             // Start a new swell from offshore with slight randomness
             {
-                uint16_t base = (uint16_t)(n / 10u + random8(0, 6));
+                auto base = (uint16_t)(n / 10u + random8(0, 6));
                 if (base < 6) base = 6;
                 if (base > 24) base = 24;
                 swellWidth = base;
@@ -700,6 +700,8 @@ void FxI5::run() {
 
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
+        // constant frame rate, or opportunity to modify it
+        tmr.setPeriod(40);
     }
 }
 
