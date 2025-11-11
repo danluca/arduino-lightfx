@@ -17,6 +17,7 @@ constexpr auto fxi1Desc PROGMEM = "FXI1: Ping Pong";
 constexpr auto fxi2Desc PROGMEM = "FXI2: Pacifica - gentle ocean waves";
 constexpr auto fxi3Desc PROGMEM = "FXI3: Bouncy Ball";
 constexpr auto fxi4Desc PROGMEM = "FXI4: Audio-seeded VU meter";
+constexpr auto fxi5Desc PROGMEM = "FXI5: Shore waves with backwash";
 
 /**
  * Register FxI effects
@@ -26,6 +27,7 @@ void FxI::fxRegister() {
     new FxI2();
     new FxI3();
     new FxI4();
+    new FxI5();
 }
 
 //FXI1
@@ -567,3 +569,138 @@ void FxI4::run() {
 }
 
 uint8_t FxI4::selectionWeight() const { return 12; }
+
+// FXI5 - Shoreline waves: approaching swell, shore whitecaps, and a backwash
+FxI5::FxI5() : LedEffect(fxi5Desc) {}
+
+void FxI5::setup() {
+    LedEffect::setup();
+    seaHueBase = random8();
+    foamLevel = 0;
+    backwashActive = false;
+    const uint16_t n = tpl.size();
+    {
+        uint16_t base = (n / 10u);
+        if (base < 6) base = 6;
+        if (base > 20) base = 20;
+        swellWidth = base;
+    }
+    backwashWidth = max<uint16_t>(5, swellWidth - 3);
+    swellPos = n ? (n - 1 + swellWidth) : 0; // start off-screen to the right
+    backwashPos = 0;
+    tpl.fill_solid(BKG);
+}
+
+void FxI5::drawSeaBackground() {
+    const uint16_t n = tpl.size();
+    if (!n) return;
+    // Dim base using palette hues; darker near shore (index 0), slightly brighter offshore
+    for (uint16_t i = 0; i < n; ++i) {
+        const uint8_t depth = scale8((uint8_t)((uint32_t)i * 255 / max<uint16_t>(1, n - 1)), 200);
+        const uint8_t bri = 4 + scale8(depth, 24); // 4..28
+        const uint8_t idx = seaHueBase + scale8(i, 3); // slow gradient along strip
+        tpl[i] = ColorFromPalette(targetPalette, idx, bri, LINEARBLEND);
+    }
+}
+
+void FxI5::drawSwell(const uint16_t center, const uint16_t width, const uint8_t crestBri, const int8_t dirSign) {
+    const uint16_t n = tpl.size();
+    if (!n || width == 0) return;
+    const int16_t half = width / 2;
+    const int16_t c = (int16_t)center;
+    // Draw a soft bell curve; add cool tint from palette and a whitecap at crest
+    for (int16_t dx = -half; dx <= half; ++dx) {
+        const int16_t pos = c + dx;
+        if (pos < 0 || pos >= (int16_t)n) continue;
+        // Parabolic falloff 1 - (x/w)^2
+        const int16_t adx = abs(dx);
+        const uint8_t base = qsub8(255, scale8((uint8_t)((uint32_t)adx * 255 / max<int16_t>(1, half)), (uint8_t)((uint32_t)adx * 255 / max<int16_t>(1, half))));
+        const uint8_t bri = scale8(base, crestBri);
+        const uint8_t hueOfs = (dirSign < 0 ? 12 : 4);
+        const CRGB sea = ColorFromPalette(targetPalette, seaHueBase + hueOfs + (uint8_t)(dx * 2), bri, LINEARBLEND);
+        tpl[(uint16_t)pos] += sea;
+        // Whitecap within inner third
+        if ((uint16_t)adx <= max<uint16_t>(1, width / 6)) {
+            const uint8_t wcap = scale8(255 - (uint8_t)((uint32_t)adx * 255 / max<uint16_t>(1, width / 6)), crestBri);
+            tpl[(uint16_t)pos] += CRGB(wcap, wcap, wcap);
+        }
+    }
+}
+
+void FxI5::drawFoamAtShore(const uint8_t level) {
+    if (level == 0) return;
+    const uint16_t n = tpl.size();
+    if (!n) return;
+    const uint16_t span = max<uint16_t>(2, min<uint16_t>(n / 12, 16));
+    for (uint16_t i = 0; i < span; ++i) {
+        const uint8_t atten = 255 - (uint8_t)((uint32_t)i * 255 / span);
+        const uint8_t bri = scale8(level, atten);
+        tpl[i] += CRGB(bri, bri, bri);
+    }
+}
+
+void FxI5::run() {
+    EVERY_N_MILLISECONDS_I(tmr, 40) {
+        const uint16_t n = tpl.size();
+        if (!n) return;
+
+        // Base sea each frame
+        drawSeaBackground();
+
+        // Move swell towards shore
+        if (swellPos > 0) {
+            swellPos = (swellPos > 0 ? swellPos - 1 : 0);
+        }
+
+        // Impact at shore triggers foam and backwash
+        const bool impact = (swellPos <= swellWidth / 2);
+        if (impact) {
+            foamLevel = qadd8(foamLevel, 140);
+            if (!backwashActive) {
+                backwashActive = true;
+                backwashPos = min<uint16_t>(swellWidth / 2 + 1, n / 8);
+            }
+        }
+
+        // Draw approaching swell (if still on strip or slightly off to right)
+        if (swellPos < n + swellWidth) {
+            const uint16_t center = swellPos;
+            drawSwell(center, swellWidth, 160, -1);
+        }
+
+        // Backwash recedes from shore briefly
+        if (backwashActive) {
+            drawSwell(backwashPos, backwashWidth, 80, +1);
+            // advance and fade out
+            if (millis() - lastTick > backwashPeriodMs) {
+                lastTick = millis();
+                backwashPos = (uint16_t)(backwashPos + 1);
+                if (backwashPos >= min<uint16_t>(n / 3, (uint16_t)(swellWidth * 3))) {
+                    backwashActive = false;
+                }
+            }
+        }
+
+        // Shore foam fade
+        drawFoamAtShore(foamLevel);
+        foamLevel = qsub8(foamLevel, 18);
+
+        // Re-spawn swell after it fully passed the shore
+        if (swellPos == 0) {
+            // Start a new swell from offshore with slight randomness
+            {
+                uint16_t base = (uint16_t)(n / 10u + random8(0, 6));
+                if (base < 6) base = 6;
+                if (base > 24) base = 24;
+                swellWidth = base;
+            }
+            swellPos = n - 1 + swellWidth + random8(6, 20);
+            seaHueBase += random8(3, 9); // slow color drift
+        }
+
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+}
+
+uint8_t FxI5::selectionWeight() const { return 10; }

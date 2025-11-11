@@ -100,5 +100,38 @@ namespace FxI {
         uint8_t baseHue = 0;                       // base hue offset to drift colors
     };
 
+    // FXI5: Shoreline waves with whitecaps and backwash
+    class FxI5 : public LedEffect {
+    public:
+        FxI5();
+        void setup() override;
+        void run() override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
+
+    private:
+        // main swell moving towards shore (index 0)
+        uint16_t swellPos = 0;           // current center position of approaching wave
+        uint16_t swellWidth = 12;        // visual width of the crest
+        uint16_t swellPeriodMs = 18;     // movement tick
+        int8_t   swellDir = -1;          // -1 moves to shore (left)
+
+        // foam at shore upon impact
+        uint8_t foamLevel = 0;           // 0..255 fade for whitecaps at shore
+        uint32_t lastTick = 0;           // timing accumulator
+
+        // brief backwash after impact: a dim wave receding from shore
+        bool backwashActive = false;
+        uint16_t backwashPos = 0;        // center of backwash wave
+        uint16_t backwashWidth = 9;
+        uint16_t backwashPeriodMs = 28;
+
+        // palette motion
+        uint8_t seaHueBase = 0;          // base index for sea color from targetPalette
+
+        void drawSeaBackground();
+        void drawSwell(uint16_t center, uint16_t width, uint8_t crestBri, int8_t dirSign);
+        void drawFoamAtShore(uint8_t level);
+    };
+
 }
 #endif //ARDUINO_LIGHTFX_FXI_H
