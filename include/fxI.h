@@ -66,7 +66,7 @@ namespace FxI {
     };
 
     // FXI4: Audio-seeded VU segments
-    class FxI4 : public LedEffect {
+    class FxI4 final : public LedEffect {
     public:
         FxI4();
         void setup() override;
@@ -101,7 +101,7 @@ namespace FxI {
     };
 
     // FXI5: Shoreline waves with whitecaps and backwash
-    class FxI5 : public LedEffect {
+    class FxI5 final : public LedEffect {
     public:
         FxI5();
         void setup() override;
@@ -112,8 +112,6 @@ namespace FxI {
         // main swell moving towards shore (index 0)
         uint16_t swellPos = 0;           // current center position of approaching wave
         uint16_t swellWidth = 12;        // visual width of the crest
-        uint16_t swellPeriodMs = 18;     // movement tick
-        int8_t   swellDir = -1;          // -1 moves to shore (left)
 
         // foam at shore upon impact
         uint8_t foamLevel = 0;           // 0..255 fade for whitecaps at shore
@@ -128,9 +126,29 @@ namespace FxI {
         // palette motion
         uint8_t seaHueBase = 0;          // base index for sea color from targetPalette
 
-        void drawSeaBackground() const;
-        void drawSwell(uint16_t center, uint16_t width, uint8_t crestBri, int8_t dirSign) const;
+        // "sea shore" size
+        static constexpr uint8_t frameSize = 30;
+        CRGBSet frame;
+        CRGBSet rest;
+
+        // Beach section near the shore (index 0)
+        static constexpr uint8_t kBeachMin = 5;
+        static constexpr uint8_t kBeachMax = 10;   // request: 5-10 pixels
+        uint8_t beachLen = kBeachMin;              // actual beach length used
+        uint8_t beachDryRate = 3;                  // per-frame dry decay
+        uint8_t beachWetBoost = 120;               // wetness added on impact (peak)
+        uint8_t beachWashDepth = 6;                // how deep the wave wets the beach (clamped to beachLen)
+        uint8_t beachHueDryOfs = 40;               // palette hue offset for dry sand
+        uint8_t beachHueWetOfs = 20;               // palette hue offset for wet sand
+        uint8_t beachBriDry = 26;                  // brightness for dry sand
+        uint8_t beachBriWet = 40;                  // brightness for wet sand
+        uint8_t beachWet[ kBeachMax ]{};           // per-pixel wetness 0..255
+
+        void drawSeaBackground();
+        void drawSwell(uint16_t center, uint16_t width, uint8_t crestBri, int8_t dirSign);
         void drawFoamAtShore(uint8_t level);
+        void drawBeach();
+        void updateBeachWetness(bool impactNow);
     };
 
 }
