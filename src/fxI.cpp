@@ -643,11 +643,11 @@ void FxI5::drawSwell(const uint16_t center, const uint16_t width, const uint8_t 
 void FxI5::drawFoamAtShore(const uint8_t level) {
     if (level == 0) return;
     const uint16_t n = frame.size();
-    const uint16_t span = max<uint16_t>(2, min<uint16_t>(n / 12, 16));
+    const uint16_t span = min<uint16_t>(beachLen, max<uint16_t>(2, min<uint16_t>(n / 12, 16)));
     for (uint16_t i = 0; i < span; ++i) {
         const uint8_t atten = 255 - (uint8_t)((uint32_t)i * 255 / span);
         const uint8_t bri = scale8(level, atten);
-        frame[i] += CRGB(bri, bri, bri);
+        frame[beachLen - i -1] += CRGB(bri, bri, bri);
     }
 }
 
@@ -797,7 +797,7 @@ void FxI5::run() {
             swellPos = n - 1 + swellWidth + random8(6, 20);
             seaHueBase += random8(3, 9); // slow color drift
             // constant frame rate, or opportunity to modify it
-            tmr.setPeriod(30 + random8(0, 20));
+            tmr.setPeriod(30 + random8(0, 30));
         }
         replicateSet(frame, rest);
         FastLED.show(stripBrightness);
