@@ -112,6 +112,8 @@ namespace FxI {
         // main swell moving towards shore (index 0)
         uint16_t swellPos = 0;           // current center position of approaching wave
         uint16_t swellWidth = 12;        // visual width of the crest
+        bool swellCrashed = false;       // true while the swell is breaking at the shoreline
+        uint8_t crashHold = 0;           // short hold to emulate the breaking crest
 
         // foam at shore upon impact
         uint8_t foamLevel = 0;           // 0..255 fade for whitecaps at shore
@@ -127,7 +129,7 @@ namespace FxI {
         uint8_t seaHueBase = 0;          // base index for sea color from targetPalette
 
         // "sea shore" size
-        static constexpr uint8_t frameSize = 30;
+        static constexpr uint8_t frameSize = 40;
         CRGBSet frame;
         CRGBSet rest;
 
@@ -149,6 +151,7 @@ namespace FxI {
         void drawFoamAtShore(uint8_t level);
         void drawBeach();
         void updateBeachWetness(bool impactNow);
+        void drawSplash(uint8_t intensity); // brief spray at the shoreline when crashing
     };
 
 }

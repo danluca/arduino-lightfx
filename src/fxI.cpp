@@ -591,7 +591,7 @@ void FxI5::setup() {
     swellPos = n ? (n - 1 + swellWidth) : 0; // start off-screen to the right
     backwashPos = 0;
     // Configure beach according to request 5-10 pixels, but never exceeding frame size
-    beachLen = (uint8_t)max<uint16_t>(kBeachMin, min<uint16_t>(kBeachMax, n));
+    beachLen = random8(kBeachMin, kBeachMax);
     beachWashDepth = min<uint8_t>(beachWashDepth, beachLen);
     // Reset wetness state
     for (unsigned char & i : beachWet) i = 0;
@@ -623,7 +623,8 @@ void FxI5::drawSwell(const uint16_t center, const uint16_t width, const uint8_t 
     // Draw a soft bell curve; add cool tint from palette and a whitecap at crest
     for (int16_t dx = -half; dx <= half; ++dx) {
         const int16_t pos = c + dx;
-        if (pos < 0 || pos >= (int16_t)n) continue;
+        // keep the moving water out of the sandy beach: never draw below beachLen
+        if (pos < (int16_t)beachLen || pos >= (int16_t)n) continue;
         // Parabolic falloff 1 - (x/w)^2
         const int16_t adx = abs(dx);
         const uint8_t base = qsub8(255, scale8((uint8_t)((uint32_t)adx * 255 / max<int16_t>(1, half)), (uint8_t)((uint32_t)adx * 255 / max<int16_t>(1, half))));
@@ -665,6 +666,27 @@ void FxI5::drawBeach() {
     }
 }
 
+void FxI5::drawSplash(const uint8_t intensity) {
+    if (intensity == 0) return;
+    const uint16_t n = frame.size();
+    if (beachLen >= n) return;
+    // spray into the first few water pixels and a touch on the last beach pixel
+    const uint16_t seaSpan = max<uint16_t>(2, min<uint16_t>(n / 16, 8));
+    const uint8_t beachTouch = beachLen ? (uint8_t)1 : (uint8_t)0;
+
+    // brighten last beach pixel to mimic splash wetting
+    if (beachTouch) {
+        uint8_t bri = scale8(intensity, 200);
+        frame[beachLen - 1] += CRGB(bri, bri, bri);
+    }
+    // sea side spray with quick fade out
+    for (uint16_t i = 0; i < seaSpan && (beachLen + i) < n; ++i) {
+        const uint8_t atten = 255 - (uint8_t)((uint32_t)i * 255 / seaSpan);
+        const uint8_t bri = scale8(intensity, atten);
+        frame[beachLen + i] += CRGB(bri, bri, bri);
+    }
+}
+
 void FxI5::updateBeachWetness(const bool impactNow) {
     if (beachLen == 0) return;
     const uint8_t len = beachLen;
@@ -697,29 +719,53 @@ void FxI5::run() {
         // Base sea each frame
         drawSeaBackground();
 
-        // Move swell towards shore
-        if (swellPos > 0) {
-            swellPos = (swellPos > 0 ? swellPos - 1 : 0);
-        }
-
-        // Impact at shore triggers foam and backwash
-        const bool impact = (swellPos <= swellWidth / 2);
-        if (impact) {
-            foamLevel = qadd8(foamLevel, 140);
-            if (!backwashActive) {
-                backwashActive = true;
-                backwashPos = min<uint16_t>(swellWidth / 2 + 1, n / 8);
+        // Move swell towards shore until it reaches the waterline (left edge of sea at index beachLen)
+        const uint16_t crestHalf = (swellWidth / 2);
+        const uint16_t waterline = beachLen; // first sea pixel
+        if (!swellCrashed) {
+            if (swellPos > 0) {
+                // compute leading edge position
+                uint16_t leadingEdge = (swellPos > crestHalf) ? (uint16_t)(swellPos - crestHalf) : 0;
+                if (leadingEdge > waterline) {
+                    // advance normally
+                    swellPos -= 1;
+                } else {
+                    // reached the shore: crash!
+                    swellCrashed = true;
+                    crashHold = 6 + random8(0, 4); // hold crest briefly
+                    foamLevel = qadd8(foamLevel, 160);
+                    if (!backwashActive) {
+                        backwashActive = true;
+                        backwashPos = waterline + min<uint16_t>(crestHalf + 1, n / 8);
+                    }
+                }
+            }
+        } else {
+            // keep crest right at the shoreline during crash
+            swellPos = waterline + crestHalf;
+            if (crashHold > 0) crashHold--; else {
+                swellCrashed = false;
+                // drop the swell so we can respawn
+                swellPos = 0;
             }
         }
+
+        // Consider impact state for beach wetness and splash this frame
+        const bool impact = swellCrashed;
 
         // Update beach wetness and draw beach after base sea
         updateBeachWetness(impact);
         drawBeach();
 
         // Draw approaching swell (if still on strip or slightly off to right)
-        if (swellPos < n + swellWidth) {
+        if (swellPos < n + swellWidth && !swellCrashed) {
             const uint16_t center = swellPos;
             drawSwell(center, swellWidth, 160, -1);
+        }
+        // Draw the breaking crest frozen at shoreline while crashing
+        if (swellCrashed) {
+            drawSwell(waterline + crestHalf, swellWidth, 200, -1);
+            drawSplash(foamLevel);
         }
 
         // Backwash recedes from shore briefly
@@ -729,7 +775,7 @@ void FxI5::run() {
             if (millis() - lastTick > backwashPeriodMs) {
                 lastTick = millis();
                 backwashPos = (uint16_t)(backwashPos + 1);
-                if (backwashPos >= min<uint16_t>(n / 3, (uint16_t)(swellWidth * 3))) {
+                if (backwashPos >= waterline + min<uint16_t>(n / 3, (uint16_t)(swellWidth * 3))) {
                     backwashActive = false;
                 }
             }
@@ -740,7 +786,7 @@ void FxI5::run() {
         foamLevel = qsub8(foamLevel, 18);
 
         // Re-spawn swell after it fully passed the shore
-        if (swellPos == 0) {
+        if (swellPos == 0 && !swellCrashed) {
             // Start a new swell from offshore with slight randomness
             {
                 auto base = (uint16_t)(n / 10u + random8(0, 6));
@@ -750,11 +796,11 @@ void FxI5::run() {
             }
             swellPos = n - 1 + swellWidth + random8(6, 20);
             seaHueBase += random8(3, 9); // slow color drift
+            // constant frame rate, or opportunity to modify it
+            tmr.setPeriod(30 + random8(0, 20));
         }
         replicateSet(frame, rest);
         FastLED.show(stripBrightness);
-        // constant frame rate, or opportunity to modify it
-        tmr.setPeriod(30 + random8(0, 20));
     }
 }
 
