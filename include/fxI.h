@@ -63,6 +63,9 @@ namespace FxI {
         uint8_t loss{};     // bounce energy loss (0..255), e.g., 200 = ~78%
         bool dirRight{};    // initial direction
         uint8_t sparkTicks{}; // brief flash on bounce
+        // drop/bounce lifecycle
+        bool settled{};           // true when ball has come to rest on the floor
+        uint16_t restHold{};      // frames to hold the settled state before restarting
     };
 
     // FXI4: Audio-seeded VU segments

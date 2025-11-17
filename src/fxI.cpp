@@ -295,7 +295,7 @@ uint8_t FxI2::selectionWeight() const {
     return 9;
 }
 
-//FXI3 - Bouncy Ball
+//FXI3 - Bouncy Ball (vertical drop with damped bounces)
 FxI3::FxI3() : LedEffect(fxi3Desc) {}
 
 void FxI3::setup() {
@@ -305,90 +305,128 @@ void FxI3::setup() {
     const CRGB bg = ColorFromPalette(targetPalette, bgIdx, 6, LINEARBLEND);
     tpl.fill_solid(bg);
 
-    // Physics init
-    const uint16_t maxIdx = tpl.size() > 0 ? tpl.size() - 1 : 0;
+    // Physics init for vertical drop: start near the top, fall toward floor at index 0
+    const uint16_t size = tpl.size();
+    const uint16_t maxIdx = size > 0 ? (uint16_t)(size - 1) : 0;
     const int32_t maxPos = static_cast<int32_t>(maxIdx) * 256;
-    pos256 = (random16(maxIdx + 1) * 256);
-    dirRight = random8() & 0x01;
-    vel256 = dirRight ? (random16(60, 220)) : -(int32_t)random16(60, 220); // initial speed
-    gravity = random8(12, 40);            // pull per tick
-    loss = random8(180, 230);             // 70%..90% energy retained on bounce
-    trail = random8(3, 7);                // glow radius
-    fadeAmt = random8(40, 80);            // trail fade amount
+    pos256 = maxPos;
+    vel256 = 0;                            // start from rest
+    gravity = -(int16_t)random8(18, 40);   // downward pull per tick (toward index 0)
+    loss = random8(168, 215);              // energy retained on bounce (~66%..84%)
+    trail = random8(3, 7);                 // glow radius
+    fadeAmt = random8(40, 80);             // trail fade amount
     hueIdx = random8();
     sparkTicks = 0;
+    settled = false;
+    restHold = 0;
 }
 
 void FxI3::run() {
     EVERY_N_MILLISECONDS_I(speed, 18) {
-        // Fade and slight blur for glow trail
-        tpl.fadeToBlackBy(fadeAmt);
-        tpl.blur1d(48);
-
-        // Physics update
-        vel256 += (dirRight ? gravity : -gravity);
-        pos256 += vel256;
-
         const uint16_t size = tpl.size();
         if (size == 0) return;
         const int32_t maxPos = static_cast<int32_t>(size - 1) * 256;
 
-        bool bounced = false;
-        if (pos256 < 0) {
-            pos256 = 0;
-            vel256 = -((int32_t)scale8((uint32_t)(vel256 >= 0 ? vel256 : -vel256), loss));
-            dirRight = true;
-            bounced = true;
-        } else if (pos256 > maxPos) {
-            pos256 = maxPos;
-            vel256 = (int32_t)scale8((uint32_t)(vel256 >= 0 ? vel256 : -vel256), loss);
-            vel256 = -vel256;
-            dirRight = false;
-            bounced = true;
+        // Fade and slight blur for glow trail
+        tpl.fadeToBlackBy(fadeAmt);
+        tpl.blur1d(48);
+
+        // If settled, hold a dim resting ball at the floor then restart
+        if (settled) {
+            if (restHold > 0) restHold--;
+            // draw a very dim dot at the floor (index 0)
+            const CRGB restCol = ColorFromPalette(palette, hueIdx, 40, LINEARBLEND);
+            if (size > 0) tpl[0] += restCol;
+
+            if (restHold == 0) {
+                // restart a new drop
+                pos256 = maxPos;
+                vel256 = 0;
+                gravity = -(int16_t)random8(18, 40);
+                loss = random8(168, 215);
+                trail = random8(3, 7);
+                fadeAmt = random8(40, 80);
+                hueIdx += random8(10, 25);
+                sparkTicks = 0;
+                settled = false;
+                speed.setPeriod(random8(18, 36));
+            }
+        } else {
+            // Physics update: fall toward floor (index 0)
+            vel256 += gravity;
+            pos256 += vel256;
+
+            bool bounced = false;
+            // Floor collision
+            if (pos256 <= 0) {
+                pos256 = 0;
+                // reflect velocity and apply energy loss
+                int32_t vabs = vel256 >= 0 ? vel256 : -vel256;
+                vabs = (int32_t)scale8((uint32_t)vabs, loss);
+                vel256 = (int32_t)vabs; // now upward (positive)
+                bounced = true;
+
+                // Stop if energy is too low
+                if (vel256 < 40) { // threshold ~0.16 pixel/tick
+                    vel256 = 0;
+                    settled = true;
+                    restHold = random16(500 / 18, 1200 / 18); // ~0.5s..1.2s worth of frames at 18ms
+                }
+            }
+            // Prevent going above the top by clamping at maxPos (no ceiling bounce)
+            if (pos256 > maxPos) {
+                pos256 = maxPos;
+                if (vel256 > 0) vel256 = (vel256 >> 2); // damp if overshoot
+            }
+
+            if (bounced && !settled) {
+                sparkTicks = 2;
+                hueIdx += random8(8, 20); // slight color shift on bounce
+            }
+
+            // Draw bright core with glow using palette, brightness scales with speed
+            const uint16_t center = static_cast<uint16_t>(pos256 >> 8);
+            const uint8_t frac = static_cast<uint8_t>(pos256 & 0xFF);
+
+            // speed-based brightness
+            uint32_t spd = (uint32_t)(vel256 >= 0 ? vel256 : -vel256);
+            spd = min<uint32_t>(spd, 512); // cap
+            const uint8_t coreBri = qadd8(80, scale8((uint8_t)min<uint32_t>(255, spd), 180));
+            const CRGB coreCol = ColorFromPalette(palette, hueIdx, coreBri, LINEARBLEND);
+
+            if (center < size) {
+                const uint8_t briL = 255 - frac;
+                const uint8_t briR = frac;
+                CRGB leftPix = coreCol; leftPix.nscale8_video(briL);
+                tpl[center] += leftPix;
+                if (center + 1 < size) { CRGB rightPix = coreCol; rightPix.nscale8_video(briR); tpl[center + 1] += rightPix; }
+            }
+
+            // Radial trail falloff
+            const uint8_t baseGlow = 150;
+            for (uint8_t r = 1; r <= trail; ++r) {
+                const uint8_t glowBri = scale8(baseGlow, qsub8(255, r * (255 / (trail + 1))));
+                const CRGB glow = ColorFromPalette(palette, hueIdx + r * 6, glowBri, LINEARBLEND);
+                const int32_t li = (int32_t)center - r;
+                const int32_t ri = (int32_t)center + r + 1; // slight forward smear
+                if (li >= 0 && (uint16_t)li < size) tpl[(uint16_t)li] += glow;
+                if (ri >= 0 && (uint16_t)ri < size) tpl[(uint16_t)ri] += glow;
+            }
+
+            // Brief spark/flash on bounce for eye-catching pop
+            if (sparkTicks > 0) {
+                sparkTicks--;
+                const uint8_t flashBri = 180;
+                const CRGB flash = CHSV(hueIdx, 40, 255) + CRGB(flashBri, flashBri, flashBri);
+                const uint16_t c = (uint16_t)(pos256 >> 8);
+                if (c < size) tpl[c] = tpl[c] + flash;
+                if (c > 0) tpl[c - 1] += flash;
+                if (c + 1 < size) tpl[c + 1] += flash;
+            }
         }
 
-        if (bounced) {
-            sparkTicks = 3;
-            hueIdx += random8(12, 28); // shift color on bounce
-        }
-
-        // Draw bright core with glow using palette
-        const uint16_t center = static_cast<uint16_t>(pos256 >> 8);
-        const uint8_t frac = static_cast<uint8_t>(pos256 & 0xFF);
-        const CRGB core = ColorFromPalette(palette, hueIdx, 255, LINEARBLEND);
-
-        // Cross-fade between two adjacent pixels based on fractional position
-        if (center < size) {
-            const uint8_t briL = 255 - frac;
-            const uint8_t briR = frac;
-            CRGB leftPix = core; leftPix.nscale8_video(briL);
-            tpl[center] += leftPix;
-            if (center + 1 < size) { CRGB rightPix = core; rightPix.nscale8_video(briR); tpl[center + 1] += rightPix; }
-        }
-
-        // Radial trail falloff
-        const uint8_t baseGlow = 160;
-        for (uint8_t r = 1; r <= trail; ++r) {
-            const uint8_t glowBri = scale8(baseGlow, qsub8(255, r * (255 / (trail + 1))));
-            const CRGB glow = ColorFromPalette(palette, hueIdx + r * 6, glowBri, LINEARBLEND);
-            const int32_t li = (int32_t)center - r;
-            const int32_t ri = (int32_t)center + r + 1; // account for subpixel leaning to the right
-            if (li >= 0 && (uint16_t)li < size) tpl[(uint16_t)li] += glow;
-            if (ri >= 0 && (uint16_t)ri < size) tpl[(uint16_t)ri] += glow;
-        }
-
-        // Brief spark/flash on bounce for eye-catching pop
-        if (sparkTicks > 0) {
-            sparkTicks--;
-            const uint8_t flashBri = 200;
-            const CRGB flash = CHSV(hueIdx, 40, 255) + CRGB(flashBri, flashBri, flashBri);
-            const uint16_t c = center;
-            if (c < size) tpl[c] = tpl[c] + flash;
-            if (c > 0) tpl[c - 1] += flash;
-            if (c + 1 < size) tpl[c + 1] += flash;
-        }
-
-        hueIdx += 2; // gentle hue drift
+        // Gentle hue drift overall
+        hueIdx += 1;
 
         // Output
         replicateSet(tpl, others);
