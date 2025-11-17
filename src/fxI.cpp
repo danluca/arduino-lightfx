@@ -311,8 +311,8 @@ void FxI3::setup() {
     const int32_t maxPos = static_cast<int32_t>(maxIdx) * 256;
     pos256 = maxPos;
     vel256 = 0;                            // start from rest
-    gravity = -(int16_t)random8(18, 40);   // downward pull per tick (toward index 0)
-    loss = random8(168, 215);              // energy retained on bounce (~66%..84%)
+    gravity = -(int16_t)random8(12, 26);   // downward pull per tick (toward index 0) — lighter to allow higher bounces
+    loss = random8(205, 240);              // energy retained on bounce (~80%..94%) for clearer subsequent bounces
     trail = random8(3, 7);                 // glow radius
     fadeAmt = random8(40, 80);             // trail fade amount
     hueIdx = random8();
@@ -324,7 +324,6 @@ void FxI3::setup() {
 void FxI3::run() {
     EVERY_N_MILLISECONDS_I(speed, 18) {
         const uint16_t size = tpl.size();
-        if (size == 0) return;
         const int32_t maxPos = static_cast<int32_t>(size - 1) * 256;
 
         // Fade and slight blur for glow trail
@@ -336,14 +335,14 @@ void FxI3::run() {
             if (restHold > 0) restHold--;
             // draw a very dim dot at the floor (index 0)
             const CRGB restCol = ColorFromPalette(palette, hueIdx, 40, LINEARBLEND);
-            if (size > 0) tpl[0] += restCol;
+            tpl[0] += restCol;
 
             if (restHold == 0) {
                 // restart a new drop
                 pos256 = maxPos;
                 vel256 = 0;
-                gravity = -(int16_t)random8(18, 40);
-                loss = random8(168, 215);
+                gravity = -(int16_t)random8(12, 26);
+                loss = random8(205, 240);
                 trail = random8(3, 7);
                 fadeAmt = random8(40, 80);
                 hueIdx += random8(10, 25);
@@ -363,14 +362,18 @@ void FxI3::run() {
                 // reflect velocity and apply energy loss
                 int32_t vabs = vel256 >= 0 ? vel256 : -vel256;
                 vabs = (int32_t)scale8((uint32_t)vabs, loss);
-                vel256 = (int32_t)vabs; // now upward (positive)
-                bounced = true;
 
-                // Stop if energy is too low
-                if (vel256 < 40) { // threshold ~0.16 pixel/tick
+                // Ensure at least a small visible hop, otherwise settle
+                const int32_t kMinRebound = 64;   // ~0.25 px/tick
+                const int32_t kSettleThresh = 28; // ~0.11 px/tick
+                if (vabs < kSettleThresh) {
                     vel256 = 0;
                     settled = true;
                     restHold = random16(500 / 18, 1200 / 18); // ~0.5s..1.2s worth of frames at 18ms
+                } else {
+                    if (vabs < kMinRebound) vabs = kMinRebound;
+                    vel256 = vabs; // now upward (positive)
+                    bounced = true;
                 }
             }
             // Prevent going above the top by clamping at maxPos (no ceiling bounce)
@@ -391,7 +394,7 @@ void FxI3::run() {
             // speed-based brightness
             uint32_t spd = (uint32_t)(vel256 >= 0 ? vel256 : -vel256);
             spd = min<uint32_t>(spd, 512); // cap
-            const uint8_t coreBri = qadd8(80, scale8((uint8_t)min<uint32_t>(255, spd), 180));
+            const uint8_t coreBri = qadd8(110, scale8((uint8_t)min<uint32_t>(255, spd), 160));
             const CRGB coreCol = ColorFromPalette(palette, hueIdx, coreBri, LINEARBLEND);
 
             if (center < size) {
