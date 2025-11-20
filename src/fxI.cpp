@@ -311,8 +311,10 @@ void FxI3::setup() {
     const int32_t maxPos = static_cast<int32_t>(maxIdx) * 256;
     pos256 = maxPos;
     vel256 = 0;                            // start from rest
-    gravity = -(int16_t)random8(12, 26);   // downward pull per tick (toward index 0) — lighter to allow higher bounces
-    loss = random8(205, 240);              // energy retained on bounce (~80%..94%) for clearer subsequent bounces
+    gravity = -(int16_t)random8(12, 26);   // downward pull per tick (toward index 0)
+    // Target ~3/4 height on rebound: e ≈ sqrt(0.75) ≈ 0.866 → scale8 ≈ 221
+    // Keep a narrow band around that so bounces feel natural but still high
+    loss = random8(218, 226);              // velocity retained on bounce (~0.855..0.886)
     trail = random8(3, 7);                 // glow radius
     fadeAmt = random8(40, 80);             // trail fade amount
     hueIdx = random8();
@@ -342,7 +344,8 @@ void FxI3::run() {
                 pos256 = maxPos;
                 vel256 = 0;
                 gravity = -(int16_t)random8(12, 26);
-                loss = random8(205, 240);
+                // Match initial target rebound ~3/4 height
+                loss = random8(218, 226);
                 trail = random8(3, 7);
                 fadeAmt = random8(40, 80);
                 hueIdx += random8(10, 25);
@@ -363,15 +366,14 @@ void FxI3::run() {
                 int32_t vabs = vel256 >= 0 ? vel256 : -vel256;
                 vabs = (int32_t)scale8((uint32_t)vabs, loss);
 
-                // Ensure at least a small visible hop, otherwise settle
-                const int32_t kMinRebound = 64;   // ~0.25 px/tick
-                const int32_t kSettleThresh = 28; // ~0.11 px/tick
+                // Decide whether to settle: if the post-loss velocity is too small
+                // raise the threshold a bit to avoid endless micro "ripples"
+                const int32_t kSettleThresh = 36; // ~0.14 px/tick
                 if (vabs < kSettleThresh) {
                     vel256 = 0;
                     settled = true;
                     restHold = random16(500 / 18, 1200 / 18); // ~0.5s..1.2s worth of frames at 18ms
                 } else {
-                    if (vabs < kMinRebound) vabs = kMinRebound;
                     vel256 = vabs; // now upward (positive)
                     bounced = true;
                 }
