@@ -315,7 +315,7 @@ void FxI3::setup() {
     // Target ~3/4 height on rebound: e ≈ sqrt(0.75) ≈ 0.866 → scale8 ≈ 221
     // Keep a narrow band around that so bounces feel natural but still high
     loss = random8(218, 226);              // velocity retained on bounce (~0.855..0.886)
-    trail = random8(3, 7);                 // glow radius
+    trail = random8(2, 5);                 // glow radius
     fadeAmt = random8(40, 80);             // trail fade amount
     hueIdx = random8();
     sparkTicks = 0;
@@ -364,7 +364,7 @@ void FxI3::run() {
                 pos256 = 0;
                 // reflect velocity and apply energy loss
                 int32_t vabs = vel256 >= 0 ? vel256 : -vel256;
-                vabs = (int32_t)scale8((uint32_t)vabs, loss);
+                vabs = (static_cast<uint32_t>(vabs) >> 8) * loss;
 
                 // Decide whether to settle: if the post-loss velocity is too small
                 // raise the threshold a bit to avoid endless micro "ripples"
