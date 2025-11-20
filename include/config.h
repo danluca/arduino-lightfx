@@ -53,7 +53,7 @@
 // measured resistive Vcc voltage divisor for A0 pin, in ohms
 #define VCC_DIV_R4  21950
 #define VCC_DIV_R5  3304
-#define DEVICE_NAME  "Dev"
+#define DEVICE_NAME  "Dev-Office"
 
 #endif
 
@@ -72,7 +72,7 @@
 // measured resistive Vcc voltage divisor for A0 pin, in ohms
 #define VCC_DIV_R4  21800
 #define VCC_DIV_R5  3305
-#define DEVICE_NAME  "FX01"
+#define DEVICE_NAME  "FX01-House"
 
 #endif
 
@@ -90,7 +90,7 @@
 // measured Vcc voltage divisor for A0 pin
 #define VCC_DIV_R4  19890
 #define VCC_DIV_R5  3302
-#define DEVICE_NAME  "FX02"
+#define DEVICE_NAME  "FX02-Office"
 
 #endif
 
