@@ -307,7 +307,7 @@ void FxI3::setup() {
 
     // Physics init for vertical drop: start near the top, fall toward floor at index 0
     const uint16_t size = tpl.size();
-    const uint16_t maxIdx = size > 0 ? (uint16_t)(size - 1) : 0;
+    const uint16_t maxIdx = size > 0 ? static_cast<uint16_t>(size - 1) : 0;
     const int32_t maxPos = static_cast<int32_t>(maxIdx) * 256;
     init_drop(maxPos);
     hueIdx = random8();
@@ -321,8 +321,8 @@ void FxI3::init_drop(const int32_t maxPos) {
     vel256 = 0;
     gravity = -static_cast<int16_t>(random8(12, 26)); // downward pull per tick (toward index 0)
     // Target ~3/4 height on rebound: e ≈ sqrt(0.75) ≈ 0.866 → scale8 ≈ 221
-    // Keep a narrow band around that so bounces feel natural but still high
-    loss = random8(218, 226);   // velocity retained on bounce (~0.855..0.886)
+    // Keep a narrowband around that so bounces feel natural but still high
+    loss = random8(205, 230);   // velocity retained on bounce (~0.804..0.902)
     trail = random8(2, 5);      // glow radius
     fadeAmt = random8(40, 80);  // trail fade amount
     sparkTicks = 0;
@@ -343,7 +343,7 @@ void FxI3::run() {
         // If settled, hold a dim resting ball at the floor then restart
         if (settled) {
             if (restHold > 0) restHold--;
-            // draw a very dim dot at the floor (index 0)
+            // draw a very dim dot on the floor (index 0)
             const CRGB restCol = ColorFromPalette(palette, hueIdx, 40, LINEARBLEND);
             frame[0] += restCol;
 
@@ -351,10 +351,10 @@ void FxI3::run() {
                 // restart a new drop
                 init_drop(maxPos);
                 hueIdx += random8(10, 25);
-                speed.setPeriod(random8(18, 36));
+                speed.setPeriod(random8(18, 48));
             }
         } else {
-            // Physics update: fall toward the floor (index 0)
+            // Physics update: fall towards the floor (index 0)
             vel256 += gravity;
             pos256 += vel256;
 
@@ -368,11 +368,10 @@ void FxI3::run() {
 
                 // Decide whether to settle: if the post-loss velocity is too small
                 // raise the threshold a bit to avoid endless micro "ripples"
-                const int32_t kSettleThresh = 36; // ~0.14 px/tick
-                if (vabs < kSettleThresh) {
+                if (constexpr int32_t kSettleThresh = 36; vabs < kSettleThresh) {
                     vel256 = 0;
                     settled = true;
-                    restHold = random16(500 / 18, 1200 / 18); // ~0.5s..1.2s worth of frames at 18ms
+                    restHold = random16(500 / 18, 1500 / 18); // ~0.5s..1.5s worth of frames at 18ms
                 } else {
                     vel256 = vabs; // now upward (positive)
                     bounced = true;
@@ -381,7 +380,7 @@ void FxI3::run() {
             // Prevent going above the top by clamping at maxPos (no ceiling bounce)
             if (pos256 > maxPos) {
                 pos256 = maxPos;
-                if (vel256 > 0) vel256 = (vel256 >> 2); // damp if overshoot
+                if (vel256 > 0) vel256 = (vel256 >> 1); // damp if overshoot
             }
 
             if (bounced && !settled) {
@@ -412,18 +411,18 @@ void FxI3::run() {
             for (uint8_t r = 1; r <= trail; ++r) {
                 const uint8_t glowBri = scale8(baseGlow, qsub8(255, r * (255 / (trail + 1))));
                 const CRGB glow = ColorFromPalette(palette, hueIdx + r * 6, glowBri, LINEARBLEND);
-                const int32_t li = (int32_t)center - r;
-                const int32_t ri = (int32_t)center + r + 1; // slight forward smear
-                if (li >= 0 && (uint16_t)li < size) frame[(uint16_t)li] += glow;
-                if (ri >= 0 && (uint16_t)ri < size) frame[(uint16_t)ri] += glow;
+                const int32_t li = static_cast<int32_t>(center) - r;
+                const int32_t ri = static_cast<int32_t>(center) + r + 1; // slight forward smear
+                if (li >= 0 && static_cast<uint16_t>(li) < size) frame[static_cast<uint16_t>(li)] += glow;
+                if (ri >= 0 && static_cast<uint16_t>(ri) < size) frame[static_cast<uint16_t>(ri)] += glow;
             }
 
             // Brief spark/flash on bounce for eye-catching pop
             if (sparkTicks > 0) {
                 sparkTicks--;
-                const uint8_t flashBri = 180;
+                constexpr uint8_t flashBri = 180;
                 const CRGB flash = CHSV(hueIdx, 40, 255) + CRGB(flashBri, flashBri, flashBri);
-                const uint16_t c = (uint16_t)(pos256 >> 8);
+                const auto c = static_cast<uint16_t>(pos256 >> 8);
                 if (c < size) frame[c] = frame[c] + flash;
                 if (c > 0) frame[c - 1] += flash;
                 if (c + 1 < size) frame[c + 1] += flash;
