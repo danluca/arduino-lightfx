@@ -11,11 +11,12 @@ param (
 #######################################
 ## Global
 #######################################
-$brdUri = "http://192.168.0.139"  # Default URI for Dev board
+$brdUri = "http://192.168.0.10"  # Default URI for Dev board
 switch ($board) {
-    "Tree" { $brdUri = "http://192.168.0.182"; break; }
+    "FX01" { $brdUri = "http://192.168.0.11"; break; }
     "FX02" { $brdUri = "http://192.168.0.12"; break; }
 }
+
 write-host "Board $board at $brdUri - File List`n" -ForegroundColor Yellow
 
 iwr $brdUri/files.json | select -ExpandProperty Content
