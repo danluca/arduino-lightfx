@@ -9,7 +9,7 @@ param(
     [Parameter(Mandatory=$true, ParameterSetName='Generate')]
     [int]$MaxMinutes,
     [Parameter(Mandatory=$true, ParameterSetName='Upload')]
-    [ValidateSet('Tree', 'Dev')]
+    [ValidateSet("Dev", "FX01", "FX02")]
     [string]$Board='Dev',
     [switch]$force
 )
@@ -38,8 +38,9 @@ $outFile = "fsi4_seed$Variant.txt"
 
 # Board name → URI mapping
 $boardMap = @{
-    'Tree' = 'http://192.168.0.182'
-    'Dev'  = 'http://192.168.0.139'
+    'Dev'  = 'http://192.168.0.10'
+    'FX01' = "http://192.168.0.11"
+    'FX02' = "http://192.168.0.12"
 }
 $Destination = $boardMap[$Board]
 
