@@ -309,52 +309,52 @@ void FxI3::setup() {
     const uint16_t size = tpl.size();
     const uint16_t maxIdx = size > 0 ? (uint16_t)(size - 1) : 0;
     const int32_t maxPos = static_cast<int32_t>(maxIdx) * 256;
+    init_drop(maxPos);
+    hueIdx = random8();
+    restHold = 0;
+}
+
+void FxI3::init_drop(const int32_t maxPos) {
+    // restart a new drop with a (possibly) new direction
+    dirRight = random8() & 1;
     pos256 = maxPos;
-    vel256 = 0;                            // start from rest
-    gravity = -(int16_t)random8(12, 26);   // downward pull per tick (toward index 0)
+    vel256 = 0;
+    gravity = -static_cast<int16_t>(random8(12, 26)); // downward pull per tick (toward index 0)
     // Target ~3/4 height on rebound: e ≈ sqrt(0.75) ≈ 0.866 → scale8 ≈ 221
     // Keep a narrow band around that so bounces feel natural but still high
-    loss = random8(218, 226);              // velocity retained on bounce (~0.855..0.886)
-    trail = random8(2, 5);                 // glow radius
-    fadeAmt = random8(40, 80);             // trail fade amount
-    hueIdx = random8();
+    loss = random8(218, 226);   // velocity retained on bounce (~0.855..0.886)
+    trail = random8(2, 5);      // glow radius
+    fadeAmt = random8(40, 80);  // trail fade amount
     sparkTicks = 0;
     settled = false;
-    restHold = 0;
 }
 
 void FxI3::run() {
     EVERY_N_MILLISECONDS_I(speed, 18) {
         const uint16_t size = tpl.size();
+        CRGBSet revTpl = -tpl;
         const int32_t maxPos = static_cast<int32_t>(size - 1) * 256;
 
         // Fade and slight blur for glow trail
-        tpl.fadeToBlackBy(fadeAmt);
-        tpl.blur1d(48);
+        CRGBSet &frame = dirRight ? tpl : revTpl;
+        frame.fadeToBlackBy(fadeAmt);
+        frame.blur1d(24);
 
         // If settled, hold a dim resting ball at the floor then restart
         if (settled) {
             if (restHold > 0) restHold--;
             // draw a very dim dot at the floor (index 0)
             const CRGB restCol = ColorFromPalette(palette, hueIdx, 40, LINEARBLEND);
-            tpl[0] += restCol;
+            frame[0] += restCol;
 
             if (restHold == 0) {
                 // restart a new drop
-                pos256 = maxPos;
-                vel256 = 0;
-                gravity = -(int16_t)random8(12, 26);
-                // Match initial target rebound ~3/4 height
-                loss = random8(218, 226);
-                trail = random8(3, 7);
-                fadeAmt = random8(40, 80);
+                init_drop(maxPos);
                 hueIdx += random8(10, 25);
-                sparkTicks = 0;
-                settled = false;
                 speed.setPeriod(random8(18, 36));
             }
         } else {
-            // Physics update: fall toward floor (index 0)
+            // Physics update: fall toward the floor (index 0)
             vel256 += gravity;
             pos256 += vel256;
 
@@ -390,11 +390,11 @@ void FxI3::run() {
             }
 
             // Draw bright core with glow using palette, brightness scales with speed
-            const uint16_t center = static_cast<uint16_t>(pos256 >> 8);
-            const uint8_t frac = static_cast<uint8_t>(pos256 & 0xFF);
+            const auto center = static_cast<uint16_t>(pos256 >> 8);
+            const auto frac = static_cast<uint8_t>(pos256 & 0xFF);
 
             // speed-based brightness
-            uint32_t spd = (uint32_t)(vel256 >= 0 ? vel256 : -vel256);
+            auto spd = static_cast<uint32_t>(vel256 >= 0 ? vel256 : -vel256);
             spd = min<uint32_t>(spd, 512); // cap
             const uint8_t coreBri = qadd8(110, scale8((uint8_t)min<uint32_t>(255, spd), 160));
             const CRGB coreCol = ColorFromPalette(palette, hueIdx, coreBri, LINEARBLEND);
@@ -403,19 +403,19 @@ void FxI3::run() {
                 const uint8_t briL = 255 - frac;
                 const uint8_t briR = frac;
                 CRGB leftPix = coreCol; leftPix.nscale8_video(briL);
-                tpl[center] += leftPix;
-                if (center + 1 < size) { CRGB rightPix = coreCol; rightPix.nscale8_video(briR); tpl[center + 1] += rightPix; }
+                frame[center] += leftPix;
+                if (center + 1 < size) { CRGB rightPix = coreCol; rightPix.nscale8_video(briR); frame[center + 1] += rightPix; }
             }
 
             // Radial trail falloff
-            const uint8_t baseGlow = 150;
+            constexpr uint8_t baseGlow = 150;
             for (uint8_t r = 1; r <= trail; ++r) {
                 const uint8_t glowBri = scale8(baseGlow, qsub8(255, r * (255 / (trail + 1))));
                 const CRGB glow = ColorFromPalette(palette, hueIdx + r * 6, glowBri, LINEARBLEND);
                 const int32_t li = (int32_t)center - r;
                 const int32_t ri = (int32_t)center + r + 1; // slight forward smear
-                if (li >= 0 && (uint16_t)li < size) tpl[(uint16_t)li] += glow;
-                if (ri >= 0 && (uint16_t)ri < size) tpl[(uint16_t)ri] += glow;
+                if (li >= 0 && (uint16_t)li < size) frame[(uint16_t)li] += glow;
+                if (ri >= 0 && (uint16_t)ri < size) frame[(uint16_t)ri] += glow;
             }
 
             // Brief spark/flash on bounce for eye-catching pop
@@ -424,9 +424,9 @@ void FxI3::run() {
                 const uint8_t flashBri = 180;
                 const CRGB flash = CHSV(hueIdx, 40, 255) + CRGB(flashBri, flashBri, flashBri);
                 const uint16_t c = (uint16_t)(pos256 >> 8);
-                if (c < size) tpl[c] = tpl[c] + flash;
-                if (c > 0) tpl[c - 1] += flash;
-                if (c + 1 < size) tpl[c + 1] += flash;
+                if (c < size) frame[c] = frame[c] + flash;
+                if (c > 0) frame[c - 1] += flash;
+                if (c + 1 < size) frame[c + 1] += flash;
             }
         }
 
@@ -434,7 +434,7 @@ void FxI3::run() {
         hueIdx += 1;
 
         // Output
-        replicateSet(tpl, others);
+        replicateSet(frame, others);
         FastLED.show(stripBrightness);
     }
 }

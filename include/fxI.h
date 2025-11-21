@@ -50,6 +50,7 @@ namespace FxI {
     public:
         FxI3();
         void setup() override;
+        void init_drop(int32_t maxPos);
         void run() override;
         [[nodiscard]] uint8_t selectionWeight() const override;
     private:
