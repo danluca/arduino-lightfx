@@ -50,7 +50,7 @@ struct MeasurementRange {
     Measurement min;
     Measurement max;
     Measurement current;
-    void setMeasurement(const Measurement& msmt) volatile;
+    void setMeasurement(const Measurement& msmt);
     explicit MeasurementRange(Unit unit);
 
     void reset() volatile {
@@ -113,10 +113,10 @@ void readCalibrationInfo();
 void saveCalibrationInfo();
 // end self-calibration support
 
-extern volatile MeasurementRange imuTempRange;
-extern volatile MeasurementRange cpuTempRange;
-extern volatile MeasurementRange wifiTempRange;
-extern volatile MeasurementRange lineVoltage;
+extern MeasurementRange imuTempRange;
+extern MeasurementRange cpuTempRange;
+extern MeasurementRange wifiTempRange;
+extern MeasurementRange lineVoltage;
 
 
 static float toFahrenheit(const float celsius) {

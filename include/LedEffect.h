@@ -8,6 +8,16 @@
 #include <ArduinoJson.h>
 #include "global.h"
 
+// Time Performance by Mark Kriegsman of FastLED at https://gist.github.com/kriegsman/a916be18d32ec675fea8
+
+#define TC(HOURS,MINUTES,SECONDS) \
+((uint32_t)(((uint32_t)((HOURS)*(uint32_t)(3600000))) + \
+((uint32_t)((MINUTES)*(uint32_t)(60000))) + \
+((uint32_t)((SECONDS)*(uint32_t)(1000)))))
+
+#define AT(HOURS,MINUTES,SECONDS) if( atTC(TC(HOURS,MINUTES,SECONDS)) )
+#define FROM(HOURS,MINUTES,SECONDS) if( fromTC(TC(HOURS,MINUTES,SECONDS)) )
+
 enum OpMode:uint8_t { TurnOff, Chase };
 enum EffectState:uint8_t {Setup, Running, WindDownPrep, WindDown, TransitionBreakPrep, TransitionBreak, Idle};
 
@@ -26,6 +36,9 @@ public:
     [[nodiscard]] bool isRunning() const;
     void loop();
     void desiredState(EffectState dst);
+    bool atTC(uint32_t time);
+    bool fromTC(uint32_t time);
+    void restartPerformance();
 
     // Virtual methods
     virtual void baseConfig(JsonObject& json) const;
@@ -42,6 +55,14 @@ public:
      * @return a value between 1 and 255. If returning 0, this effectively removes the effect from random selection.
      */
     [[nodiscard]] virtual uint8_t selectionWeight() const { return 1; }
+
+protected:
+    uint32_t lastTimeCodeDoneAt = 0;
+    uint32_t lastTimeCodeDoneFrom = 0;
+    uint32_t timeCode = 0;
+    uint32_t timeCodeBase = 0;
+
+    void updateTimeCode();
 
 private:
     // Member variables

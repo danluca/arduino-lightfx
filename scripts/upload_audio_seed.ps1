@@ -36,12 +36,7 @@ function ActivateVenv {
 
 $outFile = "fsi4_seed$Variant.txt"
 
-# Board name → URI mapping
-$boardMap = @{
-    'Dev'  = 'http://192.168.0.10'
-    'FX01' = "http://192.168.0.11"
-    'FX02' = "http://192.168.0.12"
-}
+. $PSScriptRoot/boards.ps1
 $Destination = $boardMap[$Board]
 
 if ((Test-Path $outFile) -and -not $force) {

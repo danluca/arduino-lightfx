@@ -675,6 +675,7 @@ void web::server_setup() {
         log_info(F("Starting Web server setup"));
         server.setServerAgent(serverAgent);
         server.serveStatic("/", SyncFsImpl, "/status/", &inFlashResources, hdCacheStatic);
+        server.serveStatic("/file", SyncFsImpl, "/", nullptr, hdCacheStatic);
         server.serveStatic("/config.json", SyncFsImpl, "/status/sysconfig.json", nullptr, hdCacheJson);
         server.on("/status.json", HTTP_GET, handleGetStatus);
         server.on("/fx", HTTP_PUT, handlePutConfig);

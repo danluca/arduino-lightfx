@@ -175,6 +175,39 @@ void LedEffect::desiredState(const EffectState dst) {
     }
 }
 
+bool LedEffect::atTC(const uint32_t time) {
+    bool shouldExecute = false;
+    if (timeCode >= time) {
+        if (lastTimeCodeDoneAt < time) {
+            shouldExecute = true;
+            lastTimeCodeDoneAt = time;
+        }
+    }
+    return shouldExecute;
+}
+
+bool LedEffect::fromTC(const uint32_t time) {
+    bool shouldUpdate = false;
+    if (timeCode >= time) {
+        if (lastTimeCodeDoneFrom <= time) {
+            shouldUpdate = true;
+            lastTimeCodeDoneFrom = time;
+        }
+    }
+    return shouldUpdate;
+}
+
+void LedEffect::updateTimeCode() {
+    timeCode = millis() - timeCodeBase;
+}
+
+void LedEffect::restartPerformance() {
+    lastTimeCodeDoneAt = 0;
+    lastTimeCodeDoneFrom = 0;
+    timeCode = 0;
+    timeCodeBase = millis();
+}
+
 /**
  * Advances the current state of the LED effect to the next state based on the predefined state transition map.
  * If the updated state indicates that a transition break is about to start
@@ -191,11 +224,13 @@ void LedEffect::nextState() {
 // Handler implementations
 void LedEffect::handleSetup() {
     setup();
+    restartPerformance();
     log_info(F("Effect %s [%d] completed setup, moving to running state"), name(), getRegistryIndex());
     nextState();
 }
 
 void LedEffect::handleRunning() {
+    updateTimeCode();
     run();
 }
 

@@ -11,11 +11,8 @@ param (
 #######################################
 ## Global
 #######################################
-$brdUri = "http://192.168.0.10"  # Default URI for Dev board
-switch ($board) {
-    "FX01" { $brdUri = "http://192.168.0.11"; break; }
-    "FX02" { $brdUri = "http://192.168.0.12"; break; }
-}
+. $PSScriptRoot/boards.ps1
+$brdUri = $boardMap[$board]
 
 write-host "Board $board at $brdUri - Status`n" -ForegroundColor Yellow
 

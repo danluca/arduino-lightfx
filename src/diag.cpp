@@ -26,10 +26,10 @@
 
 static constexpr uint maxAdc = 1 << ADC_RESOLUTION;
 
-volatile MeasurementRange imuTempRange(Unit::Deg_C);
-volatile MeasurementRange cpuTempRange(Unit::Deg_C);
-volatile MeasurementRange wifiTempRange(Unit::Deg_C);
-volatile MeasurementRange lineVoltage(Unit::Volts);
+MeasurementRange imuTempRange(Unit::Deg_C);
+MeasurementRange cpuTempRange(Unit::Deg_C);
+MeasurementRange wifiTempRange(Unit::Deg_C);
+MeasurementRange lineVoltage(Unit::Volts);
 CalibrationMeasurement calibTempMeasurements;
 CalibrationParams calibCpuTemp;
 QueueHandle_t diagQueue;
@@ -265,7 +265,7 @@ void Measurement::copy(const Measurement &msmt) volatile {
  * as otherwise the min/max comparisons are not meaningful
  * @param msmt measurement to set
  */
-void MeasurementRange::setMeasurement(const Measurement &msmt) volatile {
+void MeasurementRange::setMeasurement(const Measurement &msmt) {
     if (current.unit != msmt.unit) {
         log_warn(F("MeasurementRange::setMeasurement - incompatible units, cannot set %f unit %d at %s into range of unit %d"), msmt.value, msmt.unit, TimeFormat::asString(msmt.time).c_str(), current.unit);
         return;
