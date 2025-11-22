@@ -140,10 +140,10 @@ bool wifi_check() {
     const int gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 64);
     const int32_t rssi = WiFi.RSSI();
     const uint8_t wifiBars = barSignalLevel(rssi);
-    if ((gwPingTime < 0) || (wifiBars < 3)) {
+    if ((gwPingTime < 0) || (rssi < -73)) {
         sysInfo->resetSysStatus(SYS_STATUS_WIFI);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
-        log_warn(F("Ping test failed (%d) or signal strength low (%hhu bars), WiFi Connection unusable"), rssi, wifiBars);
+        log_warn(F("Ping test failed (%d) or signal strength low (%d dbM, %hhu bars), WiFi Connection unusable"), gwPingTime, rssi, wifiBars);
         return false;
     }
     sysInfo->setSysStatus(SYS_STATUS_WIFI);
