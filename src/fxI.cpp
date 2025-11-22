@@ -774,18 +774,21 @@ void FxI5::run() {
                 } else {
                     // reached the shore: crash!
                     swellCrashed = true;
-                    crashHold = 6 + random8(0, 4); // hold crest briefly
+                    crashHold = 6 + random8(0, 10); // hold crest briefly
                     foamLevel = qadd8(foamLevel, 160);
-                    if (!backwashActive) {
-                        backwashActive = true;
-                        backwashPos = waterline + min<uint16_t>(crestHalf + 1, n / 8);
-                    }
+                    // Do NOT start backwash immediately; wait until the crash hold finishes
                 }
             }
         } else {
             // keep crest right at the shoreline during crash
             swellPos = waterline + crestHalf;
             if (crashHold > 0) crashHold--; else {
+                // Start backwash only after the crest hold completes, creating a brief pause
+                if (!backwashActive) {
+                    backwashActive = true;
+                    backwashPos = waterline + min<uint16_t>(crestHalf + 1, n / 8);
+                    lastTick = millis();
+                }
                 swellCrashed = false;
                 // drop the swell so we can respawn
                 swellPos = 0;
@@ -816,8 +819,8 @@ void FxI5::run() {
             // advance and fade out
             if (millis() - lastTick > backwashPeriodMs) {
                 lastTick = millis();
-                backwashPos = (uint16_t)(backwashPos + 1);
-                if (backwashPos >= waterline + min<uint16_t>(n / 3, (uint16_t)(swellWidth * 3))) {
+                backwashPos = static_cast<uint16_t>(backwashPos + 1);
+                if (backwashPos >= waterline + min<uint16_t>(n / 3, static_cast<uint16_t>(swellWidth * 3))) {
                     backwashActive = false;
                 }
             }
@@ -840,6 +843,7 @@ void FxI5::run() {
             seaHueBase += random8(3, 9); // slow color drift
             // constant frame rate, or opportunity to modify it
             tmr.setPeriod(30 + random8(0, 30));
+            backwashPeriodMs = tmr.getPeriod() * 7/3;
         }
         replicateSet(frame, rest);
         FastLED.show(stripBrightness);
