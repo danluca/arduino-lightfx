@@ -94,7 +94,7 @@ try {
 
 try {
     $files = Invoke-RestMethod -Uri ($Destination.TrimEnd('/') + '/files.json') -Method Get -ErrorAction Stop
-    Write-Host $files.Content
+    $files.files
 } catch {
     Write-Warning "Could not fetch files.json: $_"
 }

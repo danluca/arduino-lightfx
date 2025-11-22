@@ -278,13 +278,6 @@ void MeasurementRange::setMeasurement(const Measurement &msmt) {
 }
 
 /**
- * Initializes the unit of all measurements in the range
- * @param unit the unit
- */
-MeasurementRange::MeasurementRange(const Unit unit) : min(unit), max(unit), current(unit) {
-}
-
-/**
  * Copy a measurement pair into current pair
  * @param msmt measurement pair to copy
  */
@@ -379,7 +372,7 @@ Measurement controllerVoltage() {
     log_debug(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
     valSum = valSum*MV3_3/avgSize;
     valSum = valSum/VCC_DIV_R5*(VCC_DIV_R5+VCC_DIV_R4)/maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
-    return Measurement {(float)valSum/1000.0f, now(), Volts};
+    return Measurement {static_cast<float>(valSum)/1000.0f, now(), Volts};
 }
 
 /**

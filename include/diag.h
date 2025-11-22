@@ -51,7 +51,7 @@ struct MeasurementRange {
     Measurement max;
     Measurement current;
     void setMeasurement(const Measurement& msmt);
-    explicit MeasurementRange(Unit unit);
+    explicit MeasurementRange(const Unit unit = Deg_C) : min(unit), max(unit), current(unit) { }
 
     void reset() volatile {
         min.reset();
@@ -64,7 +64,7 @@ struct MeasurementRange {
 struct MeasurementPair : Measurement {
     uint adcRaw;
 
-    MeasurementPair() : Measurement(Deg_C), adcRaw(0) {};
+    explicit MeasurementPair(const Unit unit = Deg_C) : Measurement(unit), adcRaw(0) {};
     void copy(const MeasurementPair& msmt);
 
     void reset() volatile override {
@@ -78,7 +78,7 @@ struct CalibrationMeasurement {
     MeasurementPair max;
     MeasurementPair ref;
 
-    CalibrationMeasurement() = default;
+    explicit CalibrationMeasurement(const Unit unit = Deg_C) : min(unit), max(unit), ref(unit) {};
     void setMeasurement(const MeasurementPair& msmt);
 
     void reset() {

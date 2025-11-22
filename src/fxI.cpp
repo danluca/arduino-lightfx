@@ -843,6 +843,8 @@ void FxI5::run() {
         }
         replicateSet(frame, rest);
         FastLED.show(stripBrightness);
+        // constant frame rate, or opportunity to modify it
+        tmr.setPeriod(40);
     }
 }
 

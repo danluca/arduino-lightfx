@@ -10,11 +10,8 @@ param (
 #######################################
 ## Global
 #######################################
-$brdUri = "http://192.168.0.10/fw"  # Default URI for Dev board
-switch ($board) {
-    "FX01" { $brdUri = "http://192.168.0.11/fw"; break; }
-    "FX02" { $brdUri = "http://192.168.0.12/fw"; break; }
-}
+. $PSScriptRoot/scripts/boards.ps1
+$brdUri = $boardMap[$board]
 
 $clrReset = "`e[0m"
 $clrMsg = "`e[38;5;112m"
