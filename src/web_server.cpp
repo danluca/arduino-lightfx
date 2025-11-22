@@ -2,7 +2,6 @@
 //
 #include <FreeRTOS.h>
 #include <LittleFS.h>
-#include <PicoLog.h>
 #include <TimeLib.h>
 #include "filesystem.h"
 #include "web_server.h"
@@ -10,9 +9,7 @@
 #include "diag.h"
 #include "efx_setup.h"
 #include "FxSchedule.h"
-#include "mic.h"
 #include "net_setup.h"
-#include "stringutils.h"
 #include "sysinfo.h"
 #include "util.h"
 #include "task_msg.h"
@@ -22,6 +19,9 @@
 #include "stats_html.h"
 #include "stats_css.h"
 #include "stats_js.h"
+#if MDNS_ENABLED==1
+#include <LEAmDNS.h>
+#endif
 // not including this file as the regex subsystem has a large codebase and increases the flash use by ~300kB; this would be the only use of regex and there are workarounds
 // #include "uri/UriRegex.h"
 
@@ -43,7 +43,7 @@ static constexpr auto filesJsonFilename PROGMEM = "files.json";
 static constexpr auto authToken PROGMEM = "KlFpc1dAdFd0eDRXdkVSZg";
 static constexpr uint16_t serverPort PROGMEM = 80;
 #if MDNS_ENABLED==1
-static auto mdnsStatus = MDNS::Status::TryLater;
+static auto mdnsStatus = false;
 #endif
 
 WebServer web::server;
@@ -151,11 +151,6 @@ void web::handleGetStatus(WebClient &client) {
     fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness;
     fx[csBrightnessLocked] = stripBrightnessLocked;
-    fx[csAudioThreshold] = audioBumpThreshold; //current audio level threshold
-    fx["totalAudioBumps"] = totalAudioBumps; //how many times (in total) have we bumped the effect due to audio level
-    const auto audioHist = fx["audioHist"].to<JsonArray>();
-    for (uint16_t x: maxAudio)
-        audioHist.add<uint16_t>(x);
     // Time
     const auto time = doc["time"].to<JsonObject>();
     time["ntpSync"] = sysInfo->isSysStatus(SYS_STATUS_NTP);
@@ -192,25 +187,20 @@ void web::handleGetStatus(WebClient &client) {
     }
     //System
     const auto temp = doc["temp"].to<JsonObject>();
-    const auto boardTemp = temp["board"].to<JsonObject>();
     const auto cpuTemp = temp["cpu"].to<JsonObject>();
-    const auto wifiTemp = temp["wifi"].to<JsonObject>();
-    boardTemp["current"] = imuTempRange.current.value;
-    boardTemp["max"] = imuTempRange.max.value;
-    boardTemp["min"] = imuTempRange.min.value;
-    cpuTemp["current"] = cpuTempRange.current.value;
+    cpuTemp["current"] = cpuTempRange.ref.value;
+    cpuTemp["current_adc"] = cpuTempRange.ref.adcRaw;
     cpuTemp["max"] = cpuTempRange.max.value;
+    cpuTemp["max_adc"] = cpuTempRange.max.adcRaw;
     cpuTemp["min"] = cpuTempRange.min.value;
-    wifiTemp["current"] = wifiTempRange.current.value;
-    wifiTemp["max"] = wifiTempRange.max.value;
-    wifiTemp["min"] = wifiTempRange.min.value;
+    cpuTemp["min_adc"] = cpuTempRange.min.adcRaw;
     const auto vcc = doc["vcc"].to<JsonObject>();
     vcc["current"] = lineVoltage.current.value;
     vcc["max"] = lineVoltage.max.value;
     vcc["min"] = lineVoltage.min.value;
     doc["overallStatus"] = sysInfo->getSysStatus();
 #if MDNS_ENABLED==1
-    doc["mdnsEnabled"] = mdns->isEnabled();
+    doc["mdnsEnabled"] = MDNS.isRunning();
 #endif
     //ISO8601 format
     //snprintf(timeBuf, 15, "P%2dDT%2dH%2dM", millis()/86400000l, (millis()/3600000l%24), (millis()/60000%60));
@@ -311,15 +301,6 @@ void web::handlePutConfig(WebClient &client) {
             log_error(F("Error sending COLOR_THEME message to FX queue with value %u - error %ld"), br, qResult);
         upd[csBrightness] = br;
         upd[csBrightnessLocked] = br > 0;
-    }
-    if (doc[csAudioThreshold].is<uint16_t>()) {
-        const uint16_t audioThreshold = doc[csAudioThreshold].as<uint16_t>();
-        auto *msg = new AudioActionMessage{AUDIO_THRESHOLD_UPDATE, audioThreshold};
-        if ((qResult = xQueueSend(micQueue, &msg, 0)) != pdTRUE) {
-            log_error(F("Error sending AUDIO_THRESHOLD_UPDATE message to MIC queue with value %u - error %ld"), audioThreshold, qResult);
-            delete msg;
-        }
-        upd[csAudioThreshold] = audioThreshold;
     }
     if (doc[csSleepEnabled].is<bool>()) {
         const bool sleepEnabled = doc[csSleepEnabled].as<bool>();
@@ -739,7 +720,7 @@ void web::webserver() {
 #if MDNS_ENABLED==1
     EVERY_N_SECONDS(3) {
         if (server.state() == HTTPServer::IDLE)
-            mdnsStatus = mdns->process();
+            mdnsStatus = MDNS.update();
     }
 #endif
 }

@@ -1,7 +1,10 @@
+## Copyright (c) 2025 by Dan Luca. All rights reserved.
+##
+## USB Firmware update script for RP2350-based boards; allows default Arduino OTA if available
 [CmdletBinding()]
 param ([string]$port='auto', [switch]$dbg, [string]$otaAddrHint,
     [Parameter(Mandatory=$false)]
-    [ValidateSet("Dev", "FX01", "FX02")]
+    [ValidateSet("Dev", "Tree")]
     [string]$board = "Dev",
     [switch]$log,
     [switch]$ignoreBroadcast
@@ -10,8 +13,8 @@ param ([string]$port='auto', [switch]$dbg, [string]$otaAddrHint,
 #######################################
 ## Global
 #######################################
-$brdEnv = $dbg ? "rp2040-dbg" : "rp2040-rel"
-$boardFqbn = "rp2040:rp2040:arduino_nano_connect"
+$brdEnv = $dbg ? "rp2350-dbg" : "rp2350-rel"
+$boardFqbn = "rp2350:rp2350:pimoroni_plasma2350"
 $otaPassword = "password"
 
 $clrReset = "`e[0m"
@@ -43,7 +46,7 @@ function prepEnvironment() {
     # 1 = Dev, 2 = FX01, 3 = FX02
     $boardId = switch ($board) {
         "Dev" { 1 }
-        "FX01" { 2 }
+        "Tree" { 2 }
         "FX02" { 3 }
     }
     $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"

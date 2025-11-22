@@ -8,7 +8,6 @@
 #include <queue.h>
 #include <timers.h>
 #include <hardware/adc.h>
-#include <Arduino_LSM6DSOX.h>
 #include <FastLED.h>
 #include "SchedulerExt.h"
 #include "diag.h"
@@ -26,9 +25,7 @@
 
 static constexpr uint maxAdc = 1 << ADC_RESOLUTION;
 
-MeasurementRange imuTempRange(Unit::Deg_C);
-MeasurementRange cpuTempRange(Unit::Deg_C);
-MeasurementRange wifiTempRange(Unit::Deg_C);
+CalibrationMeasurement cpuTempRange(Unit::Deg_C);
 MeasurementRange lineVoltage(Unit::Volts);
 CalibrationMeasurement calibTempMeasurements;
 CalibrationParams calibCpuTemp;
@@ -43,7 +40,6 @@ static uint16_t tmrDiagInfoId = 14;
 // declarations ahead
 void deviceSetup();
 void updateSecEntropy();
-Measurement boardTemperature();
 void updateSystemTemp();
 void updateLineVoltage();
 void logDiagInfo();
@@ -55,25 +51,6 @@ void enqueueDiagInfo(TimerHandle_t xTimer);
 
 // diag task definition - priority is overwritten during setup, see diagSetup
 // TaskDef diagDef {deviceSetup, diagExecute, 3072, "Diag", 1, CORE_1};
-
-/**
- * Initializes the Inertial Measurement Unit - IMU
- * @return true if inertial unit was setup ok, false otherwise
- */
-bool imu_setup() {
-    // initialize the IMU (Inertial Measurement Unit)
-    if (!IMU.begin()) {
-        log_error(F("Failed to initialize IMU!"));
-        log_error(F("IMU NOT AVAILABLE - TERMINATING THIS THREAD"));
-        vTaskSuspend(xTaskGetCurrentTaskHandle());
-        //while (true) yield();
-    }
-    log_info(F("IMU sensor OK"));
-    // print the board temperature
-    const Measurement temp = boardTemperature();
-    log_info(F("Board temperature %.2f 'C (%.2f 'F) at %s"), temp.value, toFahrenheit(temp.value), TimeFormat::asString(temp.time).c_str());
-    return true;
-}
 
 /**
  * Initializes the RP2040 chip internal Analog-Digital Converter
@@ -94,8 +71,6 @@ void adc_setup() {
  */
 void deviceSetup() {
     adc_setup();
-
-    imu_setup();
 
     sysInfo->fillBoardId();
 
@@ -325,10 +300,7 @@ bool calibrate() {
 
     if (calibCpuTemp.isValid()) {
         //recalibration, when the temp range is significantly larger than last calibration or cpu/imu measurements differ significantly
-        const bool bRecalRange = range > (calibCpuTemp.refDelta + 5.0f);
-        const bool bRecalDeviation = fabs(cpuTempRange.current.value-imuTempRange.current.value) > 5.0f && range > 3.0f;
-
-        if(bRecalRange || bRecalDeviation) {
+        if(range > (calibCpuTemp.refDelta + 5.0f)) {
             //re-calibrate
             buildCalParams();
             changes = true;
@@ -347,20 +319,6 @@ bool calibrate() {
 }
 
 /**
- * Reads the temperature of the IMU chip, if available, in degrees Celsius
- * @return measurement object with temperature of the IMU chip or IMU_TEMPERATURE_NOT_AVAILABLE along with current time and Celsius unit
- */
-Measurement boardTemperature() {
-    if (IMU.temperatureAvailable()) {
-        float tempC = 0.0f;
-        IMU.readTemperatureFloat(tempC);
-        return Measurement {tempC, now(), Deg_C};
-    } else
-        log_warn(F("IMU temperature not available - using %f 'C for board temperature value"), IMU_TEMPERATURE_NOT_AVAILABLE);
-    return Measurement {IMU_TEMPERATURE_NOT_AVAILABLE, now(), Deg_C};
-}
-
-/**
  * Reads the input line voltage of the controller box - expected to be 12V. Measured through a resistive divisor on a ADC pin
  * @return measurement object with line voltage, current time and Volts unit
  */
@@ -369,7 +327,7 @@ Measurement controllerVoltage() {
     uint valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += analogRead(A0);
-    log_debug(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
+    log_info(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
     valSum = valSum*MV3_3/avgSize;
     valSum = valSum/VCC_DIV_R5*(VCC_DIV_R5+VCC_DIV_R4)/maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
     return Measurement {static_cast<float>(valSum)/1000.0f, now(), Volts};
@@ -391,15 +349,16 @@ MeasurementPair chipTemperature() {
     adc_select_input(curAdc);   //restore the ADC input selection
     log_debug(F("Internal temperature value: %u; average reading: %u"), avgSize, valSum/avgSize);
     const uint adcRaw = valSum/avgSize;
-    const auto tV = (float)valSum*MV3_3/avgSize/maxAdc;   //voltage in mV
+    const auto tV = static_cast<float>(valSum)*MV3_3/avgSize/maxAdc;   //voltage in mV
     MeasurementPair result;
     if (calibCpuTemp.isValid()) {
-        //per RP2040 documentation - datasheet, section 4.9.5 Temperature Sensor, page 565 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
+        //per RP2040 documentation - datasheet, section 12.4.6 Temperature Sensor, page 1069 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
         //the Vtref is typical of 0.706V at 27'C with a slope of -1.721mV per degree Celsius
         //float temp = 27.0f - (tV - CHIP_RP2040_TEMP_SENSOR_VOLTAGE_27) / CHIP_RP2040_TEMP_SENSOR_VOLTAGE_SLOPE;
         result.value = calibCpuTemp.refTemp - (tV - calibCpuTemp.vtref) / calibCpuTemp.slope;
     } else
-        result.value = IMU_TEMPERATURE_NOT_AVAILABLE;
+        result.value = 27.0f - (tV - 706) / 1.721;
+        // result.value = IMU_TEMPERATURE_NOT_AVAILABLE;
     result.time = now();
     result.adcRaw = adcRaw;
     return result;
@@ -504,6 +463,21 @@ void readCalibrationInfo() {
         log_info(F("CPU temp calibration Information restored from %s [%d bytes]: min %.2f 'C, max %.2f 'C; params: tempRange=%.2f, refTemp=%.2f, VTref=%f, slope=%f, time=%s"),
                    calibFileName, calibSize, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
                    calibCpuTemp.slope, TimeFormat::asString(calibCpuTemp.time).c_str());
+    } else {
+        log_info(F("No CPU temp calibration information file %s found - creating a default one"), calibFileName);
+        //no ref set - hard code a ref point measured manually at room temperature
+        calibTempMeasurements.ref.value = 23.33f;
+        calibTempMeasurements.ref.time = 1762027200;    //epoch time of local 2025-11-01 15:00:00 CDT
+        calibTempMeasurements.ref.adcRaw = 746;
+        calibCpuTemp.refDelta = 0.0f;
+        calibCpuTemp.refTemp = 23.33f;
+        calibCpuTemp.vtref = 598.0f;
+        calibCpuTemp.slope = 1.721f;
+        calibCpuTemp.time = calibTempMeasurements.ref.time;
+        saveCalibrationInfo();
+        log_info(F("CPU temp calibration Information defaulted to %s: min %.2f 'C, max %.2f 'C; params: tempRange=%.2f, refTemp=%.2f, VTref=%f, slope=%f, time=%s"),
+                   calibFileName, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
+                   calibCpuTemp.slope, TimeFormat::asString(calibCpuTemp.time).c_str());
     }
     delete json;
 }
@@ -536,30 +510,17 @@ void updateLineVoltage() {
 }
 
 /**
- * Take temperature measurements from two sources:
- *   - IMU module - has a built-in temperature sensor, more precise
- *   - RP2040 chip through channel 4 of the ADC, less precise and in need of calibration
+ * Take temperature measurements - RP2350 chip through channel 4 of the ADC, less precise and in need of calibration
  */
 void updateSystemTemp() {
-    MeasurementPair chipTemp = chipTemperature();
-    const Measurement msmt = boardTemperature();
-    if (fabs(msmt.value - IMU_TEMPERATURE_NOT_AVAILABLE) > TEMP_NA_COMPARE_EPSILON) {
-        imuTempRange.setMeasurement(msmt);
-        //if calibration is valid and the measurement is within 15'C of the higher precision IMU sensor, use the CPU temperature measurement
-        if (calibCpuTemp.isValid() && fabs(msmt.value - chipTemp.value) < 15.0f)
-            cpuTempRange.setMeasurement(chipTemp);
-        chipTemp.value = msmt.value;
-        chipTemp.time = msmt.time;
-        calibTempMeasurements.setMeasurement(chipTemp);
+    const MeasurementPair chipTemp = chipTemperature();
+    cpuTempRange.setMeasurement(chipTemp);
+    if (calibrate())
+        saveCalibrationInfo();
 
-        if (calibrate())
-            saveCalibrationInfo();
-    }
-    log_info(F("CPU internal temperature %.2f 'C (%.2f 'F) (ADC %u)"), cpuTempRange.current.value, toFahrenheit(cpuTempRange.current.value), chipTemp.adcRaw);
+    log_info(F("CPU internal temperature %.2f 'C (%.2f 'F) (ADC %u)"), chipTemp.value, toFahrenheit(chipTemp.value), chipTemp.adcRaw);
     log_info(F("CPU temperature calibration parameters valid=%s, refTemp=%f, vtRef=%f, slope=%f, refDelta=%f, time=%s"), StringUtils::asString(calibCpuTemp.isValid()), calibCpuTemp.refTemp,
                calibCpuTemp.vtref, calibCpuTemp.slope, calibCpuTemp.refDelta, TimeFormat::asString(calibCpuTemp.time).c_str());
-    log_info(F("Board temperature %.2f (last %.2f) 'C (%.2f 'F); range [%.2f - %.2f] 'C"), msmt.value, imuTempRange.current.value, toFahrenheit(imuTempRange.current.value),
-               imuTempRange.min.value, imuTempRange.max.value);
 }
 
 /**
@@ -578,35 +539,5 @@ void logDiagInfo() {
     //log task and RAM metrics
     logTaskStats();
     //logSystemInfo();
-}
-
-/**
- * Gets the temperature of the WiFi submodule from its CPU ESP32 temperature sensor
- * Note: This method is called by the task than handles WiFi communication (CORE0 currently) in order to keep all WiFi module interactions
- * in the same task.
- */
-void wifi_temp() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI))
-        return;
-    //read the ESP32 WiFi chip's temperature
-    const Measurement wifiTemp {WiFi.getTemperature(), now(), Deg_C};
-    //add the measurement if the jump from previous measurement is reasonable
-    const float fTemp = toFahrenheit(wifiTemp.value);
-    //I've noticed a suspect Fahrenheit value of 0x80 (128) that is not real (by feeling the chip) - this seems to be some sort of error/NA value
-    //if not first reading or current value is within 4 degrees 'C of 53.33'C (128'F) (53.33 'C +/- 4) then consider the 128'F value of the reading, otherwise ignore these (erroneous) readings
-    const bool bInvalid = fabs(fTemp - 128.0) < TEMP_NA_COMPARE_EPSILON && (wifiTempRange.current.time == 0 || fabs(wifiTempRange.current.value - 53.33) > 4.0);
-#if LOGGING_ENABLED == 1
-    if (bInvalid) {
-        if (wifiTempRange.current.time == 0)
-            log_warn( F("Discarding WiFi temperature measurement of %.2f 'C - 128 'F error value detected"), wifiTemp.value);
-        else
-            log_warn(F("Discarding WiFi temperature measurement %.2f 'C (%.2f 'F) - not within allowed range for inclusion [49.33 - 57.33] 'C"), wifiTemp.value, fTemp);
-    }
-#endif
-    if (!bInvalid) {
-        log_info(F("WiFi subsystem temperature %.2f 'C (%.2f 'F) (last measurement %.2f 'C, %.2f 'F); range [%.2f - %.2f] 'C"), wifiTemp.value, fTemp,
-            wifiTempRange.current.value, toFahrenheit(wifiTempRange.current.value), wifiTempRange.min.value, wifiTempRange.max.value);
-        wifiTempRange.setMeasurement(wifiTemp);
-    }
 }
 

@@ -263,3 +263,4 @@ void LedEffect::handleTransitionBreak() {
 void LedEffect::handleIdle() {
     // No-op
 }
+

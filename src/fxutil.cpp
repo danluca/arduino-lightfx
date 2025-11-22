@@ -304,7 +304,7 @@ void fx::shuffle(CRGBSet &set) {
 }
 
 // Copy arrays using memcpy (arguably the fastest way) - no checks are made on the length copied vs. actual length of both arrays
-void fx::copyArray(const CRGB *src, CRGB *dest, uint16_t length) {
+void fx::copyArray(const CRGB *src, CRGB *dest, const uint16_t length) {
     memcpy(dest, src, sizeof(src[0]) * length);
 }
 

@@ -22,6 +22,7 @@ static constexpr auto unknown PROGMEM = "N/A";
 #if LOGGING_ENABLED == 1
 // static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
 static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Total Stack:: ptr=%#X free=%d;\n  Total Heap :: size=%d free=%d used=%d\n";
+static constexpr auto heapPSRAMInfoFmt PROGMEM = "  Total PSRAM (size=%d) Heap :: size=%d free=%d used=%d\n";
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
 static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
@@ -138,6 +139,9 @@ void logTaskStats() {
     String strHeapInfo;
     strHeapInfo.reserve(256);  //ensure enough space to avoid reallocations
     StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap(), rp2040.getUsedHeap());
+#ifdef PICO_RP2350
+    StringUtils::append(strHeapInfo, heapPSRAMInfoFmt, rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap(), rp2040.getUsedPSRAMHeap());
+#endif
     log_info(strHeapInfo.c_str());
     log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinBufferSpace());
     // log_info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
@@ -277,17 +281,17 @@ uint16_t SysInfo::getSysStatus() const {
  * than retrieving from the Wi-Fi module.
  * @param wifi the Wi-Fi (global) object
  */
-void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
+void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
     ssid = wifi.SSID();
-    wifiFwVersion = nina::WiFiClass::firmwareVersion();
-    // strIpAddress = wifi.localIP().toString();
-    // strGatewayIpAddress = wifi.gatewayIP().toString();
-    strIpAddress = ipAddress.toString();
-    strGatewayIpAddress = ipGateway.toString();
+    wifiFwVersion = ::WiFiClass::firmwareVersion();
+    strIpAddress = wifi.localIP().toString();
+    strGatewayIpAddress = wifi.gatewayIP().toString();
+    // strIpAddress = ipAddress.toString();
+    // strGatewayIpAddress = ipGateway.toString();
 
-    // IPAddress dns1;
-    // IPAddress dns2;
-    // wifi.dnsIP(dns1, dns2);  //needs WiFi version > 1.5.0
+    const IPAddress dns1 = wifi.dnsIP(0);
+    const IPAddress dns2 = wifi.dnsIP(1);
+    log_info(F("WiFi DNS servers: %s, %s"), dns1.toString().c_str(), dns2.toString().c_str());
 
     //MAC address - Formats the MAC address into the character buffer provided; space for 20 chars is needed (includes nul terminator)
     uint8_t mac[WL_MAC_ADDR_LENGTH];
@@ -490,9 +494,9 @@ void saveSysInfo() {
  * Set-up the on-board status LED
  */
 void SysInfo::setupStateLED() {
-    pinMode(LEDR, OUTPUT);
-    pinMode(LEDG, OUTPUT);
-    pinMode(LEDB, OUTPUT);
+    pinMode(PIN_LED_R, OUTPUT);
+    pinMode(PIN_LED_G, OUTPUT);
+    pinMode(PIN_LED_B, OUTPUT);
     updateBoardLED(CRGB::Black);    //black, turned off
 }
 /**
@@ -511,16 +515,16 @@ void SysInfo::updateBoardLED(const uint32_t colorCode) {
  * @param rgb RGB value
  */
 void SysInfo::updateBoardLED(const CRGB rgb) {
-    analogWrite(LEDR, 255 - rgb.red);
-    analogWrite(LEDG, 255 - rgb.green);
-    analogWrite(LEDB, 255 - rgb.blue);
+    analogWrite(PIN_LED_R, 255 - rgb.red);
+    analogWrite(PIN_LED_G, 255 - rgb.green);
+    analogWrite(PIN_LED_B, 255 - rgb.blue);
 }
 
 /**
  * Adjusts the LED state (color, illumination style) in response to the overall system's state
  */
 void SysInfo::updateStatusLED() const {
-    const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
+    const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_DIAG);
     const CRGB colorCode = isOk ? CLR_ALL_OK : !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1) ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
     updateBoardLED(colorCode);
 }

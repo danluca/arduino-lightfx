@@ -19,7 +19,6 @@
  *   Stores pointers to `bcTaskMessage` structures.
  * - `diagQueue`: A queue for diagnostic actions, storing `DiagAction` items.
  * - `fxQueue`: A queue for FX-related actions, storing `FxActionMessage` items.
- * - `micQueue`: A queue for actions related to microphone operations, storing `MikeAction` items.
  */
 void task_msg_setup() {
     //create a receiving queue for the ALM task for communication between cores
@@ -32,7 +31,4 @@ void task_msg_setup() {
     diagQueue = xQueueCreate(20, sizeof(DiagAction));
 
     fxQueue = xQueueCreate(10, sizeof(FxActionMessage));
-
-    // micQueue stores pointers to AudioActionMessage allocated by producers; consumer deletes after processing
-    micQueue = xQueueCreate(10, sizeof(AudioActionMessage*));
 }

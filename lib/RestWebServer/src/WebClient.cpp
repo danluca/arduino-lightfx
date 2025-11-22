@@ -6,6 +6,8 @@
 #include <HTTPServer.h>
 #include <LogProxy.h>
 
+#include <memory>
+
 #include "detail/util.h"
 #include "detail/mimetable.h"
 
@@ -67,7 +69,7 @@ WebClient::WebClient(HTTPServer *server, const WiFiClient &client): _server(serv
     _stopHandlingTime = 0;
     _rawWifiClient.setTimeout(HTTP_MAX_SEND_WAIT);
     // the ID is relying on the WiFiClient's internal socket used; the ID is used in discriminating new clients from existing ones that the WiFiServer may report
-    _clientID = _rawWifiClient.socket();
+    _clientID = _rawWifiClient.localPort();
     _responseHeaders.reserve(INITIAL_HEADERS_BUFFER_SIZE);
 }
 
@@ -435,7 +437,7 @@ void WebClient::_parseHttpHeaders() {
 
 bool WebClient::_handleRawData() {
     log_debug(F("=== Body Handle raw ==="));
-    _rawBody.reset(new HTTPRaw());
+    _rawBody = std::make_unique<HTTPRaw>();
     _rawBody->status = RAW_START;
     _rawBody->totalSize = 0;
     _rawBody->currentSize = 0;

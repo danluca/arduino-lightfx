@@ -33,7 +33,7 @@
 #include "Timezone.h"
 #include "TimeLib.h"
 #include "LogProxy.h"
-#include "../../RP2040WiFiNina/src/WiFi.h"
+#include <WiFi.h>
 #ifdef PICO_RP2040
 #include <hardware/rtc.h>
 #include "pico/util/datetime.h"

@@ -4,7 +4,7 @@
 #ifndef ARDUINO_LIGHTFX_SYSINFO_H
 #define ARDUINO_LIGHTFX_SYSINFO_H
 
-#include <WiFiNINA.h>
+#include <WiFi.h>
 #include <ArduinoJson.h>
 #include "../lib/Utils/src/fixed_queue.h"
 
@@ -86,7 +86,7 @@ public:
     uint16_t resetSysStatus(uint16_t bitMask);
     [[nodiscard]] bool isSysStatus(uint16_t bitMask) const;
     [[nodiscard]] uint16_t getSysStatus() const;
-    void setWiFiInfo(nina::WiFiClass & wifi);
+    void setWiFiInfo(::WiFiClass & wifi);
     void setSecureElementId(const String & secId);
     void begin();
     static void sysConfig(JsonDocument &doc);

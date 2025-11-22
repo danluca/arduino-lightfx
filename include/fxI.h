@@ -9,7 +9,6 @@
 // defines needed before including FHT
 #define LOG_OUT 1       // use the log output function
 #define FHT_N   32      //32 point FHT
-#include <FHT.h>
 
 namespace FxI {
     class FxI1 : public LedEffect {

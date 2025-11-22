@@ -10,10 +10,8 @@
 #define SYS_STATUS_FILESYSTEM   0x0004
 #define SYS_STATUS_WIFI         0x0008
 #define SYS_STATUS_NTP          0x0010
-#define SYS_STATUS_ECC          0x0020
-#define SYS_STATUS_MIC          0x0040
-#define SYS_STATUS_DST          0x0080
-#define SYS_STATUS_DIAG         0x0100
+#define SYS_STATUS_DST          0x0020
+#define SYS_STATUS_DIAG         0x0040
 
 #define TWENTY_TWENTY    1577836800L    //2020-01-01 00:00
 #define TWENTY_SEVENTY   3155760000L    //2070-01-01 00:00 - if this code is still relevant in 2070, something is wrong...
@@ -28,7 +26,6 @@ bool rblend8(uint8_t &a, uint8_t b, uint8_t amt=22) ;
 uint8_t secRandom8(uint8_t minLim = 0, uint8_t maxLim = 0);
 uint16_t secRandom16(uint16_t minLim = 0, uint16_t maxLim = 0);
 uint32_t secRandom(uint32_t minLim = 0, uint32_t maxLim = 0);
-bool secElement_setup();
 void watchdogSetup();
 void watchdogPing();
 void taskDelay(uint32_t ms);

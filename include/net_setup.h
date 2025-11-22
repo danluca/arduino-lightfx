@@ -9,7 +9,6 @@
 
 bool wifi_setup();
 void wifi_ensure();
-void wifi_temp();
 
 void printSuccessfulWifiStatus();
 void checkFirmwareVersion();

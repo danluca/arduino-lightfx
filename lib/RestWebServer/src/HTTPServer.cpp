@@ -203,11 +203,11 @@ void HTTPServer::handleClient() {
             _state = _clients.empty() ? IDLE : HANDLING_CLIENT;
             //fall-through
         case IDLE:
-            if (WiFiClient wifiClient = _server.available()) {
+            if (WiFiClient wifiClient = _server.accept()) {
                 bool newClient = true;
                 //did we have this client before? check if same socket
                 for (const auto& client : _clients) {
-                    if (client->clientID() == wifiClient.socket()) {
+                    if (client->clientID() == wifiClient.localPort()) {
                         newClient = false;  //same socket, so we have this client already
                         break;
                     }
@@ -216,13 +216,13 @@ void HTTPServer::handleClient() {
                     _state = HANDLING_CLIENT;
                     if (_clients.size() >= 10) {
                         log_error("HTTPServer::handleClient() - server exceeded 10 clients and another one has arrived (IP %s, socket %d), rejecting the new client",
-                            wifiClient.remoteIP().toString().c_str(), wifiClient.socket());
+                            wifiClient.remoteIP().toString().c_str(), wifiClient.localPort());
                         wifiClient.write(Canned503Response, strlen(Canned503Response));
                         wifiClient.stop();
                     } else {
                         _clients.push_back(new WebClient(this, wifiClient));
                         log_debug("HTTPServer::handleClient() - from IP %s through socket %d. WiFiServer state %d, total %zu clients",
-                            wifiClient.remoteIP().toString().c_str(), wifiClient.socket(), _server.status(), _clients.size());
+                            wifiClient.remoteIP().toString().c_str(), wifiClient.localPort(), _server.status(), _clients.size());
                     }
                 }
             } else

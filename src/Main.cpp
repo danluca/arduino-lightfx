@@ -14,7 +14,6 @@
 #include "comms.h"
 #include "FxSchedule.h"
 #include "log.h"
-#include "mic.h"
 #include "util.h"
 #include "task_msg.h"
 #include "web_server.h"
@@ -48,7 +47,6 @@ void alarm_misc_begin();
 void alarm_misc_run();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
 constexpr TaskDef fxTasks {fx_setup, fx_run, 1536, csFxTask, 255, CORE_1};
-constexpr TaskDef micTasks {mic_setup, mic_run, 1024, "Mic", 5, CORE_1};
 constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1280, "ALM", 5, CORE_0};
 bool core1_separate_stack = true;
 
@@ -140,7 +138,7 @@ void setup() {
     SysInfo::setupStateLED();
     log_setup();
 
-    RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
+    // RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
 
     sysInfo = new SysInfo();    //system information object built once per run
     filesystem_setup();
@@ -151,7 +149,6 @@ void setup() {
     Scheduler.startTask(&alarmTasks);
 
     readSysInfo();
-    secElement_setup();
 
     const TaskHandle_t core1 = xTaskGetHandle(csCORE1);    //retrieve a task handle for the second core
     const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
@@ -208,7 +205,6 @@ void setup1() {
     //wait for the main core to notify us that WiFi is ready, not interested in the notification value
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    Scheduler.startTask(&micTasks);
     diagSetup();
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)+1);    //raise the priority of the diag task to allow uninterrupted I2C interactions

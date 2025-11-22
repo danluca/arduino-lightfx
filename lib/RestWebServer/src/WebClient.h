@@ -5,7 +5,7 @@
 #define WEBCLIENT_H
 
 #include <Arduino.h>
-#include "WiFiNINA.h"
+#include "WiFi.h"
 #include <functional>
 #include <memory>
 #include "WebRequest.h"

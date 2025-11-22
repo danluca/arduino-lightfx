@@ -14,7 +14,6 @@ using namespace fx;
 const setupFunc categorySetup[] = {FxA::fxRegister, FxB::fxRegister, FxC::fxRegister, FxD::fxRegister, FxE::fxRegister, FxF::fxRegister, FxH::fxRegister, FxI::fxRegister, FxJ::fxRegister, FxK::fxRegister};
 constexpr CRGB BKG = CRGB::Black;
 
-volatile bool fxBump = false;
 volatile uint16_t speed = 100;
 volatile uint16_t curPos = 0;
 
@@ -41,7 +40,6 @@ uint8_t saturation = 100;
 uint8_t dotBpm = 30;
 uint16_t stripShuffleIndex[NUM_PIXELS];
 uint16_t hueDiff = 256;
-uint16_t totalAudioBumps = 0;
 int32_t dist = 1;
 bool stripBrightnessLocked = false;
 bool dirFwd = true;
@@ -74,7 +72,6 @@ void readFxState() {
 
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
 
-        audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
         const auto savedHoliday = doc[csColorTheme].as<String>();
         paletteFactory.setHoliday(parseHoliday(&savedHoliday));
         paletteFactory.setAuto(doc[csAutoColorAdjust].as<bool>());
@@ -90,8 +87,8 @@ void readFxState() {
         if (doc[csBroadcast].is<bool>())
             fxBroadcastEnabled = doc[csBroadcast].as<bool>();
 
-        log_info(F("System state restored from %s [%zu bytes]: autoFx=%s, randomSeed=%d, nextEffect=%hu, brightness=%hu (auto adjust), audioBumpThreshold=%hu, holiday=%s (auto=%s), sleepEnabled=%s"),
-                   stateFileName, stateSize, StringUtils::asString(autoAdvance), seed, fx, stripBrightness, audioBumpThreshold, holidayToString(paletteFactory.getHoliday()), StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(fxRegistry.isSleepEnabled()));
+        log_info(F("System state restored from %s [%zu bytes]: autoFx=%s, randomSeed=%d, nextEffect=%hu, brightness=%hu (auto adjust), holiday=%s (auto=%s), sleepEnabled=%s"),
+                   stateFileName, stateSize, StringUtils::asString(autoAdvance), seed, fx, stripBrightness, holidayToString(paletteFactory.getHoliday()), StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(fxRegistry.isSleepEnabled()));
     }
     delete json;
 }
@@ -102,7 +99,6 @@ void saveFxState() {
     doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
     doc[csCurFx] = fxRegistry.curEffectPos();
     doc[csStripBrightness] = stripBrightness;
-    doc[csAudioThreshold] = audioBumpThreshold;
     doc[csColorTheme] = holidayToString(paletteFactory.getHoliday());
     doc[csAutoColorAdjust] = paletteFactory.isAuto();
     doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
@@ -123,7 +119,7 @@ void saveFxState() {
  */
 void resetGlobals() {
     //turn off the LEDs on the strip and the frame buffer - flush to the LED strip if we have the time and not in sleep time
-    //flushing to strip may cause a short blink if called mid-effect, like an audio effect bump would do for the same effect when sleeping
+    //flushing to strip may cause a short blink if called mid-effect
     const bool flushStrip = sysInfo->isSysStatus(SYS_STATUS_NTP) && !fxRegistry.isAsleep();
     FastLED.clear(flushStrip);
     FastLED.setBrightness(BRIGHTNESS);
@@ -144,7 +140,6 @@ void resetGlobals() {
     hueDiff = 256;
     dist = 1;
     dirFwd = true;
-    fxBump = false;
 
     //shuffle led indexes - when engaging secureRandom functions, each call is about 30ms. Shuffling a 320 items array (~200 swaps and secure random calls) takes about 6 seconds!
     //commented in favor of regular shuffle (every 5 minutes) - see fxRun
@@ -203,15 +198,6 @@ void displayFirmwareUpgradePattern() {
     FastLED.show(stripBrightness);
 }
 
-void checkAudioAndBumpEffect() {
-    if (fxBump) {
-        log_info(F("Audio triggered effect incremental change"));
-        fxRegistry.nextEffectPos();
-        fxBump = false;
-        totalAudioBumps++;
-    }
-}
-
 void updateBrightness() {
     const uint8_t oldBrightness = stripBrightness;
     stripBrightness = adjustStripBrightness();
@@ -261,7 +247,6 @@ void fx_run() {
     }
 
     EVERY_N_SECONDS(BRIGHTNESS_CHECK_INTERVAL_SECONDS) {
-        checkAudioAndBumpEffect();
         updateBrightness();
     }
 

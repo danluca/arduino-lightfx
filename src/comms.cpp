@@ -4,7 +4,7 @@
 #include <FreeRTOS.h>
 #include <queue.h>
 #include <timers.h>
-#include <ArduinoHttpClient.h>
+#include <HTTPClient.h>
 #include "SchedulerExt.h"
 #include "comms.h"
 #include "efx_setup.h"
@@ -25,9 +25,9 @@ BroadcastState broadcastState = Uninitialized;
 //broadcast client list, using the last byte of IP addresses - e.g., 192.168.0.10, 192.168.0.11
 static constexpr auto syncClientsLSB PROGMEM = {BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
 
-static constexpr auto hdContentJson PROGMEM = "Content-Type: application/json";
+static constexpr auto hdContentJson PROGMEM = "application/json";
+static constexpr auto hdKeepAlive PROGMEM = "keep-alive";
 static constexpr auto hdUserAgentVersion PROGMEM = "1.0.0";
-static constexpr auto hdKeepAlive PROGMEM = "Connection: keep-alive";
 static constexpr auto fmtFxChange PROGMEM = R"===({"effect":%u,"auto":false,"broadcast":false})===";
 
 QueueHandle_t bcQueue;
@@ -84,12 +84,12 @@ void commRun() {
         case TIME_UPDATE: timeUpdate(); break;
         case FX_SYNC: fxBroadcast(msg->data); break;
         case WIFI_ENSURE: wifi_ensure(); break;
-        case WIFI_TEMP: wifi_temp(); break;
         case STATUS_LED_CHECK: state_led_update(); break;
         case ENABLE_BROADCAST: {
             const bool syncMode = static_cast<bool>(msg->data);
             const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
             fxBroadcastEnabled = syncMode; //we need this enabled before we post the event, if we're doing that
+            saveFxState();  //persist change immediately
             if (masterEnabled)
                 postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
             break;
@@ -109,11 +109,11 @@ void commRun() {
 void enqueueTimeUpdate(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{TIME_UPDATE, 0};   //gets deleted in execute method upon message receipt
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE) {
-        log_error(F("Error sending TIME_UPDATE message to broadcast task for timer %d [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending TIME_UPDATE message to broadcast task for timer %p [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
         delete msg;
     }
     // else
-    //     log_infoln(F("Sent TIME_UPDATE event successfully to broadcast task for timer %d [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    //     log_infoln(F("Sent TIME_UPDATE event successfully to broadcast task for timer %p [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
 }
 
 /**
@@ -146,15 +146,7 @@ void enqueueTimeSetup(TimerHandle_t xTimer) {
 void enqueueWifiEnsure(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{WIFI_ENSURE, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
-        log_error(F("Error sending WIFI_ENSURE message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
-        delete msg;
-    }
-}
-
-void enqueueWifiTempRead(TimerHandle_t xTimer) {
-    auto *msg = new bcTaskMessage{WIFI_TEMP, 0};
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
-        log_error(F("Error sending WIFI_TEMP message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending WIFI_ENSURE message to BC queue for timer %hu [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
         delete msg;
     }
 }
@@ -166,11 +158,11 @@ void enqueueWifiTempRead(TimerHandle_t xTimer) {
 void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{STATUS_LED_CHECK, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
-        log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %hu [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
         delete msg;
     }
     // else
-    //     log_info(F("Sent STATUS_LED_CHECK event successfully to BC queue for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
+    //     log_info(F("Sent STATUS_LED_CHECK event successfully to BC queue for timer %hu [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
 }
 
 /**
@@ -181,48 +173,37 @@ void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
 void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     log_info(F("Attempting to connect to client %s for FX %hu"), ip->toString().c_str(), fxIndex);
     WiFiClient wiFiClient;  //wifi client - does not need an explicit pointer for underlying WiFi class/driver
-    HttpClient client(wiFiClient, *ip, HttpClient::kHttpPort);
-    client.setTimeout(1000);
-    client.setHttpResponseTimeout(2000);
-    client.connectionKeepAlive();
-    client.noDefaultRequestHeaders();
+    HTTPClient client;
+    client.setTimeout(750); // keep short to avoid starving the watchdog
+
+    // Use the 4-arg begin overload with host (no scheme), port, and URI
+    client.begin(wiFiClient, ip->toString(), 80, "/fx");
+    client.addHeader("Content-Type", hdContentJson);
+    client.addHeader("Connection", "close"); // one-shot request, avoid lingering sockets
 
     char buf[64];   //size deemed enough based on fmtFxChange pattern and fxIndex values (16bit int)
     const int written = snprintf(buf, sizeof(buf), fmtFxChange, fxIndex);
-    const int bodyLen = written < 0 ? 0 : (written >= sizeof(buf) ? static_cast<int>(sizeof(buf) - 1) : written);
+    const int bodyLen = written < 0 ? 0 : written;
 
     String hdUserAgent;
-    hdUserAgent.concat(kHeaderUserAgent);
-    hdUserAgent.concat(": ");
     hdUserAgent.concat(kUaBoardPrefix);
     hdUserAgent.concat("/");
     hdUserAgent.concat(hdUserAgentVersion);
-
-    client.beginRequest();
-    //client.put is where the connection is established
-    if (HTTP_SUCCESS == client.put("/fx")) {
-        client.sendHeader(hdContentJson);
-        client.sendHeader(hdUserAgent);
-        client.sendHeader("Content-Length", bodyLen);
-        client.sendHeader(hdKeepAlive);
-        client.beginBody();
-        client.print(buf);
-        client.endRequest();
-
-        const int statusCode = client.responseStatusCode();
-        String response = client.responseBody();
+    client.addHeader("Content-Length", String(bodyLen));
+    client.addHeader(kHeaderUserAgent, hdUserAgent);
+    
+    const int status = client.PUT(buf);
+    if (status > 0) {
+        String response = client.getString();
 #if LOGGING_ENABLED == 1
-        if (statusCode / 100 == 2)
-            log_info(F("Successful sync FX %hu with client %s: %d response status\nBody: %s"), fxIndex, ip->toString().c_str(), statusCode, response.c_str());
+        if (status / 100 == 2)
+            log_info(F("Successful sync FX %hu with client %s: %d response status\nBody: %s"), fxIndex, ip->toString().c_str(), status, response.c_str());
         else
-            log_error(F("Failed to sync FX %hu to client %s: %d response status"), fxIndex, ip->toString().c_str(), statusCode);
-#else
-        (void)statusCode;
+            log_error(F("Failed to sync FX %hu to client %s: %d response status"), fxIndex, ip->toString().c_str(), status);
 #endif
-
-    } else
+    } else {
         log_error(F("Failed to connect to client %s, FX %hu not synced"), ip->toString().c_str(), fxIndex);
-    client.stop();
+    client.end();
     taskDelay(1000);    //little break in between (multiple) client calls
 }
 
@@ -367,12 +348,6 @@ void commSetup() {
         log_error(F("Cannot create wifiEnsure timer - Ignored. There is NO wifi re-check scheduled"));
     else if (xTimerStart(thWifiEnsure, 0) != pdPASS)
         log_error(F("Cannot start the wifiEnsure timer - Ignored."));
-    //create a timer to take WiFi temperature - every 33 s, 1 s off from the diagnostic thread temp read, to avoid overlap
-    const TimerHandle_t thWifiTempRead = xTimerCreate("wifiTempRead", pdMS_TO_TICKS(33*1000), pdTRUE, &tmrWifiTemp, enqueueWifiTempRead);
-    if (thWifiTempRead == nullptr)
-        log_error(F("Cannot create wifiTempRead timer - Ignored. There is NO wifi temperature read scheduled"));
-    else if (xTimerStart(thWifiTempRead, 0) != pdPASS)
-        log_error(F("Cannot start the wifiTempRead timer - Ignored."));
     //update the status LED - repeated each 5 seconds
     const TimerHandle_t thStatusLED = xTimerCreate("statusLEDCheck", pdMS_TO_TICKS(5 * 1000), pdTRUE, &tmrStatusLEDCheck, enqueueStatusLEDCheck);
     if (thStatusLED == nullptr)

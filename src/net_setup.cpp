@@ -2,24 +2,23 @@
 // Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
 //
 #include "net_setup.h"
-#include <WiFiNINA.h>
+#include <WiFi.h>
 #include "config.h"
 #include "sysinfo.h"
 #include "timeutil.h"
 #include "comms.h"
 #include "util.h"
 #include "log.h"
+#include "stringutils.h"
 #include "web_server.h"
+#if MDNS_ENABLED==1
+#include <LEAmDNS.h>
+#endif
 
 // using namespace colTheme;
 constexpr auto ssid PROGMEM = WF_SSID;
 constexpr auto pass PROGMEM = WF_PSW;
 constexpr auto hostname PROGMEM = "lightfx-" DEVICE_NAME;
-
-#if MDNS_ENABLED==1
-UDP* mUdp = nullptr;  // mDNS UDP instance
-MDNS* mdns = nullptr;
-#endif
 
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from \code WiFi.RSSI() \endcode
@@ -42,19 +41,20 @@ uint8_t barSignalLevel(const int32_t rssi) {
 
 bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
-    WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
+    // WiFi.config({IP_ADDR});
     WiFi.setHostname(hostname);
     log_info(F("Connecting to WiFI '%s'"), ssid);  // print the network name (SSID);
     // attempt to connect to WiFi network:
+    // WiFi.setTimeout(10000);     // default timeout is 15 seconds - see WiFiClass.h
     uint attCount = 0;
-    uint8_t wifiStatus = WiFi.status();
+    uint8_t wifiStatus = WiFi.begin(ssid, pass);
     while (wifiStatus != WL_CONNECTED) {
         log_info(F("Attempting to connect Wi-Fi..."));
 
         // Connect to WPA/WPA2 network
+        // wait 2 seconds for connection to succeed:
+        taskDelay(2500);
         wifiStatus = WiFi.begin(ssid, pass);
-        // wait 10 seconds for connection to succeed:
-        taskDelay(10000);
         attCount++;
     }
     const bool result = wifiStatus == WL_CONNECTED;
@@ -74,36 +74,20 @@ bool wifi_connect() {
     webSvcName.concat(F("-webserver._http"));
     String lightfxSvcName(dnsHostname);
     lightfxSvcName.concat(F("._lucasfx"));
-    mUdp = new WiFiUDP();
-    mdns = new MDNS(*mUdp);
-    mdns->begin();      //this should not be needed - implementation is a no-op
-
-    MDNS::Status mdnsStatus = mdns->start({IP_ADDR}, dnsHostname);
+    const bool mdnsStatus = MDNS.begin(dnsHostname);
     (void)mdnsStatus;
-    log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
-
-    const auto mdnstxt = MDNS::Service::TXT::Builder()
-            .add("info", "Arduino RP2040 Lucas LightFX")
-            .add("name", dnsHostname)
-            .add("model", "NanoConnect RP2040")
-            .build();
-    mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
-        .withName(webSvcName)
-        .withPort(80)
-        .withProtocol(MDNS::Service::Protocol::TCP)
-        .withTXT(mdnstxt)
-        .build()
-    );
-    (void)mdnsStatus;
-    log_info(F("mDNS adding web service %s status: %d (%s)"), webSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
-    mdnsStatus = mdns->serviceInsert(MDNS::Service::Builder()
-        .withName(lightfxSvcName)
-        .withPort(80)
-        .withProtocol(MDNS::Service::Protocol::TCP)
-        .withTXT(mdnstxt)
-        .build());
-    (void)mdnsStatus;
-    log_info(F("mDNS adding custom lucasfx service %s status: %d (%s)"), lightfxSvcName.c_str(), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
+    log_info(F("mDNS start status: %d (%s)"), mdnsStatus, StringUtils::asString(mdnsStatus));
+    MDNS.addService(webSvcName, "_tcp", 80);
+    MDNS.addServiceTxt(webSvcName, "_tcp", "info", "Pimoroni Plasma 2350W Lucas LightFX");
+    // MDNS.addServiceTxt(webSvcName, "_tcp", "name", dnsHostname);
+    // MDNS.addServiceTxt(webSvcName, "_tcp", "model", "Plasma 2350W");
+    log_info(F("mDNS added web service %s"), webSvcName.c_str());
+    // MDNS.addService(lightfxSvcName, "_tcp", 80);
+    // MDNS.addServiceTxt(lightfxSvcName, "_tcp", "info", "Pimoroni Plasma 2350W Lucas LightFX");
+    // MDNS.addServiceTxt(lightfxSvcName, "_tcp", "name", dnsHostname);
+    // MDNS.addServiceTxt(lightfxSvcName, "_tcp", "model", "Plasma 2350W");
+    // log_info(F("mDNS added custom lucasfx service %s"), lightfxSvcName.c_str());
+    MDNS.announce();
 #endif
 
     return result;
@@ -118,9 +102,8 @@ bool wifi_setup() {
         //while (true) vTaskYield();
     }
     checkFirmwareVersion();
-
-    //enable low power mode - web server is not the primary function of this module
-    WiFi.lowPowerMode();
+    //enable low-power mode - web server is not the primary function of this module
+    WiFi.defaultLowPowerMode();
 
     const bool connStatus = wifi_connect();
 
@@ -162,9 +145,7 @@ void wifi_reconnect() {
     timeService.end();
     delete ntpUDP;
 #if MDNS_ENABLED==1
-    mdns->stop();
-    delete mdns;
-    delete mUdp;
+    MDNS.close();
 #endif
 
     WiFi.disconnect();
@@ -206,7 +187,7 @@ void printSuccessfulWifiStatus() {
 }
 
 void checkFirmwareVersion() {
-    const String fv = nina::WiFiClass::firmwareVersion();
+    const String fv = ::WiFiClass::firmwareVersion();
     log_info(F("WiFi firmware version %s"), fv.c_str());
     if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
         log_warn(F("Please upgrade the WiFi firmware to %s"), WIFI_FIRMWARE_LATEST_VERSION);

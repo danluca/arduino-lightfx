@@ -68,9 +68,9 @@ function getConfig() {
             $('#macAddress').html(data.macAddress);
             $('#osVersion').html(`${data.arduinoPicoVersion}<br/>&nbsp;&nbsp;[FreeRTOS ${data.freeRTOSVersion}]`);
             if (data.wifiFwVersion !== data.wifiLatestVersion) {
-                $('#wfVersion').html(`WiFi NINA v${data.wifiFwVersion} [could upgrade to ${data.wifiLatestVersion}]`);
+                $('#wfVersion').html(`v${data.wifiFwVersion} [could upgrade to ${data.wifiLatestVersion}]`);
             } else {
-                $('#wfVersion').html(`WiFi NINA v${data.wifiFwVersion} (latest)`);
+                $('#wfVersion').html(`v${data.wifiFwVersion} (latest)`);
             }
 
         });
@@ -80,15 +80,10 @@ function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
             $('#status h1').removeClass('red');
-            $('#boardTemp').html(`${data.temp.board.current.toFixed(1)} °C (${(data.temp.board.current*9/5+32).toFixed(1)} °F)`);
-            $('#boardRangeTemp').html(`[${data.temp.board.min.toFixed(1)} - ${data.temp.board.max.toFixed(1)}] °C`);
             $('#cpuTemp').html(`${data.temp.cpu.current.toFixed(1)} °C (${(data.temp.cpu.current*9/5+32).toFixed(1)} °F)`);
             $('#cpuRangeTemp').html(`[${data.temp.cpu.min.toFixed(1)} - ${data.temp.cpu.max.toFixed(1)}] °C`);
-            $('#wifiTemp').html(`${data.temp.wifi.current.toFixed(1)} °C (${(data.temp.wifi.current*9/5+32).toFixed(1)} °F)`);
-            $('#wifiRangeTemp').html(`[${data.temp.wifi.min.toFixed(1)} - ${data.temp.wifi.max.toFixed(1)}] °C`);
             $('#boardVcc').html(`${data.vcc.current.toFixed(2)} V`);
             $('#rangeVcc').html(`[${data.vcc.min.toFixed(2)} - ${data.vcc.max.toFixed(2)}] V`);
-            $('#audioThreshold').html(`${data.fx.audioThreshold}`);
             $('#upTime').html(`${data.upTime}`);
             $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
@@ -99,16 +94,6 @@ function getStatus() {
                 $('#fxCurEffect').html(`${data.fx.name} [${data.fx.index}]`);
             }
             $('#pastEffects').html(`${data.fx.pastEffects.reverse().join(', ')}`);
-            $('#totalAudioBumps').html(`${data.fx.totalAudioBumps}`);
-            let lblHistogram = data.fx.audioHist.map((elem, ix)=>
-                `${ix===(data.fx.audioHist.length-1)?'>':''}${data.fx.audioThreshold+ix*500}`);
-                // `${(data.fx.audioThreshold+ix*500)/1000} - ${(data.fx.audioThreshold+(ix+1)*500)/1000}k${ix===(data.fx.audioHist.length-1)?'+':''}`);
-                // `${data.fx.audioThreshold+ix*500} - ${data.fx.audioThreshold+(ix+1)*500}${ix===(data.fx.audioHist.length-1)?'+':''} : ${elem}`);
-            //$('#audioLevelHistogram').html(`${lblHistogram.join('<br/>')}`);
-            histOptions.data[0].dataPoints = data.fx.audioHist.map((elem, ix) => {
-                return { label: lblHistogram[ix], y: elem };
-            });
-            $("#audioHistogram").CanvasJSChart(histOptions);
             $('#timeNtp').html(`${data.time.ntpSync}`);
             $('#timeCurrent').html(`${data.time.sdate} ${data.time.stime} ${data.time.zoneShort}`);
             $('#timeHoliday').html(`${data.time.holiday}`);

@@ -13,7 +13,6 @@ extern QueueHandle_t fxQueue;
 extern QueueHandle_t almQueue;
 extern QueueHandle_t bcQueue;
 extern QueueHandle_t diagQueue;
-extern QueueHandle_t micQueue;
 
 enum AlmAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO, HOLIDAY_UPDATE};
 
@@ -23,7 +22,7 @@ struct FxActionMessage {
     uint32_t data;
 };
 
-enum CommAction:uint8_t {TIME_SETUP, TIME_UPDATE, FX_SYNC, WIFI_ENSURE, WIFI_TEMP, STATUS_LED_CHECK, ENABLE_BROADCAST};
+enum CommAction:uint8_t {TIME_SETUP, TIME_UPDATE, FX_SYNC, WIFI_ENSURE, STATUS_LED_CHECK, ENABLE_BROADCAST};
 
 /**
  * Structure of the message sent to the Communications task

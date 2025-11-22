@@ -1,8 +1,6 @@
 //
 // Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
 //
-#include <ArduinoECCX08.h>
-#include "utility/ECCX08DefaultTLSConfig.h"
 #include <FreeRTOS.h>
 #include <task.h>
 #include "timeutil.h"
@@ -110,44 +108,17 @@ uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
 }
 
 /**
- * Leverages ECC608B's High-Quality NIST SP 800-90A/B/C Random Number Generator
- * <p>It is slow - takes about 30 ms</p>
+ * Leverages CPU hardware's Random Number Generator
  * @param minLim minimum value, defaults to 0
  * @param maxLim maximum value, defaults to max signed 32 bits (INT32_MAX)
  * @return a high-quality random number in the range specified
  */
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
-    const long low = static_cast<long>(minLim);
-    const long high = maxLim > 0 ? static_cast<long>(maxLim) : INT32_MAX;
-    return sysInfo->isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
-}
-
-bool secElement_setup() {
-    if (!ECCX08.begin()) {
-        log_error(F("No ECC608 chip present on the RP2040 board (or failed communication)!"));
-        return false;
-    }
-    sysInfo->setSecureElementId(ECCX08.serialNumber());
-    const char* eccSerial = sysInfo->getSecureElementId().c_str();
-    if (!ECCX08.locked()) {
-        log_warn(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
-        if (!ECCX08.writeConfiguration(ECCX08_DEFAULT_TLS_CONFIG)) {
-            log_error(F("Writing ECCX08 default TLS configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
-            return false;
-        }
-        if (!ECCX08.lock()) {
-            log_error(F("Locking ECCX08 configuration FAILED for s/n %s! Secure Element functions (RNG, etc.) NOT available"), eccSerial);
-            return false;
-        }
-        log_info(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
-    }
-    log_info(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
-    sysInfo->setSysStatus(SYS_STATUS_ECC);
-    //update entropy - the timing of this call allows us to interact with I2C without other contenders
-    const uint16_t rnd = secRandom16();
-    random16_add_entropy(rnd);
-    log_info(F("Secure random value %hu added as entropy to pseudo random number generator"), rnd);
-    return true;
+    if (minLim > maxLim && maxLim > 0)
+        return maxLim;
+    const uint32_t high = maxLim > 0 ? maxLim : UINT32_MAX;
+    //e.g. get_rand_32() from rand.h in pico-sdk/src/rp2_common/pico_rand/include/pico/rand.h
+    return minLim + rp2040.hwrand32() % (high - minLim);
 }
 
 /**

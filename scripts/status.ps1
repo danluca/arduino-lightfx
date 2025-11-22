@@ -4,7 +4,7 @@
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]
-    [ValidateSet("Dev", "FX01", "FX02")]
+    [ValidateSet("Dev", "Tree")]
     [string]$board = "Dev"
 )
 

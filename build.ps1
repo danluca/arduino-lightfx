@@ -1,24 +1,27 @@
+## Copyright (c) 2025 by Dan Luca. All rights reserved.
+##
+## Build script for PlatformIO project
 [CmdletBinding()]
 param (
     [switch]$dbg, 
     [switch]$clean,
     [Parameter(Mandatory=$false)]
-    [ValidateSet("Dev", "FX01", "FX02")]
+    [ValidateSet("Dev","Tree")]
     [string]$board = "Dev",
     [switch]$log,
     [switch]$ignoreBroadcast
 )
 
 # see platformio.ini for the environment names
-$relEnv = "rp2040-rel"
-$dbgEnv = "rp2040-dbg"
+$relEnv = "rp2350-rel"
+$dbgEnv = "rp2350-dbg"
 
 function prepEnvironment() {
     # see config.h in the include folder for board ID values
     # 1 = Dev, 2 = FX01, 3 = FX02
     $boardId = switch ($board) {
         "Dev" { 1 }
-        "FX01" { 2 }
+        "Tree" { 2 }
         "FX02" { 3 }
     }
     $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"

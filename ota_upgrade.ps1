@@ -1,7 +1,10 @@
+## Copyright (c) 2025 by Dan Luca. All rights reserved.
+##
+## OTA Upgrade script for RP2350-based boards
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]
-    [ValidateSet("Dev", "FX01", "FX02")]
+    [ValidateSet("Dev","Tree")]
     [string]$board = "Dev",
     [switch]$ignoreBroadcast,
     [Parameter(Mandatory=$false)]
@@ -65,7 +68,7 @@ if (-not $fwPath) {
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed. Please check the build.log for details."
     }
-    $fwPath = Get-ChildItem -Path ".pio/build/rp2040-rel/firmware.bin" -ErrorAction SilentlyContinue | Select-Object -First 1
+    $fwPath = Get-ChildItem -Path ".pio/build/rp2350-rel/firmware.bin" -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $fwPath) {
         throw "No firmware file found after build. Please check the build process."
     } else {

@@ -9,7 +9,7 @@ param(
     [Parameter(Mandatory=$true, ParameterSetName='Generate')]
     [int]$MaxMinutes,
     [Parameter(Mandatory=$true, ParameterSetName='Upload')]
-    [ValidateSet("Dev", "FX01", "FX02")]
+    [ValidateSet("Dev", "Tree")]
     [string]$Board='Dev',
     [switch]$force
 )
@@ -33,6 +33,8 @@ function ActivateVenv {
     }
     return $false
 }
+
+. $PSScriptRoot/boards.ps1
 
 $outFile = "fsi4_seed$Variant.txt"
 
