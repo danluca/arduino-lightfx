@@ -158,5 +158,39 @@ namespace FxI {
         void drawSplash(uint8_t intensity); // brief spray at the shoreline when crashing
     };
 
+    // FXI6: Bowling alley simulation (lane, rolling ball, pins)
+    class FxI6 final : public LedEffect {
+    public:
+        FxI6();
+        void setup() override;
+        void run() override;
+        [[nodiscard]] uint8_t selectionWeight() const override;
+
+    private:
+        // lane geometry
+        uint16_t laneStart = 0;
+        uint16_t laneEnd = 0;
+
+        // ball state
+        uint16_t ballPos = 0;
+        int8_t ballVel = 1;
+        uint8_t ballHue = 0;     // index into current palette
+
+        // pins (up to 10)
+        static constexpr uint8_t kPins = 10;
+        uint8_t pinPos[kPins]{};     // position on strip
+        bool pinUp[kPins]{};         // true = standing
+        uint8_t pinSpark[kPins]{};   // sparkle timer 0..255 when knocked
+        uint8_t pinHue = 0;          // palette index used for pin color
+
+        // timing
+        uint16_t frameMs = 40;       // ~25 FPS
+        uint32_t lastReset = 0;      // when a frame finished
+        uint16_t resetHoldMs = 700;  // small pause between rolls
+
+        void layoutPins();
+        void resetFrame(bool randomizeColors);
+    };
+
 }
 #endif //ARDUINO_LIGHTFX_FXI_H

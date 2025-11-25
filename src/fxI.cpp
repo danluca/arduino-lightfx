@@ -18,6 +18,7 @@ constexpr auto fxi2Desc PROGMEM = "FXI2: Pacifica - gentle ocean waves";
 constexpr auto fxi3Desc PROGMEM = "FXI3: Bouncy Ball";
 constexpr auto fxi4Desc PROGMEM = "FXI4: Audio-seeded VU meter";
 constexpr auto fxi5Desc PROGMEM = "FXI5: Shore waves with backwash";
+constexpr auto fxi6Desc PROGMEM = "FXI6: Bowling alley";
 
 /**
  * Register FxI effects
@@ -28,6 +29,7 @@ void FxI::fxRegister() {
     new FxI3();
     new FxI4();
     new FxI5();
+    new FxI6();
 }
 
 //FXI1
@@ -853,3 +855,125 @@ void FxI5::run() {
 }
 
 uint8_t FxI5::selectionWeight() const { return 10; }
+
+// FXI6 - Bowling alley simulation
+FxI6::FxI6() : LedEffect(fxi6Desc) {}
+
+void FxI6::setup() {
+    LedEffect::setup();
+    laneStart = 0;
+    laneEnd = tpl.size() > 6 ? tpl.size() - 1 : tpl.size(); // guard
+    // choose colors from current palette
+    ballHue = random8();
+    pinHue = ballHue + random8(40, 100);
+    resetFrame(false);
+}
+
+void FxI6::layoutPins() {
+    // Place 10 pins toward the far end, spaced evenly, with slight jitter if space allows
+    const uint16_t laneLen = laneEnd - laneStart + 1;
+    uint16_t zoneStart = laneStart + (laneLen * 2) / 3;
+    if (zoneStart + kPins >= laneEnd) {
+        zoneStart = laneEnd > (kPins + 1) ? laneEnd - (kPins + 1) : laneStart;
+    }
+    const uint16_t zoneLen = laneEnd - zoneStart + 1;
+    const uint16_t step = zoneLen > kPins ? max<uint16_t>(1, zoneLen / kPins) : 1;
+    uint16_t pos = zoneStart;
+    for (uint8_t i = 0; i < kPins; i++) {
+        uint16_t p = pos;
+        if (zoneLen >= kPins * 2) {
+            // small jitter within [-1, +1]
+            const int8_t j = (int8_t)random8(0, 3) - 1;
+            int32_t pj = (int32_t)p + j;
+            if (pj < (int32_t)zoneStart) pj = zoneStart;
+            if (pj > (int32_t)laneEnd) pj = laneEnd;
+            p = (uint16_t)pj;
+        }
+        pinPos[i] = (uint8_t)constrain(p, laneStart, laneEnd);
+        pos = (uint16_t)min<uint32_t>(laneEnd, (uint32_t)pos + step);
+    }
+}
+
+void FxI6::resetFrame(bool randomizeColors) {
+    if (randomizeColors) {
+        ballHue += random8(10, 40);
+        pinHue = ballHue + random8(40, 100);
+    }
+    // clear state
+    for (uint8_t i = 0; i < kPins; i++) {
+        pinUp[i] = true;
+        pinSpark[i] = 0;
+    }
+    layoutPins();
+    ballPos = laneStart;
+    ballVel = random8(0, 100) < 60 ? 1 : 2; // mostly 1, sometimes 2
+    lastReset = millis();
+}
+
+void FxI6::run() {
+    EVERY_N_MILLISECONDS_I(tmr, frameMs) {
+        // Background lane color (dim, from palette)
+        const CRGB laneClr = ColorFromPalette(targetPalette, pinHue, 10, LINEARBLEND);
+        tpl.fill_solid(laneClr);
+
+        // Draw pins
+        for (uint8_t i = 0; i < kPins; i++) {
+            const uint8_t p = pinPos[i];
+            if (pinUp[i]) {
+                // standing pin: brighter color
+                tpl[p] = ColorFromPalette(targetPalette, pinHue, 200, LINEARBLEND);
+                // subtle highlight
+                if (p > laneStart) nblend(tpl[p - 1], ColorFromPalette(targetPalette, pinHue + 8, 120), 100);
+                if (p < laneEnd) nblend(tpl[p + 1], ColorFromPalette(targetPalette, pinHue + 8, 120), 100);
+            } else if (pinSpark[i] > 0) {
+                // knocked: sparkle and fade out
+                const uint8_t bri = pinSpark[i];
+                tpl[p] += ColorFromPalette(palette, pinHue + 32, bri, LINEARBLEND);
+                if (p > laneStart) tpl[p - 1] += ColorFromPalette(palette, pinHue + 48, bri / 2, LINEARBLEND);
+                if (p < laneEnd) tpl[p + 1] += ColorFromPalette(palette, pinHue + 48, bri / 2, LINEARBLEND);
+                pinSpark[i] = qsub8(pinSpark[i], 18);
+            }
+        }
+
+        // Draw ball with small trail
+        const CRGB ballClr = ColorFromPalette(palette, ballHue, 220, LINEARBLEND);
+        // trail
+        if (ballPos > laneStart) nblend(tpl[ballPos - 1], ballClr, 80);
+        if (ballPos > laneStart + 1) nblend(tpl[ballPos - 2], ballClr, 40);
+        // head
+        tpl[ballPos] = ballClr;
+
+        // Move ball and handle collisions
+        const uint16_t prevPos = ballPos;
+        ballPos = (uint16_t)min<uint32_t>(laneEnd + 2, (uint32_t)ballPos + ballVel);
+        // collision: if ball reaches or passes a standing pin, knock it down
+        for (uint8_t i = 0; i < kPins; i++) {
+            if (!pinUp[i]) continue;
+            const uint8_t p = pinPos[i];
+            if ((prevPos <= p) && (ballPos >= p)) {
+                pinUp[i] = false;
+                pinSpark[i] = 255;
+                // splash around the pin
+                if (p > laneStart) tpl[p - 1] += CRGB::White;
+                if (p < laneEnd) tpl[p + 1] += CRGB::White;
+            }
+        }
+
+        // End conditions: ball off lane or all pins down
+        bool allDown = true;
+        for (uint8_t i = 0; i < kPins; i++) if (pinUp[i]) { allDown = false; break; }
+        if (ballPos >= laneEnd + 1 || allDown) {
+            // allow sparkles to fade for a short hold, then reset
+            if (millis() - lastReset > resetHoldMs) {
+                resetFrame(true);
+            }
+        } else {
+            lastReset = millis();
+        }
+
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+}
+
+uint8_t FxI6::selectionWeight() const { return 9; }
