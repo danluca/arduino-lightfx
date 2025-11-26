@@ -226,19 +226,38 @@ void fx::replicateSet(const CRGBSet& src, CRGBSet& dest) {
     CRGB* normDestStart = dest.reversed() ? dest.end_pos : dest.leds;
     CRGB* normDestEnd = dest.reversed() ? dest.leds : dest.end_pos;
     uint16_t x = 0;
-    if (max(normSrcStart, normDestStart) < min(normSrcEnd, normDestEnd)) {
-        //we have overlap - account for it
-        for (auto & y : dest) {
-            if (CRGB* yPtr = &y; (yPtr < normSrcStart) || (yPtr >= normSrcEnd)) {
-                (*yPtr) = src[x];
-                incr(x, 1, srcSize);
-            }
-        }
-    } else {
-        //no overlap - simpler assignment code
-        for (auto & y : dest) {
+    const bool hasOverlap = max(normSrcStart, normDestStart) < min(normSrcEnd, normDestEnd);
+    for (auto &y : dest) {
+        if (!hasOverlap || (&y < normSrcStart) || (&y >= normSrcEnd)) {
             y = src[x];
             incr(x, 1, srcSize);
+        }
+    }
+}
+
+/**
+ * Replicate the source set into destination, repeating it with alternate mirroring as necessary to fill the entire destination
+ * <p>Any overlaps between source and destination are skipped from replication - the source set backing array is guaranteed unchanged</p>
+ * @param src source set
+ * @param dest destination set
+ */
+void fx::replicateMirrorSet(const CRGBSet &src, CRGBSet &dest) {
+    const uint16_t srcSize = abs(src.len);    //src.size() would be more appropriate, but the function is not marked const
+    CRGB* normSrcStart = src.len < 0 ? src.end_pos : src.leds;     //src.reversed() would have been consistent, but function is not marked const
+    CRGB* normSrcEnd = src.len < 0 ? src.leds : src.end_pos;
+    CRGB* normDestStart = dest.reversed() ? dest.end_pos : dest.leds;
+    CRGB* normDestEnd = dest.reversed() ? dest.leds : dest.end_pos;
+    CRGBSet reversedSrc = src;
+    reversedSrc = -reversedSrc;
+    uint16_t x = 0;
+    const bool hasOverlap = max(normSrcStart, normDestStart) < min(normSrcEnd, normDestEnd);
+    bool mirror = true;  //start replicating with mirrored image - on the assumption that source is already part of the global output set
+    for (auto &y : dest) {
+        if (!hasOverlap || (&y < normSrcStart) || (&y >= normSrcEnd)) {
+            const uint16_t lastX = x;
+            y = mirror ? reversedSrc[x] : src[x];
+            incr(x, 1, srcSize);
+            if (x < lastX) mirror = !mirror;
         }
     }
 }

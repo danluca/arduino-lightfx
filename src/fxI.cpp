@@ -435,7 +435,7 @@ void FxI3::run() {
         hueIdx += 1;
 
         // Output
-        replicateSet(frame, others);
+        replicateMirrorSet(frame, others);
         FastLED.show(stripBrightness);
     }
 }
@@ -845,12 +845,10 @@ void FxI5::run() {
             seaHueBase += random8(3, 9); // slow color drift
             // constant frame rate, or opportunity to modify it
             tmr.setPeriod(30 + random8(0, 30));
-            backwashPeriodMs = tmr.getPeriod() * 7/3;
+            backwashPeriodMs = tmr.getPeriod() * 10/3;
         }
-        replicateSet(frame, rest);
+        replicateMirrorSet(frame, rest);
         FastLED.show(stripBrightness);
-        // constant frame rate, or opportunity to modify it
-        tmr.setPeriod(40);
     }
 }
 
@@ -971,7 +969,7 @@ void FxI6::run() {
             lastReset = millis();
         }
 
-        replicateSet(tpl, others);
+        replicateMirrorSet(tpl, others);
         FastLED.show(stripBrightness);
     }
 }

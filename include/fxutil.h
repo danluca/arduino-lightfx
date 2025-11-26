@@ -52,6 +52,8 @@ namespace fx {
 
     void replicateSet(const CRGBSet& src, CRGBSet& dest);
 
+    void replicateMirrorSet(const CRGBSet& src, CRGBSet& dest);
+
     uint8_t adjustStripBrightness();
 
     void mirrorLow(CRGBSet &set);
