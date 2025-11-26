@@ -240,18 +240,18 @@ void fx::replicateSet(const CRGBSet& src, CRGBSet& dest) {
  * <p>Any overlaps between source and destination are skipped from replication - the source set backing array is guaranteed unchanged</p>
  * @param src source set
  * @param dest destination set
+ * @param startMirrored whether the first replicated segment is a mirror of the source or a replica of the source
  */
-void fx::replicateMirrorSet(const CRGBSet &src, CRGBSet &dest) {
+void fx::replicateMirrorSet(const CRGBSet &src, CRGBSet &dest, const bool startMirrored) {
     const uint16_t srcSize = abs(src.len);    //src.size() would be more appropriate, but the function is not marked const
     CRGB* normSrcStart = src.len < 0 ? src.end_pos : src.leds;     //src.reversed() would have been consistent, but function is not marked const
     CRGB* normSrcEnd = src.len < 0 ? src.leds : src.end_pos;
     CRGB* normDestStart = dest.reversed() ? dest.end_pos : dest.leds;
     CRGB* normDestEnd = dest.reversed() ? dest.leds : dest.end_pos;
-    CRGBSet reversedSrc = src;
-    reversedSrc = -reversedSrc;
+    const CRGBSet reversedSrc(src.leds, src.len-src.dir, 0);    // -src would have been consistent, but operator - is not marked const
     uint16_t x = 0;
     const bool hasOverlap = max(normSrcStart, normDestStart) < min(normSrcEnd, normDestEnd);
-    bool mirror = true;  //start replicating with mirrored image - on the assumption that source is already part of the global output set
+    bool mirror = startMirrored;  //start replicating with mirrored image - on the assumption that source is already part of the global output set
     for (auto &y : dest) {
         if (!hasOverlap || (&y < normSrcStart) || (&y >= normSrcEnd)) {
             const uint16_t lastX = x;
@@ -260,6 +260,17 @@ void fx::replicateMirrorSet(const CRGBSet &src, CRGBSet &dest) {
             if (x < lastX) mirror = !mirror;
         }
     }
+}
+
+/**
+ * Replicate the source set into destination, repeating it with alternate mirroring as necessary to fill the entire destination
+ * <p>Any overlaps between source and destination are skipped from replication - the source set backing array is guaranteed unchanged</p>
+ * <p>Starts mirrored or not depending on whether the destination set is reversed</p>
+ * @param src source set
+ * @param dest destination set
+ */
+void fx::replicateMirrorSet(const CRGBSet &src, CRGBSet &dest) {
+    replicateMirrorSet(src, dest, !dest.reversed());
 }
 
 /**

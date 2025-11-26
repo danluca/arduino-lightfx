@@ -435,7 +435,7 @@ void FxI3::run() {
         hueIdx += 1;
 
         // Output
-        replicateMirrorSet(frame, others);
+        replicateMirrorSet(frame, others, dirRight);
         FastLED.show(stripBrightness);
     }
 }
