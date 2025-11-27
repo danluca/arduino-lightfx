@@ -12,7 +12,7 @@ param (
 ## Global
 #######################################
 . $PSScriptRoot/boards.ps1
-$brdUri = $boardMap[$board]
+$brdUri = $boardMap[$board].TrimEnd('/')
 
 write-host "Board $board at $brdUri - Status`n" -ForegroundColor Yellow
 

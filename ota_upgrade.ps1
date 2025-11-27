@@ -11,7 +11,7 @@ param (
 ## Global
 #######################################
 . $PSScriptRoot/scripts/boards.ps1
-$brdUri = $boardMap[$board]
+$brdUri = $boardMap[$board].TrimEnd('/')
 
 $clrReset = "`e[0m"
 $clrMsg = "`e[38;5;112m"
@@ -26,7 +26,7 @@ function uploadFile($filePath) {
         "X-Token" = "KlFpc1dAdFd0eDRXdkVSZg";
         "X-Check" = $hash;
     }
-    $resp = Invoke-WebRequest -Uri $brdUri -Method Post -InFile $f.FullName -Headers $headers -ContentType "application/octet-stream" -SkipHttpErrorCheck
+    $resp = Invoke-WebRequest -Uri $brdUri/fw -Method Post -InFile $f.FullName -Headers $headers -ContentType "application/octet-stream" -SkipHttpErrorCheck
     $ok = $resp.StatusCode -eq 200
     if ($ok) {
         Write-Information "${clrMsg}Board $board updated successfully.${clrReset}" -InformationAction Continue
