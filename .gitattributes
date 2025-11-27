@@ -1,0 +1,12 @@
+# Treat all files as text and handle line endings automatically
+* text=auto
+
+# Explicitly set specific file types to LF
+*.sh text eol=lf
+# *.py text eol=lf
+
+# Mark binary files to prevent line ending conversion
+*.jpg binary
+*.png binary
+*.zip binary
+*.pdf binary
