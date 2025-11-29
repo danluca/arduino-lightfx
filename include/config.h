@@ -43,18 +43,18 @@
 #define COLOR_ORDER BGR
 #define CHIPSET     WS2812B
 
-#define NUM_PIXELS  100      //the number of pixels on the office window edge is 166
-#define FRAME_SIZE  50
+#define NUM_PIXELS  66       //the number of pixels of the 10m LED Star Wire used for the Xmas tree
+#define FRAME_SIZE  22       //the Xmas tree has 6 strands from the 66 pixels strip, so 22 pixels per 2-strand
 #define PIXEL_BUFFER_SPACE  (4*FRAME_SIZE)    //number of pixels to reserve for secondary buffer (used for effects data maneuvering)
 
 // static IP - alternatively, the router can be configured to reserve IPs based on MAC
 #define IP_ADDR 192,168,0,139    //Board 1 (dev)
-#define V3_3    3.286f      //measured 3V3 pin voltage in V
-#define MV3_3    3286       //measured 3V3 pin voltage in mV - technically 1000*V3_3 - expressed as int
+#define V3_3    3.317f      //measured 3V3 pin voltage in V
+#define MV3_3    3317       //measured 3V3 pin voltage in mV - technically 1000*V3_3 - expressed as int
 // measured resistive Vcc voltage divisor for A0 pin, in ohms
-#define VCC_DIV_R4  21950
-#define VCC_DIV_R5  3304
-#define DEVICE_NAME  "Dev-Plasma2350"
+#define VCC_DIV_R4  22000
+#define VCC_DIV_R5  4700
+#define DEVICE_NAME  "Xmas2350"
 
 #endif
 
