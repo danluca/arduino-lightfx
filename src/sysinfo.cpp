@@ -356,6 +356,7 @@ void SysInfo::heapStats(JsonObject &doc) {
     doc["psramHeapFree"] = rp2040.getFreePSRAMHeap();
     doc["psramHeapUsed"] = rp2040.getUsedPSRAMHeap();
 #endif
+
 #if LOGGING_ENABLED == 1
     doc["logMinBufferSpace"] = Log.getMinBufferSpace();
 #endif
