@@ -517,8 +517,8 @@ bool fx::rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay) {
  * Adjust strip overall brightness according to the time of day - as follows:
  * <p>6am up until 10pm use the max brightness - i.e., <code>BRIGHTNESS</code></p>
  * <p>Between 10pm-11pm - reduce to 80% of full brightness, i.e., scale with 204</p>
- * <p>Between 11pm-12am - reduce to 60% of full brightness, i.e., scale with 152</p>
- * <p>After 12am - reduce to 40% of full brightness, i.e., scale with 102</p>
+ * <p>Between 11pm-12am - reduce to 70% of full brightness, i.e., scale with 178</p>
+ * <p>After 12am - reduce to 60% of full brightness, i.e., scale with 152</p>
  */
 uint8_t fx::adjustStripBrightness() {
     if (!stripBrightnessLocked && sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
@@ -527,8 +527,8 @@ uint8_t fx::adjustStripBrightness() {
         // 6am–10pm: 0, 10pm–11pm: 204, 11pm–12am: 152, 12am–6am: 100
         const fract8 scale = (hr >= 6 && hr < 22) ? 0 :
                 (hr >= 22 && hr < 23) ? 204 :
-                (hr == 23)            ? 152 : 100;
-
+                (hr == 23)            ? 178 : 152;
+        
         if (scale > 0)
             return dim8_raw(scale8(FastLED.getBrightness(), scale));
     }
