@@ -198,14 +198,18 @@ void logSystemState() {
 }
 
 // SysInfo
-SysInfo::SysInfo() : boardName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildTime(BUILD_TIME), scmBranch(GIT_BRANCH),
-    ipAddress({IP_ADDR}), ipGateway({IP_GW}) {
+SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildTime(BUILD_TIME), scmBranch(GIT_BRANCH),
+                     ipAddress({IP_ADDR}), ipGateway({IP_GW}) {
     boardId.reserve(BUF_ID_SIZE);       // flash unique ID in hex, \0 terminator
     secElemId.reserve(BUF_ID_SIZE);     // 18 from ECCX08Class::serialNumber() implementation
     macAddress.reserve(BUF_ID_SIZE);    // 6 (WL_MAC_ADDR_LENGTH) groups of 2 hex digits and ':' separator, includes \0 terminator
     strIpAddress.reserve(BUF_ID_SIZE);     // 4 groups of 3 digits, 3 '.' separators, \0 terminator
     wifiFwVersion.reserve(BUF_ID_SIZE); // typical semantic version e.g., v1.5.0, 3 groups of 2 digits, '.' separator, \0 terminator
     ssid.reserve(BUF_ID_SIZE);          // initial space, most networks are short names
+    cpuFrequency = 0;
+    cpuVersion = 0;
+    cpuModel.reserve(BUF_ID_SIZE);
+    psramSize = 0;
     status = 0;
     cleanBoot = true;
 }
@@ -215,6 +219,16 @@ SysInfo::SysInfo() : boardName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildT
  */
 void SysInfo::fillBoardId() {
     boardId = rp2040.getChipID();
+    cpuFrequency = RP2040::f_cpu();
+#ifdef PICO_RP2350
+    cpuModel = "RP2350";
+    cpuVersion = rp2350_chip_version();
+    psramSize = rp2040.getPSRAMSize();
+#elifdef ARDUINO_ARCH_RP2040
+    cpuModel = "RP2040";
+    cpuVersion = rp2040_rom_version();
+#endif
+
 }
 
 /**
@@ -295,7 +309,13 @@ void SysInfo::sysConfig(JsonDocument &doc) {
     doc["arduinoPicoVersion"] = ARDUINO_PICO_VERSION_STR;
     doc["freeRTOSVersion"] = tskKERNEL_VERSION_NUMBER;
     doc[csBoardName] = sysInfo->boardName;
+    doc[csDeviceName] = sysInfo->deviceName;
     doc[csBoardId] = sysInfo->boardId;
+    doc["psramSize"] = sysInfo->psramSize;
+    doc["cpuModel"] = sysInfo->cpuModel;
+    doc["cpuVersion"] = sysInfo->cpuVersion;
+    doc["cpuFrequency"] = sysInfo->cpuFrequency;
+    doc["cpuCore"] = RP2040::cpuid();
     doc[csSecElemId] = sysInfo->secElemId;
     doc[csBuildVersion] = sysInfo->buildVersion;
     doc[csScmBranch] = sysInfo->scmBranch;
@@ -326,6 +346,12 @@ void SysInfo::heapStats(JsonObject &doc) {
     doc["totalHeap"] = sysInfo->heapSize = rp2040.getTotalHeap();
     doc["freeHeap"] = sysInfo->freeHeap = rp2040.getFreeHeap();
     doc["usedHeap"] = rp2040.getUsedHeap();
+    doc["psramSize"] = sysInfo->psramSize;
+#ifdef PICO_RP2350
+    doc["psramHeapTotal"] = rp2040.getTotalPSRAMHeap();
+    doc["psramHeapFree"] = rp2040.getFreePSRAMHeap();
+    doc["psramHeapUsed"] = rp2040.getUsedPSRAMHeap();
+#endif
 #if LOGGING_ENABLED == 1
     doc["logMinBufferSpace"] = Log.getMinBufferSpace();
 #endif
@@ -398,6 +424,7 @@ void readSysInfo() {
         //const fields
         const String bldVersion = doc[csBuildVersion];
         const String brdName = doc[csBoardName];
+        const String devName = doc[csDeviceName] | DEVICE_NAME;
         const String bldTime = doc[csBuildTime];
         const auto gitBranch = doc[csScmBranch].as<String>();
         if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {
@@ -418,9 +445,9 @@ void readSysInfo() {
         sysInfo->freeStack = doc[csFreeStack];
         //do not override the current status (in progress of populating) with the last run status
         const uint8_t lastStatus = doc[csStatus];
-        log_info(F("System Information restored from %s [%d bytes]: boardName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
-                   sysFileName, sysSize, brdName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status, lastStatus,
-                   sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
+        log_info(F("System Information restored from %s [%d bytes]: boardName=%s, deviceName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
+                   sysFileName, sysSize, brdName.c_str(), devName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status,
+                   lastStatus, sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
     } else
         log_info(F("System information file %s not found - system information will be re-built"), sysFileName);
     delete json;

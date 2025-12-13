@@ -223,6 +223,7 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     } else
         log_error(F("Failed to connect to client %s, FX %hu not synced"), ip->toString().c_str(), fxIndex);
     client.stop();
+    taskDelay(1000);    //little break in between (multiple) client calls
 }
 
 /**

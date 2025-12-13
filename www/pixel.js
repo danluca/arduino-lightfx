@@ -56,7 +56,8 @@ function getConfig() {
                 }
             });
             hdList.val(data.holiday);
-            $('#boardName').html(data.boardName);
+            $('#boardName').html(data.deviceName);
+            $('#platformName').html(`${data.boardName} - ${data.cpuModel} v${data.cpuVersion} @ ${(data.cpuFrequency/1000000).toFixed(2)} MHz`);
             $('#deviceName').html(data.boardName);
             $('#boardUid').html(data.boardId);
             $('#buildVersion').html(data.buildVersion);

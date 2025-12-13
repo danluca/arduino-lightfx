@@ -51,6 +51,7 @@ inline constexpr auto strNewYear PROGMEM = "NewYear";
 inline constexpr auto strEffect PROGMEM = "effect";
 inline constexpr auto csResetCal PROGMEM = "resetTempCal";
 inline constexpr auto csBuildVersion PROGMEM = "buildVersion";
+inline constexpr auto csDeviceName PROGMEM = "deviceName";
 inline constexpr auto csBoardName PROGMEM = "boardName";
 inline constexpr auto csBuildTime PROGMEM = "buildTime";
 inline constexpr auto csScmBranch PROGMEM = "scmBranch";

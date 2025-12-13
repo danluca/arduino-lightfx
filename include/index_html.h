@@ -59,7 +59,7 @@ inline constexpr auto index_html PROGMEM = R"~~~(
                 <div id="fxBroadcastEnabledArea">
                     <input type="checkbox" id="broadcastEnabled" onchange="updateBroadcast()"/>
                     <label for="broadcastEnabled" id="broadcastEnabledLabel">Effect change broadcast enabled</label>
-                    <span id="ignoreWebFxState"></span>
+                    <div id="ignoreWebFxState"></div>
                 </div>
             </div>
             <div id="curEffectArea">
@@ -80,7 +80,7 @@ inline constexpr auto index_html PROGMEM = R"~~~(
             <h1 onclick="getStatus()">Status</h1>
             <dl id="statusArea">
                 <div>
-                <dt>Board [Nano RP2040 Connect]</dt>
+                <dt>Board [<span id="platformName"></span>]</dt>
                 <dd>UID: <span id="boardUid"></span></dd>
                 <dd>Device Name: <span id="deviceName"></span></dd>
                 <dd>Arduino Pico: <span id="osVersion"></span></dd>

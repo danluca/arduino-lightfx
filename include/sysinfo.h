@@ -29,10 +29,15 @@ struct CRGB;
  */
 class SysInfo {
     const String boardName;
+    const String deviceName;
     const String buildVersion;          // includes the commit sha
     const String buildTime;
     const String scmBranch;
 
+    String cpuModel;
+    uint8_t cpuVersion;
+    int cpuFrequency;   // in Hz
+    size_t psramSize;
     String boardId;
     String secElemId;
     String macAddress;
@@ -58,7 +63,7 @@ public:
     uint32_t threadCount {0};
 
     SysInfo();
-    [[nodiscard]] const String& getBoardName() const { return boardName; }
+    [[nodiscard]] const String& getBoardName() const { return deviceName; }
     [[nodiscard]] const String& getBuildVersion() const { return buildVersion; }
     [[nodiscard]] const String& getBuildTime() const { return buildTime; }
     [[nodiscard]] const String& getScmBranch() const { return scmBranch; }
