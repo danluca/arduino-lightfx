@@ -3,7 +3,8 @@ param ([string]$port='auto', [switch]$dbg, [string]$otaAddrHint,
     [Parameter(Mandatory=$false)]
     [ValidateSet("Dev", "FX01", "FX02")]
     [string]$board = "Dev",
-    [switch]$log
+    [switch]$log,
+    [switch]$ignoreBroadcast
 )
 
 #######################################
@@ -48,6 +49,9 @@ function prepEnvironment() {
     $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"
     if ($log) {
         $env:PLATFORMIO_BUILD_FLAGS += " -DLOGGING_ENABLED=1"
+    }
+    if ($ignoreBroadcast) {
+        $env:PLATFORMIO_BUILD_FLAGS += " -DIGNORE_WEB_EFFECT_CHANGES=1"
     }
 }
 

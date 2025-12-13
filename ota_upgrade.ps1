@@ -3,6 +3,7 @@ param (
     [Parameter(Mandatory=$false)]
     [ValidateSet("Dev", "FX01", "FX02")]
     [string]$board = "Dev",
+    [switch]$ignoreBroadcast,
     [Parameter(Mandatory=$false)]
     $fwPath
 )
@@ -57,7 +58,10 @@ if ($fwPath -and -not (Test-Path $fwPath -PathType Leaf)) {
 
 if (-not $fwPath) {
     Write-Information "${clrMsg}Building for board $board in release mode...${clrReset}" -InformationAction Continue
-    ./build.ps1 -board $board | Tee-Object -FilePath logs/build-$board.log
+    if ($ignoreBroadcast) {
+        Write-Information "${clrMsg}  with IGNORE_WEB_EFFECT_CHANGES enabled.${clrReset}" -InformationAction Continue
+    }
+    ./build.ps1 -board $board -ignoreBroadcast:$ignoreBroadcast | Tee-Object -FilePath logs/build-$board.log
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed. Please check the build.log for details."
     }
