@@ -26,7 +26,7 @@ BroadcastState broadcastState = Uninitialized;
 static constexpr auto syncClientsLSB PROGMEM = {BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
 
 static constexpr auto hdContentJson PROGMEM = "Content-Type: application/json";
-static constexpr auto hdUserAgent PROGMEM = "User-Agent: rp2040-lightfx-master/1.0.0";
+static constexpr auto hdUserAgentVersion PROGMEM = "1.0.0";
 static constexpr auto hdKeepAlive PROGMEM = "Connection: keep-alive";
 static constexpr auto fmtFxChange PROGMEM = R"===({"effect":%u,"auto":false,"broadcast":false})===";
 
@@ -190,6 +190,13 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     char buf[64];   //size deemed enough based on fmtFxChange pattern and fxIndex values (16bit int)
     const int written = snprintf(buf, sizeof(buf), fmtFxChange, fxIndex);
     const int bodyLen = written < 0 ? 0 : (written >= sizeof(buf) ? static_cast<int>(sizeof(buf) - 1) : written);
+
+    String hdUserAgent;
+    hdUserAgent.concat(kHeaderUserAgent);
+    hdUserAgent.concat(": ");
+    hdUserAgent.concat(kUaBoardPrefix);
+    hdUserAgent.concat("/");
+    hdUserAgent.concat(hdUserAgentVersion);
 
     client.beginRequest();
     //client.put is where the connection is established

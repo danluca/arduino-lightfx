@@ -70,8 +70,8 @@ class WebRequest {
     [[nodiscard]] String headerName(int i) const;       // get request header name by number
     [[nodiscard]] size_t headersCount() const;                  // get header count
     [[nodiscard]] bool hasHeader(const String& name) const;    // check if header exists
-    [[nodiscard]] const String& body() { return _requestBody; }
-    [[nodiscard]] const String& boundary() { return _boundaryStr; }
+    [[nodiscard]] const String& body() const { return _requestBody; }
+    [[nodiscard]] const String& boundary() const { return _boundaryStr; }
     [[nodiscard]] size_t contentLength() const { return _contentLength; }    // return "content-length" of incoming HTTP header from "_currentClient"
     [[nodiscard]] String httpVersion() const { return _httpVersion; }
     [[nodiscard]] long httpVersionNumeric() const {

@@ -145,6 +145,7 @@ void web::handleGetStatus(WebClient &client) {
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
     fx[csBroadcast] = fxBroadcastEnabled;
+    fx[csIgnoreWebFx] = (IGNORE_WEB_EFFECT_CHANGES == 1);   // Reflect compile-time ability to ignore web effect changes
     auto lastFx = fx["pastEffects"].to<JsonArray>();
     fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness;
@@ -246,7 +247,14 @@ void web::handleGetStatus(WebClient &client) {
 void web::handlePutConfig(WebClient &client) {
     dateHeader(client);
     client.sendHeader(hdCacheControl, hdCacheJson);
-    String body = client.request().body();
+
+    // Determine origin of the request (UI vs board/other)
+    const WebRequest &req = client.request();
+    const String userAgent = req.header("User-Agent");
+    const String xSource = req.header(kHeaderXSource);
+    const bool isUi = xSource.equalsIgnoreCase(kXSourceUi);
+    const bool isBoard = xSource.equalsIgnoreCase(kXSourceBoard) || userAgent.startsWith(kUaBoardPrefix);
+    String body = req.body();
 
     //process the body - parse JSON body and react to inputs
     JsonDocument doc;
@@ -258,19 +266,34 @@ void web::handlePutConfig(WebClient &client) {
     JsonDocument resp;
     const auto upd = resp["updates"].to<JsonObject>();
     BaseType_t qResult = pdTRUE;
+    // Effect change requests may be ignored based on compile-time flag and origin
     if (doc[csAuto].is<bool>()) {
-        const bool autoAdvance = doc[csAuto].as<bool>();
-        const FxActionMessage msg = {AUTO_FX, autoAdvance};
-        if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
-            log_error(F("Error sending AUTO_FX message to FX queue with value %d - error %ld"), autoAdvance, qResult);
-        upd[csAuto] = autoAdvance;
+#if IGNORE_WEB_EFFECT_CHANGES == 1
+        if (!isUi) {
+            log_warn(F("Ignoring AUTO_FX change from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
+        } else
+#endif
+        {
+            const bool autoAdvance = doc[csAuto].as<bool>();
+            const FxActionMessage msg = {AUTO_FX, autoAdvance};
+            if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
+                log_error(F("Error sending AUTO_FX message to FX queue with value %d - error %ld"), autoAdvance, qResult);
+            upd[csAuto] = autoAdvance;
+        }
     }
     if (doc[strEffect].is<uint16_t>()) {
-        const auto nextFx = doc[strEffect].as<uint16_t>();
-        const FxActionMessage msg = {MANUAL_FX, nextFx};
-        if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
-            log_error(F("Error sending MANUAL_FX message to FX queue with value %d - error %ld"), nextFx, qResult);
-        upd[strEffect] = nextFx;
+#if IGNORE_WEB_EFFECT_CHANGES == 1
+        if (!isUi) {
+            log_warn(F("Ignoring MANUAL_FX change from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
+        } else
+#endif
+        {
+            const auto nextFx = doc[strEffect].as<uint16_t>();
+            const FxActionMessage msg = {MANUAL_FX, nextFx};
+            if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
+                log_error(F("Error sending MANUAL_FX message to FX queue with value %d - error %ld"), nextFx, qResult);
+            upd[strEffect] = nextFx;
+        }
     }
     if (doc[csHoliday].is<String>()) {
         const auto userHoliday = doc[csHoliday].as<String>();
@@ -694,7 +717,7 @@ void web::server_setup() {
         server_handlers_configured = true;
         log_info(F("Completed Web server setup"));
     }
-    server.collectHeaders("Host", "Accept", "Referer", "User-Agent", "X-Token", "X-Check", "X-Path");
+    server.collectHeaders("Host", "Accept", "Referer", "User-Agent", "X-Token", "X-Check", "X-Path", kHeaderXSource);
     server.begin(serverPort);
     log_info(F("Web server started"));
 }

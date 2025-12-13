@@ -131,6 +131,12 @@ function getStatus() {
             $('#autoFxChange').prop("checked", data.fx.auto);
             $('#sleepEnabled').prop("checked", data.fx.sleepEnabled);
             $('#broadcastEnabled').prop("checked", data.fx.broadcast);
+            // Reflect compile-time ignore flag in UI
+            if (data.fx.ignoreWebFx) {
+                $('#ignoreWebFxState').html('&nbsp;<i>(not listening for web effect changes from other boards)</i>');
+            } else {
+                $('#ignoreWebFxState').html('');
+            }
             let fxlst = $('#fxlist');
             fxlst.val(data.fx.index);
             fxlst.attr("currentFxIndex", data.fx.index);
@@ -180,6 +186,7 @@ function updateEffect() {
             url: "/fx",
             contentType: "application/json",
             dataType: "json",
+            headers: { 'X-Source': 'ui' },
             data: JSON.stringify(request),
             success: function (response) {
                 fxlst.attr("currentFxIndex", selectedFx);
@@ -205,6 +212,7 @@ function updateAuto() {
         url: "/fx",
         contentType: "application/json",
         dataType: "json",
+        headers: { 'X-Source': 'ui' },
         data: JSON.stringify(request),
         success: function (response) {
             $('#updateStatus').html(`Automatic effects loop ${selectedAuto ? 'enabled' : 'disabled'} successfully`).removeClass().addClass("status-ok");
@@ -227,6 +235,7 @@ function updateSleep() {
         url: "/fx",
         contentType: "application/json",
         dataType: "json",
+        headers: { 'X-Source': 'ui' },
         data: JSON.stringify(request),
         success: function (response) {
             $('#updateStatus').html(`Sleep schedule ${selectedSleep ? 'enabled' : 'disabled'} successfully`).removeClass().addClass("status-ok");
@@ -249,6 +258,7 @@ function updateBroadcast() {
         url: "/fx",
         contentType: "application/json",
         dataType: "json",
+        headers: { 'X-Source': 'ui' },
         data: JSON.stringify(request),
         success: function (response) {
             $('#updateStatus').html(`Broadcast mode has been ${selBroadcastMode ? 'enabled' : 'disabled'} successfully`).removeClass().addClass("status-ok");
@@ -272,6 +282,7 @@ function updateHoliday() {
         url: "/fx",
         contentType: "application/json",
         dataType: "json",
+        headers: { 'X-Source': 'ui' },
         data: JSON.stringify(request),
         success: function (response) {
             $('#updateStatus').html("Color theme update successful").removeClass().addClass("status-ok");
@@ -300,6 +311,7 @@ function updateBrightness() {
         url: "/fx",
         contentType: "application/json",
         dataType: "json",
+        headers: { 'X-Source': 'ui' },
         data: JSON.stringify(request),
         success: function (response) {
             $('#updateStatus').html("Strip brightness update successful").removeClass().addClass("status-ok");

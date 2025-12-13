@@ -95,4 +95,11 @@
 #endif
 
 
+// When set to 1 (via this header or a compiler/build flag), the device will ignore
+// any web requests attempting to change the current effect or automatic effect mode.
+// Default is 0 (feature disabled) so web requests are honored.
+#ifndef IGNORE_WEB_EFFECT_CHANGES
+#define IGNORE_WEB_EFFECT_CHANGES 0
+#endif
+
 #endif //LIGHTFX_CONFIG_H
