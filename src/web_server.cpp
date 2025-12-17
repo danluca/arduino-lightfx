@@ -336,11 +336,19 @@ void web::handlePutConfig(WebClient &client) {
         }
     }
     if (doc[csBroadcast].is<bool>()) {
-        const bool syncMode = doc[csBroadcast].as<bool>();
-        auto *msg = new bcTaskMessage{ENABLE_BROADCAST, static_cast<uint16_t>(syncMode)};
-        if ((qResult = xQueueSend(bcQueue, &msg, 0)) != pdTRUE) {
-            log_error(F("Error sending ENABLE_BROADCAST message to COMM queue with value %d - error %ld"), syncMode, qResult);
-            delete msg;
+#if IGNORE_WEB_EFFECT_CHANGES == 1
+        if (!isUi) {
+            log_warn(F("Ignoring ENABLE_BROADCAST change from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
+        } else
+#endif
+        {
+            const bool syncMode = doc[csBroadcast].as<bool>();
+            auto *msg = new bcTaskMessage{ENABLE_BROADCAST, static_cast<uint16_t>(syncMode)};
+            if ((qResult = xQueueSend(bcQueue, &msg, 0)) != pdTRUE) {
+                log_error(F("Error sending ENABLE_BROADCAST message to COMM queue with value %d - error %ld"), syncMode, qResult);
+                delete msg;
+            } else
+                upd[csBroadcast] = syncMode;
         }
     }
     log_info(F("FX: Current config updated effect %hu, autoswitch %s, sleep %s, holiday %s, brightness %hu, brightness adjustment %s"),
