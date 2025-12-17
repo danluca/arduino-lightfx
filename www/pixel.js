@@ -90,7 +90,7 @@ function getStatus() {
             $('#upTime').html(`${data.upTime}`);
             $('#overallStatus').html(`0x${data.overallStatus.toString(16).toUpperCase()}`);
             $('#wfIpAddress').html(`${data.wifi.IP}`);
-            $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB)`);
+            $('#wfSignal').html(`${data.wifi.bars} bars (${data.wifi.rssi} dB) @ ${data.wifi.ssid}`);
             if (data.fx.asleep) {
                 $('#fxCurEffect').html(`${data.fx.name} - asleep [${data.fx.index}]`);
             } else {

@@ -134,6 +134,7 @@ void web::handleGetStatus(WebClient &client) {
     const int32_t rssi = WiFi.RSSI();
     wifi["bars"] = barSignalLevel(rssi); //Wi-Fi signal level
     wifi["rssi"] = rssi;
+    wifi["ssid"] = WiFi.SSID();
     // Fx
     const auto fx = doc["fx"].to<JsonObject>();
     fx[csAuto] = fxRegistry.isAutoRoll();
