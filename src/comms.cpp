@@ -20,6 +20,7 @@
 #define BCAST_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 
 volatile bool fxBroadcastEnabled = false;
+String masterBoardName;
 BroadcastState broadcastState = Uninitialized;
 
 //broadcast client list, using the last byte of IP addresses - e.g., 192.168.0.10, 192.168.0.11
@@ -28,7 +29,7 @@ static constexpr auto syncClientsLSB PROGMEM = {BROADCAST_CLIENTS};     //last b
 static constexpr auto hdContentJson PROGMEM = "application/json";
 static constexpr auto hdKeepAlive PROGMEM = "keep-alive";
 static constexpr auto hdUserAgentVersion PROGMEM = "1.0.0";
-static constexpr auto fmtFxChange PROGMEM = R"===({"effect":%u,"auto":false,"broadcast":false})===";
+static constexpr auto fmtFxChange PROGMEM = R"===({"effect":%u,"auto":false,"broadcast":false,"source":"%s"})===";
 
 QueueHandle_t bcQueue;
 static uint16_t tmrTimeUpdateId = 20;
@@ -36,6 +37,7 @@ static uint16_t tmrWifiEnsure = 21;
 static uint16_t tmrWifiTemp = 22;
 static uint16_t tmrStatusLEDCheck = 23;
 static uint16_t tmrTimeSetup = 24;
+static uint16_t tmrScanClients = 25;
 
 //function declarations ahead
 void commInit();
@@ -44,29 +46,37 @@ void timeUpdate();
 void timeSetupCheck();
 void enqueueTimeUpdate(TimerHandle_t xTimer);
 void enqueueTimeSetup(TimerHandle_t xTimer);
+void scanClients();
+
+struct BroadcastClient {
+    IPAddress ip;
+    unsigned long lastSeenMillis = 0;
+    bool isOnline = false;
+    bool isActive = true;
+
+    BroadcastClient(const IPAddress &ip, const uint8_t lsb) : ip(ip){
+        this->ip[3] = lsb;
+    }
+};
+
 // broadcast task definition - priority is overwritten during setup, see broadcastSetup
-FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
+FixedQueue<BroadcastClient*, 10> fxBroadcastRecipients;       //max 10 sync recipients
 TimerHandle_t thTimeSetupTimer = nullptr;
 
 /**
  * Preparations for broadcast effect changes - set up the recipient clients (others than self), the event posting attributes
  */
 void commInit() {
-    const String& sysAddr = sysInfo->getIpAddress();
+    const auto selfAddr = sysInfo->refIpAddress();
     for (auto &ipLSB : syncClientsLSB) {
-        auto clientAddr = new IPAddress();
-        clientAddr->fromString(sysAddr);
-        if (clientAddr->operator[](3) == ipLSB) {
-            delete clientAddr;
+        if (selfAddr[3] == ipLSB)
             continue;
-        }
-        clientAddr->operator[](3) = ipLSB;
+        auto *clientAddr = new BroadcastClient(selfAddr, ipLSB);
         fxBroadcastRecipients.push(clientAddr);
-        log_info(F("FX Broadcast recipient %s has been registered"), clientAddr->toString().c_str());
+        log_info(F("FX Broadcast recipient %s has been registered"), clientAddr->ip.toString().c_str());
     }
     broadcastState = Configured;
     log_info(F("FX Broadcast setup completed - %zu clients registered"), fxBroadcastRecipients.size());
-    taskDelay(5000);    //delay before starting processing events
 }
 
 /**
@@ -94,6 +104,7 @@ void commRun() {
                 postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
             break;
         }
+        case SCAN_CLIENTS: scanClients(); break;
         default:
             log_error(F("Event type %hd not supported"), msg->event);
             break;
@@ -166,23 +177,59 @@ void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
 }
 
 /**
+ * Callback for scanClients timer - this is called from the Timer task. Enqueues a SCAN_CLIENTS message for the alarm task.
+ * @param xTimer the scanClients timer that fired the callback
+ */
+void enqueueScanClients(TimerHandle_t xTimer) {
+    auto *msg = new bcTaskMessage{SCAN_CLIENTS, 0};
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
+        log_error(F("Error sending SCAN_CLIENTS message to BC queue for timer %hu [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        delete msg;
+    }
+}
+
+/**
+ * Ping all clients and record which ones are online
+ */
+void scanClients() {
+    for (const auto &client : fxBroadcastRecipients) {
+        if (const int resPing = WiFi.ping(client->ip); resPing >= 0) {
+            client->isOnline = true;
+            log_info(F("Client %s is online"), client->ip.toString().c_str());
+        }
+        else {
+            client->isOnline = false;
+            log_warn(F("Client %s is offline"), client->ip.toString().c_str());
+        }
+        client->lastSeenMillis = millis();
+        taskDelay(1000);
+    }
+
+}
+
+/**
  * Single client update - identified through IP address
- * @param ip recipient's IP address
+ * @param board recipient's details
  * @param fxIndex effect index to update
  */
-void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
-    log_info(F("Attempting to connect to client %s for FX %hu"), ip->toString().c_str(), fxIndex);
-    WiFiClient wiFiClient;  //wifi client - does not need an explicit pointer for underlying WiFi class/driver
+void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
+    if (!board->isOnline || !board->isActive) {
+        log_warn(F("Client %s is offline [%d] or disabled [%d]. Skipping FX %hu update"), board->ip.toString().c_str(), !board->isOnline, !board->isActive, fxIndex);
+        return;
+    }
+
+    log_info(F("Attempting to connect to online client %s for FX %hu"), board->ip.toString().c_str(), fxIndex);
+    WiFiClient wiFiClient;  //Wi-Fi client - does not need an explicit pointer for underlying WiFi class/driver
     HTTPClient client;
     client.setTimeout(750); // keep short to avoid starving the watchdog
 
     // Use the 4-arg begin overload with host (no scheme), port, and URI
-    client.begin(wiFiClient, ip->toString(), 80, "/fx");
+    client.begin(wiFiClient, board->ip.toString(), 80, "/fx");
     client.addHeader("Content-Type", hdContentJson);
     client.addHeader("Connection", "close"); // one-shot request, avoid lingering sockets
 
-    char buf[64];   //size deemed enough based on fmtFxChange pattern and fxIndex values (16bit int)
-    const int written = snprintf(buf, sizeof(buf), fmtFxChange, fxIndex);
+    char buf[128];   //size deemed enough based on fmtFxChange pattern and fxIndex values (16bit int)
+    const int written = snprintf(buf, sizeof(buf), fmtFxChange, fxIndex, sysInfo->getDeviceName().c_str());
     const int bodyLen = written < 0 ? 0 : written;
 
     String hdUserAgent;
@@ -191,7 +238,7 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
     hdUserAgent.concat(hdUserAgentVersion);
     client.addHeader("Content-Length", String(bodyLen));
     client.addHeader(kHeaderUserAgent, hdUserAgent);
-    
+
     const int status = client.PUT(buf);
     if (status > 0) {
         String response = client.getString();
@@ -201,8 +248,23 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
         else
             log_error(F("Failed to sync FX %hu to client %s: %d response status"), fxIndex, ip->toString().c_str(), status);
 #endif
+        //process the JSON body
+        JsonDocument doc;
+        if (const DeserializationError error = deserializeJson(doc, response)) {
+            log_error(F("Failed to parse JSON response from client %s for FX %hu: %s"), board->ip.toString().c_str(), fxIndex, error.c_str());
+        } else {
+            const auto brdDisabled = doc["talkToHand"].is<bool>() ? doc["talkToHand"].as<bool>() : false;
+            if (brdDisabled) {
+                log_info(F("Board %s is online and reports disabled for FX sync: %d response status"), board->ip.toString().c_str(), status);
+            }
+            board->isActive = !brdDisabled;
+            board->isOnline = true;
+            board->lastSeenMillis = millis();
+        }
     } else {
         log_error(F("Failed to connect to client %s, FX %hu not synced"), ip->toString().c_str(), fxIndex);
+        board->isOnline = false;
+        board->lastSeenMillis = millis();
     }
     client.end();
     taskDelay(1000);    //little break in between (multiple) client calls
@@ -355,8 +417,16 @@ void commSetup() {
         log_error(F("Cannot create statusLEDCheck timer - Ignored."));
     else if (xTimerStart(thStatusLED, 0) != pdPASS)
         log_error(F("Cannot start the statusLEDCheck timer - Ignored."));
+    //scan for clients - repeated each 15 minutes
+    const TimerHandle_t thScanClients = xTimerCreate("scanClients", pdMS_TO_TICKS(5 * 60 * 1000), pdTRUE, &tmrScanClients, enqueueScanClients);
+    if (thScanClients == nullptr)
+        log_error(F("Cannot create scanClients timer - Ignored. There is NO client scan scheduled"));
+    else if (xTimerStart(thScanClients, 0) != pdPASS)
+        log_error(F("Cannot start the scanClients timer - Ignored."));
 
     commInit();
+
+    taskDelay(5000);    //delay before starting processing events
 
     postTimeSetupCheck();  //ensure we have the time NTP sync
     log_info(F("Communication system setup OK"));
@@ -384,4 +454,14 @@ void postFxChangeEvent(const uint16_t index) {
         enqueueFxUpdate(index);
     else
         log_warn(F("Broadcast system is not configured yet - effect %hu cannot be synced. Broadcast enabled=%s"), index, StringUtils::asString(fxBroadcastEnabled));
+}
+
+std::vector<arduino::IPAddress> getActiveClientIPs() {
+    std::vector<arduino::IPAddress> activeIPs;
+    for (const auto &client : fxBroadcastRecipients) {
+        if (client->isOnline && client->isActive) {
+            activeIPs.push_back(client->ip);
+        }
+    }
+    return activeIPs;
 }

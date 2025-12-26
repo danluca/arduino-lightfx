@@ -5,6 +5,7 @@
 #include <TimeLib.h>
 #include "filesystem.h"
 #include "web_server.h"
+#include "comms.h"
 #include "constants.hpp"
 #include "diag.h"
 #include "efx_setup.h"
@@ -151,6 +152,17 @@ void web::handleGetStatus(WebClient &client) {
     fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness;
     fx[csBrightnessLocked] = stripBrightnessLocked;
+    // Master/Slave status
+    const auto master = doc["master"].to<JsonObject>();
+    master["active"] = fxBroadcastEnabled;
+    if (fxBroadcastEnabled) {
+        const auto activeClients = master["activeClients"].to<JsonArray>();
+        for (const auto &ip : getActiveClientIPs()) {
+            activeClients.add(ip.toString());
+        }
+    } else if (masterBoardName.length() > 0) {
+        master["masterBoard"] = masterBoardName;
+    }
     // Time
     const auto time = doc["time"].to<JsonObject>();
     time["ntpSync"] = sysInfo->isSysStatus(SYS_STATUS_NTP);
@@ -276,6 +288,7 @@ void web::handlePutConfig(WebClient &client) {
 #if IGNORE_WEB_EFFECT_CHANGES == 1
         if (!isUi) {
             log_warn(F("Ignoring MANUAL_FX change from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
+            resp["talkToHand"] = true;
         } else
 #endif
         {
@@ -284,6 +297,10 @@ void web::handlePutConfig(WebClient &client) {
             if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
                 log_error(F("Error sending MANUAL_FX message to FX queue with value %d - error %ld"), nextFx, qResult);
             upd[strEffect] = nextFx;
+            if (doc["source"].is<String>()) {
+                const auto source = doc["source"].as<String>();
+                masterBoardName = source;
+            }
         }
     }
     if (doc[csHoliday].is<String>()) {
@@ -366,7 +383,7 @@ void web::handleGetTasks(WebClient &client) {
     SysInfo::heapStats(heap);
     auto tasks = doc["tasks"].to<JsonObject>();
     SysInfo::taskStats(tasks);
-    doc["boardName"] = sysInfo->getBoardName();
+    doc["boardName"] = sysInfo->getDeviceName();
     doc["boardUid"] = sysInfo->getBoardId();
     doc["fwVersion"] = sysInfo->getBuildVersion();
     doc["fwBranch"] = sysInfo->getScmBranch();

@@ -22,7 +22,7 @@ struct FxActionMessage {
     uint32_t data;
 };
 
-enum CommAction:uint8_t {TIME_SETUP, TIME_UPDATE, FX_SYNC, WIFI_ENSURE, STATUS_LED_CHECK, ENABLE_BROADCAST};
+enum CommAction:uint8_t {TIME_SETUP, TIME_UPDATE, FX_SYNC, WIFI_ENSURE, STATUS_LED_CHECK, ENABLE_BROADCAST, SCAN_CLIENTS};
 
 /**
  * Structure of the message sent to the Communications task

@@ -63,7 +63,8 @@ public:
     uint32_t threadCount {0};
 
     SysInfo();
-    [[nodiscard]] const String& getBoardName() const { return deviceName; }
+    [[nodiscard]] const String& getDeviceName() const { return deviceName; }
+    [[nodiscard]] const String& getBoardType() const { return boardName; }
     [[nodiscard]] const String& getBuildVersion() const { return buildVersion; }
     [[nodiscard]] const String& getBuildTime() const { return buildTime; }
     [[nodiscard]] const String& getScmBranch() const { return scmBranch; }

@@ -47,6 +47,7 @@ extern int32_t dist;
 extern volatile bool fxBroadcastEnabled;
 extern volatile uint16_t speed;
 extern volatile uint16_t curPos;
+extern String masterBoardName;
 
 void ledStripInit();
 void resetGlobals();

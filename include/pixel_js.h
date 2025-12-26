@@ -123,6 +123,20 @@ function getStatus() {
             } else {
                 $('#ignoreWebFxState').html('');
             }
+            // Display master/slave information
+            if (data.master && data.master.active) {
+                // Master mode is active - show controlled boards
+                if (data.master.activeClients && data.master.activeClients.length > 0) {
+                    $('#masterSlaveInfo').html(`&nbsp;<i>(controlling ${data.master.activeClients.length} board(s): ${data.master.activeClients.join(', ')})</i>`);
+                } else {
+                    $('#masterSlaveInfo').html('&nbsp;<i>(no active boards being controlled)</i>');
+                }
+            } else if (data.master && data.master.masterBoard) {
+                // Slave mode - show the master board name
+                $('#masterSlaveInfo').html(`&nbsp;<i>(controlled by: ${data.master.masterBoard})</i>`);
+            } else {
+                $('#masterSlaveInfo').html('');
+            }
             let fxlst = $('#fxlist');
             fxlst.val(data.fx.index);
             fxlst.attr("currentFxIndex", data.fx.index);
