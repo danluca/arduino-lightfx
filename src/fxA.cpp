@@ -71,12 +71,13 @@ void FxA1::setup() {
 }
 
 void FxA1::makeDot(const CRGB color, const uint16_t szDot) const {
-    for (uint16_t x = 0; x < szDot; x++) {
+    const uint16_t dotSize = (szDot > abs(dot.len)) ? abs(dot.len) : szDot;
+    for (uint16_t x = 0; x < dotSize; x++) {
         dot[x] = color;
         dot[x] %= brightness;
     }
-    dot[szDot - 1] = color;
-    dot[szDot - 1] %= dimmed;
+    dot[dotSize - 1] = color;
+    dot[dotSize - 1] %= dimmed;
 }
 
 void FxA1::run() {
@@ -221,12 +222,13 @@ void FxA3::setup() {
 }
 
 void FxA3::makeDot(const CRGB color, const uint16_t szDot) const {
-    for (uint16_t x = 0; x < szDot; x++) {
+    const uint16_t dotSize = (szDot > abs(dot.len)) ? abs(dot.len) : szDot;
+    for (uint16_t x = 0; x < dotSize; x++) {
         dot[x] = color;
         dot[x] %= brightness;
     }
-    dot[szDot - 1] = color;
-    dot[szDot - 1] %= dimmed;
+    dot[dotSize - 1] = color;
+    dot[dotSize - 1] %= dimmed;
 }
 
 void FxA3::run() {
@@ -278,9 +280,10 @@ void FxA4::setup() {
 }
 
 void FxA4::makeDot(const CRGB color, const uint16_t szDot) {
+    const uint16_t dotSize = (szDot > abs(dot.len)-1) ? abs(dot.len)-1 : szDot;
     const CRGB c1 = color;
     const CRGB c2 = ColorFromPalette(targetPalette, colorIndex, brightness, LINEARBLEND);
-    dot(0, szDot).fill_gradient_RGB(c1, c2);
+    dot(0, dotSize).fill_gradient_RGB(c1, c2);
 }
 
 void FxA4::run() {
@@ -402,7 +405,7 @@ uint8_t FxA5::selectionWeight() const {
 
 // SleepLight
 SleepLight::SleepLight() : LedEffect(fxa6Desc), state(Fade), refPixel(&ledSet[0]) {
-    for (int x = 5; x < ledSet.size(); x += 10) {
+    for (int x = 5; x + 4 < ledSet.size(); x += 10) {
         slOffSegs.push_front(ledSet(x, x+4));
     }
 }

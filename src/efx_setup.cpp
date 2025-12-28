@@ -19,6 +19,8 @@ volatile uint16_t speed = 100;
 volatile uint16_t curPos = 0;
 
 static_assert(FRAME_SIZE < NUM_PIXELS, "FRAME_SIZE must not exceed NUM_PIXELS");
+static_assert(FRAME_SIZE > 10, "FRAME_SIZE must be at least 10 pixels");
+static_assert(PIXEL_BUFFER_SPACE > FRAME_SIZE * 3, "PIXEL_BUFFER_SPACE must be at least 3 times the FRAME_SIZE");
 
 QueueHandle_t fxQueue;
 EffectRegistry fxRegistry;
@@ -196,9 +198,11 @@ void displayFirmwareUpgradePattern() {
     tpl(0, 4) = UPGRADE_COLOR_1;
     tpl(5, 7) = UPGRADE_COLOR_2;
     tpl[8] = UPGRADE_COLOR_3;
-    tpl(9, 11) = UPGRADE_COLOR_2;
-    tpl(12, 16) = UPGRADE_COLOR_4;
-    tpl(17, tpl.size() - 1) = UPGRADE_COLOR_5;
+    if (tpl.size() > 10) {
+        tpl(9, 11) = UPGRADE_COLOR_2;
+        tpl(12, 16) = UPGRADE_COLOR_4;
+        tpl(17, tpl.size() - 1) = UPGRADE_COLOR_5;
+    }
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
 }

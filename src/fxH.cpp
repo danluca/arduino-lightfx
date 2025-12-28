@@ -621,15 +621,16 @@ void FxH6::setup() {
     activateSparks(random8(1, sparks.size()-3), 192);
 }
 
-void FxH6::resetActivateAllSparks(uint8_t clrHint) {
+void FxH6::resetActivateAllSparks(const uint8_t clrHint) {
     activeSparks.clear();
-    uint16_t index[frameSize];
-    shuffleIndexes(index, frameSize);
+    constexpr size_t szCycles = std::size(cycles);
+    uint16_t index[szCycles];
+    shuffleIndexes(index, szCycles);
     uint8_t x = 0;
     for (auto &s : sparks) {
         activeSparks.push_back(s);
         s->reset();
-        s->activate(ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND), cycles[index[x++]]);
+        s->activate(ColorFromPalette(palette, sin8(clrHint), 255, LINEARBLEND), cycles[index[x++ % szCycles]]);
     }
 }
 

@@ -107,10 +107,10 @@ void FxC2::run() {
 
     // The color of each point shifts over time, each at a different speed.
     const uint16_t ms = millis();
-    leds[(i+j)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/29) : CHSV( ms / 29, 200, 255);
-    leds[(j+k)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/41) : CHSV( ms / 41, 200, 255);
-    leds[(k+i)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/73) : CHSV( ms / 73, 200, 255);
-    leds[(k+i+j)/3] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/53) : CHSV( ms / 53, 200, 255);
+    tpl[(i+j)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/29) : CHSV( ms / 29, 200, 255);
+    tpl[(j+k)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/41) : CHSV( ms / 41, 200, 255);
+    tpl[(k+i)/2] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/73) : CHSV( ms / 73, 200, 255);
+    tpl[(k+i+j)/3] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, ms/53) : CHSV( ms / 53, 200, 255);
 
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
@@ -149,7 +149,7 @@ void FxC3::setup() {
 void FxC3::run() {
     EVERY_N_MILLISECONDS(35) {
         const uint16_t locn = inoise16(xscale, dist+yscale) % 0xFFFF;           // Get a new pixel location from moving noise.
-        const uint16_t pixlen = map(locn, 0, 0xFFFF, 0, tpl.size());                     // Map that to the length of the strand.
+        const uint16_t pixlen = map(locn, 0, 0xFFFF, 0, tpl.size()-1);                     // Map that to the length of the strand.
         leds[pixlen] = ColorFromPalette(palette, pixlen, brightness, LINEARBLEND);   // Use that value for both the location as well as the palette index colour for the pixel.
 
         dist += beatsin16(10,128,8192);             // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
@@ -198,7 +198,7 @@ void FxC4::run() {
         const uint16_t start = random16(NUM_PIXELS - 8);                               // Determine starting location of flash
         const uint16_t len = random16(4, NUM_PIXELS - start);                     // Determine length of flash (not to go beyond NUM_LEDS-1)
         const uint8_t flashRound = random8(3, flashes);
-        CRGBSet flash(leds, start, start+len);
+        CRGBSet flash(leds, start, start+len-1);
 
         for (uint8_t flashCounter = 0; flashCounter < flashRound; flashCounter++) {
             // the brightness of the leader is scaled down by a factor of 5; return strokes are brighter than the leader
