@@ -68,7 +68,7 @@ void FxE1::run() {
 
 void FxE1::twinkle() {
 
-  if (random8() < twinkRate) leds[random16(NUM_PIXELS)] += ColorFromPalette(palette, (randHue ? random8() : hue), brightness, LINEARBLEND);
+  if (random8() < twinkRate) leds[random16() % NUM_PIXELS] += ColorFromPalette(palette, (randHue ? random8() : hue), brightness, LINEARBLEND);
   fadeToBlackBy(leds, NUM_PIXELS, fade);
   
 } // twinkle()
@@ -176,7 +176,7 @@ void FxE3::run() {
                         segEnd = curPos;
                     } else {
                         tpl[segStart] = shdOverlay[segStart];
-                        segStart = curPos-sasquatchSize+1;
+                        segStart = qsuba(curPos+1, sasquatchSize);
                         segEnd = curPos;
                         segEnd = capu(segEnd, maxIndex);
                     }

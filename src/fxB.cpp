@@ -265,7 +265,7 @@ void FxB::bpm() {
     const uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
 
     for (uint16_t i = 0; i < tpl.size(); i++) {
-        leds[i] = ColorFromPalette(palette, hue + i, beat - hue + (i * 3));
+        tpl[i] = ColorFromPalette(palette, hue + i, beat - hue + (i * 3));
     }
     replicateSet(tpl, others);
     hue += 8;  // slowly cycle the "base color" through the rainbow
@@ -301,7 +301,7 @@ void FxB::ease() {
     const uint16_t lerpVal = lerp16by16(0, tpl.size() - 1, easeOutVal);                // Map it to the number of LED's you have.
 
     if (lerpVal != szStack) {
-        if (lerpVal > curPos)
+        if (lerpVal > curPos && lerpVal < tpl.size())
             tpl(curPos, lerpVal) = ColorFromPalette(palette, hue + easeInVal / 4, max(40, (uint8_t) easeOutVal));
         else
             tpl.fadeToBlackBy(49);

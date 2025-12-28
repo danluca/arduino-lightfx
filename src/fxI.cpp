@@ -95,6 +95,7 @@ static void updateWall(uint16_t &prevWall, const uint16_t wallLimit, const CRGB 
 }
 
 static void blendWall(const uint16_t start, const uint16_t end, const CRGB color) {
+    if (start >= tpl.size() || end >= tpl.size()) return;
     if (tpl[end] != color)
         tpl(start, end).nblend(color, 80);
 }
