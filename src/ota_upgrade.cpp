@@ -56,19 +56,25 @@ void fw_upgrade() {
     taskDelay(3000);
     //stop the watchdog
     watchdog_disable();
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
         Serial.println(F(">> FWU:: Watchdog disabled"));
+#endif
     //stop all tasks
     Scheduler.suspendAllTasks();
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
         Serial.println(F(">> FWU:: All APP tasks suspended"));
+#endif
     //prepare the command file to flash the image
     picoOTA.begin();
     picoOTA.addFile(csFWImageFilename);
     picoOTA.commit();
     LittleFS.end();
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
         Serial.println(F(">> FWU:: Firmware upgrade initiated, rebooting system to complete..."));
+#endif
     //restart the system
     taskDelay(1000);
     rp2040.reboot();

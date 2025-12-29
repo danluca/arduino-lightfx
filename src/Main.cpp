@@ -228,6 +228,8 @@ void loop1() {
  * @param pcTaskName name of the task that exceeded stack
  */
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
         Serial.printf("Stack overflow in task %s [%p]\n", pcTaskName, xTask);
+#endif
 }
