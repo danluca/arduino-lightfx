@@ -5,10 +5,21 @@
 #define LIGHTFX_NET_SETUP_H
 
 #include <Arduino.h>
+#include <vector>
 #include "secrets.h"
+
+struct DiscoveredBoard {
+    String hostname;
+    IPAddress ip;
+    uint16_t port;
+    String serviceName;
+    unsigned long lastSeen;
+};
 
 bool wifi_setup();
 void wifi_ensure();
+const std::vector<DiscoveredBoard> & mdns_discover_boards();
+const std::vector<DiscoveredBoard>& getDiscoveredBoards();
 
 void printSuccessfulWifiStatus();
 void checkFirmwareVersion();

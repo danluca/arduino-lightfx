@@ -192,7 +192,55 @@ void enqueueScanClients(TimerHandle_t xTimer) {
  * Ping all clients and record which ones are online
  */
 void scanClients() {
-    for (const auto &client : fxBroadcastRecipients) {
+#if MDNS_ENABLED == 1
+    // Store existing client attributes in a map keyed by IP address string
+    std::map<String, BroadcastClient *> existingClients;
+    for (const auto &client: fxBroadcastRecipients) {
+        existingClients[client->ip.toString()] = client;
+    }
+
+    // Discover boards via mDNS
+    const std::vector<DiscoveredBoard>& discoveredBoards = mdns_discover_boards();
+
+    // Create new broadcast recipient list
+    FixedQueue<BroadcastClient *, 10> newRecipients;
+    const auto selfAddr = sysInfo->refIpAddress();
+
+    for (const auto &board: discoveredBoards) {
+        // Skip self
+        if (board.ip == selfAddr)
+            continue;
+
+        const String ipStr = board.ip.toString();
+        BroadcastClient *client = nullptr;
+
+        // Check if this IP was in the previous list
+        if (auto it = existingClients.find(ipStr); it != existingClients.end()) {
+            // Reuse existing client to preserve attributes
+            client = it->second;
+            existingClients.erase(it); // Remove from map to track which ones to delete
+        } else {
+            // Create new client
+            client = new BroadcastClient(board.ip, board.ip[3]);
+            log_info(F("New FX Broadcast recipient %s discovered and registered"), client->ip.toString().c_str());
+        }
+
+        newRecipients.push(client);
+    }
+
+    // Delete clients that are no longer discovered
+    for (const auto &pair: existingClients) {
+        log_info(F("FX Broadcast recipient %s is no longer discovered and will be removed"), pair.first.c_str());
+        delete pair.second;
+    }
+
+    // Replace the old list with new one
+    fxBroadcastRecipients = newRecipients;
+    log_info(F("FX Broadcast recipients updated - %zu clients registered"), fxBroadcastRecipients.size());
+#endif
+
+    // Ping all clients and update status
+    for (const auto &client: fxBroadcastRecipients) {
         if (const int resPing = WiFi.ping(client->ip); resPing >= 0) {
             client->isOnline = true;
             log_info(F("Client %s is online"), client->ip.toString().c_str());
@@ -244,9 +292,9 @@ void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
         String response = client.getString();
 #if LOGGING_ENABLED == 1
         if (status / 100 == 2)
-            log_info(F("Successful sync FX %hu with client %s: %d response status\nBody: %s"), fxIndex, ip->toString().c_str(), status, response.c_str());
+            log_info(F("Successful sync FX %hu with client %s: %d response status\nBody: %s"), fxIndex, board->ip.toString().c_str(), status, response.c_str());
         else
-            log_error(F("Failed to sync FX %hu to client %s: %d response status"), fxIndex, ip->toString().c_str(), status);
+            log_error(F("Failed to sync FX %hu to client %s: %d response status"), fxIndex, board->ip.toString().c_str(), status);
 #endif
         //process the JSON body
         JsonDocument doc;
@@ -262,7 +310,7 @@ void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
             board->lastSeenMillis = millis();
         }
     } else {
-        log_error(F("Failed to connect to client %s, FX %hu not synced"), ip->toString().c_str(), fxIndex);
+        log_error(F("Failed to connect to client %s, FX %hu not synced"), board->ip.toString().c_str(), fxIndex);
         board->isOnline = false;
         board->lastSeenMillis = millis();
     }
