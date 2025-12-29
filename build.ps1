@@ -28,6 +28,9 @@ function prepEnvironment() {
     if ($ignoreBroadcast) {
         $env:PLATFORMIO_BUILD_FLAGS += " -DIGNORE_WEB_EFFECT_CHANGES=1"
     }
+    if (!$log -and !$dbg) {
+        $env:PLATFORMIO_BUILD_FLAGS += " -DPIO_FRAMEWORK_ARDUINO_NO_USB"
+    }
 }
 
 # Function to build the application

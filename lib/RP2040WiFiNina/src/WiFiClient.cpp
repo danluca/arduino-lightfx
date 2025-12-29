@@ -60,7 +60,9 @@ int WiFiClient::connect(IPAddress ip, const uint16_t port) {
         if (!connected())
             return 0;
     } else {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
         Serial.println("No Socket available");
+#endif
         return 0;
     }
     return 1;
@@ -78,7 +80,9 @@ int WiFiClient::connectSSL(IPAddress ip, const uint16_t port) {
         if (!connected())
             return 0;
     } else {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
         Serial.println("No Socket available");
+#endif
         return 0;
     }
     return 1;
@@ -96,7 +100,9 @@ int WiFiClient::connectSSL(const char *host, const uint16_t port) {
         if (!connected())
             return 0;
     } else {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
         Serial.println("No Socket available");
+#endif
         return 0;
     }
     return 1;
@@ -114,7 +120,9 @@ int WiFiClient::connectBearSSL(IPAddress ip, const uint16_t port) {
         if (!connected())
             return 0;
     } else {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
         Serial.println("No Socket available");
+#endif
         return 0;
     }
     return 1;
@@ -132,7 +140,9 @@ int WiFiClient::connectBearSSL(const char *host, const uint16_t port) {
         if (!connected())
             return 0;
     } else {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
         Serial.println("No Socket available");
+#endif
         return 0;
     }
     return 1;

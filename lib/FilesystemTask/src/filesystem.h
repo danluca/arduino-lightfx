@@ -45,11 +45,15 @@ public:
     //not supported - we'd have to experiment with getting a File pointer out from another task and whether multiple file objects can be used concurrently
     //at first glance, the LittleFSFileImpl does make use of the LittleFS instance, indicating it may not be thread safe...
     FileImplPtr open(const char *path, OpenMode openMode, AccessMode accessMode) override {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
         Serial.println("SynchronizedFS::open not supported");
+#endif
         return nullptr;
     };
     DirImplPtr openDir(const char *path) override {
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
         Serial.println("SynchronizedFS::openDir not supported");
+#endif
         return nullptr;
     };
     bool exists(const char *path) override;
