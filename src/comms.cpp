@@ -200,7 +200,7 @@ void scanClients() {
     }
 
     // Discover boards via mDNS
-    const std::vector<DiscoveredBoard>& discoveredBoards = mdns_discover_boards();
+    const std::vector<DiscoveredBoard>& discoveredBoards = mdns_trim_boards();
 
     // Create new broadcast recipient list
     FixedQueue<BroadcastClient *, 10> newRecipients;

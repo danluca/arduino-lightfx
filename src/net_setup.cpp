@@ -8,6 +8,7 @@
 #include "sysinfo.h"
 #include "timeutil.h"
 #include "comms.h"
+#include "constants.hpp"
 #include "util.h"
 #include "log.h"
 #include "stringutils.h"
@@ -16,10 +17,12 @@
 #include <LEAmDNS.h>
 #endif
 
+#define DEVICE_NAME_PREFIX "lightfx-"
+
 // using namespace colTheme;
 constexpr auto ssid PROGMEM = WF_SSID;
 constexpr auto pass PROGMEM = WF_PSW;
-constexpr auto hostname PROGMEM = "lightfx-" DEVICE_NAME;
+constexpr auto hostname PROGMEM = DEVICE_NAME_PREFIX DEVICE_NAME;
 
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from \code WiFi.RSSI() \endcode
@@ -39,6 +42,59 @@ uint8_t barSignalLevel(const int32_t rssi) {
     constexpr float outRange = numLevels - 1;
     return static_cast<uint8_t>(static_cast<float>(rssi - minRSSI) * outRange / inRange);
 }
+
+#if MDNS_ENABLED==1
+static mutex_t discBoardsMutex;
+// storage for service queries
+static std::vector<MDNSResponder::hMDNSServiceQuery> serviceQueries;
+// Storage for discovered boards
+static std::vector<DiscoveredBoard> discoveredBoards;
+
+const std::vector<DiscoveredBoard> & getDiscoveredBoards() {
+    return discoveredBoards;
+}
+
+/**
+ * Callback for MDNS service query results - we're registering the new board into the discoveredBoards vector
+ * We're mostly interested in callbacks that have enuServiceQueryAnswerType::ServiceQueryAnswerType_IP4Address bit set in the answer type
+ * @param service the service information details
+ * @param answer type of answer received - see MDNSResponder::AnswerType for options
+ * @param bEntryRegistered whether the service entry has been registered with MDNS (true) or deleted from (false)
+ */
+void serviceQueryCallback(const MDNSResponder::MDNSServiceInfo& service, MDNSResponder::AnswerType answer, bool bEntryRegistered) {
+    if (!(static_cast<uint32_t>(answer) & static_cast<uint32_t>(MDNSResponder::AnswerType::IP4Address)))
+        return;
+    MDNSResponder::MDNSServiceInfo svcInfo = service;   //copy the service info to be able to call its methods; the passed in reference is const qualified and the member functions are not
+    const char* svcName = svcInfo.serviceDomain();
+    const char* hostname = svcInfo.hostDomainAvailable() ? svcInfo.hostDomain() : strNR;
+    const uint16_t port = svcInfo.hostPortAvailable() ? svcInfo.hostPort() : 0;
+    const IPAddress ip4_addr = svcInfo.IP4AddressAvailable() ? svcInfo.IP4Adresses().front() : IPAddress(0);
+
+    log_info(F("mDNS discovered host %s at %s:%d for service %s"), hostname, ip4_addr.toString().c_str(), port, svcName);
+
+    if (!String(hostname).startsWith(DEVICE_NAME_PREFIX)) return;
+    //TODO: extract service type from the full service name (split by '.', second element)
+
+    // Check if board already in the list
+    CoreMutex lock(&discBoardsMutex);   //we're likely modifying shared data - lock it
+    bool found = false;
+    for (auto& board : discoveredBoards) {
+        if (board.hostname == hostname) {
+            board.ip = ip4_addr;
+            board.port = port;
+            board.lastSeen = millis();
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        const DiscoveredBoard board {.hostname = hostname, .ip = ip4_addr, .port = port, .serviceName = svcName, .lastSeen = millis()};
+        discoveredBoards.push_back(board);
+        log_info(F("Discovered lightfx board: %s at %s:%d"), hostname, ip4_addr.toString().c_str(), port);
+    }
+}
+#endif
 
 bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
@@ -91,7 +147,19 @@ bool wifi_connect() {
     // MDNS.addServiceTxt(lightfxSvcName, "_tcp", "model", "Plasma 2350W");
     log_info(F("mDNS added custom lucasfx service %s"), lightfxSvcName.c_str());
 
-    MDNS.announce();
+    serviceQueries.reserve(8);      //reserve space for 8 service queries
+    discoveredBoards.reserve(16);   //reserve space for 16 boards
+    //install service queries for discovery of other boards
+    MDNSResponder::hMDNSServiceQuery hServiceQuery = MDNS.installServiceQuery("_lucasfx", "_tcp", serviceQueryCallback);
+    if (!hServiceQuery)
+        log_error("Error installing lucasfx service query");
+    else
+        serviceQueries.push_back(hServiceQuery);
+    hServiceQuery = MDNS.installServiceQuery("_http", "_tcp", serviceQueryCallback);
+    if (!hServiceQuery)
+        log_error("Error installing http service query");
+    else
+        serviceQueries.push_back(hServiceQuery);
 #endif
 
     return result;
@@ -149,6 +217,9 @@ void wifi_reconnect() {
     timeService.end();
     delete ntpUDP;
 #if MDNS_ENABLED==1
+    for (const auto& query : serviceQueries)
+        MDNS.removeServiceQuery(query);
+    MDNS.removeQuery();
     MDNS.close();
 #endif
 
@@ -157,6 +228,9 @@ void wifi_reconnect() {
     log_info(F("Web services stopped, UDP clients terminated, WiFi disconnected"));
     taskDelay(2000);    //let disconnect state settle
     wifi_connect();
+#if MDNS_ENABLED==1
+    MDNS.announce();
+#endif
     //NVIC_SystemReset();
 }
 
@@ -199,91 +273,19 @@ void checkFirmwareVersion() {
 }
 
 #if MDNS_ENABLED==1
-// Storage for discovered boards
-static std::vector<DiscoveredBoard> discoveredBoards;
-
-const std::vector<DiscoveredBoard> & getDiscoveredBoards() {
-    return discoveredBoards;
-}
-
 /**
- * Discover other lightfx boards on the network via mDNS
- * Searches for:
- * - HTTP services with hostnames starting with "lightfx-"
- * - Custom "lucasfx" service
+ * Trims the boards not seen in a while
  */
-const std::vector<DiscoveredBoard> & mdns_discover_boards() {
-    log_info(F("Starting mDNS discovery for lightfx boards..."));
-
-    discoveredBoards.reserve(16);
-
-    //remove boards last seen more than 30 minutes ago
+const std::vector<DiscoveredBoard> & mdns_trim_boards() {
+    CoreMutex lock(&discBoardsMutex);   //we're modifying shared data (across multiple tasks) - lock it
+    //remove boards last seen more than 60 minutes ago
     discoveredBoards.erase(std::remove_if(discoveredBoards.begin(), discoveredBoards.end(),
         [](const DiscoveredBoard& board) {
-            const bool bDel = (millis() - board.lastSeen) > 30 * 60 * 1000;
+            const bool bDel = (millis() - board.lastSeen) > MDNS_CACHING_TIMEOUT_MS;
             if (bDel)
-                log_info(F("Removing board %s (%s) from list - not seen in last 30 minutes"), board.hostname.c_str(), board.ip.toString().c_str());
+                log_info(F("Removing board %s (%s) from list - not seen in last %d minutes"), board.hostname.c_str(), board.ip.toString().c_str(), MDNS_CACHING_TIMEOUT_MS/60000);
             return bDel;
         }), discoveredBoards.end());
-
-    // Query for HTTP services
-    const uint32_t httpCount = MDNS.queryService("http", "tcp", 2000);
-    log_info(F("Found %d HTTP service(s)"), httpCount);
-
-    for (int i = 0; i < httpCount; i++) {
-        // Check if hostname starts with "lightfx-"
-        if (String hostname = MDNS.hostname(i); hostname.startsWith("lightfx-")) {
-            const IPAddress ip = MDNS.IP(i);
-            const uint16_t port = MDNS.port(i);
-
-            // Check if board already in list
-            bool found = false;
-            for (auto& board : discoveredBoards) {
-                if (board.hostname == hostname) {
-                    board.ip = ip;
-                    board.port = port;
-                    board.lastSeen = millis();
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                DiscoveredBoard board {.hostname = hostname, .ip = ip, .port = port, .serviceName = "http", .lastSeen = millis()};
-                discoveredBoards.push_back(board);
-                log_info(F("Discovered lightfx board: %s at %s:%d"), hostname.c_str(), ip.toString().c_str(), port);
-            }
-        }
-    }
-
-    // Query for custom lucasfx service
-    const uint32_t lucasfxCount = MDNS.queryService("lucasfx", "tcp", 2000);
-    log_info(F("Found %d lucasfx service(s)"), lucasfxCount);
-
-    for (int i = 0; i < lucasfxCount; i++) {
-        String hostname = MDNS.hostname(i);
-        const IPAddress ip = MDNS.IP(i);
-        const uint16_t port = MDNS.port(i);
-
-        // Check if board already in list
-        bool found = false;
-        for (auto& board : discoveredBoards) {
-            // if (board.hostname == hostname && board.serviceName == "lucasfx") {
-            if (board.hostname == hostname) {
-                board.ip = ip;
-                board.port = port;
-                board.lastSeen = millis();
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
-            DiscoveredBoard board {.hostname = hostname, .ip = ip, .port = port, .serviceName = "lucasfx", .lastSeen = millis()};
-            discoveredBoards.push_back(board);
-            log_info(F("Discovered lucasfx service: %s at %s:%d"), hostname.c_str(), ip.toString().c_str(), port);
-        }
-    }
 
     log_info(F("Total discovered boards: %d"), discoveredBoards.size());
     return discoveredBoards;

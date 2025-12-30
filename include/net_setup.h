@@ -18,7 +18,7 @@ struct DiscoveredBoard {
 
 bool wifi_setup();
 void wifi_ensure();
-const std::vector<DiscoveredBoard> & mdns_discover_boards();
+const std::vector<DiscoveredBoard> & mdns_trim_boards();
 const std::vector<DiscoveredBoard>& getDiscoveredBoards();
 
 void printSuccessfulWifiStatus();

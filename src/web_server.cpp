@@ -735,9 +735,7 @@ void web::server_setup() {
 void web::webserver() {
     server.handleClient();
 #if MDNS_ENABLED==1
-    EVERY_N_SECONDS(3) {
-        if (server.state() == HTTPServer::IDLE)
-            mdnsStatus = MDNS.update();
-    }
+    if (server.state() == HTTPServer::IDLE)
+        mdnsStatus = MDNS.update();
 #endif
 }
