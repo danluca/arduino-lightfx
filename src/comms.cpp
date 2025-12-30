@@ -2,8 +2,6 @@
 //
 
 #include <FreeRTOS.h>
-#include <queue.h>
-#include <timers.h>
 #include <HTTPClient.h>
 #include "SchedulerExt.h"
 #include "comms.h"
@@ -120,11 +118,11 @@ void commRun() {
 void enqueueTimeUpdate(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{TIME_UPDATE, 0};   //gets deleted in execute method upon message receipt
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE) {
-        log_error(F("Error sending TIME_UPDATE message to broadcast task for timer %p [%s] - error %ld"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending TIME_UPDATE message to broadcast task for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
         delete msg;
     }
     // else
-    //     log_infoln(F("Sent TIME_UPDATE event successfully to broadcast task for timer %p [%s]"), pvTimerGetTimerID(xTimer), pcTimerGetName(xTimer));
+    //     log_infoln(F("Sent TIME_UPDATE event successfully to broadcast task for timer %d [%s]"), getTimerId(xTimer), getTimerName(xTimer));
 }
 
 /**
@@ -147,17 +145,17 @@ void enqueueFxUpdate(const uint16_t index) {
 void enqueueTimeSetup(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{TIME_SETUP, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
-        log_error(F("Error sending TIME_SETUP message to BC queue for timer %s - error %ld"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending TIME_SETUP message to BC queue for timer %s - error %ld"), xTimer == nullptr ? "on-demand" : getTimerName(xTimer), qResult);
         delete msg;
     }
     // else
-    //     log_infoln(F("Sent TIME_SETUP event successfully to BC queue for timer %s"), xTimer == nullptr ? "on-demand" : pcTimerGetName(xTimer));
+    //     log_infoln(F("Sent TIME_SETUP event successfully to BC queue for timer %s"), xTimer == nullptr ? "on-demand" : getTimerName(xTimer));
 }
 
 void enqueueWifiEnsure(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{WIFI_ENSURE, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
-        log_error(F("Error sending WIFI_ENSURE message to BC queue for timer %hu [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending WIFI_ENSURE message to BC queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
         delete msg;
     }
 }
@@ -169,11 +167,11 @@ void enqueueWifiEnsure(TimerHandle_t xTimer) {
 void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{STATUS_LED_CHECK, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
-        log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %hu [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
         delete msg;
     }
     // else
-    //     log_info(F("Sent STATUS_LED_CHECK event successfully to BC queue for timer %hu [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
+    //     log_info(F("Sent STATUS_LED_CHECK event successfully to BC queue for timer %hu [%s]"), getTimerId(xTimer), getTimerName(xTimer));
 }
 
 /**
@@ -183,7 +181,7 @@ void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
 void enqueueScanClients(TimerHandle_t xTimer) {
     auto *msg = new bcTaskMessage{SCAN_CLIENTS, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
-        log_error(F("Error sending SCAN_CLIENTS message to BC queue for timer %hu [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending SCAN_CLIENTS message to BC queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
         delete msg;
     }
 }

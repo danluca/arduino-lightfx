@@ -70,9 +70,9 @@ void serviceQueryCallback(const MDNSResponder::MDNSServiceInfo& service, MDNSRes
     const uint16_t port = svcInfo.hostPortAvailable() ? svcInfo.hostPort() : 0;
     const IPAddress ip4_addr = svcInfo.IP4AddressAvailable() ? svcInfo.IP4Adresses().front() : IPAddress(0);
 
-    log_info(F("mDNS discovered host %s at %s:%d for service %s"), hostname, ip4_addr.toString().c_str(), port, svcName);
+    log_info(F("mDNS discovered host %s at %s:%d for service %s. Answer type %ld, component set %d"), hostname, ip4_addr.toString().c_str(), port, svcName, answer, bEntryRegistered);
 
-    if (!String(hostname).startsWith(DEVICE_NAME_PREFIX)) return;
+    if (!String(hostname).startsWith(DEVICE_NAME_PREFIX) || !bEntryRegistered) return;
     //TODO: extract service type from the full service name (split by '.', second element)
 
     // Check if board already in the list

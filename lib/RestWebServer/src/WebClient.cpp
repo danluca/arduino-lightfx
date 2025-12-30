@@ -543,10 +543,10 @@ bool WebClient::_parseRequest() {
         size_t leftToRead = request()._contentLength;
         request()._requestBody.reserve(request()._contentLength);
         while (_rawWifiClient.connected() && leftToRead > 0) {
-            const auto plainBuf = new char[HTTP_RAW_BUFLEN + 1];
-            const size_t lengthRead = Util::readBytesWithTimeout(&_rawWifiClient, plainBuf, min(leftToRead, HTTP_RAW_BUFLEN), HTTP_MAX_POST_WAIT);
+            const auto plainBuf = std::make_unique<char[]>(HTTP_RAW_BUFLEN + 1);
+            const size_t lengthRead = Util::readBytesWithTimeout(&_rawWifiClient, plainBuf.get(), min(leftToRead, HTTP_RAW_BUFLEN), HTTP_MAX_POST_WAIT);
             plainBuf[lengthRead] = '\0';
-            request()._requestBody += plainBuf;
+            request()._requestBody += plainBuf.get();
             leftToRead -= lengthRead;
         }
         if (request()._requestBody.length() != request()._contentLength)

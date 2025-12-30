@@ -5,7 +5,6 @@
 #include "FastLED.h"
 #include <FreeRTOS.h>
 #include <queue.h>
-#include <timers.h>
 #include <TimeLib.h>
 #include "constants.hpp"
 #include "stringutils.h"
@@ -150,7 +149,7 @@ bool isAwakeTime(const time_t time) {
 void enqueueAlarmCheck(TimerHandle_t xTimer) {
     constexpr AlmAction action = ALARM_CHECK;
     if (const BaseType_t qResult = xQueueSend(almQueue, &action, 0); qResult != pdTRUE)
-        log_error(F("Error sending ALARM_CHECK message to ALM queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending ALARM_CHECK message to ALM queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
 }
 
 void alarm_setup() {
@@ -185,7 +184,10 @@ void alarm_check() {
         if (const auto al = *it; al->value <= time) {
             log_info(F("Alarm %p type %d triggered at %s for scheduled time %s; handler %p"), al, al->type, TimeFormat::asString(time).c_str(),
                 TimeFormat::asString(al->value).c_str(), al->onEventHandler);
-             al->onEventHandler();
+            if (al->onEventHandler)
+                al->onEventHandler();
+            else
+                log_error(F("Alarm %p type %d has no handler"), al, al->type);
             it = scheduledAlarms.erase(it);
             delete al;
         } else
@@ -224,7 +226,7 @@ void alarm_check() {
 void enqueueHoliday(TimerHandle_t xTimer) {
     constexpr AlmAction msg = HOLIDAY_UPDATE;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult == pdFALSE)
-        log_error(F("Error sending HOLIDAY_UPDATE message to ALM queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending HOLIDAY_UPDATE message to ALM queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
     // else
-    //     log_infoln(F("Sent HOLIDAY_UPDATE event successfully to broadcast task for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
+    //     log_infoln(F("Sent HOLIDAY_UPDATE event successfully to broadcast task for timer %hu [%s]"), getTimerId(xTimer), getTimerName(xTimer));
 }

@@ -72,7 +72,7 @@ void fx::shiftRight(CRGBSet &set, const CRGB feedLeft, Viewport vwp, const uint1
     if (vwp.size() == 0)
         vwp = static_cast<Viewport>(set.size());
     if (pos >= vwp.size()) {
-        const uint16_t hiMark = capu(vwp.high, (set.size()-1));
+        const uint16_t hiMark = capu(vwp.high, set.size());
         set(vwp.low, hiMark) = feedLeft;
         return;
     }
@@ -303,18 +303,41 @@ void fx::shuffle(CRGBSet &set) {
     }
 }
 
-// Copy arrays using memcpy (arguably the fastest way) - no checks are made on the length copied vs. actual length of both arrays
-void fx::copyArray(const CRGB *src, CRGB *dest, const uint16_t length) {
-    memcpy(dest, src, sizeof(src[0]) * length);
+/**
+ * @brief Copies a subset of a CRGBSet into another CRGBSet, starting from index 0
+ *
+ * @param src source set
+ * @param srcOfs source offset
+ * @param dest destination set
+ * @param destOfs destination offset
+ * @param length number of elements to copy - a length of 0 or 1 has the same effect, copies one single pixel.
+ */
+void fx::copySet(const CRGBSet *src, CRGBSet *dest, const uint16_t length) {
+    if (length >= abs(src->len) || length >= dest->size()) return;
+    //memcpy(dest->leds, src->leds, sizeof(src->leds[0]) * length);
+    const uint16_t len = length > 0 ? length - 1 : 0;
+    CRGBSet source = *src;
+    (*dest) = source(0, len);
 }
 
-// Copy arrays using pointer loops - one of the faster ways. No checks are made on the validity of offsets, length for both arrays
-void fx::copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, uint16_t length) {
-    const CRGB *srSt = src + srcOfs;
-    CRGB *dsSt = &dest[destOfs];
-    for (uint x = 0; x < length; x++) {
-        *dsSt++ = *srSt++;
-    }
+/**
+ * @brief Copy sets using pointer loops - one of the faster ways. Note this does not fill the destination set outside destOfs and length range
+ *
+ * Use `fillSet` for that behavior.
+ *
+ * @param src source set
+ * @param srcOfs source offset
+ * @param dest destination set
+ * @param destOfs destination offset
+ * @param length number of elements to copy - a length of 0 or 1 has the same effect, copies one single pixel.
+ */
+void fx::copySubSet(const CRGBSet *src, const uint16_t srcOfs, CRGBSet *dest, const uint16_t destOfs, const uint16_t length) {
+    if (srcOfs >= abs(src->len) || destOfs >= dest->size()) return;
+    const uint16_t len = length > 0 ? length - 1 : 0;
+    if (srcOfs + len >= abs(src->len) || destOfs + len >= dest->size()) return;
+
+    CRGBSet source = *src;
+    dest->operator()(destOfs, destOfs+len) = source(srcOfs, srcOfs+len);
 }
 
 uint16_t fx::countPixelsBrighter(const CRGBSet *set, const CRGB backg) {
@@ -342,12 +365,12 @@ bool fx::isAnyLedOn(CRGBSet *set, const CRGB backg) {
     return isAnyLedOn(set->leds, set->size(), backg);
 }
 
-void fx::fillArray(const CRGB *src, const uint16_t srcLength, CRGB *array, const uint16_t arrLength, const uint16_t arrOfs) {
-    size_t curFrameIndex = arrOfs;
-    while (curFrameIndex < arrLength) {
-        const size_t len = capu(curFrameIndex + srcLength, arrLength) - curFrameIndex;
-        copyArray(src, 0, array, curFrameIndex, len);
-        curFrameIndex += srcLength;
+void fx::fillSet(const CRGBSet *src, CRGBSet *dest, const uint16_t destOfs) {
+    size_t curFrameIndex = destOfs;
+    while (curFrameIndex < dest->size()) {
+        const size_t len = capu(curFrameIndex + abs(src->len), dest->size()) - curFrameIndex;
+        copySubSet(src, 0, dest, curFrameIndex, len);
+        curFrameIndex += abs(src->len);
     }
 }
 

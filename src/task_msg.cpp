@@ -3,8 +3,9 @@
 // Copyright (c) 2025 by Dan Luca. All rights reserved.
 //
 
+#include <Arduino.h>
 #include "task_msg.h"
-
+#include "constants.hpp"
 
 /**
  * @brief Initializes the communication queues used for task interactions.
@@ -31,4 +32,34 @@ void task_msg_setup() {
     diagQueue = xQueueCreate(20, sizeof(DiagAction));
 
     fxQueue = xQueueCreate(10, sizeof(FxActionMessage));
+}
+
+/**
+ * @brief Safe way to retrieve timer ID from a FreeRTOS timer handle
+ *
+ * Retrieves the timer ID from a FreeRTOS timer handle in a null-safe manner.
+ *
+ * Assumption: the timer ID set during xTimerCreate creation or explicitly with vTimerSetTimerID is a 2-byte unsigned integer `uint16_t`
+ * @param timer timer handle to retrieve ID from
+ * @return timer id or 0 if timer is null
+ */
+uint16_t getTimerId(const TimerHandle_t timer) {
+    if (!timer) return 0;
+    const auto timerId = static_cast<uint16_t *>(pvTimerGetTimerID(timer));
+    return timerId ? *timerId : 0;
+}
+
+/**
+ * @brief Safe way to retrieve the timer name from a FreeRTOS timer handle
+ *
+ * Retrieves the timer name from a FreeRTOS timer handle in a null-safe manner.
+ *
+ * Assumption: the timer name is a null-terminated string
+ * @param timer timer handle to retrieve name from
+ * @return timer name or 'N/R' if timer is null
+ */
+const char * getTimerName(const TimerHandle_t timer) {
+    if (!timer) return ::strNR;
+    const auto timerName = pcTimerGetName(timer);
+    return timerName ? timerName : strNR;
 }

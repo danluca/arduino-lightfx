@@ -8,6 +8,7 @@
 
 #include <FreeRTOS.h>
 #include <queue.h>
+#include <timers.h>
 
 extern QueueHandle_t fxQueue;
 extern QueueHandle_t almQueue;
@@ -41,5 +42,7 @@ struct AudioActionMessage {
 };
 
 void task_msg_setup();
+uint16_t getTimerId(TimerHandle_t timer);
+const char *getTimerName(TimerHandle_t timer);
 
 #endif //RP2040_LIGHTFX_TASK_MSG_H
