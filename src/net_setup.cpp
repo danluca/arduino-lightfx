@@ -45,6 +45,7 @@ uint8_t barSignalLevel(const int32_t rssi) {
 
 #if MDNS_ENABLED==1
 static mutex_t discBoardsMutex;
+static std::vector<MDNSResponder::hMDNSService> serviceHandles;
 // storage for service queries
 static std::vector<MDNSResponder::hMDNSServiceQuery> serviceQueries;
 // Storage for discovered boards
@@ -94,6 +95,17 @@ void serviceQueryCallback(const MDNSResponder::MDNSServiceInfo& service, MDNSRes
         log_info(F("Discovered lightfx board: %s at %s:%d"), hostname, ip4_addr.toString().c_str(), port);
     }
 }
+
+void hostProbeCallback(const char *p_pcDomainName, bool p_bProbeResult) {
+    log_info(F("mDNS host probe callback for domain %s - probe result: %s"), p_pcDomainName ? p_pcDomainName : strNR,
+             StringUtils::asString(p_bProbeResult));
+}
+
+void hostServiceCallback(const char *p_pcServiceName, const MDNSResponder::hMDNSService p_hMDNSService, bool p_bProbeResult) {
+    log_info(F("mDNS service probe callback for service %s (handle: %p) - probe result: %s"), p_pcServiceName ? p_pcServiceName : strNR,
+             p_hMDNSService, StringUtils::asString(p_bProbeResult));
+}
+
 #endif
 
 bool wifi_connect() {
@@ -128,27 +140,27 @@ bool wifi_connect() {
     String dnsHostname(hostname);
     dnsHostname.toLowerCase();
     String webSvcName(dnsHostname);
-    webSvcName.concat(F("-webserver._http"));
-    String lightfxSvcName(dnsHostname);
-    lightfxSvcName.concat(F("._lucasfx"));
+    webSvcName.concat(F("-server"));
     const bool mdnsStatus = MDNS.begin(dnsHostname);
     (void)mdnsStatus;
     log_info(F("mDNS start status: %d (%s)"), mdnsStatus, StringUtils::asString(mdnsStatus));
-    MDNS.addService(webSvcName, "_tcp", 80);
-    MDNS.addServiceTxt(webSvcName, "_tcp", "info", "Pimoroni Plasma 2350W Lucas LightFX");
-    // MDNS.addServiceTxt(webSvcName, "_tcp", "name", dnsHostname);
-    // MDNS.addServiceTxt(webSvcName, "_tcp", "model", "Plasma 2350W");
+    const MDNSResponder::hMDNSService hWebSvc = MDNS.addService(webSvcName.c_str(), "_http", "_tcp", 80);
+    MDNS.addServiceTxt(hWebSvc, "info", "Pimoroni Plasma 2350W Lucas LightFX");
+    MDNS.addServiceTxt(hWebSvc, "model", "Plasma 2350W");
     log_info(F("mDNS added web service %s"), webSvcName.c_str());
 
-    // Uncomment to add lucasfx service broadcasting
-    MDNS.addService(lightfxSvcName, "_tcp", 80);
-    MDNS.addServiceTxt(lightfxSvcName, "_tcp", "info", "Pimoroni Plasma 2350W Lucas LightFX");
-    MDNS.addServiceTxt(lightfxSvcName, "_tcp", "name", dnsHostname);
-    // MDNS.addServiceTxt(lightfxSvcName, "_tcp", "model", "Plasma 2350W");
-    log_info(F("mDNS added custom lucasfx service %s"), lightfxSvcName.c_str());
+    // Add lucasfx service broadcasting
+    const MDNSResponder::hMDNSService hFxSvc = MDNS.addService(dnsHostname.c_str(), "_lucasfx", "_tcp", 80);
+    MDNS.addServiceTxt(hFxSvc, "info", "Pimoroni Plasma 2350W Lucas LightFX");
+    MDNS.addServiceTxt(hFxSvc, "model", "Plasma 2350W");
+    log_info(F("mDNS added custom lucasfx service %s"), dnsHostname.c_str());
 
+    serviceHandles.reserve(4);      //reserve space for 4 service handles
     serviceQueries.reserve(8);      //reserve space for 8 service queries
     discoveredBoards.reserve(16);   //reserve space for 16 boards
+
+    serviceHandles.push_back(hWebSvc);
+    serviceHandles.push_back(hFxSvc);
     //install service queries for discovery of other boards
     MDNSResponder::hMDNSServiceQuery hServiceQuery = MDNS.installServiceQuery("_lucasfx", "_tcp", serviceQueryCallback);
     if (!hServiceQuery)
@@ -160,6 +172,11 @@ bool wifi_connect() {
         log_error("Error installing http service query");
     else
         serviceQueries.push_back(hServiceQuery);
+
+    MDNS.setServiceProbeResultCallback(hWebSvc, hostServiceCallback);
+    MDNS.setServiceProbeResultCallback(hFxSvc, hostServiceCallback);
+    MDNS.setHostProbeResultCallback(hostProbeCallback);
+
 #endif
 
     return result;
@@ -219,6 +236,8 @@ void wifi_reconnect() {
 #if MDNS_ENABLED==1
     for (const auto& query : serviceQueries)
         MDNS.removeServiceQuery(query);
+    for (const auto& handle : serviceHandles)
+        MDNS.removeService(handle);
     MDNS.removeQuery();
     MDNS.close();
 #endif
