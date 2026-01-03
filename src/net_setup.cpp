@@ -23,6 +23,8 @@
 constexpr auto ssid PROGMEM = WF_SSID;
 constexpr auto pass PROGMEM = WF_PSW;
 constexpr auto hostname PROGMEM = DEVICE_NAME_PREFIX DEVICE_NAME;
+constexpr auto service_type PROGMEM = "lucasfx";
+constexpr auto service_protocol PROGMEM = "tcp";
 
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from \code WiFi.RSSI() \endcode
@@ -139,44 +141,28 @@ bool wifi_connect() {
     // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
     String dnsHostname(hostname);
     dnsHostname.toLowerCase();
-    String webSvcName(dnsHostname);
-    webSvcName.concat(F("-server"));
     const bool mdnsStatus = MDNS.begin(dnsHostname);
-    (void)mdnsStatus;
     log_info(F("mDNS start status: %d (%s)"), mdnsStatus, StringUtils::asString(mdnsStatus));
-    const MDNSResponder::hMDNSService hWebSvc = MDNS.addService(webSvcName.c_str(), "_http", "_tcp", 80);
-    MDNS.addServiceTxt(hWebSvc, "info", "Pimoroni Plasma 2350W Lucas LightFX");
-    MDNS.addServiceTxt(hWebSvc, "model", "Plasma 2350W");
-    log_info(F("mDNS added web service %s"), webSvcName.c_str());
+    if (mdnsStatus) {
+        // Add lucasfx service broadcasting
+        const MDNSResponder::hMDNSService hFxSvc = MDNS.addService(dnsHostname.c_str(), service_type, service_protocol, 80);
+        MDNS.addServiceTxt(hFxSvc, "info", "Pimoroni Plasma 2350W Lucas LightFX");
+        MDNS.addServiceTxt(hFxSvc, "model", "Plasma 2350W");
+        log_info(F("mDNS added custom lucasfx service %s"), dnsHostname.c_str());
 
-    // Add lucasfx service broadcasting
-    const MDNSResponder::hMDNSService hFxSvc = MDNS.addService(dnsHostname.c_str(), "_lucasfx", "_tcp", 80);
-    MDNS.addServiceTxt(hFxSvc, "info", "Pimoroni Plasma 2350W Lucas LightFX");
-    MDNS.addServiceTxt(hFxSvc, "model", "Plasma 2350W");
-    log_info(F("mDNS added custom lucasfx service %s"), dnsHostname.c_str());
+        serviceHandles.reserve(4);      //reserve space for 4 service handles
+        serviceQueries.reserve(4);      //reserve space for 4 service queries
+        discoveredBoards.reserve(16);   //reserve space for 16 boards
 
-    serviceHandles.reserve(4);      //reserve space for 4 service handles
-    serviceQueries.reserve(8);      //reserve space for 8 service queries
-    discoveredBoards.reserve(16);   //reserve space for 16 boards
-
-    serviceHandles.push_back(hWebSvc);
-    serviceHandles.push_back(hFxSvc);
-    //install service queries for discovery of other boards
-    MDNSResponder::hMDNSServiceQuery hServiceQuery = MDNS.installServiceQuery("_lucasfx", "_tcp", serviceQueryCallback);
-    if (!hServiceQuery)
-        log_error("Error installing lucasfx service query");
-    else
-        serviceQueries.push_back(hServiceQuery);
-    hServiceQuery = MDNS.installServiceQuery("_http", "_tcp", serviceQueryCallback);
-    if (!hServiceQuery)
-        log_error("Error installing http service query");
-    else
-        serviceQueries.push_back(hServiceQuery);
-
-    MDNS.setServiceProbeResultCallback(hWebSvc, hostServiceCallback);
-    MDNS.setServiceProbeResultCallback(hFxSvc, hostServiceCallback);
-    MDNS.setHostProbeResultCallback(hostProbeCallback);
-
+        serviceHandles.push_back(hFxSvc);
+        //install service queries for discovery of other boards
+        if (const MDNSResponder::hMDNSServiceQuery hServiceQuery = MDNS.installServiceQuery(service_type, service_protocol, serviceQueryCallback); hServiceQuery)
+            serviceQueries.push_back(hServiceQuery);
+        else
+            log_error("Error installing lucasfx service query");
+        MDNS.setServiceProbeResultCallback(hFxSvc, hostServiceCallback);
+        MDNS.setHostProbeResultCallback(hostProbeCallback);
+    }
 #endif
 
     return result;

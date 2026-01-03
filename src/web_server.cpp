@@ -158,10 +158,14 @@ void web::handleGetStatus(WebClient &client) {
     if (fxBroadcastEnabled) {
         const auto activeClients = master["activeClients"].to<JsonArray>();
         for (const auto &ip : getActiveClientIPs()) {
-            activeClients.add(ip.toString());
+            (void)activeClients.add(ip.toString());
         }
     } else if (masterBoardName.length() > 0) {
         master["masterBoard"] = masterBoardName;
+    }
+    const auto knownClients = master["knownClients"].to<JsonArray>();
+    for (const auto &ip : getKnownClientIPs()) {
+        (void)knownClients.add(ip.toString());
     }
     // Time
     const auto time = doc["time"].to<JsonObject>();

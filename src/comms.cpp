@@ -511,3 +511,12 @@ std::vector<arduino::IPAddress> getActiveClientIPs() {
     }
     return activeIPs;
 }
+
+std::vector<arduino::IPAddress> getKnownClientIPs() {
+    std::vector<arduino::IPAddress> knownIPs;
+    for (const auto &client : fxBroadcastRecipients) {
+        knownIPs.push_back(client->ip);
+    }
+    return knownIPs;
+
+}

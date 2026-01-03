@@ -22,4 +22,10 @@ void enqueueAlarmSetup();
  */
 std::vector<arduino::IPAddress> getActiveClientIPs();
 
+/**
+ * Get the list of known board IP addresses this board has identified
+ * @return list of known board IP addresses
+ */
+std::vector<arduino::IPAddress> getKnownClientIPs();
+
 #endif //ARDUINO_LIGHTFX_BROADCAST_H
