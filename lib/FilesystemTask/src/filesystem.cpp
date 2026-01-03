@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -18,6 +18,7 @@
 
 #define OTA_COMMAND_FILE "/otacommand.bin"     // must match the _OTA_COMMAND_FILE name in the ../include/rp2040/pico_base/pico/ota_command.h
 #define FW_BIN_FILE "/fw.bin"                  // must match the csFWImageFilename name in the app include/constants.hpp
+#define FIRMWARE_BIN_FILE "/firmware.bin"                  // additional FW upgrade file related to OTA_COMMAND_FILE
 
 SynchronizedFS SyncFsImpl;
 FS SyncLittleFS(FSImplPtr(&SyncFsImpl));
@@ -169,9 +170,16 @@ void fsInit() {
 
     //check for otacommand.bin and fw.bin - this means a FW upgrade just occurred; delete the files
     if (SyncFsImpl.prvExists(OTA_COMMAND_FILE)) {
-        log_info(F("=== FW Upgrade has completed!! Welcome to the other side! Cleaning up the FW files ==="));
+        log_info(F("=== FW Upgrade has completed!! Welcome to the other side! Cleaning up the FW files (%s) ==="), OTA_COMMAND_FILE);
         (void)SyncFsImpl.prvRemove(OTA_COMMAND_FILE);
+    }
+    if (SyncFsImpl.prvExists(FW_BIN_FILE)) {
+        log_info(F("=== FW Upgrade has completed!! Welcome to the other side! Cleaning up the FW files (%s) ==="), FW_BIN_FILE);
         (void)SyncFsImpl.prvRemove(FW_BIN_FILE);
+    }
+    if (SyncFsImpl.prvExists(FIRMWARE_BIN_FILE)) {
+        log_info(F("=== FW Upgrade has completed!! Welcome to the other side! Cleaning up the FW files (%s) ==="), FIRMWARE_BIN_FILE);
+        (void)SyncFsImpl.prvRemove(FIRMWARE_BIN_FILE);
     }
 
     log_info(dirContent.c_str());
