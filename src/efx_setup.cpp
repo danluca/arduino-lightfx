@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "efx_setup.h"
 #include "sysinfo.h"
@@ -193,7 +193,7 @@ void displayFirmwareUpgradePattern() {
     tpl(0, 4) = UPGRADE_COLOR_1;
     tpl(5, 7) = UPGRADE_COLOR_2;
     tpl[8] = UPGRADE_COLOR_3;
-    if (tpl.size() > 10) {
+    if (tpl.size() > 17) {
         tpl(9, 11) = UPGRADE_COLOR_2;
         tpl(12, 16) = UPGRADE_COLOR_4;
         tpl(17, tpl.size() - 1) = UPGRADE_COLOR_5;

@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #include "fxutil.h"
 #include "efx_setup.h"
@@ -582,5 +582,5 @@ uint8_t fx::getBrightness(const CRGB &rgb) {
 }
 
 void adjustCurrentEffect(const time_t time) {
-    fxRegistry.setSleepState(!isAwakeTime(time));
+    fxRegistry.setSleepState(fxRegistry.isSleepEnabled() && !isAwakeTime(time));
 }

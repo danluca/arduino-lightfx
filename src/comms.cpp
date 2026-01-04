@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -228,8 +228,14 @@ void scanClients() {
 
     // Delete clients that are no longer discovered
     for (const auto &pair: existingClients) {
-        log_info(F("FX Broadcast recipient %s is no longer discovered and will be removed"), pair.first.c_str());
-        delete pair.second;
+        //ping them before deleting - sometimes mDNS gets out of sync
+        if (const int resPing = WiFi.ping(pair.first); resPing >= 0) {
+            log_warn(F("FX Broadcast recipient %s is still online but was not discovered by mDNS"), pair.first.c_str());
+            newRecipients.push(pair.second);
+        } else {
+            log_info(F("FX Broadcast recipient %s is no longer discovered and will be removed"), pair.first.c_str());
+            delete pair.second;
+        }
     }
 
     // Replace the old list with new one
