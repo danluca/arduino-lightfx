@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "fxH.h"
 #include "transition.h"
@@ -720,7 +720,7 @@ uint8_t FxH6::selectionWeight() const {
 }
 
 FxH6::~FxH6() {
-    for (auto s: sparks)
+    for (const auto s: sparks)
         delete s;
 }
 

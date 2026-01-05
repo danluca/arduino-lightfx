@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "PicoLog.h"
@@ -147,8 +147,10 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
 
 /**
  * Appends current timestamp into the provided char array.
- * NOTE: the provided char buffer must have space for ~20 chars for the timestamp.
+ * NOTE: the provided char buffer must have space for ~20 chars for the timestamp. Caller's responsibility.
  * WARNING: risk of buffer overflow, no checks are made for whether writing the timestamp goes beyond the char array boundaries
+ * This is acceptable as this is a private method, solely invoked from another private method \code print\endcode. While not ideal,
+ * keeps the code simpler by avoiding checks and passing size arguments.
  * @param msg char array to append timestamp to
  * @return size of the data appended
  */
@@ -172,8 +174,10 @@ size_t PicoLog::printTimestamp(char *msg) const {
 
 /**
  * Appends the current thread information into the provided string
- * NOTE: the provided char buffer must have space for ~20 chars for the thread info.
+ * NOTE: the provided char buffer must have space for ~20 chars for the thread info. Caller's responsibility.
  * WARNING: risk of buffer overflow, no checks are made for whether writing the thread info goes beyond the char array boundaries
+ * This is acceptable as this is a private method, solely invoked from another private method \code print\endcode. While not ideal,
+ * keeps the code simpler by avoiding checks and passing size arguments.
  * @param msg string to append thread info to
  * @return size of data appended
  */
@@ -191,8 +195,10 @@ size_t PicoLog::printThread(char *msg) {
 
 /**
  * Appends the logging level designation to the string provided
- * NOTE: the provided char buffer must have space for ~4 chars for the log level.
+ * NOTE: the provided char buffer must have space for ~4 chars for the log level. Caller's responsibility.
  * WARNING: risk of buffer overflow, no checks are made for whether writing the log level goes beyond the char array boundaries
+ * This is acceptable as this is a private method, solely invoked from another private method \code print\endcode. While not ideal,
+ * keeps the code simpler by avoiding checks and passing size arguments.
  * @param level logging level to print
  * @param msg string to append level information to
  * @return size of data appended

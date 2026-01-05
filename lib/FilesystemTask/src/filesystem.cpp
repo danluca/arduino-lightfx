@@ -313,6 +313,11 @@ bool SynchronizedFS::begin(FS &fs) {
 
 /**
  * Blocking function that reads a text file leveraging the filesystem task. Can be called from any task.
+ * NOTE: the extra data used for this function (args, msg) is freed up at the end of the function.
+ * If the queue message send is successful, then \code ulTaskNotifyTake\endcode call waits (or timeouts) for the result.
+ * After that, the extra data is not needed and freed up.
+ * If the queue message send fails, then the extra data memory is freed up and the function returns 0.
+ *
  * @param fname file name to read
  * @param s content recipient
  * @return number of bytes read - 0 if file does not exist or cannot be read for some reason (e.g. timeout)
@@ -793,7 +798,7 @@ bool SynchronizedFS::prvSha256(const char *path, String *sha256) const {
         log_error(F("File %s is a directory, no SHA-256 hash calculated"), path);
         return false;
     }
-    br_sha256_context* ctx = sha256_init();
+    pico_sha256_state_t* ctx = sha256_init();
     size_t fSize = 0;
     uint8_t buf[FILE_BUF_SIZE]{};
     while (const size_t charsRead = f.read(buf, FILE_BUF_SIZE)) {
