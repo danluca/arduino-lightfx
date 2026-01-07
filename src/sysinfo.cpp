@@ -21,7 +21,7 @@
 static constexpr auto unknown PROGMEM = "N/A";
 #if LOGGING_ENABLED == 1
 // static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
-static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu free=%zu used=%zu lowest=%zu block max/min=%zu/%zu\n";
+static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu free=%zu used=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
 static constexpr auto heapPSRAMInfoFmt PROGMEM = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
@@ -140,14 +140,35 @@ void logTaskStats() {
     strHeapInfo.reserve(256);  //ensure enough space to avoid reallocations
     HeapStats_t heapStats;
     vPortGetHeapStats(&heapStats);
-    StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), heapStats.xAvailableHeapSpaceInBytes, heapStats.xMinimumEverFreeBytesRemaining,
-        heapStats.xNumberOfFreeBlocks, heapStats.xSizeOfLargestFreeBlockInBytes, heapStats.xSizeOfSmallestFreeBlockInBytes);
+    StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), configTOTAL_HEAP_SIZE, heapStats.xAvailableHeapSpaceInBytes,
+        (configTOTAL_HEAP_SIZE-heapStats.xAvailableHeapSpaceInBytes), heapStats.xMinimumEverFreeBytesRemaining, heapStats.xSizeOfLargestFreeBlockInBytes,
+        heapStats.xSizeOfSmallestFreeBlockInBytes, heapStats.xNumberOfFreeBlocks);
 #ifdef PICO_RP2350
     StringUtils::append(strHeapInfo, heapPSRAMInfoFmt, rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap(), rp2040.getUsedPSRAMHeap());
 #endif
     log_info(strHeapInfo.c_str());
     log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinBufferSpace());
     // log_info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
+    //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2350/memmap_default.ld
+    // extern uint32_t __exidx_start;
+    // extern uint32_t __exidx_end;
+    // extern uint32_t __etext;
+    // extern uint32_t __data_start__;
+    // extern uint32_t __preinit_array_start;
+    // extern uint32_t __preinit_array_end;
+    // extern uint32_t __init_array_start;
+    // extern uint32_t __init_array_end;
+    // extern uint32_t __fini_array_start;
+    // extern uint32_t __fini_array_end;
+    // extern uint32_t __data_end__;
+    // extern uint32_t __bss_start__;
+    // extern uint32_t __bss_end__;
+    // extern uint32_t __end__;
+    // extern uint32_t end;
+    // extern uint32_t __HeapLimit;
+    // extern uint32_t __StackLimit;
+    // extern uint32_t __StackTop;
+
 #endif
 }
 
@@ -361,6 +382,7 @@ void SysInfo::heapStats(JsonObject &doc) {
     doc["minHeap"] = heapStats.xMinimumEverFreeBytesRemaining;
     doc["maxHeapBlock"] = heapStats.xSizeOfLargestFreeBlockInBytes;
     doc["minHeapBlock"] = heapStats.xSizeOfSmallestFreeBlockInBytes;
+    doc["freeBlocks"] = heapStats.xNumberOfFreeBlocks;
     doc["psramSize"] = sysInfo->psramSize;
 #ifdef PICO_RP2350
     doc["psramHeapTotal"] = rp2040.getTotalPSRAMHeap();

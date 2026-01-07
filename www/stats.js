@@ -66,9 +66,10 @@ function getTasks() {
             $('#totalCPULoad').html(`Total CPU Load:    ${data.tasks.totalCPULoadPct.toFixed(2)}%`);
             let memList = $('#memoryList');
             memList.empty();
-            memList.append(`<li>Free Stack: <span>${data.heap.freeStack.toLocaleString()} bytes [stack pointer: #${data.heap.stackPointer.toString(16)}]</span></li>`);
-            memList.append(`<li>Total Heap: <span>${data.heap.totalHeap.toLocaleString()} bytes</span></li>`);
-            memList.append(`<li>Free Heap: <span>${data.heap.freeHeap.toLocaleString()} bytes</span></li>`);
+            memList.append(`<li>Stack pointer: <span>#${data.heap.stackPointer.toString(16)}</span></li>`);
+            memList.append(`<li>Heap: Total <span>${data.heap.totalHeap.toLocaleString()} bytes</span>, Free <span>${data.heap.freeHeap.toLocaleString()} bytes</span>, `);
+            memList.append(`Min <span>${data.heap.minHeap.toLocaleString()} bytes</span>, Blocks max size/min size/free <span>${data.heap.maxHeapBlock.toLocaleString()} bytes/`);
+            memList.append(`${data.heap.minHeapBlock.toLocaleString()} bytes/${data.heap.freeBlocks.toLocaleString()}</span></li>`);
             if (data.heap.logMinBufferSpace) {
                 memList.append(`<li>Logging buffer space: <span>${data.heap.logMinBufferSpace.toLocaleString()} bytes</span></li>`);
             }

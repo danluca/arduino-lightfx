@@ -7,7 +7,7 @@
 #include <Arduino.h>
 #include <pico/sha256.h>
 
-// Function to calculate SHA-256 using BearSSL directly
+// Function to calculate SHA-256 using RP2350 hardware directly
 String sha256(const uint8_t *data, size_t len);
 String sha256(const String &data);
 

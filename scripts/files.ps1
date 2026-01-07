@@ -13,7 +13,7 @@ param (
 #######################################
 . $PSScriptRoot/util.ps1
 
-$brdUri = (getBoardByName $board).IpAddress.TrimEnd('/')
+$brdUri = (Get-BoardByName $board).IpAddress.TrimEnd('/')
 
 write-host "Board $board at $brdUri - File List`n" -ForegroundColor Yellow
 
