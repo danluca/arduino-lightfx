@@ -44,7 +44,7 @@ WiFiSocketBufferClass::~WiFiSocketBufferClass() {
 
 void WiFiSocketBufferClass::close(const int socket) {
   if (_buffers[socket].data) {
-    free(_buffers[socket].data);
+    delete []_buffers[socket].data;
     _buffers[socket].data = _buffers[socket].head = nullptr;
     _buffers[socket].length = 0;
   }
@@ -54,7 +54,7 @@ int WiFiSocketBufferClass::available(int socket)
 {
   if (_buffers[socket].length == 0) {
     if (_buffers[socket].data == nullptr) {
-      _buffers[socket].data = _buffers[socket].head = (uint8_t*)malloc(WIFI_SOCKET_BUFFER_SIZE);
+      _buffers[socket].data = _buffers[socket].head = new uint8_t[WIFI_SOCKET_BUFFER_SIZE];
       _buffers[socket].length = 0;
     }
 

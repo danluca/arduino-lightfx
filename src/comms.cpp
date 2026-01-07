@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -19,8 +19,8 @@
 
 #define BCAST_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 
-volatile bool fxBroadcastEnabled = false;
-BroadcastState broadcastState = Uninitialized;
+std::atomic<bool> fxBroadcastEnabled = false;
+volatile BroadcastState broadcastState = Uninitialized;
 
 //broadcast client list, using the last byte of IP addresses - e.g., 192.168.0.10, 192.168.0.11
 static constexpr auto syncClientsLSB PROGMEM = {BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
@@ -237,15 +237,19 @@ void fxBroadcast(const uint16_t index) {
         return;
     }
 
-    const LedEffect *fx = fxRegistry.getEffect(index);
+    const EffectInfo *fxInfo = fxRegistry.getEffectInfo(index);
+    if (!fxInfo) {
+        log_error(F("Effect at index %d not found"), index);
+        return;
+    }
     if (!fxBroadcastEnabled) {
-        log_warn(F("This board is not a master (FX Broadcast disabled) - will not push effect %s [%hu] to others"), fx->name(), fx->getRegistryIndex());
+        log_warn(F("This board is not a master (FX Broadcast disabled) - will not push effect %s [%hu] to others"), fxInfo->desc.id, index);
         return;
     }
     broadcastState = Broadcasting;
-    log_info(F("Fx change event - start broadcasting %s [%hu] to %u recipients"), fx->name(), fx->getRegistryIndex(), static_cast<unsigned>(fxBroadcastRecipients.size()));
+    log_info(F("Fx change event - start broadcasting %s [%hu] to %u recipients"), fxInfo->desc.id, index, static_cast<unsigned>(fxBroadcastRecipients.size()));
     for (const auto &client : fxBroadcastRecipients)
-        clientUpdate(client, fx->getRegistryIndex());
+        clientUpdate(client, index);
     log_info(F("Finished broadcasting to %u recipients - check individual log statements for status of each recipient"), static_cast<unsigned>(fxBroadcastRecipients.size()));
     broadcastState = Waiting;
 }

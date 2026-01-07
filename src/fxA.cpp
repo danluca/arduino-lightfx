@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "fxA.h"
 #include "transition.h"
@@ -9,22 +9,22 @@ using namespace FxA;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-constexpr auto fxa1Desc PROGMEM = "FXA1: Multiple Tetris segments";
-constexpr auto fxa2Desc PROGMEM = "FXA2: Randomly sized and spaced segments moving on entire strip";
-constexpr auto fxa3Desc PROGMEM = "FXA3: Moving variable dot size back and forth";
-constexpr auto fxa4Desc PROGMEM = "FXA4: pixel segments moving opposite directions";
-constexpr auto fxa5Desc PROGMEM = "FXA5: Moving a color swath on top of another";
-constexpr auto fxa6Desc PROGMEM = "FXA6: Sleep Light";
+static const EffectInfo fxa1Desc PROGMEM = {EFFECT_FACTORY(FxA1), "FXA1", "Multiple Tetris segments", 3};
+static const EffectInfo fxa2Desc PROGMEM = {EFFECT_FACTORY(FxA2), "FXA2", "Randomly sized and spaced segments moving on entire strip", 10};
+static const EffectInfo fxa3Desc PROGMEM = {EFFECT_FACTORY(FxA3), "FXA3", "Moving variable dot size back and forth", 20 };
+static const EffectInfo fxa4Desc PROGMEM = {EFFECT_FACTORY(FxA4), "FXA4", "Moving variable dot size back and forth with gradient background", 20 };
+static const EffectInfo fxa5Desc PROGMEM = {EFFECT_FACTORY(FxA5), "FXA5", "Moving color swath on top of another", 20 };
+static const EffectInfo fxa6Desc PROGMEM = {EFFECT_FACTORY(SleepLight), "FXA6", "Sleep Light", 0};
 
 uint16_t FxA::szStack = 0;
 
 void FxA::fxRegister() {
-    new FxA1();
-    new FxA2();
-    new FxA3();
-    new FxA4();
-    new FxA5();
-    new SleepLight();
+    fxRegistry.registerEffect(&fxa1Desc);
+    fxRegistry.registerEffect(&fxa2Desc);
+    fxRegistry.registerEffect(&fxa3Desc);
+    fxRegistry.registerEffect(&fxa4Desc);
+    fxRegistry.registerEffect(&fxa5Desc);
+    fxRegistry.registerEffect(&fxa6Desc);
 }
 
 void FxA::resetStack() {
@@ -369,7 +369,7 @@ void FxA5::run() {
     }
 
     EVERY_N_MILLISECONDS_I(a5Timer, speed) {
-        shiftRight(tpl, ovr[capu(curPos, ovr.size()-1)]);
+        shiftRight(tpl, ovr[capu(curPos.load(), ovr.size()-1)]);
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
 
@@ -492,6 +492,3 @@ uint8_t SleepLight::selectionWeight() const {
     return 0;   //we don't want this effect part of the random selection of entertaining light effects
 }
 
-void SleepLight::windDownPrep() {
-    transEffect.prepare(SELECTOR_FADE);
-}

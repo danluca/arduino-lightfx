@@ -1,16 +1,10 @@
-// Copyright (c) 2023,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "transition.h"
 #include "efx_setup.h"
 
 // EffectTransition - we have 5 distinct off effects
-void EffectTransition::setup() {
-    prefFx = 0;     //no preference - i.e. automatic from sel
-    sel = random8() % 10;
-    if (randomBarSegs.empty())
-        resetRandomBars();
-}
 
 void EffectTransition::resetRandomBars() {
     randomBarSegs.clear();
@@ -49,6 +43,9 @@ void EffectTransition::prepare(const uint selector) {
     offPosIndex = 0;
     offSpotSegSize = turnOffSeq[offPosIndex];
     fade = random8(42, 110);
+
+    if (randomBarSegs.empty())
+        resetRandomBars();
 }
 
 uint EffectTransition::selector() const {

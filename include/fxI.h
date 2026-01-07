@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #ifndef ARDUINO_LIGHTFX_FXI_H
 #define ARDUINO_LIGHTFX_FXI_H
@@ -75,6 +75,7 @@ namespace FxI {
         FxI4();
         void setup() override;
         void run() override;
+        void cleanup() override;
         [[nodiscard]] uint8_t selectionWeight() const override;
 
     private:
@@ -109,6 +110,7 @@ namespace FxI {
     public:
         FxI5();
         void setup() override;
+        void cleanup() override;
         void run() override;
         [[nodiscard]] uint8_t selectionWeight() const override;
 

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "fxC.h"
 #include "transition.h"
@@ -9,20 +9,20 @@ using namespace FxC;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-constexpr auto fxc1Desc PROGMEM = "FXC1: blend between two concurrent animations";
-constexpr auto fxc2Desc PROGMEM = "FXC2: blur function";
-constexpr auto fxc3Desc PROGMEM = "FXC3: Perlin Noise for moving up and down the strand";
-constexpr auto fxc4Desc PROGMEM = "FxC4: lightnings";
-constexpr auto fxc5Desc PROGMEM = "FXC5: matrix";
-constexpr auto fxc6Desc PROGMEM = "FXC6: one sine";
+static const EffectInfo fxc1Desc PROGMEM = {EFFECT_FACTORY(FxC1), "FXC1", "blend between two concurrent animations", 35};
+static const EffectInfo fxc2Desc PROGMEM = {EFFECT_FACTORY(FxC2), "FXC2", "blur function", 5};
+static const EffectInfo fxc3Desc PROGMEM = {EFFECT_FACTORY(FxC3), "FXC3", "Perlin Noise for moving up and down the strand", 4};
+static const EffectInfo fxc4Desc PROGMEM = {EFFECT_FACTORY(FxC4), "FxC4", "lightnings", 9};
+static const EffectInfo fxc5Desc PROGMEM = {EFFECT_FACTORY(FxC5), "FXC5", "matrix", 20};
+static const EffectInfo fxc6Desc PROGMEM = {EFFECT_FACTORY(FxC6), "FXC6", "one sine", 20};
 
 void FxC::fxRegister() {
-    new FxC1();
-    new FxC2();
-    new FxC3();
-    new FxC4();
-    new FxC5();
-    new FxC6();
+    fxRegistry.registerEffect(&fxc1Desc);
+    fxRegistry.registerEffect(&fxc2Desc);
+    fxRegistry.registerEffect(&fxc3Desc);
+    fxRegistry.registerEffect(&fxc4Desc);
+    fxRegistry.registerEffect(&fxc5Desc);
+    fxRegistry.registerEffect(&fxc6Desc);
 }
 
 /**
@@ -114,10 +114,6 @@ void FxC2::run() {
 
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
-}
-
-void FxC2::windDownPrep() {
-    transEffect.prepare(SELECTOR_SPOTS);
 }
 
 uint8_t FxC2::selectionWeight() const {

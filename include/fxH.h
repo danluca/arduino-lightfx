@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXH_H
 #define LIGHTFX_FXH_H
@@ -48,15 +48,15 @@ namespace FxH {
     private:
         static constexpr uint8_t numFires = 2;
         CRGBSet fires[numFires];
-        std::vector<CRGB> hMap;
+        std::vector<CRGB> hMap{};
     public:
         FxH1();
 
         void setup() override;
 
-        void run() override;
+        void cleanup() override;
 
-        void windDownPrep() override;
+        void run() override;
 
         void baseConfig(JsonObject &json) const override;
 
@@ -72,8 +72,6 @@ namespace FxH {
         void setup() override;
 
         void run() override;
-
-        void windDownPrep() override;
 
         void baseConfig(JsonObject &json) const override;
 
@@ -92,8 +90,6 @@ namespace FxH {
 
         void run() override;
 
-        void windDownPrep() override;
-
         void baseConfig(JsonObject &json) const override;
 
         [[nodiscard]] uint8_t selectionWeight() const override;
@@ -106,8 +102,6 @@ namespace FxH {
         void setup() override;
 
         void run() override;
-
-        void windDownPrep() override;
 
         void baseConfig(JsonObject &json) const override;
 
@@ -132,8 +126,6 @@ namespace FxH {
         void run() override;
 
         bool windDown() override;
-
-        void windDownPrep() override;
 
         void baseConfig(JsonObject &json) const override;
 
@@ -194,8 +186,6 @@ namespace FxH {
         void run() override;
 
         bool windDown() override;
-
-        void windDownPrep() override;
 
         [[nodiscard]] uint8_t selectionWeight() const override;
 

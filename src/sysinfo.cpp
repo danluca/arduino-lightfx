@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -21,7 +21,8 @@
 static constexpr auto unknown PROGMEM = "N/A";
 #if LOGGING_ENABLED == 1
 // static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
-static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Total Stack:: ptr=%#X free=%d;\n  Total Heap :: size=%d free=%d used=%d\n";
+static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
+static constexpr auto heapPSRAMInfoFmt PROGMEM = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
 static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
@@ -111,7 +112,7 @@ void logTaskStats() {
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
             // configRUN_TIME_COUNTER_TYPE ulStatPercentage = (pxTaskStatusArray[x].ulRunTimeCounter >> 8)/ulTotalRunTime;
             // strTaskInfo.concat(pxTaskStatusArray[x].pcTaskName);
-            const double fStatsAsPercentage = (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime;
+            const double fStatsAsPercentage = uxTotalRunTime > 0 ? (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime : 0.0;
             //only add non-IDLE task percentages to total CPU load
             String taskName(pxTaskStatusArray[x].pcTaskName);
             taskName.toLowerCase();
@@ -134,13 +135,64 @@ void logTaskStats() {
         log_info(strTaskInfo.c_str());
         delay(12);
     }
-    // Simple heap stats - the HeapStats_t and vPortGetHeapStats is only available with heap_4 and heap_5 memory management solutions; the current one for arduino-pico is heap_3
-    String strHeapInfo;
-    strHeapInfo.reserve(256);  //ensure enough space to avoid reallocations
-    StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap(), rp2040.getUsedHeap());
-    log_info(strHeapInfo.c_str());
+    logHeapStats();
     log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinBufferSpace());
     // log_info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
+    //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
+    extern char __exidx_start;
+    extern char __exidx_end;
+    extern char __etext;
+    extern char __data_start__;
+    extern char __preinit_array_start;
+    extern char __preinit_array_end;
+    extern char __init_array_start;
+    extern char __init_array_end;
+    extern char __fini_array_start;
+    extern char __fini_array_end;
+    extern char __data_end__;
+    extern char __bss_start__;
+    extern char __bss_end__;
+    extern char __end__;
+    extern char end;
+    extern char __HeapLimit;
+    extern char __StackLimit;
+    extern char __StackTop;
+    extern uint32_t __scratch_x_start__;
+    extern uint32_t __scratch_y_start__;
+    extern uint32_t* core1_separate_stack_address;
+    log_info(F("Memory map pointers:"));
+    log_info(F("  .text end:            __etext       = %#X"), (uint32_t)&__etext);
+    log_info(F("  .data start/end:      __data_start__/__data_end__ = %#X/%#X"), (uint32_t)&__data_start__, (uint32_t)&__data_end__);
+    log_info(F("  .bss start/end:       __bss_start__/__bss_end__   = %#X/%#X"), (uint32_t)&__bss_start__, (uint32_t)&__bss_end__);
+    log_info(F("  .exidx start/end:     __exidx_start__/__exidx_end__ = %#X/%#X"), (uint32_t)&__exidx_start, (uint32_t)&__exidx_end);
+    log_info(F("  .preinit_array start/end: __preinit_array_start__/__preinit_array_end__ = %#X/%#X"), (uint32_t)&__preinit_array_start, (uint32_t)&__preinit_array_end);
+    log_info(F("  .init_array start/end:    __init_array_start__/__init_array_end__     = %#X/%#X"), (uint32_t)&__init_array_start, (uint32_t)&__init_array_end);
+    log_info(F("  .fini_array start/end:    __fini_array_start__/__fini_array_end__     = %#X/%#X"), (uint32_t)&__fini_array_start, (uint32_t)&__fini_array_end);
+    log_info(F("  Program end markers:  __end__       = %#X"), (uint32_t)&__end__);
+    log_info(F("  Heap limits:          __HeapLimit   = %#X"), (uint32_t)&__HeapLimit);
+    log_info(F("  Stack limits:         __StackLimit  = %#X; __StackTop = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop);
+    log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_start__, __scratch_y_start__);
+    log_info(F("  Core 1 separate stack address = %#X"), (uint32_t)*core1_separate_stack_address);
+    struct mallinfo mf = mallinfo();
+    log_info(F("Old malloc memory stats: allocated=%u, used=%u, free=%u"), mf.arena, mf.uordblks, mf.fordblks);
+
+#endif
+}
+
+void logHeapStats() {
+#if LOGGING_ENABLED == 1
+    if (!Log.isEnabled(INFO))
+        return;    // Simple heap stats
+    String strHeapInfo;
+    strHeapInfo.reserve(256);  //ensure enough space to avoid reallocations
+    HeapStats_t heapStats;
+    vPortGetHeapStats(&heapStats);
+    StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), configTOTAL_HEAP_SIZE, (configTOTAL_HEAP_SIZE-heapStats.xAvailableHeapSpaceInBytes), heapStats.xAvailableHeapSpaceInBytes,
+        heapStats.xMinimumEverFreeBytesRemaining, heapStats.xSizeOfLargestFreeBlockInBytes, heapStats.xSizeOfSmallestFreeBlockInBytes, heapStats.xNumberOfFreeBlocks);
+#ifdef PICO_RP2350
+    StringUtils::append(strHeapInfo, heapPSRAMInfoFmt, rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap(), rp2040.getUsedPSRAMHeap());
+#endif
+    log_info(strHeapInfo.c_str());
 #endif
 }
 
@@ -340,12 +392,19 @@ void SysInfo::sysConfig(JsonDocument &doc) {
  * @param doc JSON object to populate
  */
 void SysInfo::heapStats(JsonObject &doc) {
-    // Simple heap stats - the HeapStats_t and vPortGetHeapStats is only available with heap_4 and heap_5 memory management solutions; the current one for arduino-pico is heap_3
+    // Simple heap stats
+    HeapStats_t heapStats;
+    vPortGetHeapStats(&heapStats);
+
     doc["stackPointer"] = rp2040.getStackPointer();
     doc["freeStack"] = sysInfo->freeStack = rp2040.getFreeStack();
-    doc["totalHeap"] = sysInfo->heapSize = rp2040.getTotalHeap();
-    doc["freeHeap"] = sysInfo->freeHeap = rp2040.getFreeHeap();
-    doc["usedHeap"] = rp2040.getUsedHeap();
+    doc["totalHeap"] = sysInfo->heapSize = configTOTAL_HEAP_SIZE;
+    doc["freeHeap"] = sysInfo->freeHeap = heapStats.xAvailableHeapSpaceInBytes;
+    doc["usedHeap"] = (sysInfo->heapSize - sysInfo->freeHeap);
+    doc["minHeap"] = heapStats.xMinimumEverFreeBytesRemaining;
+    doc["maxHeapBlock"] = heapStats.xSizeOfLargestFreeBlockInBytes;
+    doc["minHeapBlock"] = heapStats.xSizeOfSmallestFreeBlockInBytes;
+    doc["freeBlocks"] = heapStats.xNumberOfFreeBlocks;
     doc["psramSize"] = sysInfo->psramSize;
 #ifdef PICO_RP2350
     doc["psramHeapTotal"] = rp2040.getTotalPSRAMHeap();
@@ -419,6 +478,7 @@ void readSysInfo() {
         if (const DeserializationError error = deserializeJson(doc, *json)) {
             log_error(F("Error reading the system information JSON file %s [%zu bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
             delete json;
+            doc.clear();
             return;
         }
         //const fields
@@ -448,6 +508,7 @@ void readSysInfo() {
         log_info(F("System Information restored from %s [%d bytes]: boardName=%s, deviceName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), devName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status,
                    lastStatus, sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
+        doc.clear();
     } else
         log_info(F("System information file %s not found - system information will be re-built"), sysFileName);
     delete json;
@@ -471,9 +532,11 @@ void saveSysInfo() {
     str = new String();
     str->reserve(6144);  // approximation
     SyncFsImpl.readFile(fxCfgFileName, str);
-    if (const DeserializationError error = deserializeJson(doc, *str))
+    if (const DeserializationError error = deserializeJson(doc, *str)) {
         log_error(F("Failed to deserialize the FX configuration file %s: %s"), fxCfgFileName, error.c_str());
-    else {
+        delete str;
+        doc.clear();
+    } else {
         delete str;
         SysInfo::sysConfig(doc);
         str = new String();

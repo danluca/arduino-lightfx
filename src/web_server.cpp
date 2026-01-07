@@ -1,9 +1,10 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #include <FreeRTOS.h>
 #include <LittleFS.h>
 #include <PicoLog.h>
 #include <TimeLib.h>
+#include <StreamUtils.h>
 #include "filesystem.h"
 #include "web_server.h"
 #include "constants.hpp"
@@ -79,7 +80,7 @@ void dateHeader(WebClient &client) {
     timeService.breakTime(curTime, tm);
     char buf[64];   //sufficient size for this header; see hdFmtDate value
     snprintf(buf, sizeof(buf), hdFmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    client.sendHeader(F("Date"), buf);
+    client.addResponseHeader(F("Date"), buf);
 }
 
 /**
@@ -90,7 +91,7 @@ void dateHeader(WebClient &client) {
 void contentDispositionHeader(WebClient &client, const char *fname) {
     char buf[160];  //deemed sufficient size for this header and expected file names length; see hdFmtContentDisposition value
     snprintf(buf, sizeof(buf), hdFmtContentDisposition, fname);
-    client.sendHeader(F("Content-Disposition"), buf);
+    client.addResponseHeader(F("Content-Disposition"), buf);
 }
 
 /**
@@ -99,13 +100,13 @@ void contentDispositionHeader(WebClient &client, const char *fname) {
  * @param client web server to use for sending JSON out
  * @return number of bytes written in response
  */
-size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
+size_t web::marshalJson(JsonDocument &doc, WebClient &client) {
     //send it out
-    const auto buf = new String();
-    buf->reserve(5120); // deemed enough for all/most JSON docs in this app (largest is the config file at 4800 bytes)
-    serializeJson(doc, *buf);
-    const size_t sz = client.send(200, mime::mimeTable[mime::json].mimeType, *buf);
-    delete buf;
+    const size_t docLength = measureJson(doc);
+    size_t sz = client.sendHeaders(200, mime::mimeTable[mime::json].mimeType, docLength);
+    WriteBufferingStream wbs(client.rawClient(), WL_STREAM_BUFFER_SIZE);
+    sz += serializeJson(doc, wbs);
+    doc.clear();
     return sz;
 }
 
@@ -115,7 +116,7 @@ size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
 void web::handleGetStatus(WebClient &client) {
     dateHeader(client);
     contentDispositionHeader(client, statusJsonFilename);
-    client.sendHeader(hdCacheControl, hdCacheJson);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
 
     // response body
     JsonDocument doc;
@@ -145,17 +146,20 @@ void web::handleGetStatus(WebClient &client) {
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
-    fx[csBroadcast] = fxBroadcastEnabled;
+    fx[csBroadcast] = fxBroadcastEnabled.load();
     fx[csIgnoreWebFx] = (IGNORE_WEB_EFFECT_CHANGES == 1);   // Reflect compile-time ability to ignore web effect changes
     auto lastFx = fx["pastEffects"].to<JsonArray>();
     fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness;
-    fx[csBrightnessLocked] = stripBrightnessLocked;
-    fx[csAudioThreshold] = audioBumpThreshold; //current audio level threshold
-    fx["totalAudioBumps"] = totalAudioBumps; //how many times (in total) have we bumped the effect due to audio level
-    const auto audioHist = fx["audioHist"].to<JsonArray>();
-    for (uint16_t x: maxAudio)
-        audioHist.add<uint16_t>(x);
+    fx[csBrightnessLocked] = stripBrightnessLocked.load();
+    {
+        CoreMutex lock(&audioStatsMutex);
+        const auto audioHist = fx["audioHist"].to<JsonArray>();
+        for (uint16_t x: maxAudio)
+            audioHist.add<uint16_t>(x);
+    }
+    fx[csAudioThreshold] = audioBumpThreshold.load(); //current audio level threshold
+    fx["totalAudioBumps"] = totalAudioBumps.load(); //how many times (in total) have we bumped the effect due to audio level
     // Time
     const auto time = doc["time"].to<JsonObject>();
     time["ntpSync"] = sysInfo->isSysStatus(SYS_STATUS_NTP);
@@ -247,7 +251,7 @@ void web::handleGetStatus(WebClient &client) {
  */
 void web::handlePutConfig(WebClient &client) {
     dateHeader(client);
-    client.sendHeader(hdCacheControl, hdCacheJson);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
 
     // Determine origin of the request (UI vs board/other)
     const WebRequest &req = client.request();
@@ -371,7 +375,7 @@ void web::handlePutConfig(WebClient &client) {
 void web::handleGetTasks(WebClient &client) {
     dateHeader(client);
     contentDispositionHeader(client, tasksJsonFilename);
-    client.sendHeader(hdCacheControl, hdCacheJson);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
 
     // response body
     JsonDocument doc;
@@ -641,7 +645,7 @@ void handleFileUploadRaw(WebClient &client) {
 void handleGetFiles(WebClient &client) {
     dateHeader(client);
     contentDispositionHeader(client, filesJsonFilename);
-    client.sendHeader(hdCacheControl, hdCacheJson);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
 
     const WebRequest &req = client.request();
     String q = req.arg("path");

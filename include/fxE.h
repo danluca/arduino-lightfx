@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXE_H
 #define LIGHTFX_FXE_H
@@ -36,8 +36,6 @@ namespace FxE {
 
         void run() override;
 
-        void windDownPrep() override;
-
         void beatwave();
 
         [[nodiscard]] uint8_t selectionWeight() const override;
@@ -50,8 +48,6 @@ namespace FxE {
         void setup() override;
 
         void run() override;
-
-        void windDownPrep() override;
 
         [[nodiscard]] uint8_t selectionWeight() const override;
 
@@ -72,8 +68,6 @@ namespace FxE {
 
         void run() override;
 
-        void windDownPrep() override;
-
         void serendipitous();
 
         [[nodiscard]] uint8_t selectionWeight() const override;
@@ -92,8 +86,6 @@ namespace FxE {
         void setup() override;
 
         void run() override;
-
-        void windDownPrep() override;
 
         [[nodiscard]] uint8_t selectionWeight() const override;
 

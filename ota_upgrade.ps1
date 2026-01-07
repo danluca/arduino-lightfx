@@ -1,3 +1,6 @@
+## Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+##
+## OTA Upgrade script for RP2350-based boards
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]
@@ -11,8 +14,8 @@ param (
 #######################################
 ## Global
 #######################################
-. $PSScriptRoot/scripts/boards.ps1
-$brdUri = $boardMap[$board].TrimEnd('/')
+. $PSScriptRoot/scripts/util.ps1
+$brdUri = (Get-BoardByName $board).IpAddress.TrimEnd('/')
 
 $clrReset = "`e[0m"
 $clrMsg = "`e[38;5;112m"

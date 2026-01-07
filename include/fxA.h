@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXA_H
 #define LIGHTFX_FXA_H
@@ -121,8 +121,6 @@ namespace FxA {
         void setup() override;
 
         void run() override;
-
-        void windDownPrep() override;
 
         [[nodiscard]] uint8_t selectionWeight() const override;
 

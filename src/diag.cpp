@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -495,6 +495,7 @@ void readCalibrationInfo() {
         if (const DeserializationError error = deserializeJson(doc, *json)) {
             log_error(F("Error reading the CPU temp calibration information JSON file %s [%zd bytes]: %s - calibration information state NOT restored. Content read:\n%s"), calibFileName, calibSize, error.c_str(), json->c_str());
             delete json;
+            doc.clear();
             return;
         }
         auto msmt = doc["measurements"].as<JsonObject>();
@@ -504,6 +505,7 @@ void readCalibrationInfo() {
         log_info(F("CPU temp calibration Information restored from %s [%d bytes]: min %.2f 'C, max %.2f 'C; params: tempRange=%.2f, refTemp=%.2f, VTref=%f, slope=%f, time=%s"),
                    calibFileName, calibSize, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
                    calibCpuTemp.slope, TimeFormat::asString(calibCpuTemp.time).c_str());
+        doc.clear();
     }
     delete json;
 }
@@ -524,6 +526,7 @@ void saveCalibrationInfo() {
         log_info(F("Successfully saved CPU temp calibration information file %s [%zd bytes]"), calibFileName, sz);
     else
         log_error(F("Failed to create/write the CPU temp calibration information file %s"), calibFileName);
+    doc.clear();
     delete str;
 }
 

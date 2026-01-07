@@ -1,9 +1,10 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 
 #include <PDM.h>
 #include <cstring>
+#include <circular_buffer.h>
 #include "mic.h"
 #include "efx_setup.h"
 #include "sysinfo.h"
@@ -20,11 +21,12 @@
 short sampleBuffer[MIC_SAMPLE_SIZE];
 
 volatile size_t samplesRead;                    // Number of audio samples read
-volatile uint16_t maxAudio[AUDIO_HIST_BINS_COUNT] {}; // audio max levels histogram
-volatile uint16_t audioBumpThreshold = 5000;    // the audio signal level beyond which entropy is added and an effect change is triggered
+uint16_t maxAudio[AUDIO_HIST_BINS_COUNT] {}; // audio max levels histogram
+std::atomic<uint16_t> audioBumpThreshold = 5000;    // the audio signal level beyond which entropy is added and an effect change is triggered
+mutex_t audioStatsMutex{};
 
-CircularBuffer<short> *audioData = new CircularBuffer<short>(1024);
-QueueHandle_t micQueue;
+CircularBuffer<short> *audioData = nullptr;
+QueueHandle_t micQueue = nullptr;
 
 void clearLevelHistory() {
     for (auto &l : maxAudio)
@@ -46,6 +48,8 @@ void onPDMdata() {
 }
 
 void mic_setup() {
+    audioData = new CircularBuffer<short>(1024);
+
     // Configure the data receive callback
     PDM.onReceive(onPDMdata);
     PDM.setBufferSize(MIC_SAMPLE_SIZE);
@@ -90,28 +94,35 @@ void mic_run() {
             random16_add_entropy(abs(maxSample));
             log_info(F("Audio sample: %hd"), maxSample);
 
-            //contribute to the audio histogram - the bins are 500 units wide and tailored around audioBumpThreshold.
-            bool bFoundBin = false;
-            for (uint8_t x = 0; x < AUDIO_HIST_BINS_COUNT; x++) {
-                if (const uint16_t binThr = audioBumpThreshold + (x+1)*500; maxSample <= binThr) {
-                    maxAudio[x]++;
-                    bFoundBin = true;
-                    break;
+            {
+                //protect histogram updates
+                //contribute to the audio histogram - the bins are 500 units wide and tailored around audioBumpThreshold.
+                CoreMutex lock(&audioStatsMutex);
+                bool bFoundBin = false;
+                for (uint8_t x = 0; x < AUDIO_HIST_BINS_COUNT; x++) {
+                    if (const uint16_t binThr = audioBumpThreshold + (x+1)*500; maxSample <= binThr) {
+                        maxAudio[x]++;
+                        bFoundBin = true;
+                        break;
+                    }
                 }
+                //if a bin not found, it means it's higher than max bin given the number of bins, place it in the last bin
+                if (!bFoundBin)
+                    maxAudio[AUDIO_HIST_BINS_COUNT-1]++;
             }
-            //if a bin not found, it means it's higher than max bin given the number of bins, place it in the last bin
-            if (!bFoundBin)
-                maxAudio[AUDIO_HIST_BINS_COUNT-1]++;
         }
     }
 
     AudioActionMessage *msg;
     if (pdTRUE == xQueueReceive(micQueue, &msg, 0)) {
         switch (msg->action) {
-            case AUDIO_THRESHOLD_UPDATE:
+            case AUDIO_THRESHOLD_UPDATE: {
+                // Protect threshold update
+                CoreMutex lock(&audioStatsMutex);
                 audioBumpThreshold = msg->data;
                 clearLevelHistory();
                 break;
+            }
             default: log_error(F("Mic Action %hu not supported"), msg->action);
         }
         delete msg;

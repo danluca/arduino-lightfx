@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "fxB.h"
 #include "transition.h"
@@ -9,28 +9,28 @@ using namespace FxB;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-constexpr auto fxb1Desc PROGMEM = "FXB1: rainbow";
-constexpr auto fxb2Desc PROGMEM = "FXB2: rainbow with glitter";
-constexpr auto fxb3Desc PROGMEM = "FXB3: confetti B";
-constexpr auto fxb4Desc PROGMEM = "FXB4: sinelon";
-constexpr auto fxb5Desc PROGMEM = "FXB5: juggle short segments";
-constexpr auto fxb6Desc PROGMEM = "FXB6: bpm";
-constexpr auto fxb7Desc PROGMEM = "FXB7: ease";
-constexpr auto fxb8Desc PROGMEM = "FXB8: fadein";
-constexpr auto fxb9Desc PROGMEM = "FXB9: juggle long segments";
+static const EffectInfo fxb1Desc PROGMEM = {EFFECT_FACTORY(FxB1), "FXB1", "rainbow", 15};
+static const EffectInfo fxb2Desc PROGMEM = {EFFECT_FACTORY(FxB2), "FXB2", "rainbow with glitter", 40};
+static const EffectInfo fxb3Desc PROGMEM = {EFFECT_FACTORY(FxB3), "FXB3", "confetti B", 24};
+static const EffectInfo fxb4Desc PROGMEM = {EFFECT_FACTORY(FxB4), "FXB4", "sinelon", 20};
+static const EffectInfo fxb5Desc PROGMEM = {EFFECT_FACTORY(FxB5), "FXB5", "juggle short segments", 30};
+static const EffectInfo fxb6Desc PROGMEM = {EFFECT_FACTORY(FxB6), "FXB6", "bpm", 20};
+static const EffectInfo fxb7Desc PROGMEM = {EFFECT_FACTORY(FxB7), "FXB7", "ease", 10};
+static const EffectInfo fxb8Desc PROGMEM = {EFFECT_FACTORY(FxB8), "FXB8", "fadein", 15};
+static const EffectInfo fxb9Desc PROGMEM = {EFFECT_FACTORY(FxB9), "FXB9", "juggle long segments", 14};
 
 uint16_t FxB::szStack = 0;
 
 void FxB::fxRegister() {
-    new FxB1();
-    new FxB2();
-    new FxB3();
-    new FxB4();
-    new FxB5();
-    new FxB6();
-    new FxB7();
-    new FxB8();
-    new FxB9();
+    fxRegistry.registerEffect(&fxb1Desc);
+    fxRegistry.registerEffect(&fxb2Desc);
+    fxRegistry.registerEffect(&fxb3Desc);
+    fxRegistry.registerEffect(&fxb4Desc);
+    fxRegistry.registerEffect(&fxb5Desc);
+    fxRegistry.registerEffect(&fxb6Desc);
+    fxRegistry.registerEffect(&fxb7Desc);
+    fxRegistry.registerEffect(&fxb8Desc);
+    fxRegistry.registerEffect(&fxb9Desc);
 }
 
 //FXB1

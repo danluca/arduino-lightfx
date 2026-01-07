@@ -1,4 +1,4 @@
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_TRANSITION_H
@@ -18,7 +18,6 @@
  */
 class EffectTransition {
 public:
-    void setup();
     bool transition();
     void prepare(uint selector = 0);
     uint selector() const;

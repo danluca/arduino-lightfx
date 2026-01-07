@@ -1,11 +1,11 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #include "efx_setup.h"      //cheating on the includes - we need both LedEffect and efx_setup, but efx_setup includes LedEffect
 #include <variant>
 #include <map>
 #include <vector>
 #include <memory>
-#include "PaletteFactory.h"
+#include "sysinfo.h"
 #include "timeutil.h"
 #include "transition.h"
 
@@ -14,63 +14,45 @@ struct StateTransition {
     EffectState desired;
     EffectState next;
 };
-// Define the transition table
+
+// Simplified transition table
 static const std::vector<StateTransition> transitions = {
     {Setup, Running, Running},
-    {Setup, Idle, Idle},
-    {Running, WindDownPrep, WindDownPrep},
-    {Running, WindDown, WindDownPrep},
-    {Running, TransitionBreakPrep, WindDownPrep},
-    {Running, TransitionBreak, WindDownPrep},
-    {Running, Idle, WindDownPrep},
-    {Running, Setup, WindDownPrep},
-    {WindDownPrep, WindDown, WindDown},
-    {WindDownPrep, TransitionBreak, WindDown},
-    {WindDownPrep, TransitionBreakPrep, WindDown},
-    {WindDownPrep, Setup, WindDown},
-    {WindDownPrep, Idle, WindDown},
-    {WindDownPrep, Running, Running},
-    {WindDown, TransitionBreakPrep, TransitionBreakPrep},
-    {WindDown, TransitionBreak, TransitionBreakPrep},
-    {WindDown, Idle, TransitionBreakPrep},
-    {WindDown, Setup, TransitionBreakPrep},
+    {Setup, Idle, Cleanup},
+    {Setup, Cleanup, Cleanup},
+    {Running, WindDown, WindDown},
+    {Running, Cleanup, WindDown},
+    {Running, Idle, WindDown},
+    {Running, Setup, WindDown},
+    {WindDown, Cleanup, Cleanup},
+    {WindDown, Idle, Cleanup},
+    {WindDown, Setup, Cleanup},
     {WindDown, Running, Running},
-    {TransitionBreakPrep, Idle, Idle},
-    {TransitionBreakPrep, Setup, Idle},
-    {TransitionBreakPrep, Running, Setup},
-    {TransitionBreakPrep, TransitionBreak, TransitionBreak},
-    {TransitionBreak, Idle, Idle},
-    {TransitionBreak, Setup, Idle},
-    {TransitionBreak, Running, Setup},
+    {Cleanup, Idle, Idle},
+    {Cleanup, Setup, Setup},
+    {Cleanup, Running, Setup},
     {Idle, Running, Setup},
     {Idle, Setup, Setup}
 };
-// Define the next state map
+// Simplified state progression map
 static const std::map<EffectState, EffectState> nextStateMap = {
+    {Idle, Setup},
     {Setup, Running},
-    {Running, WindDownPrep},
-    {WindDownPrep, WindDown},
-    {WindDown, TransitionBreakPrep},
-    {TransitionBreakPrep, TransitionBreak},
-    {TransitionBreak, Idle},
-    {Idle, Setup}
+    {Running, WindDown},
+    {WindDown, Cleanup},
+    {Cleanup, Idle}
 };
 
-LedEffect::LedEffect(const char* description) : state(Idle), desc(description) {
-    extractId(description);
-    registryIndex = fxRegistry.registerEffect(this);
-}
-
-void LedEffect::extractId(const char* description) {
-    size_t i;
-    for (i = 0; i < LED_EFFECT_ID_SIZE - 1 && description[i] != ':' && description[i] != '\0'; ++i) {
-        id[i] = description[i];
-    }
-    id[i] = '\0';
+LedEffect::LedEffect(const EffectInfo& identity) : state(Idle), identity(identity.desc) {
+    registryIndex = 0; // Will be set when factory creates the instance
 }
 
 uint16_t LedEffect::getRegistryIndex() const {
     return registryIndex;
+}
+
+void LedEffect::setRegistryIndex(const uint16_t index) {
+    registryIndex = index;
 }
 
 void LedEffect::baseConfig(JsonObject& json) const {
@@ -92,15 +74,15 @@ void LedEffect::baseConfig(JsonObject& json) const {
 }
 
 const char* LedEffect::name() const {
-    return id;
+    return identity.id;
 }
 
 const char* LedEffect::description() const {
-    return desc;
+    return identity.description;
 }
 
 bool LedEffect::isInTransitionState() const {
-    return state == WindDown || state == TransitionBreak;
+    return state == WindDown;
 }
 
 bool LedEffect::isIdle() const {
@@ -115,33 +97,17 @@ void LedEffect::setup() {
     resetGlobals();
 }
 
-bool LedEffect::transitionBreak() {
-    return millis() > (transOffStart + 1000);
-}
-
-void LedEffect::transitionBreakPrep() {
-    // Default implementation - no operation
-}
-
 bool LedEffect::windDown() {
     return transEffect.transition();
 }
 
-void LedEffect::windDownPrep() {
-    ledSet.nblend(ColorFromPalette(targetPalette, random8(), 72, LINEARBLEND), 80);
-    FastLED.show(stripBrightness);
-    transEffect.prepare(random8());
-}
-
 void LedEffect::loop() {
     switch (state) {
+        case Idle: handleIdle(); break;
         case Setup: handleSetup(); break;
         case Running: handleRunning(); break;
-        case WindDownPrep: handleWindDownPrep(); break;
         case WindDown: handleWindDown(); break;
-        case TransitionBreakPrep: handleTransitionBreakPrep(); break;
-        case TransitionBreak: handleTransitionBreak(); break;
-        case Idle: handleIdle(); break;
+        case Cleanup: handleCleanup(); break;
     }
 }
 
@@ -152,11 +118,14 @@ void LedEffect::loop() {
  * @return the next state on the path from current to desired
  */
 EffectState LedEffect::getNextState(const EffectState current, const EffectState desired) {
+    if (current == desired) return current;
     for (const auto&[trCurrent, trDesired, trNext] : transitions) {
         if (trCurrent == current && trDesired == desired) {
             return trNext;
         }
     }
+    if (const auto it = nextStateMap.find(current); it != nextStateMap.end())
+        return it->second;
     return current;
 }
 
@@ -166,12 +135,8 @@ EffectState LedEffect::getNextState(const EffectState current, const EffectState
  * @param dst final desired state
  */
 void LedEffect::desiredState(const EffectState dst) {
-    if (state == dst) return;
-
     if (const EffectState nextState = getNextState(state, dst); nextState != state) {
         state = nextState;
-        if (state == TransitionBreakPrep || state == TransitionBreak)
-            transOffStart = millis();
     }
 }
 
@@ -210,21 +175,22 @@ void LedEffect::restartPerformance() {
 
 /**
  * Advances the current state of the LED effect to the next state based on the predefined state transition map.
- * If the updated state indicates that a transition break is about to start
- * (`TransitionBreakPrep` or `TransitionBreak`), it records the current time as the start of the transition break.
  */
 void LedEffect::nextState() {
     if (const auto it = nextStateMap.find(state); it != nextStateMap.end()) {
         state = it->second;
-        if (state == TransitionBreakPrep || state == TransitionBreak)
-            transOffStart = millis();
     }
 }
 
 // Handler implementations
 void LedEffect::handleSetup() {
+    log_info(F("Starting setup for effect: %s [%d]"), name(), getRegistryIndex());
+    logHeapStats();
+
     setup();
     restartPerformance();
+
+    logHeapStats();
     log_info(F("Effect %s [%d] completed setup, moving to running state"), name(), getRegistryIndex());
     nextState();
 }
@@ -234,12 +200,6 @@ void LedEffect::handleRunning() {
     run();
 }
 
-void LedEffect::handleWindDownPrep() {
-    windDownPrep();
-    log_info(F("Effect %s [%d] completed WindDown Prep"), name(), getRegistryIndex());
-    nextState();
-}
-
 void LedEffect::handleWindDown() {
     if (windDown()) {
         log_info(F("Effect %s [%d] completed WindDown"), name(), getRegistryIndex());
@@ -247,17 +207,15 @@ void LedEffect::handleWindDown() {
     }
 }
 
-void LedEffect::handleTransitionBreakPrep() {
-    transitionBreakPrep();
-    log_info(F("Effect %s [%d] completed TransitionBreak Prep"), name(), getRegistryIndex());
-    nextState();
-}
+void LedEffect::handleCleanup() {
+    log_info(F("Starting cleanup for effect: %s [%d]"), name(), getRegistryIndex());
+    logHeapStats();
 
-void LedEffect::handleTransitionBreak() {
-    if (transitionBreak()) {
-        log_info(F("Effect %s [%d] completed TransitionBreak"), name(), getRegistryIndex());
-        nextState();
-    }
+    cleanup();
+
+    logHeapStats();
+    log_info(F("Effect %s [%d] completed cleanup"), name(), getRegistryIndex());
+    nextState();
 }
 
 void LedEffect::handleIdle() {

@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXD_H
 #define LIGHTFX_FXD_H
@@ -52,8 +52,6 @@ namespace FxD {
 
         void run() override;
 
-        void windDownPrep() override;
-
         void plasma() const;
 
         [[nodiscard]] uint8_t selectionWeight() const override;
@@ -104,8 +102,6 @@ namespace FxD {
         void setup() override;
 
         void run() override;
-
-        void windDownPrep() override;
 
         void ripples();
 

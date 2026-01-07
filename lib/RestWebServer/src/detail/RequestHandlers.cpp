@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #include "RequestHandlers.h"
 #include <string>
@@ -124,7 +124,7 @@ bool StaticFileRequestHandler::handle(WebClient &client) {
     const String contentType = mime::getContentType(path);
 
     if (_cache_header.length() != 0)
-        client.sendHeader(F("Cache-Control"), _cache_header);
+        client.addResponseHeader(F("Cache-Control"), _cache_header);
 
     File f = _fs.open(path, "r");
     client.streamFile(f, contentType);
@@ -196,7 +196,7 @@ bool StaticSyncFileRequestHandler::handle(WebClient& client) {
     _fs.readFile(path.c_str(), content);
 
     if (_cache_header.length() != 0)
-        client.sendHeader(F("Cache-Control"), _cache_header);
+        client.addResponseHeader(F("Cache-Control"), _cache_header);
 
     client.streamData(*content, contentType);
     delete content;
@@ -273,7 +273,7 @@ bool StaticInMemoryRequestHandler::handle(WebClient& client) {
     }
 
     if (_cache_header.length() != 0)
-        client.sendHeader(F("Cache-Control"), _cache_header);
+        client.addResponseHeader(F("Cache-Control"), _cache_header);
     client.streamData(String(cacheEntry->second), contentType);
     return true;
 }

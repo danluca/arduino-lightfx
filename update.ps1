@@ -1,8 +1,14 @@
+## Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+##
+## USB Firmware update script for RP2350-based boards; allows default Arduino OTA if available
 [CmdletBinding()]
-param ([string]$port='auto', [switch]$dbg, [string]$otaAddrHint,
+param (
     [Parameter(Mandatory=$false)]
     [ValidateSet("Dev", "FX01", "FX02")]
     [string]$board = "Dev",
+    [string]$port='auto', 
+    [string]$otaAddrHint,
+    [switch]$dbg, 
     [switch]$log,
     [switch]$ignoreBroadcast
 )
@@ -10,7 +16,7 @@ param ([string]$port='auto', [switch]$dbg, [string]$otaAddrHint,
 #######################################
 ## Global
 #######################################
-$brdEnv = $dbg ? "rp2040-dbg" : "rp2040-rel"
+. $PSScriptRoot/scripts/util.ps1
 $boardFqbn = "rp2040:rp2040:arduino_nano_connect"
 $otaPassword = "password"
 
@@ -38,51 +44,17 @@ function getOTAEnabledIPAddress() {
     return $ipAddress
 }
 
-function prepEnvironment() {
-    # see config.h in the include folder for board ID values
-    # 1 = Dev, 2 = FX01, 3 = FX02
-    $boardId = switch ($board) {
-        "Dev" { 1 }
-        "FX01" { 2 }
-        "FX02" { 3 }
-    }
-    $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"
-    if ($log) {
-        $env:PLATFORMIO_BUILD_FLAGS += " -DLOGGING_ENABLED=1"
-    }
-    if ($ignoreBroadcast) {
-        $env:PLATFORMIO_BUILD_FLAGS += " -DIGNORE_WEB_EFFECT_CHANGES=1"
-    }
-    if (!$log -and !$dbg) {
-        $env:PLATFORMIO_BUILD_FLAGS += " -DPIO_FRAMEWORK_ARDUINO_NO_USB"
-    }
-}
-
-function buildClean() {
-    prepEnvironment
-    pio run -t clean -e $brdEnv
-    pio run -e $brdEnv
-}
-
-function updateFirmwareSerial() {
-    prepEnvironment
-    if ($port -eq 'auto') {
-        pio run -t upload -e $brdEnv
-    } else {
-        pio run -t upload -e $brdEnv --port $port
-    }
-}
-
 function updateFirmwareOTA() {
     $ipAddress = (isArduinoCliPresent) ? (getOTAEnabledIPAddress) : $null
     if ($null -eq $ipAddress) {
         Write-Warning "No OTA enabled device found, proceeding with serial upload"
-        updateFirmwareSerial
+        Update-FirmwareSerial $board $log $ignoreBroadcast $dbg $port
         return
     }
 
     Write-Information "${clrMsg}Updating firmware OTA to $ipAddress board${clrReset}" -InformationAction Continue
-    buildClean
+    Clean -dbg $dbg
+    Build-Application $board $log $ignoreBroadcast $dbg
     arduino-cli upload --fqbn $boardFqbn --upload-field password=$otaPassword --protocol network --port "$ipAddress" -i .pio/build/$brdEnv/firmware.bin
 
 }

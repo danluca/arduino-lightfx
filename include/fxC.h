@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2026 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXC_H
 #define LIGHTFX_FXC_H
@@ -34,8 +34,6 @@ namespace FxC {
         //void setup() override;
 
         void run() override;
-
-        void windDownPrep() override;
 
         [[nodiscard]] uint8_t selectionWeight() const override;
     };
