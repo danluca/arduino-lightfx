@@ -14,6 +14,10 @@ param(
     [switch]$force
 )
 
+#######################################
+## Functions
+#######################################
+
 function Test-PythonVenvActive {
     if (-not ($env:VIRTUAL_ENV)) {
         return $false
@@ -34,12 +38,15 @@ function ActivateVenv {
     return $false
 }
 
+#######################################
+## Main
+#######################################
+
 . $PSScriptRoot/boards.ps1
 
 $outFile = "fsi4_seed$Variant.txt"
 
-. $PSScriptRoot/boards.ps1
-$Destination = $boardMap[$Board]
+$Destination = (Get-BoardByName $Board).IpAddress
 
 if ((Test-Path $outFile) -and -not $force) {
     Write-Host "Found existing $outFile — skipping generation"

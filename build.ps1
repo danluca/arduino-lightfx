@@ -1,4 +1,4 @@
-## Copyright (c) 2025 by Dan Luca. All rights reserved.
+## Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 ##
 ## Build script for PlatformIO project
 [CmdletBinding()]
@@ -12,43 +12,11 @@ param (
     [switch]$ignoreBroadcast
 )
 
-# see platformio.ini for the environment names
-$relEnv = "rp2350-rel"
-$dbgEnv = "rp2350-dbg"
-
-function prepEnvironment() {
-    # see config.h in the include folder for board ID values
-    # 1 = Dev, 2 = FX01, 3 = FX02
-    $boardId = switch ($board) {
-        "Dev" { 1 }
-        "Tree" { 2 }
-        "FX02" { 3 }
-    }
-    $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"
-    if ($log) {
-        $env:PLATFORMIO_BUILD_FLAGS += " -DLOGGING_ENABLED=1"
-    }
-    if ($ignoreBroadcast) {
-        $env:PLATFORMIO_BUILD_FLAGS += " -DIGNORE_WEB_EFFECT_CHANGES=1"
-    }
-    if (!$log -and !$dbg) {
-        $env:PLATFORMIO_BUILD_FLAGS += " -DPIO_FRAMEWORK_ARDUINO_NO_USB"
-    }
-}
-
-# Function to build the application
-function Build-Application($envName) {
-    Write-Host "PlatformIO building for environment: $envName"
-    prepEnvironment
-    # Add your build commands here
-    # Example:
-    # & "path\to\build\tool" --env $envName
-    pio run -e $envName
-}
+. $PSScriptRoot/scripts/util.ps1
 
 if ($clean) {
-    # Clean the build
-    pio run -t clean -e ($dbg ? $dbgEnv : $relEnv)
+    Clean -dbg $dbg
 }
+
 # Call the build function with the appropriate environment name based on debug flag
-Build-Application ($dbg ? $dbgEnv : $relEnv)
+Build-Application $board $log $ignoreBroadcast $dbg

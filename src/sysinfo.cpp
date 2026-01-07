@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -21,8 +21,8 @@
 static constexpr auto unknown PROGMEM = "N/A";
 #if LOGGING_ENABLED == 1
 // static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
-static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Total Stack:: ptr=%#X free=%d;\n  Total Heap :: size=%d free=%d used=%d\n";
-static constexpr auto heapPSRAMInfoFmt PROGMEM = "  Total PSRAM (size=%d) Heap :: size=%d free=%d used=%d\n";
+static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu free=%zu used=%zu lowest=%zu block max/min=%zu/%zu\n";
+static constexpr auto heapPSRAMInfoFmt PROGMEM = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
 static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
@@ -112,7 +112,7 @@ void logTaskStats() {
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
             // configRUN_TIME_COUNTER_TYPE ulStatPercentage = (pxTaskStatusArray[x].ulRunTimeCounter >> 8)/ulTotalRunTime;
             // strTaskInfo.concat(pxTaskStatusArray[x].pcTaskName);
-            const double fStatsAsPercentage = (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime;
+            const double fStatsAsPercentage = uxTotalRunTime > 0 ? (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime : 0.0;
             //only add non-IDLE task percentages to total CPU load
             String taskName(pxTaskStatusArray[x].pcTaskName);
             taskName.toLowerCase();
@@ -135,10 +135,13 @@ void logTaskStats() {
         log_info(strTaskInfo.c_str());
         delay(12);
     }
-    // Simple heap stats - the HeapStats_t and vPortGetHeapStats is only available with heap_4 and heap_5 memory management solutions; the current one for arduino-pico is heap_3
+    // Simple heap stats
     String strHeapInfo;
     strHeapInfo.reserve(256);  //ensure enough space to avoid reallocations
-    StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), rp2040.getFreeStack(), rp2040.getTotalHeap(), rp2040.getFreeHeap(), rp2040.getUsedHeap());
+    HeapStats_t heapStats;
+    vPortGetHeapStats(&heapStats);
+    StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), heapStats.xAvailableHeapSpaceInBytes, heapStats.xMinimumEverFreeBytesRemaining,
+        heapStats.xNumberOfFreeBlocks, heapStats.xSizeOfLargestFreeBlockInBytes, heapStats.xSizeOfSmallestFreeBlockInBytes);
 #ifdef PICO_RP2350
     StringUtils::append(strHeapInfo, heapPSRAMInfoFmt, rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap(), rp2040.getUsedPSRAMHeap());
 #endif
@@ -344,12 +347,20 @@ void SysInfo::sysConfig(JsonDocument &doc) {
  * @param doc JSON object to populate
  */
 void SysInfo::heapStats(JsonObject &doc) {
-    // Simple heap stats - the HeapStats_t and vPortGetHeapStats is only available with heap_4 and heap_5 memory management solutions; the current one for arduino-pico is heap_3
+    // Simple heap stats
+    String strHeapInfo;
+    strHeapInfo.reserve(256);  //ensure enough space to avoid reallocations
+    HeapStats_t heapStats;
+    vPortGetHeapStats(&heapStats);
+
     doc["stackPointer"] = rp2040.getStackPointer();
     doc["freeStack"] = sysInfo->freeStack = rp2040.getFreeStack();
-    doc["totalHeap"] = sysInfo->heapSize = rp2040.getTotalHeap();
-    doc["freeHeap"] = sysInfo->freeHeap = rp2040.getFreeHeap();
-    doc["usedHeap"] = rp2040.getUsedHeap();
+    doc["totalHeap"] = sysInfo->heapSize = configTOTAL_HEAP_SIZE;
+    doc["freeHeap"] = sysInfo->freeHeap = heapStats.xAvailableHeapSpaceInBytes;
+    doc["usedHeap"] = (sysInfo->heapSize - sysInfo->freeHeap);
+    doc["minHeap"] = heapStats.xMinimumEverFreeBytesRemaining;
+    doc["maxHeapBlock"] = heapStats.xSizeOfLargestFreeBlockInBytes;
+    doc["minHeapBlock"] = heapStats.xSizeOfSmallestFreeBlockInBytes;
     doc["psramSize"] = sysInfo->psramSize;
 #ifdef PICO_RP2350
     doc["psramHeapTotal"] = rp2040.getTotalPSRAMHeap();
