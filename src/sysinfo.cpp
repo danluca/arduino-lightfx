@@ -36,6 +36,8 @@ constexpr CRGB CLR_SETUP_ERROR = CRGB::Red;
 unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
+static TaskStatus_t *prevTaskStatusArray = nullptr;
+static TaskStatus_t *curTaskStatusArray = nullptr;
 
 // constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
 
@@ -49,6 +51,15 @@ const char *taskStatusToString(const eTaskState state) {
         case eInvalid: return csInvalid;
         default: return unknown;
     }
+}
+
+TaskStatus_t* findTaskStatus(TaskStatus_t* taskStatusArray, const UBaseType_t arraySize, const UBaseType_t taskNumber) {
+    for (UBaseType_t i = 0; i < arraySize; i++) {
+        if (taskStatusArray[i].xTaskNumber == taskNumber) {
+            return &taskStatusArray[i];
+        }
+    }
+    return nullptr;
 }
 
 /**
@@ -88,46 +99,49 @@ void logTaskStats() {
 #if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
-    // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
-    configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
+    static uint64_t prevTaskStatsTime = 0ul;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
     UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
     /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time. */
-    if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
+    if(curTaskStatusArray = new TaskStatus_t[uxArraySize]; curTaskStatusArray != nullptr ) {
         String strTaskInfo;
         strTaskInfo.reserve(1024);  //ensure enough space to avoid reallocations for each thread - 64 bytes per task * 15 tasks = 960
 
-        /* Generate raw status information about each task. */
-        uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
-        // ulTotalRunTime = (ulTotalRunTime >> 8) / (configRUN_TIME_COUNTER_TYPE)100U;    // For percentage calculations
-        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, current time %lu, %s]\n"), ulTotalRunTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
-        strTaskInfo.concat(F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
-
+        // Generate raw status information about each task. Refs:
+        // https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
+        configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
+        uxArraySize = uxTaskGetSystemState( curTaskStatusArray, uxArraySize, &ulTotalRunTime );
         uint64_t uxTotalRunTime = 0ul;  // Summing up times spent by ALL tasks (as reported by each task) should account for NUM_CORES - this value should be NUM_CORES*ulTotalRunTime
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            uxTotalRunTime += (pxTaskStatusArray[x].ulRunTimeCounter);
+            uxTotalRunTime += (curTaskStatusArray[x].ulRunTimeCounter);
         }
-        uxTotalRunTime /= ((configRUN_TIME_COUNTER_TYPE)100U);    // For percentage calculations
+        const uint64_t uxDeltaTime = (uxTotalRunTime - prevTaskStatsTime)/100;    //this accounts for number of cores
+
+        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu, current time %lu, %s]\n"), ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
+        strTaskInfo.concat(F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
+
         double fTotalCPULoadPercentage = 0.0;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            // configRUN_TIME_COUNTER_TYPE ulStatPercentage = (pxTaskStatusArray[x].ulRunTimeCounter >> 8)/ulTotalRunTime;
-            // strTaskInfo.concat(pxTaskStatusArray[x].pcTaskName);
-            const double fStatsAsPercentage = uxTotalRunTime > 0 ? (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime : 0.0;
+            const TaskStatus_t *prevTaskStatus = findTaskStatus(curTaskStatusArray, uxArraySize, curTaskStatusArray[x].xTaskNumber);
+            const uint64_t taskDeltaTime = prevTaskStatus != nullptr ? (curTaskStatusArray[x].ulRunTimeCounter - prevTaskStatus->ulRunTimeCounter) : curTaskStatusArray[x].ulRunTimeCounter;
+            const double fStatsAsPercentage = uxDeltaTime > 0 ? static_cast<double>(taskDeltaTime) / static_cast<double>(uxDeltaTime) : 0.0;
             //only add non-IDLE task percentages to total CPU load
-            String taskName(pxTaskStatusArray[x].pcTaskName);
+            String taskName(curTaskStatusArray[x].pcTaskName);
             taskName.toLowerCase();
             if (taskName.indexOf(idleTaskMarker) < 0)
                 fTotalCPULoadPercentage += fStatsAsPercentage;
-            const char prElevated = pxTaskStatusArray[x].uxCurrentPriority > pxTaskStatusArray[x].uxBasePriority ? '+' : pxTaskStatusArray[x].uxCurrentPriority < pxTaskStatusArray[x].uxBasePriority ? '-' : ' ';
-            const uint coreAffinity = pxTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : pxTaskStatusArray[x].uxCoreAffinityMask;
+            const char prElevated = curTaskStatusArray[x].uxCurrentPriority > curTaskStatusArray[x].uxBasePriority ? '+' : curTaskStatusArray[x].uxCurrentPriority < curTaskStatusArray[x].uxBasePriority ? '-' : ' ';
+            const uint coreAffinity = curTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : curTaskStatusArray[x].uxCoreAffinityMask;
             char buf[80];
-            snprintf(buf, 80, fmtTaskInfo, pxTaskStatusArray[x].pcTaskName, taskStatusToString(pxTaskStatusArray[x].eCurrentState),
-                (uint)pxTaskStatusArray[ x ].uxCurrentPriority, prElevated, (uint)pxTaskStatusArray[ x ].usStackHighWaterMark,
-                (uint)pxTaskStatusArray[ x ].xTaskNumber, coreAffinity, pxTaskStatusArray[ x ].ulRunTimeCounter, fStatsAsPercentage);
+            snprintf(buf, 80, fmtTaskInfo, curTaskStatusArray[x].pcTaskName, taskStatusToString(curTaskStatusArray[x].eCurrentState),
+                (uint)curTaskStatusArray[ x ].uxCurrentPriority, prElevated, (uint)curTaskStatusArray[ x ].usStackHighWaterMark,
+                (uint)curTaskStatusArray[ x ].xTaskNumber, coreAffinity, taskDeltaTime, fStatsAsPercentage);
             strTaskInfo.concat(buf);
         }
         /* The array is no longer needed, free the memory it consumes. */
-        vPortFree( pxTaskStatusArray );
+        delete[] prevTaskStatusArray
+        prevTaskStatusArray = curTaskStatusArray;
+        prevTaskStatsTime = uxTotalRunTime;
         //add the total CPU load
         char buf[80];
         snprintf(buf, 80, fmtTotalCPULoad, fTotalCPULoadPercentage);
@@ -150,25 +164,42 @@ void logTaskStats() {
     log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinBufferSpace());
     // log_info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
     //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2350/memmap_default.ld
-    // extern uint32_t __exidx_start;
-    // extern uint32_t __exidx_end;
-    // extern uint32_t __etext;
-    // extern uint32_t __data_start__;
-    // extern uint32_t __preinit_array_start;
-    // extern uint32_t __preinit_array_end;
-    // extern uint32_t __init_array_start;
-    // extern uint32_t __init_array_end;
-    // extern uint32_t __fini_array_start;
-    // extern uint32_t __fini_array_end;
-    // extern uint32_t __data_end__;
-    // extern uint32_t __bss_start__;
-    // extern uint32_t __bss_end__;
-    // extern uint32_t __end__;
-    // extern uint32_t end;
-    // extern uint32_t __HeapLimit;
-    // extern uint32_t __StackLimit;
-    // extern uint32_t __StackTop;
-
+    // extern char __exidx_start;
+    // extern char __exidx_end;
+    // extern char __etext;
+    // extern char __data_start__;
+    // extern char __preinit_array_start;
+    // extern char __preinit_array_end;
+    // extern char __init_array_start;
+    // extern char __init_array_end;
+    // extern char __fini_array_start;
+    // extern char __fini_array_end;
+    // extern char __data_end__;
+    // extern char __bss_start__;
+    // extern char __bss_end__;
+    // extern char __end__;
+    // extern char end;
+    // extern char __HeapLimit;
+    // extern char __StackLimit;
+    // extern char __StackTop;
+    // extern uint32_t __scratch_x_start__;
+    // extern uint32_t __scratch_y_start__;
+    // extern uint32_t* core1_separate_stack_address;
+    // log_info(F("Memory map pointers:"));
+    // log_info(F("  .text end:            __etext       = %#X"), (uint32_t)&__etext);
+    // log_info(F("  .data start/end:      __data_start__/__data_end__ = %#X/%#X"), (uint32_t)&__data_start__, (uint32_t)&__data_end__);
+    // log_info(F("  .bss start/end:       __bss_start__/__bss_end__   = %#X/%#X"), (uint32_t)&__bss_start__, (uint32_t)&__bss_end__);
+    // log_info(F("  .exidx start/end:     __exidx_start__/__exidx_end__ = %#X/%#X"), (uint32_t)&__exidx_start, (uint32_t)&__exidx_end);
+    // log_info(F("  .preinit_array start/end: __preinit_array_start__/__preinit_array_end__ = %#X/%#X"), (uint32_t)&__preinit_array_start, (uint32_t)&__preinit_array_end);
+    // log_info(F("  .init_array start/end:    __init_array_start__/__init_array_end__     = %#X/%#X"), (uint32_t)&__init_array_start, (uint32_t)&__init_array_end);
+    // log_info(F("  .fini_array start/end:    __fini_array_start__/__fini_array_end__     = %#X/%#X"), (uint32_t)&__fini_array_start, (uint32_t)&__fini_array_end);
+    // log_info(F("  Program end markers:  __end__       = %#X"), (uint32_t)&__end__);
+    // log_info(F("  Heap limits:          __HeapLimit   = %#X"), (uint32_t)&__HeapLimit);
+    // log_info(F("  Stack limits:         __StackLimit  = %#X; __StackTop = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop);
+    // log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_start__, __scratch_y_start__);
+    // log_info(F("  Core 1 separate stack address = %#X"), (uint32_t)*core1_separate_stack_address);
+    //struct mallinfo mf = mallinfo();
+    //log_info(F("Old malloc memory stats: free=%u, total=%u, largest_free=%u"), mf.arena, mf.uordblks, mf.fordblks);
 #endif
 }
 
@@ -401,47 +432,54 @@ void SysInfo::heapStats(JsonObject &doc) {
  * @param doc JSON array to populate
  */
 void SysInfo::taskStats(JsonObject &doc) {
-        // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
-    configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
+    static uint64_t prevTaskStatsTime = 0ul;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
     UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
-    /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time. */
-    if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
+    /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time.
+     * Note the use of new operator that is overridden to engage pvPortMalloc */
+    if(curTaskStatusArray = new TaskStatus_t[uxArraySize]; curTaskStatusArray != nullptr ) {
         // General counts
         doc["count"] = uxArraySize;
         const auto jsArray = doc["items"].to<JsonArray>();
+        // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
+        configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
         /* Generate raw status information about each task. */
-        uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
+        uxArraySize = uxTaskGetSystemState( curTaskStatusArray, uxArraySize, &ulTotalRunTime );
         doc["sysTotalRunTime"] = ulTotalRunTime;
         uint64_t uxTotalRunTime = 0ul;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            uxTotalRunTime += (pxTaskStatusArray[x].ulRunTimeCounter);
+            uxTotalRunTime += (curTaskStatusArray[x].ulRunTimeCounter);
         }
+        const uint64_t uxDeltaTime = (uxTotalRunTime - prevTaskStatsTime)/100;    //this accounts for number of cores
         doc["tasksTotalRunTime"] = uxTotalRunTime;
-        uxTotalRunTime /= ((configRUN_TIME_COUNTER_TYPE)100U);    // For percentage calculations
         double fTotalCPULoadPercentage = 0.0;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
+            const TaskStatus_t *prevTaskStatus = findTaskStatus(prevTaskStatusArray, uxArraySize, curTaskStatusArray[x].xTaskNumber);
             JsonObject task = jsArray.add<JsonObject>();
-            const double fStatsAsPercentage = (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime;
-            String taskName = pxTaskStatusArray[x].pcTaskName;
+            const uint64_t taskDeltaTime = prevTaskStatus != nullptr ? (curTaskStatusArray[x].ulRunTimeCounter - prevTaskStatus->ulRunTimeCounter) : curTaskStatusArray[x].ulRunTimeCounter;
+            const double fStatsAsPercentage = uxDeltaTime > 0 ? static_cast<double>(taskDeltaTime) / static_cast<double>(uxDeltaTime) : 0.0;
+            String taskName = curTaskStatusArray[x].pcTaskName;
             taskName.toLowerCase();
             if (taskName.indexOf(idleTaskMarker) < 0)
                 fTotalCPULoadPercentage += fStatsAsPercentage;  //only add the non-idle tasks
-            const uint coreAffinity = pxTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : pxTaskStatusArray[x].uxCoreAffinityMask;
+            const uint coreAffinity = curTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : curTaskStatusArray[x].uxCoreAffinityMask;
 
-            task["name"] = pxTaskStatusArray[x].pcTaskName;
-            task["state"] = taskStatusToString(pxTaskStatusArray[x].eCurrentState);
-            task["curPriority"] = pxTaskStatusArray[ x ].uxCurrentPriority;
-            task["basePriority"] = pxTaskStatusArray[ x ].uxBasePriority;
-            task["stackHighWaterMark"] = pxTaskStatusArray[ x ].usStackHighWaterMark;
-            task["taskNumber"] = pxTaskStatusArray[ x ].xTaskNumber;
+            task["name"] = curTaskStatusArray[x].pcTaskName;
+            task["state"] = taskStatusToString(curTaskStatusArray[x].eCurrentState);
+            task["curPriority"] = curTaskStatusArray[ x ].uxCurrentPriority;
+            task["basePriority"] = curTaskStatusArray[ x ].uxBasePriority;
+            task["stackHighWaterMark"] = curTaskStatusArray[ x ].usStackHighWaterMark;
+            task["taskNumber"] = curTaskStatusArray[ x ].xTaskNumber;
             task["coreAffinity"] = coreAffinity;
-            task["runTime"] = pxTaskStatusArray[ x ].ulRunTimeCounter;
+            task["runTime"] = taskDeltaTime;
+            task["runTimeLife"] = curTaskStatusArray[ x ].ulRunTimeCounter;
             task["runTimePct"] = fStatsAsPercentage;
         }
         doc["totalCPULoadPct"] = fTotalCPULoadPercentage;
         /* The array is no longer needed, free the memory it consumes. */
-        vPortFree( pxTaskStatusArray );
+        delete[] prevTaskStatusArray;
+        prevTaskStatusArray = curTaskStatusArray;
+        prevTaskStatsTime = uxTotalRunTime;
     }
 }
 

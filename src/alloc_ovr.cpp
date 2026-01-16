@@ -5,12 +5,15 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "hardware/watchdog.h"
+#include <SerialUSB.h>
 
  /**
   *  @brief Warm-reboots the chip in normal mode
   *  See RP2040Support.h (cores/rp2040/RP2040Support.h)
   */
 [[noreturn]] void reboot() {
+    if (Serial)
+        Serial.println("PANIC AT THE DISCO: Rebooting due to memory allocation failure");
     watchdog_reboot(0, 0, 10);
     while (true)
         tight_loop_contents();
@@ -54,4 +57,4 @@ void operator delete(void* p) noexcept {
 
 void operator delete[](void* p) noexcept {
     vPortFree(p);
-}
+    }
