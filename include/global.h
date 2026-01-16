@@ -1,4 +1,4 @@
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef ARDUINO_LIGHTFX_GLOBAL_H
@@ -17,7 +17,6 @@
 #define qsuba(x, b) (((x)>(b))?(x-b):0)                             // Level shift. . . Unsigned subtraction macro. if result <0, then x=0. Otherwise x=x-b.
 #define asub(a, b)  (((a)>(b))?(a-b):(b-a))
 
-#define LED_EFFECT_ID_SIZE  6
 #define MAX_EFFECTS_HISTORY 20
 #define AUDIO_HIST_BINS_COUNT   10
 #define FX_SLEEPLIGHT_ID    "FXA6"

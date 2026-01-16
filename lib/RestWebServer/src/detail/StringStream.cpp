@@ -1,8 +1,10 @@
 //
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "StringStream.h"
+
+using namespace restServer;
 
 StringStream::StringStream(const char *buffer, const size_t length) : _buffer(buffer), _length(length), _position(0) {
 }

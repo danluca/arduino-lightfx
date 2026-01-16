@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "WebClient.h"
@@ -124,7 +124,7 @@ void WebClient::close() {
  * @param value header value
  * @param first whether it should be the first header
  */
-void WebClient::sendHeader(const String &name, const String &value, const bool first) {
+void WebClient::addResponseHeader(const String &name, const String &value, const bool first) {
     String headerLine = name;
     headerLine += F(": ");
     headerLine += value;
@@ -162,27 +162,27 @@ void WebClient::_prepareHeader(String &response, const int code, const char *con
     if (!content_type) {
         content_type = mimeTable[html].mimeType;
     }
-    sendHeader(String(F("Content-Type")), String(content_type), true);
+    addResponseHeader(String(F("Content-Type")), String(content_type), true);
     if (_server->serverAgent().length())
-        sendHeader(F("Server"), _server->serverAgent());
+        addResponseHeader(F("Server"), _server->serverAgent());
     if (_contentLength == CONTENT_LENGTH_NOT_SET) {
-        sendHeader(String(Content_Length), String(contentLength));
+        addResponseHeader(String(Content_Length), String(contentLength));
         _contentLength = contentLength;
     } else {
         if (_contentLength == CONTENT_LENGTH_UNKNOWN) {
             //let's do chunked - only applicable to HTTP/1.1 or above client, i.e. all today clients
             _chunked = true;
-            sendHeader(String(F("Accept-Ranges")), String(F("none")));
-            sendHeader(String(F("Transfer-Encoding")), String(F("chunked")));
+            addResponseHeader(String(F("Accept-Ranges")), String(F("none")));
+            addResponseHeader(String(F("Transfer-Encoding")), String(F("chunked")));
         } else
-            sendHeader(String(Content_Length), String(_contentLength));
+            addResponseHeader(String(Content_Length), String(_contentLength));
     }
     if (_server->corsEnabled()) {
-        sendHeader(String(F("Access-Control-Allow-Origin")), String("*"));
-        sendHeader(String(F("Access-Control-Allow-Methods")), String("*"));
-        sendHeader(String(F("Access-Control-Allow-Headers")), String("*"));
+        addResponseHeader(String(F("Access-Control-Allow-Origin")), String("*"));
+        addResponseHeader(String(F("Access-Control-Allow-Methods")), String("*"));
+        addResponseHeader(String(F("Access-Control-Allow-Headers")), String("*"));
     }
-    sendHeader(String(F("Connection")), String(F("close")));
+    addResponseHeader(String(F("Connection")), String(F("close")));
 
     response += _responseHeaders;
     response += "\r\n";
@@ -278,6 +278,17 @@ size_t WebClient::send_P(const int code, PGM_P content_type, PGM_P content, cons
     return contentSent;
 }
 
+size_t WebClient::sendHeaders(const int code, const String &content_type, const size_t contentLength) {
+    return sendHeaders(code, content_type.c_str(), contentLength);
+}
+
+size_t WebClient::sendHeaders(const int code, const char *content_type, const size_t contentLength) {
+    String headers;
+    headers.reserve(INITIAL_HEADERS_BUFFER_SIZE);
+    _prepareHeader(headers, code, content_type, contentLength);
+    return _currentClientWrite(headers.c_str(), headers.length());
+}
+
 /**
  * Sends content to the underlying WiFi client - this method does transmit data to the WiFi client.
  * Chunks it if enabled (must be paired with proper http headers for chunking)
@@ -350,7 +361,7 @@ size_t WebClient::_streamFileCore(const size_t fileSize, const String &fileName,
     setContentLength(fileSize);
     if (fileName.endsWith(String(mimeTable[gz].endsWith)) && contentType != String(mimeTable[gz].mimeType) &&
             contentType != String(mimeTable[none].mimeType)) {
-        sendHeader(F("Content-Encoding"), F("gzip"));
+        addResponseHeader(F("Content-Encoding"), F("gzip"));
     }
     return send(code, contentType, "");
 }
@@ -478,7 +489,7 @@ bool WebClient::_parseRequest() {
     const int addr_start = req.indexOf(' ');
     const int addr_end = req.indexOf(' ', addr_start + 1);
     if (addr_start == -1 || addr_end == -1) {
-        sendHeader("x-error", "Can't parse URI from request line: " + req);
+        addResponseHeader("x-error", "Can't parse URI from request line: " + req);
         log_error("Invalid HTTP request: %s", req.c_str());
         return false;
     }
@@ -487,7 +498,7 @@ bool WebClient::_parseRequest() {
     request()._reqUrl = req.substring(addr_start + 1, addr_end);
     request()._httpVersion = req.substring(addr_end + 6);
     if (request()._httpVersion.length() == 0) {
-        sendHeader("x-error", "Can't parse HTTP version from request line: " + req);
+        addResponseHeader("x-error", "Can't parse HTTP version from request line: " + req);
         log_error("Invalid HTTP request, can't parse HTTP version: %s", req.c_str());
         return false;
     }
@@ -504,7 +515,7 @@ bool WebClient::_parseRequest() {
 
     const auto method = httpMethodFromName(methodStr.c_str());
     if (method == HTTP_ANY) {
-        sendHeader("x-error", "Can't extract HTTP method from request line: " + req);
+        addResponseHeader("x-error", "Can't extract HTTP method from request line: " + req);
         log_error("Unknown HTTP Method: %s", methodStr.c_str());
         return false;
     }
@@ -531,7 +542,7 @@ bool WebClient::_parseRequest() {
         return rawAction;
     }
     if (request()._contentLength > HTTP_MAX_POST_DATA_LENGTH) {
-        sendHeader("x-error", "Content length exceeds maximum of " + String(HTTP_MAX_POST_DATA_LENGTH));
+        addResponseHeader("x-error", "Content length exceeds maximum of " + String(HTTP_MAX_POST_DATA_LENGTH));
         log_error(F("Web Request %s %s Content length %d exceeds maximum of %d"), methodStr.c_str(), request().uri().c_str(), request()._contentLength, HTTP_MAX_POST_DATA_LENGTH);
         // _finalizeResponse();
         return false;

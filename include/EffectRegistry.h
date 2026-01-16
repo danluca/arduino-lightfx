@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef EFFECTREGISTRY_H
@@ -10,8 +10,10 @@
 #include "global.h"
 
 class EffectRegistry {
-    std::deque<LedEffect*> effects{};
+    std::deque<const EffectInfo*> effectInfos{};
     FixedQueue<uint16_t, MAX_EFFECTS_HISTORY> lastEffects{};
+    LedEffect* currentEffectInstance = nullptr;
+    LedEffect* lastEffectInstance = nullptr;
     uint16_t currentEffect = 0;
     uint16_t effectsCount = 0;
     uint16_t lastEffectRun = 0;
@@ -23,10 +25,11 @@ class EffectRegistry {
 
 public:
     EffectRegistry() = default;
+    ~EffectRegistry();
 
     [[nodiscard]] LedEffect *getCurrentEffect() const;
 
-    [[nodiscard]] LedEffect *getEffect(uint16_t index) const;
+    [[nodiscard]] const EffectInfo* getEffectInfo(uint16_t index) const;
 
     uint16_t nextEffectPos(uint16_t efx);
 
@@ -38,15 +41,13 @@ public:
 
     uint16_t nextRandomEffectPos();
 
-    void transitionEffect() const;
+    void transitionEffect();
 
-    uint16_t registerEffect(LedEffect *effect);
+    uint16_t registerEffect(const EffectInfo* info);
 
-    LedEffect* findEffect(const char* id) const;
+    uint16_t findEffectIndex(const char* id) const;
 
     [[nodiscard]] uint16_t size() const;
-
-    void setup() const;
 
     void loop();
 

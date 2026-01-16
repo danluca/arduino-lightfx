@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "fxF.h"
 #include <vector>
@@ -11,18 +11,18 @@ using namespace FxF;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-constexpr auto fxf1Desc PROGMEM = "FXF1: beat wave";
-constexpr auto fxf2Desc PROGMEM = "FXF2: Halloween breathe with various color blends";
-constexpr auto fxf3Desc PROGMEM = "FXF3: Eye Blink";
-constexpr auto fxf4Desc PROGMEM = "FXF4: Bouncy segments";
-constexpr auto fxf5Desc PROGMEM = "FXF5: Fireworks";
+static const EffectInfo fxf1Desc PROGMEM = {EFFECT_FACTORY(FxF1), "FXF1", "beat wave", 12};
+static const EffectInfo fxf2Desc PROGMEM = {EFFECT_FACTORY(FxF2), "FXF2", "Halloween breathe with various color blends", 32};
+static const EffectInfo fxf3Desc PROGMEM = {EFFECT_FACTORY(FxF3), "FXF3", "Eye Blink", 32};
+static const EffectInfo fxf4Desc PROGMEM = {EFFECT_FACTORY(FxF4), "FXF4", "Bouncy segments", 32};
+static const EffectInfo fxf5Desc PROGMEM = {EFFECT_FACTORY(FxF5), "FXF5", "Fireworks", 37};
 
 void FxF::fxRegister() {
-    new FxF1();
-    new FxF2();
-    new FxF3();
-    new FxF4();
-    new FxF5();
+    fxRegistry.registerEffect(&fxf1Desc);
+    fxRegistry.registerEffect(&fxf2Desc);
+    fxRegistry.registerEffect(&fxf3Desc);
+    fxRegistry.registerEffect(&fxf4Desc);
+    fxRegistry.registerEffect(&fxf5Desc);
 }
 
 // FxF1

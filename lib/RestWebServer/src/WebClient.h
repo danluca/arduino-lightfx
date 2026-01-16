@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #ifndef WEBCLIENT_H
@@ -62,12 +62,15 @@ class WebClient {
     size_t send(int code, const char *content_type, const char *content, size_t contentLength);
     size_t send_P(int code, PGM_P content_type, PGM_P content);
     size_t send_P(int code, PGM_P content_type, PGM_P content, size_t contentLength);
+    size_t sendHeaders(int code, const String &content_type, size_t contentLength);
+    size_t sendHeaders(int code, const char *content_type, size_t contentLength);
+
     template<typename TypeName> void send(const int code, PGM_P content_type, TypeName content, const size_t contentLength) {
         send(code, content_type, static_cast<const char *>(content), contentLength);
     }
 
     void setContentLength(size_t contentLength);
-    void sendHeader(const String& name, const String& value, bool first = false);
+    void addResponseHeader(const String& name, const String& value, bool first = false);
     size_t sendContent(const String &content);
     size_t sendContent(const char *content, size_t contentLength);
     size_t sendContent_P(PGM_P content);
@@ -90,19 +93,19 @@ class WebClient {
     }
     size_t streamData(const String& data, const String& contentType, const int code = 200) {
         size_t contentSent = _streamFileCore(data.length(), "", contentType, code);
-        StringStream ss(data);
+        restServer::StringStream ss(data);
         contentSent += _currentClientWrite(ss);
         return contentSent;
     }
     size_t streamData(const char* data, const size_t length, const String& contentType, const int code = 200) {
         size_t contentSent = _streamFileCore(length, "", contentType, code);
-        StringStream ss(data, length);
+        restServer::StringStream ss(data, length);
         contentSent += _currentClientWrite(ss);
         return contentSent;
     }
     size_t streamData(const __FlashStringHelper* data, const size_t length, const String& contentType, const int code = 200) {
         size_t contentSent =_streamFileCore(length, "", contentType, code);
-        StringStream ss(data);
+        restServer::StringStream ss(data);
         contentSent += _currentClientWrite(ss);
         return contentSent;
     }
@@ -110,12 +113,12 @@ class WebClient {
 protected:
     // buffered current client write - note with WiFiNINA we've seen issues writing contents larger than 4k in one call
     virtual size_t _currentClientWrite(const char* b, const size_t l) {
-        StringStream ss(b, l);
+        restServer::StringStream ss(b, l);
         return _currentClientWrite(ss);
     }
     // buffered current client write - note with WiFiNINA we've seen issues writing contents larger than 4k in one call
     virtual size_t _currentClientWrite_P(PGM_P b, const size_t l) {
-        StringStream ss(b, l);
+        restServer::StringStream ss(b, l);
         return _currentClientWrite(ss);
     }
     // this method employs buffering due to implementation in WiFiClient

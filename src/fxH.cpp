@@ -8,20 +8,20 @@ using namespace FxH;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-constexpr auto fxh1Desc PROGMEM = "FXH1: Fire segments";
-constexpr auto fxh2Desc PROGMEM = "FXH2: confetti H";
-constexpr auto fxh3Desc PROGMEM = "FXH3: filling the strand with colours";
-constexpr auto fxh4Desc PROGMEM = "FXH4: TwinkleFox";
-constexpr auto fxh5Desc PROGMEM = "FXH5: RainbowSparkle";
-constexpr auto fxh6Desc PROGMEM = "FXH6: JustSparkle";
+static const EffectInfo fxh1Desc PROGMEM = {EFFECT_FACTORY(FxH1), "FXH1", "Fire segments", 48};
+static const EffectInfo fxh2Desc PROGMEM = {EFFECT_FACTORY(FxH2), "FXH2", "confetti H", 24};
+static const EffectInfo fxh3Desc PROGMEM = {EFFECT_FACTORY(FxH3), "FXH3", "filling the strand with colours", 18};
+static const EffectInfo fxh4Desc PROGMEM = {EFFECT_FACTORY(FxH4), "FXH4", "TwinkleFox", 12};
+static const EffectInfo fxh5Desc PROGMEM = {EFFECT_FACTORY(FxH5), "FXH5", "RainbowSparkle", 5};
+static const EffectInfo fxh6Desc PROGMEM = {EFFECT_FACTORY(FxH6), "FXH6", "JustSparkle", 5};
 
 void FxH::fxRegister() {
-    new FxH1();
-    new FxH2();
-    new FxH3();
-    new FxH4();
-    new FxH5();
-    new FxH6();
+    fxRegistry.registerEffect(&fxh1Desc);
+    fxRegistry.registerEffect(&fxh2Desc);
+    fxRegistry.registerEffect(&fxh3Desc);
+    fxRegistry.registerEffect(&fxh4Desc);
+    fxRegistry.registerEffect(&fxh5Desc);
+    fxRegistry.registerEffect(&fxh6Desc);
 }
 
 // Fire2012 with programmable Color Palette standard example, broken into multiple segments
@@ -95,6 +95,12 @@ void FxH1::setup() {
     //   gPal = CRGBPalette16( CRGB::Black, CRGB::Red, CRGB::White);
 }
 
+void FxH1::cleanup() {
+    hMap.clear();
+    hMap.shrink_to_fit();
+    hMap.resize(0);
+}
+
 void FxH1::run() {
     EVERY_N_MILLIS(1000 / FRAMES_PER_SECOND) {
         // Add entropy to random number generator; we use a lot of it.
@@ -160,10 +166,6 @@ void FxH1::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
     json["flameBrightness"] = brightness;
     json["numberOfFires"] = numFires;
-}
-
-void FxH1::windDownPrep() {
-    transEffect.prepare(random8());
 }
 
 uint8_t FxH1::selectionWeight() const {
@@ -238,11 +240,7 @@ void FxH2::updateParams() {
 void FxH2::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
     json["brightness"] = brightness;
-    json["speed"] = speed;
-}
-
-void FxH2::windDownPrep() {
-    transEffect.prepare(random8());
+    json["speed"] = speed.load();
 }
 
 uint8_t FxH2::selectionWeight() const {
@@ -298,11 +296,7 @@ void FxH3::run() {
 void FxH3::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
     json["hueDiff"] = hueDiff;
-    json["speed"] = speed;
-}
-
-void FxH3::windDownPrep() {
-    transEffect.prepare(random8());
+    json["speed"] = speed.load();
 }
 
 uint8_t FxH3::selectionWeight() const {
@@ -361,10 +355,6 @@ void FxH4::run() {
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
     }
-}
-
-void FxH4::windDownPrep() {
-    LedEffect::windDownPrep();
 }
 
 void FxH4::baseConfig(JsonObject &json) const {
@@ -554,10 +544,6 @@ bool FxH5::windDown() {
     return LedEffect::windDown();
 }
 
-void FxH5::windDownPrep() {
-    LedEffect::windDownPrep();
-}
-
 void FxH5::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
 }
@@ -709,10 +695,6 @@ void FxH6::run() {
 
 bool FxH6::windDown() {
     return LedEffect::windDown();
-}
-
-void FxH6::windDownPrep() {
-    LedEffect::windDownPrep();
 }
 
 uint8_t FxH6::selectionWeight() const {

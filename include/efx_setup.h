@@ -1,11 +1,12 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #pragma once
 #ifndef LIGHTFX_EFX_SETUP_H
 #define LIGHTFX_EFX_SETUP_H
 
 #include <FastLED.h>
+#include <atomic>
 #include "LedEffect.h"
 #include "EffectRegistry.h"
 #include "config.h"
@@ -31,23 +32,26 @@ extern uint16_t stripShuffleIndex[NUM_PIXELS];
 extern CRGBPalette16 palette;
 extern CRGBPalette16 targetPalette;
 extern OpMode mode;
-extern uint8_t brightness;
-extern uint8_t stripBrightness;
-extern bool stripBrightnessLocked;
-extern uint8_t colorIndex;
-extern uint8_t lastColorIndex;
-extern uint8_t fade;
-extern uint8_t hue;
-extern uint8_t dotBpm;
-extern uint8_t saturation;
-extern uint8_t delta;
-extern uint16_t hueDiff;
+extern volatile uint8_t brightness;
+extern volatile uint8_t stripBrightness;
+extern std::atomic<bool> stripBrightnessLocked;
+extern volatile uint8_t colorIndex;
+extern volatile uint8_t lastColorIndex;
+extern volatile uint8_t fade;
+extern volatile uint8_t hue;
+extern volatile uint8_t dotBpm;
+extern volatile uint8_t saturation;
+extern volatile uint8_t delta;
+extern volatile uint16_t hueDiff;
 extern bool dirFwd;
 extern int32_t dist;
-extern volatile bool fxBroadcastEnabled;
-extern volatile uint16_t speed;
-extern volatile uint16_t curPos;
+extern std::atomic<bool> fxBroadcastEnabled;
+extern std::atomic<uint16_t> speed;
+extern std::atomic<uint16_t> curPos;
 extern String masterBoardName;
+
+#define EFFECT_FACTORY(EffectClass) \
+    []() -> LedEffect* { return new EffectClass(); }
 
 void ledStripInit();
 void resetGlobals();

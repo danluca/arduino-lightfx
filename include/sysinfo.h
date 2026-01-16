@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef ARDUINO_LIGHTFX_SYSINFO_H
@@ -17,6 +17,8 @@ extern unsigned long prevIdleTime;
 void state_led_update();
 void state_led_begin();
 void logTaskStats();
+void logHeapStats();
+size_t getUsedHeapBytes();
 void logSystemInfo();
 void logSystemState();
 void readSysInfo();

@@ -137,6 +137,7 @@ void setup() {
     taskDelay(2000);    //safety delay
     SysInfo::setupStateLED();
     log_setup();
+    logHeapStats();
 
     // RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
 
@@ -179,6 +180,7 @@ void setup() {
     sysInfo->setSysStatus(SYS_STATUS_SETUP0);
     log_info(F("Main CORE0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
+    logHeapStats();
 }
 
 /**
@@ -199,6 +201,7 @@ void setup1() {
     //wait for the main core to notify us that the core components are ready (filesystem, logging, secure element), not interested in the notification value
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
+    logHeapStats();
     Scheduler.startTask(&fxTasks);
     // taskDelay(250);         // leave reasonable time to FX task to set-up
 
@@ -213,6 +216,7 @@ void setup1() {
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
     sysInfo->setSysStatus(SYS_STATUS_SETUP1);
     log_info(F("Main CORE1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
+    logHeapStats();
 }
 
 /**

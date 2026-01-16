@@ -13,7 +13,6 @@ struct CRGB;
 inline constexpr int turnOffSeq[] PROGMEM = {1, 1, 2, 2, 2, 3, 3, 3, 5, 5, 5, 7, 7, 7, 7, 10};
 inline constexpr auto csAutoFxRoll PROGMEM = "autoFxRoll";
 inline constexpr auto csStripBrightness PROGMEM = "stripBrightness";
-inline constexpr auto csAudioThreshold PROGMEM = "audioThreshold";
 inline constexpr auto csColorTheme PROGMEM = "colorTheme";
 inline constexpr auto csAutoColorAdjust PROGMEM = "autoColorAdjust";
 inline constexpr auto csRandomSeed PROGMEM = "randomSeed";

@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef LEDEFFECT_H
@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <functional>
 #include "global.h"
 
 // Time Performance by Mark Kriegsman of FastLED at https://gist.github.com/kriegsman/a916be18d32ec675fea8
@@ -19,16 +20,37 @@
 #define FROM(HOURS,MINUTES,SECONDS) if( fromTC(TC(HOURS,MINUTES,SECONDS)) )
 
 enum OpMode:uint8_t { TurnOff, Chase };
-enum EffectState:uint8_t {Setup, Running, WindDownPrep, WindDown, TransitionBreakPrep, TransitionBreak, Idle};
+enum EffectState:uint8_t { Idle, Setup, Running, WindDown, Cleanup };
+
+class LedEffect;
+/**
+ * Represents the identifier of the effect along with a description. The identifier is generally short, around 4 characters,
+ * and serves as a concise reference to the specific effect.
+ */
+struct EffectDescription {
+    const char* id;             //short (4 characters -ish) identifier/abbreviation of the effect
+    const char* description;    //description of the effect (keep it brief)
+};
+// Effect factory function type - creates a new effect instance
+using EffectFactory = std::function<LedEffect*()>;
+
+// Effect metadata structure
+struct EffectInfo {
+    EffectFactory factory;
+    EffectDescription desc{};
+    uint8_t selectionWeight{};
+};
+
 
 //base class for all effects
 class LedEffect {
 public:
-    explicit LedEffect(const char* description);
+    explicit LedEffect(const EffectInfo& identity);
     virtual ~LedEffect() = default;
 
     // Public interface
     [[nodiscard]] uint16_t getRegistryIndex() const;
+    void setRegistryIndex(uint16_t index);
     [[nodiscard]] const char* name() const;
     [[nodiscard]] const char* description() const;
     [[nodiscard]] bool isInTransitionState() const;
@@ -44,10 +66,8 @@ public:
     virtual void baseConfig(JsonObject& json) const;
     virtual void setup();
     virtual void run() = 0;  // Pure virtual function
-    virtual bool transitionBreak();
-    virtual void transitionBreakPrep();
     virtual bool windDown();
-    virtual void windDownPrep();
+    virtual void cleanup() { }  // Override in effects that need resource cleanup
     [[nodiscard]] EffectState getState() const { return state; }
     /**
      * The weight this effect has when random selection is engaged. Subclasses can customize this value by
@@ -67,23 +87,18 @@ protected:
 private:
     // Member variables
     EffectState state;
-    const char* desc;
-    char id[LED_EFFECT_ID_SIZE] {};
+    const EffectDescription& identity;
     uint16_t registryIndex = 0;
-    uint32_t transOffStart = 0;
 
     // Private methods
     [[nodiscard]] static EffectState getNextState(EffectState current, EffectState desired);
-    void extractId(const char* description);
     void nextState();
 
     // Handler methods
     void handleSetup();
     void handleRunning();
-    void handleWindDownPrep();
     void handleWindDown();
-    void handleTransitionBreakPrep();
-    void handleTransitionBreak();
+    void handleCleanup();
     void handleIdle();
 };
 

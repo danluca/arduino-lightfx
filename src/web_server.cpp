@@ -1,8 +1,9 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #include <FreeRTOS.h>
 #include <LittleFS.h>
 #include <TimeLib.h>
+#include <StreamUtils.h>
 #include "filesystem.h"
 #include "web_server.h"
 #include "comms.h"
@@ -47,6 +48,9 @@ static constexpr uint16_t serverPort PROGMEM = 80;
 static auto mdnsStatus = false;
 #endif
 
+#define WL_STREAM_BUFFER_SIZE   (1024u)
+
+String masterBoardName;
 WebServer web::server;
 bool web::server_handlers_configured = false;
 
@@ -80,7 +84,7 @@ void dateHeader(WebClient &client) {
     timeService.breakTime(curTime, tm);
     char buf[64];   //sufficient size for this header; see hdFmtDate value
     snprintf(buf, sizeof(buf), hdFmtDate, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    client.sendHeader(F("Date"), buf);
+    client.addResponseHeader(F("Date"), buf);
 }
 
 /**
@@ -91,7 +95,7 @@ void dateHeader(WebClient &client) {
 void contentDispositionHeader(WebClient &client, const char *fname) {
     char buf[160];  //deemed sufficient size for this header and expected file names length; see hdFmtContentDisposition value
     snprintf(buf, sizeof(buf), hdFmtContentDisposition, fname);
-    client.sendHeader(F("Content-Disposition"), buf);
+    client.addResponseHeader(F("Content-Disposition"), buf);
 }
 
 /**
@@ -100,13 +104,13 @@ void contentDispositionHeader(WebClient &client, const char *fname) {
  * @param client web server to use for sending JSON out
  * @return number of bytes written in response
  */
-size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
+size_t web::marshalJson(JsonDocument &doc, WebClient &client) {
     //send it out
-    const auto buf = new String();
-    buf->reserve(5120); // deemed enough for all/most JSON docs in this app (largest is the config file at 4800 bytes)
-    serializeJson(doc, *buf);
-    const size_t sz = client.send(200, mime::mimeTable[mime::json].mimeType, *buf);
-    delete buf;
+    const size_t docLength = measureJson(doc);
+    size_t sz = client.sendHeaders(200, mime::mimeTable[mime::json].mimeType, docLength);
+    WriteBufferingStream wbs(client.rawClient(), WL_STREAM_BUFFER_SIZE);
+    sz += serializeJson(doc, wbs);
+    doc.clear();
     return sz;
 }
 
@@ -116,7 +120,7 @@ size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
 void web::handleGetStatus(WebClient &client) {
     dateHeader(client);
     contentDispositionHeader(client, statusJsonFilename);
-    client.sendHeader(hdCacheControl, hdCacheJson);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
 
     // response body
     JsonDocument doc;
@@ -146,15 +150,15 @@ void web::handleGetStatus(WebClient &client) {
     const LedEffect *curFx = fxRegistry.getCurrentEffect();
     fx["index"] = curFx->getRegistryIndex();
     fx["name"] = curFx->name();
-    fx[csBroadcast] = fxBroadcastEnabled;
+    fx[csBroadcast] = fxBroadcastEnabled.load();
     fx[csIgnoreWebFx] = (IGNORE_WEB_EFFECT_CHANGES == 1);   // Reflect compile-time ability to ignore web effect changes
     auto lastFx = fx["pastEffects"].to<JsonArray>();
     fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness;
-    fx[csBrightnessLocked] = stripBrightnessLocked;
+    fx[csBrightnessLocked] = stripBrightnessLocked.load();
     // Master/Slave status
     const auto master = doc["master"].to<JsonObject>();
-    master["active"] = fxBroadcastEnabled;
+    master["active"] = fxBroadcastEnabled.load();
     if (fxBroadcastEnabled) {
         const auto activeClients = master["activeClients"].to<JsonArray>();
         for (const auto &ip : getActiveClientIPs()) {
@@ -253,7 +257,7 @@ void web::handleGetStatus(WebClient &client) {
  */
 void web::handlePutConfig(WebClient &client) {
     dateHeader(client);
-    client.sendHeader(hdCacheControl, hdCacheJson);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
 
     // Determine origin of the request (UI vs board/other)
     const WebRequest &req = client.request();
@@ -373,7 +377,7 @@ void web::handlePutConfig(WebClient &client) {
 void web::handleGetTasks(WebClient &client) {
     dateHeader(client);
     contentDispositionHeader(client, tasksJsonFilename);
-    client.sendHeader(hdCacheControl, hdCacheJson);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
 
     // response body
     JsonDocument doc;
@@ -643,7 +647,7 @@ void handleFileUploadRaw(WebClient &client) {
 void handleGetFiles(WebClient &client) {
     dateHeader(client);
     contentDispositionHeader(client, filesJsonFilename);
-    client.sendHeader(hdCacheControl, hdCacheJson);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
 
     const WebRequest &req = client.request();
     String q = req.arg("path");

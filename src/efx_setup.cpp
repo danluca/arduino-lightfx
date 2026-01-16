@@ -14,8 +14,9 @@ using namespace fx;
 const setupFunc categorySetup[] = {FxA::fxRegister, FxB::fxRegister, FxC::fxRegister, FxD::fxRegister, FxE::fxRegister, FxF::fxRegister, FxH::fxRegister, FxI::fxRegister, FxJ::fxRegister, FxK::fxRegister};
 constexpr CRGB BKG = CRGB::Black;
 
-volatile uint16_t speed = 100;
-volatile uint16_t curPos = 0;
+std::atomic<bool> fxBump = false;
+std::atomic<uint16_t> speed = 100;
+std::atomic<uint16_t> curPos = 0;
 
 static_assert(FRAME_SIZE < NUM_PIXELS, "FRAME_SIZE must not exceed NUM_PIXELS");
 static_assert(FRAME_SIZE > 10, "FRAME_SIZE must be at least 10 pixels");
@@ -31,19 +32,20 @@ CRGBArray<PIXEL_BUFFER_SPACE> frame;                      //side LED buffer for 
 CRGBPalette16 palette;
 CRGBPalette16 targetPalette;
 OpMode mode = Chase;
-uint8_t brightness = 224;
-uint8_t stripBrightness = brightness;
-uint8_t colorIndex = 0;
-uint8_t lastColorIndex = 0;
-uint8_t fade = 8;
-uint8_t hue = 50;
-uint8_t delta = 1;
-uint8_t saturation = 100;
-uint8_t dotBpm = 30;
+volatile uint8_t brightness = 224;
+volatile uint8_t stripBrightness = brightness;
+volatile uint8_t colorIndex = 0;
+volatile uint8_t lastColorIndex = 0;
+volatile uint8_t fade = 8;
+volatile uint8_t hue = 50;
+volatile uint8_t delta = 1;
+volatile uint8_t saturation = 100;
+volatile uint8_t dotBpm = 30;
 uint16_t stripShuffleIndex[NUM_PIXELS];
-uint16_t hueDiff = 256;
+volatile uint16_t hueDiff = 256;
+std::atomic<uint16_t> totalAudioBumps = 0;
 int32_t dist = 1;
-bool stripBrightnessLocked = false;
+std::atomic<bool> stripBrightnessLocked = false;
 bool dirFwd = true;
 EffectTransition transEffect;
 
@@ -82,7 +84,8 @@ void readFxState() {
         else
             fxRegistry.enableSleep(false);      //this doesn't invoke effect changing because sleep state is initialized with false
         //we need the sleep mode flag setup first to properly advance to next effect
-        if (const uint16_t sleepFxIndex = fxRegistry.findEffect(FX_SLEEPLIGHT_ID)->getRegistryIndex(); fx == sleepFxIndex && !fxRegistry.isAsleep())
+        const uint16_t sleepFxIndex = fxRegistry.findEffectIndex(FX_SLEEPLIGHT_ID);
+        if (fx == sleepFxIndex && !fxRegistry.isAsleep())
             fxRegistry.lastEffectRun = fxRegistry.currentEffect = random16(fxRegistry.effectsCount);
         else
             fxRegistry.lastEffectRun = fxRegistry.currentEffect = fx;
@@ -90,7 +93,9 @@ void readFxState() {
             fxBroadcastEnabled = doc[csBroadcast].as<bool>();
 
         log_info(F("System state restored from %s [%zu bytes]: autoFx=%s, randomSeed=%d, nextEffect=%hu, brightness=%hu (auto adjust), holiday=%s (auto=%s), sleepEnabled=%s"),
-                   stateFileName, stateSize, StringUtils::asString(autoAdvance), seed, fx, stripBrightness, holidayToString(paletteFactory.getHoliday()), StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(fxRegistry.isSleepEnabled()));
+            stateFileName, stateSize, StringUtils::asString(autoAdvance), seed, fx, stripBrightness, holidayToString(paletteFactory.getHoliday()),
+            StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(fxRegistry.isSleepEnabled()));
+        doc.clear();
     }
     delete json;
 }
@@ -104,12 +109,13 @@ void saveFxState() {
     doc[csColorTheme] = holidayToString(paletteFactory.getHoliday());
     doc[csAutoColorAdjust] = paletteFactory.isAuto();
     doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
-    doc[csBroadcast] = fxBroadcastEnabled;
+    doc[csBroadcast] = fxBroadcastEnabled.load();
     const auto str = new String();
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
     if (!SyncFsImpl.writeFile(stateFileName, str))
         log_error(F("Failed to create/write the status file %s"), stateFileName);
+    doc.clear();
     delete str;
 }
 
@@ -156,11 +162,11 @@ void fx_setup() {
         x();
     //Strip brightness adjustment needs the time, that's why it is done in fxRun periodically. In the beginning we'll use the value from the saved state
     readFxState();
-    transEffect.setup();
+    // transEffect.setup(); -- done in EffectRegistry::transitionEffect
 
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-    //ensure the current effect is moved to the setup state
-    fxRegistry.getCurrentEffect()->desiredState(Setup);
+    //ensure the current effect is instantiated and moved to the setup state
+    fxRegistry.transitionEffect();
 
     //generate and cache the FX config data
     JsonDocument doc;
@@ -174,9 +180,10 @@ void fx_setup() {
     serializeJson(doc, *str);
     if (!SyncFsImpl.writeFile(fxCfgFileName, str))
         log_error(F("Cannot save FxConfig JSON file %s"), fxCfgFileName);
-    delete str;
     log_info(F("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)"), fxRegistry.getCurrentEffect()->name(),
                fxRegistry.getCurrentEffect()->getRegistryIndex(), Setup);
+    delete str;
+    doc.clear();
 }
 
 //FW upgrade pattern colors

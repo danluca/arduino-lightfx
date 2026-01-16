@@ -41,7 +41,7 @@ function getConfig() {
             $.each(data.fx, function (i, fxi) {
                 let fx_id = fxi.registryIndex;
                 //let fx_name = fxi.name;
-                let fx_description = overflowString(fxi.description, 60);
+                let fx_description = overflowString(`${fxi.name} - ${fxi.description}`, 60);
                 // Add to list
                 fxlst.append(`<option class="opt-select" value="${fx_id}">${fx_description}</option>`);
             });

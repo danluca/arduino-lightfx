@@ -13,23 +13,23 @@ using namespace FxI;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-constexpr auto fxi1Desc PROGMEM = "FXI1: Ping Pong";
-constexpr auto fxi2Desc PROGMEM = "FXI2: Pacifica - gentle ocean waves";
-constexpr auto fxi3Desc PROGMEM = "FXI3: Bouncy Ball";
-constexpr auto fxi4Desc PROGMEM = "FXI4: Audio-seeded VU meter";
-constexpr auto fxi5Desc PROGMEM = "FXI5: Shore waves with backwash";
-constexpr auto fxi6Desc PROGMEM = "FXI6: Bowling alley";
+static const EffectInfo fxi1Desc PROGMEM = {EFFECT_FACTORY(FxI1), "FXI1", "Ping Pong", 7};
+static const EffectInfo fxi2Desc PROGMEM = {EFFECT_FACTORY(FxI2), "FXI2", "Pacifica - gentle ocean waves", 9};
+static const EffectInfo fxi3Desc PROGMEM = {EFFECT_FACTORY(FxI3), "FXI3", "Bouncy Ball", 10};
+static const EffectInfo fxi4Desc PROGMEM = {EFFECT_FACTORY(FxI4), "FXI4", "Audio-seeded VU meter", 12};
+static const EffectInfo fxi5Desc PROGMEM = {EFFECT_FACTORY(FxI5), "FXI5", "Shore waves with backwash", 10};
+static const EffectInfo fxi6Desc PROGMEM = {EFFECT_FACTORY(FxI6), "FXI6", "Bowling alley", 9};
 
 /**
  * Register FxI effects
  */
 void FxI::fxRegister() {
-    new FxI1();
-    new FxI2();
-    new FxI3();
-    new FxI4();
-    new FxI5();
-    new FxI6();
+    fxRegistry.registerEffect(&fxi1Desc);
+    fxRegistry.registerEffect(&fxi2Desc);
+    fxRegistry.registerEffect(&fxi3Desc);
+    fxRegistry.registerEffect(&fxi4Desc);
+    fxRegistry.registerEffect(&fxi5Desc);
+    fxRegistry.registerEffect(&fxi6Desc);
 }
 
 //FXI1
@@ -539,6 +539,15 @@ void FxI4::setup() {
     tpl.fill_solid(BKG);
 }
 
+void FxI4::cleanup() {
+    // Free large buffers and shrink capacity to release heap
+    seed.clear(); seed.shrink_to_fit();
+    hist.clear(); hist.shrink_to_fit();
+    peaks.clear(); peaks.shrink_to_fit();
+    peakTs.clear(); peakTs.shrink_to_fit();
+    seedPos = 0; framePos = 0; frames = 0; seedHasBands = false;
+}
+
 void FxI4::drawSegments() {
     const uint16_t total = tpl.size();
     if (total == 0) return;
@@ -645,6 +654,21 @@ void FxI5::setup() {
     // Reset wetness state
     for (unsigned char & i : beachWet) i = 0;
     ledSet.fill_solid(BKG);
+}
+
+void FxI5::cleanup() {
+    // Reset all state variables to initial values
+    swellPos = 0;
+    swellCrashed = false;
+    crashHold = 0;
+    foamLevel = 0;
+    lastTick = 0;
+    backwashActive = false;
+    backwashPos = 0;
+    seaHueBase = 0;
+    beachLen = kBeachMin;
+    // Clear beach wetness array
+    memset(beachWet, 0, sizeof(beachWet));
 }
 
 void FxI5::drawSeaBackground() {

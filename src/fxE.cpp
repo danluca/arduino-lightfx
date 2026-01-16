@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "fxE.h"
 #include "transition.h"
@@ -8,21 +8,21 @@ using namespace FxE;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-constexpr auto fxe1Desc PROGMEM = "FXE1: twinkle";
-constexpr auto fxe2Desc PROGMEM = "FXE2: beat wave";
-constexpr auto fxe3Desc PROGMEM = "FXE3: sawtooth back/forth";
-constexpr auto fxe4Desc PROGMEM = "FXE4: serendipitous";
-constexpr auto fxe5Desc PROGMEM = "FXE5: three single color beat-waves";
+static const EffectInfo fxe1Desc PROGMEM = {EFFECT_FACTORY(FxE1), "FXE1", "twinkle", 22};
+static const EffectInfo fxe2Desc PROGMEM = {EFFECT_FACTORY(FxE2), "FXE2", "beat wave", 17};
+static const EffectInfo fxe3Desc PROGMEM = {EFFECT_FACTORY(FxE3), "FXE3", "sawtooth back/forth", 27};
+static const EffectInfo fxe4Desc PROGMEM = {EFFECT_FACTORY(FxE4), "FXE4", "serendipitous", 36};
+static const EffectInfo fxe5Desc PROGMEM = {EFFECT_FACTORY(FxE5), "FXE5", "three single color beat-waves", 42};
 
 uint8_t FxE::twinkRate = 100;
 bool FxE::randHue = true;
 
 void FxE::fxRegister() {
-    new FxE1();
-    new FxE2();
-    new FxE3();
-    new FxE4();
-    new FxE5();
+    fxRegistry.registerEffect(&fxe1Desc);
+    fxRegistry.registerEffect(&fxe2Desc);
+    fxRegistry.registerEffect(&fxe3Desc);
+    fxRegistry.registerEffect(&fxe4Desc);
+    fxRegistry.registerEffect(&fxe5Desc);
 }
 
 /**
@@ -137,10 +137,6 @@ void FxE2::beatwave() {
     replicateSet(tpl, others);
 }
 
-void FxE2::windDownPrep() {
-    transEffect.prepare(random8());
-}
-
 uint8_t FxE2::selectionWeight() const {
     return 17;
 }
@@ -236,10 +232,6 @@ void FxE3::run() {
     }
 }
 
-void FxE3::windDownPrep() {
-    transEffect.prepare(random8());
-}
-
 uint8_t FxE3::selectionWeight() const {
     return 27;
 }
@@ -288,10 +280,6 @@ void FxE4::serendipitous() {
     nblend(tpl[map(X, 0, 65535, 0, tpl.size()-1)], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
     tpl.fadeToBlackBy(16);                    // 8 bit, 1 = slow, 255 = fast
     replicateSet(tpl, others);
-}
-
-void FxE4::windDownPrep() {
-    transEffect.prepare(random8());
 }
 
 uint8_t FxE4::selectionWeight() const {
@@ -343,10 +331,6 @@ void FxE5::run() {
         clr3 = random8();
     }
 
-}
-
-void FxE5::windDownPrep() {
-    transEffect.prepare(random8());
 }
 
 uint8_t FxE5::selectionWeight() const {

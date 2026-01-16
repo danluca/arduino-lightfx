@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "fxD.h"
 #include "transition.h"
@@ -8,20 +8,20 @@ using namespace FxD;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-constexpr auto fxd1Desc PROGMEM = "FXD1: Confetti D";
-constexpr auto fxd2Desc PROGMEM = "FXD2: dot beat";
-constexpr auto fxd3Desc PROGMEM = "FXD3: plasma";
-constexpr auto fxd4Desc PROGMEM = "FXD4: rainbow marching";
-constexpr auto fxd5Desc PROGMEM = "FXD5: ripples";
+static const EffectInfo fxd1Desc PROGMEM = {EFFECT_FACTORY(FxD1), "FXD1", "Confetti D", 21};
+static const EffectInfo fxd2Desc PROGMEM = {EFFECT_FACTORY(FxD2), "FXD2", "dot beat", 20};
+static const EffectInfo fxd3Desc PROGMEM = {EFFECT_FACTORY(FxD3), "FXD3", "plasma", 24};
+static const EffectInfo fxd4Desc PROGMEM = {EFFECT_FACTORY(FxD4), "FXD4", "rainbow marching", 18};
+static const EffectInfo fxd5Desc PROGMEM = {EFFECT_FACTORY(FxD5), "FXD5", "ripples", 42};
 
 int8_t FxD::rot = 1;
 
 void FxD::fxRegister() {
-    new FxD1();
-    new FxD2();
-    new FxD3();
-    new FxD4();
-    new FxD5();
+    fxRegistry.registerEffect(&fxd1Desc);
+    fxRegistry.registerEffect(&fxd2Desc);
+    fxRegistry.registerEffect(&fxd3Desc);
+    fxRegistry.registerEffect(&fxd4Desc);
+    fxRegistry.registerEffect(&fxd5Desc);
 }
 
 /**
@@ -191,10 +191,6 @@ FxD3::FxD3() : LedEffect(fxd3Desc) {
     monoColor = 0;
 }
 
-void FxD3::windDownPrep() {
-    transEffect.prepare(SELECTOR_WIPE + random8());
-}
-
 uint8_t FxD3::selectionWeight() const {
     return 24;
 }
@@ -288,10 +284,6 @@ void FxD5::ripples() {
         }
     }
     replicateSet(tpl, others);
-}
-
-void FxD5::windDownPrep() {
-    transEffect.prepare(SELECTOR_WIPE + random8());
 }
 
 // ripple structure API
