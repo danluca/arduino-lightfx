@@ -793,6 +793,14 @@ MDNS::Status MDNS::_messageRecv() {
 
     log_debug(F("MDNS: packet: receiving, size=%u"), UDP_READ_LENGTH());
 
+    // Safety check: reject packets that are unreasonably large or small
+    if (UDP_READ_LENGTH() < sizeof(Header)) {
+        return packetFailedHandler(Header{}, "packet too small for DNS header");
+    }
+    if (UDP_READ_LENGTH() > DNS_PACKET_LENGTH_MAX) {
+        return packetFailedHandler(Header{}, "packet exceeds maximum size");
+    }
+
     Header header;
     for (auto z = 0; z < sizeof(Header); z++)
         UDP_READ_BYTE_OR_FAIL(uint8_t, reinterpret_cast<uint8_t*>(&header)[z], return packetFailedHandler(header, "invalid header"));    // should throw

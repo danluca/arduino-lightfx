@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef DNSSECTION_H
@@ -245,19 +245,29 @@ struct NameCollector {
     virtual void begin() {}
     virtual void end() {}
     void process_iscompressed(const uint16_t offs, const DNSSection, const uint16_t current) {
-        _names.back().labels.push_back(LabelOffset(uncompress(offs), current));
+        if (!_names.empty())
+            _names.back().labels.push_back(LabelOffset(uncompress(offs), current));
     }
     void process_nocompressed(const String& label, const DNSSection, const uint16_t current) {
-        _names.back().labels.push_back(LabelOffset(label, current));
+        if (!_names.empty())
+            _names.back().labels.push_back(LabelOffset(label, current));
     }
     void process_begin(const DNSSection section, const uint16_t offset) {
-        _names.push_back({ .section = section, .labels = Labels() });
+        // Prevent unbounded growth from malformed packets
+        static constexpr size_t MAX_RECORDS_PER_PACKET = 256;
+        if (_names.size() < MAX_RECORDS_PER_PACKET)
+            _names.push_back({ .section = section, .labels = Labels() });
     }
     void process_update(const DNSSection, const uint8_t[4]) {
     }
     void process_end(const DNSSection, const uint16_t) {
     }
-    NameCollector(MDNS& mdns, const Header& header) : _mdns(mdns), _header(header){};
+    NameCollector(MDNS& mdns, const Header& header) : _mdns(mdns), _header(header) {
+    // Pre-allocate space for expected DNS records to reduce fragmentation
+    // Header contains counts of queries, answers, authority, and additional records
+    const size_t expectedRecords = static_cast<size_t>(header.queryCount) + header.answerCount + header.authorityCount + header.additionalCount;
+    _names.reserve(std::min(expectedRecords, static_cast<size_t>(256)));
+    }
 };
 
 

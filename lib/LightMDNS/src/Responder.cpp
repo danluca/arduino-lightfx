@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "Responder.h"
@@ -23,17 +23,20 @@ int Responder::matchStringPart(const char **pCmpStr, int *pCmpLen, const uint8_t
 void Responder::process_iscompressed(const uint16_t offs, const DNSSection section, const uint16_t) {
     if (section != DNSSection::Query) return;
     log_debug(F("(%04X)"), offs);
-    for (auto& m : recordsMatcherEach)
+    for (auto& m : recordsMatcherEach) {
         if (m.position && m.position != offs)
             m.match = 0;
+    }
 }
 
 void Responder::process_nocompressed(const String &name, const DNSSection section, const uint16_t) {
     if (section != DNSSection::Query) return;
     log_debug(F("[%s]"), name.c_str());
-    for (auto& m : recordsMatcherEach)
-        if (!m.requested && m.match)
+    for (auto& m : recordsMatcherEach) {
+        // Bounds check: ensure we have valid pointers and lengths before string operations
+        if (!m.requested && m.match && m.name && m.length > 0)
             m.match &= matchStringPart(&m.name, &m.length, reinterpret_cast<const uint8_t*>(name.c_str()), static_cast<int>(name.length()));
+    }
 }
 
 void Responder::process_end(const DNSSection section, const uint16_t) {
@@ -121,5 +124,8 @@ void Responder::end() const {
 }
 
 Responder::Responder(MDNS &mdns, const Header &header): _mdns(mdns), _header(header), recordsLengthStatic(3), recordsLength(_mdns._services.size() + recordsLengthStatic),
-    recordsMatcherTop(recordsLength), recordsMatcherEach(recordsLength) {}
-
+    recordsMatcherTop(recordsLength), recordsMatcherEach(recordsLength) {
+    // Shrink to fit to reduce memory fragmentation from pre-allocated vectors
+    recordsMatcherTop.shrink_to_fit();
+    recordsMatcherEach.shrink_to_fit();
+}
