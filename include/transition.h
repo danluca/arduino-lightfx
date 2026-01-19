@@ -42,6 +42,7 @@ protected:
     std::deque<uint8_t> randomBarSegs;
 };
 
-extern EffectTransition transEffect;
-
+namespace fx {
+    extern EffectTransition transEffect;
+}
 #endif //ARDUINO_LIGHTFX_TRANSITION_H
