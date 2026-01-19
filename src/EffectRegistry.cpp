@@ -8,12 +8,11 @@
 
 // EffectRegistry
 EffectRegistry::~EffectRegistry() {
-    delete currentEffectInstance;
-    delete lastEffectInstance;
+    delete activeEffect;
 }
 
 LedEffect *EffectRegistry::getCurrentEffect() const {
-    return currentEffectInstance;
+    return activeEffect;
 }
 
 const EffectInfo* EffectRegistry::getEffectInfo(const uint16_t index) const {
@@ -23,33 +22,33 @@ const EffectInfo* EffectRegistry::getEffectInfo(const uint16_t index) const {
 uint16_t EffectRegistry::nextEffectPos(const char *id) {
     for (size_t x = 0; x < effectInfos.size(); x++) {
         if (strcmp(id, effectInfos[x]->desc.id) == 0) {
-            currentEffect = x;
+            desiredEffectIndex = x;
             transitionEffect();
-            return lastEffectRun;
+            return lastEffectIndex;
         }
     }
     return 0;
 }
 
 uint16_t EffectRegistry::nextEffectPos(const uint16_t efx) {
-    currentEffect = capu(efx, effectsCount-1);
+    desiredEffectIndex = capu(efx, effectsCount-1);
     transitionEffect();
-    return lastEffectRun;
+    return lastEffectIndex;
 }
 
 uint16_t EffectRegistry::nextEffectPos() {
     if (!autoSwitch || sleepState)
-        return currentEffect;
-    currentEffect = inc(currentEffect, 1, effectsCount);
+        return desiredEffectIndex;
+    desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
     //increment past the sleep effect, if landed on it
-    if (currentEffect == sleepEffect)
-        currentEffect = inc(currentEffect, 1, effectsCount);
+    if (desiredEffectIndex == sleepEffectIndex)
+        desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
     transitionEffect();
-    return lastEffectRun;
+    return lastEffectIndex;
 }
 
 uint16_t EffectRegistry::curEffectPos() const {
-    return currentEffect;
+    return desiredEffectIndex;
 }
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
@@ -62,48 +61,38 @@ uint16_t EffectRegistry::nextRandomEffectPos() {
         for (uint16_t i = 0; i < effectsCount; ++i) {
             rnd = qsuba(rnd, effectInfos[i]->selectionWeight);
             if (rnd == 0) {
-                currentEffect = i;  //sleep effect weight is 0, so it cannot be chosen randomly
+                desiredEffectIndex = i;  //sleep effect weight is 0, so it cannot be chosen randomly
                 break;
             }
         }
         transitionEffect();
     }
-    return currentEffect;
+    return desiredEffectIndex;
 }
 
 /**
  * Manages the transition between LED effects in the EffectRegistry.
  *
- * This method gracefully transitions from the currently running effect to a new effect,
- * ensuring a smooth wind-down of the old effect and proper initialization of the new one.
- * It handles the necessary cleanup of the old effect instance, prepares any transition visuals,
- * and creates or updates the new effect instance as required.
- *
- * If the current effect is different from the last effect run, the previously running effect
- * is set to the Idle state, and a transition effect is initialized with a random color
- * blending into the target palette. The new effect is instantiated and transitioned to
- * the Running state to begin execution.
+ * This method initiates a transition from the currently running effect to a new effect.
+ * The old effect is set to wind down gracefully, and a transition effect is displayed.
+ * The new effect will be instantiated only after the old effect has completed its
+ * wind-down and cleanup, minimizing heap fragmentation.
  *
  * This function is invoked whenever the active effect is updated within the registry.
  */
 void EffectRegistry::transitionEffect() {
-    if (currentEffect != lastEffectRun) {
-        // Wind down old effect
-        if (lastEffectInstance)
-            lastEffectInstance->desiredState(Idle);
+    if (desiredEffectIndex != lastEffectIndex) {
+        // Store the index of the effect to create after the current one finishes
+        nextEffectIndex = desiredEffectIndex;
+        
+        // Wind down the currently active effect
+        if (activeEffect)
+            activeEffect->desiredState(Idle);
 
         // Initialize transition effect for smooth wind-down
         ledSet.nblend(ColorFromPalette(targetPalette, random8(), 72, LINEARBLEND), 80);
         FastLED.show(stripBrightness);
         transEffect.prepare(random8());
-    }
-    // Create the new effect instance if needed
-    if (!currentEffectInstance || currentEffect != lastEffectRun) {
-        if (currentEffectInstance && currentEffectInstance != lastEffectInstance)
-            delete currentEffectInstance;
-        currentEffectInstance = effectInfos[currentEffect]->factory();
-        currentEffectInstance->setRegistryIndex(currentEffect);
-        currentEffectInstance->desiredState(Running);
     }
 }
 
@@ -127,7 +116,7 @@ uint16_t EffectRegistry::registerEffect(const EffectInfo* info) {
     effectsCount = effectInfos.size();
     const uint16_t fxIndex = effectsCount - 1;
     if (strcmp(FX_SLEEPLIGHT_ID, info->desc.id) == 0)
-        sleepEffect = fxIndex;
+        sleepEffectIndex = fxIndex;
     log_info(F("Effect [%s] registered successfully at index %hu"), info->desc.id, fxIndex);
     return fxIndex;
 }
@@ -145,9 +134,9 @@ void EffectRegistry::setSleepState(const bool sleepFlag) {
         sleepState = sleepFlag;
         log_info(F("Switching to sleep state %s (sleep mode enabled %s)"), StringUtils::asString(sleepState), StringUtils::asString(sleepModeEnabled));
         if (sleepState)
-            beforeSleepEffect = nextEffectPos(FX_SLEEPLIGHT_ID);
+            beforeSleepEffectIndex = nextEffectPos(FX_SLEEPLIGHT_ID);
         else
-            nextEffectPos(beforeSleepEffect);
+            nextEffectPos(beforeSleepEffectIndex);
     } else
         log_info(F("Sleep state is already %s - no changes"), StringUtils::asString(sleepState));
 }
@@ -162,42 +151,44 @@ void EffectRegistry::enableSleep(const bool bSleep) {
 /**
  * Executes the primary event loop for the EffectRegistry.
  *
- * This method is responsible for managing the lifecycle of LED effects, ensuring that
- * effects are cleaned up and switched appropriately when the active effect changes.
- * It also invokes the execution logic for the currently running effect.
- *
- * The following operations are performed in this loop:
- * - If the current effect differs from the last effect that was running and the last
- *   effect has transitioned to the Idle state, the resources for the last effect instance
- *   are freed, and the effect is officially switched.
- * - A notification is posted to inform any external listeners about the effect change.
- * - The current effect is executed if it exists, and its state is checked to determine
- *   if it should be tracked for future cleanup.
+ * This method is responsible for managing the lifecycle of LED effects:
+ * - Always calls loop on the active effect to allow it to run or transition
+ * - Once the active effect reaches Idle state, deletes it and creates the next effect
+ * - This deferred instantiation minimizes heap fragmentation by creating the new effect
+ *   only after the old one is completely freed from memory
  *
  * Key Events:
- * - Effect transitions occur when the active effect is updated.
- * - Memory is managed by cleaning up old effect instances that are no longer in use.
- * - The running state of effects is monitored to ensure smooth operation.
+ * - Effect transitions occur when the active effect winds down to Idle
+ * - The new effect is created only after memory is freed from the old effect
+ * - A notification is posted when the effect change is complete
  */
 void EffectRegistry::loop() {
-    //if the effect has changed and the old effect is idle, clean it up and switch
-    if ((lastEffectRun != currentEffect) && lastEffectInstance && (lastEffectInstance->getState() == Idle)) {
-        log_info(F("Effect change: from index %d [%s] to %d [%s]"), lastEffectRun, effectInfos[lastEffectRun]->desc.id,
-            currentEffect, effectInfos[currentEffect]->desc.id);
-        // Delete old effect instance to free memory
-        delete lastEffectInstance;
-        lastEffectInstance = nullptr;
-        lastEffectRun = currentEffect;
-        lastEffects.push(lastEffectRun);
-        postFxChangeEvent(lastEffectRun);
+    // Always process the active effect (running or transitioning)
+    if (activeEffect) {
+        activeEffect->loop();
     }
-    // Run the current effect if it exists
-    if (currentEffectInstance) {
-        currentEffectInstance->loop();
-        // Track the running effect as the last effect for cleanup
-        if (currentEffectInstance->getState() == Running && currentEffectInstance != lastEffectInstance) {
-            lastEffectInstance = currentEffectInstance;
+    
+    // Check if active effect has completed its transition to Idle
+    if (activeEffect && activeEffect->getState() == Idle) {
+        // Log the effect change
+        if (lastEffectIndex != nextEffectIndex) {
+            log_info(F("Effect change: from index %d [%s] to %d [%s]"), lastEffectIndex, effectInfos[lastEffectIndex]->desc.id,
+                nextEffectIndex, effectInfos[nextEffectIndex]->desc.id);
         }
+        
+        // Delete the old effect to free memory
+        delete activeEffect;
+        activeEffect = nullptr;
+        lastEffects.push(lastEffectIndex);
+        desiredEffectIndex = lastEffectIndex = nextEffectIndex;
+        postFxChangeEvent(lastEffectIndex);
+    }
+    
+    // Create the new effect if we don't have an active effect but have a pending one (startup or after transition)
+    if (!activeEffect && nextEffectIndex < effectsCount) {
+        activeEffect = effectInfos[nextEffectIndex]->factory();
+        activeEffect->setRegistryIndex(nextEffectIndex);
+        activeEffect->desiredState(Running);
     }
 }
 

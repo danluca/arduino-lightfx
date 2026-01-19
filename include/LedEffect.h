@@ -46,7 +46,7 @@ struct EffectInfo {
 class LedEffect {
 public:
     explicit LedEffect(const EffectInfo& identity);
-    virtual ~LedEffect() = default;
+    virtual ~LedEffect();
 
     // Public interface
     [[nodiscard]] uint16_t getRegistryIndex() const;
@@ -89,6 +89,7 @@ private:
     EffectState state;
     const EffectDescription& identity;
     uint16_t registryIndex = 0;
+    EffectState lastProcessedState = Idle;  // Track last state to detect state entries
 
     // Private methods
     [[nodiscard]] static EffectState getNextState(EffectState current, EffectState desired);

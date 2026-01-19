@@ -12,13 +12,13 @@
 class EffectRegistry {
     std::deque<const EffectInfo*> effectInfos{};
     FixedQueue<uint16_t, MAX_EFFECTS_HISTORY> lastEffects{};
-    LedEffect* currentEffectInstance = nullptr;
-    LedEffect* lastEffectInstance = nullptr;
-    uint16_t currentEffect = 0;
+    LedEffect* activeEffect = nullptr;         // The effect currently being looped/managed
+    uint16_t nextEffectIndex = 0;              // Index of the effect waiting to be created after activeEffect is done
+    uint16_t desiredEffectIndex = 0;           // Currently requested effect index
+    uint16_t lastEffectIndex = 0;
     uint16_t effectsCount = 0;
-    uint16_t lastEffectRun = 0;
-    uint16_t sleepEffect = 0;
-    uint16_t beforeSleepEffect = 0;
+    uint16_t sleepEffectIndex = 0;
+    uint16_t beforeSleepEffectIndex = 0;
     bool autoSwitch = true;
     bool sleepState = false;
     bool sleepModeEnabled = false;

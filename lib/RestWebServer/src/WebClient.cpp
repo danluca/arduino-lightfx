@@ -556,6 +556,7 @@ bool WebClient::_parseRequest() {
             const size_t lengthRead = Util::readBytesWithTimeout(&_rawWifiClient, plainBuf, min(leftToRead, HTTP_RAW_BUFLEN), HTTP_MAX_POST_WAIT);
             plainBuf[lengthRead] = '\0';
             request()._requestBody += plainBuf;
+            delete[] plainBuf;  // CRITICAL: free buffer to prevent memory leak
             leftToRead -= lengthRead;
         }
         if (request()._requestBody.length() != request()._contentLength)

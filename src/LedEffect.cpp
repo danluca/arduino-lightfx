@@ -47,6 +47,10 @@ LedEffect::LedEffect(const EffectInfo& identity) : state(Idle), identity(identit
     registryIndex = 0; // Will be set when factory creates the instance
 }
 
+LedEffect::~LedEffect() {
+    log_info(F("Effect %s signing off - Sayonara!"), name());
+}
+
 uint16_t LedEffect::getRegistryIndex() const {
     return registryIndex;
 }
@@ -109,6 +113,7 @@ void LedEffect::loop() {
         case WindDown: handleWindDown(); break;
         case Cleanup: handleCleanup(); break;
     }
+    lastProcessedState = state;
 }
 
 /**
@@ -196,13 +201,21 @@ void LedEffect::handleSetup() {
 }
 
 void LedEffect::handleRunning() {
+    //log once when entering running state
+    if (lastProcessedState != Running) {
+        log_info(F("Effect %s [%d] running"), name(), getRegistryIndex());
+    }
     updateTimeCode();
     run();
 }
 
 void LedEffect::handleWindDown() {
+    // Log once when entering wind-down state
+    if (lastProcessedState != WindDown) {
+        log_info(F("Effect %s [%d] starting wind-down"), name(), getRegistryIndex());
+    }
     if (windDown()) {
-        log_info(F("Effect %s [%d] completed WindDown"), name(), getRegistryIndex());
+        log_info(F("Effect %s [%d] completed wind-down, moving to cleanup state"), name(), getRegistryIndex());
         nextState();
     }
 }
@@ -219,5 +232,9 @@ void LedEffect::handleCleanup() {
 }
 
 void LedEffect::handleIdle() {
+    // log once when entering idle state
+    if (lastProcessedState != Idle) {
+        log_info(F("Effect %s [%d] idle"), name(), getRegistryIndex());
+    }
     // No-op
 }
