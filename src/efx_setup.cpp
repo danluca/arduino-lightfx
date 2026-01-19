@@ -14,24 +14,12 @@ using namespace fx;
 const setupFunc categorySetup[] = {FxA::fxRegister, FxB::fxRegister, FxC::fxRegister, FxD::fxRegister, FxE::fxRegister, FxF::fxRegister, FxH::fxRegister, FxI::fxRegister, FxJ::fxRegister, FxK::fxRegister};
 constexpr CRGB BKG = CRGB::Black;
 
+//~ Global variables accessed by multiple tasks
+QueueHandle_t fxQueue;
+EffectRegistry fxRegistry;
 std::atomic<bool> fxBump = false;
 std::atomic<uint16_t> speed = 100;
 std::atomic<uint16_t> curPos = 0;
-
-static_assert(FRAME_SIZE < NUM_PIXELS, "FRAME_SIZE must not exceed NUM_PIXELS");
-static_assert(FRAME_SIZE > 10, "FRAME_SIZE must be at least 10 pixels");
-static_assert(PIXEL_BUFFER_SPACE > FRAME_SIZE * 3, "PIXEL_BUFFER_SPACE must be at least 3 times the FRAME_SIZE");
-
-QueueHandle_t fxQueue;
-EffectRegistry fxRegistry;
-CRGB leds[NUM_PIXELS];                                    //the main LEDs array of CRGB type
-CRGBSet ledSet(leds, NUM_PIXELS);                     //the entire leds CRGB array as a CRGBSet
-CRGBSet tpl(leds, FRAME_SIZE);                        //array length, indexes go from 0 to length-1
-CRGBSet others(leds, tpl.size(), NUM_PIXELS-1);  //start and end indexes are inclusive
-CRGBArray<PIXEL_BUFFER_SPACE> frame;                      //side LED buffer for preparing/saving state/etc. with main LEDs array
-CRGBPalette16 palette;
-CRGBPalette16 targetPalette;
-OpMode mode = Chase;
 volatile uint8_t brightness = 224;
 volatile uint8_t stripBrightness = brightness;
 volatile uint8_t colorIndex = 0;
@@ -41,13 +29,29 @@ volatile uint8_t hue = 50;
 volatile uint8_t delta = 1;
 volatile uint8_t saturation = 100;
 volatile uint8_t dotBpm = 30;
-uint16_t stripShuffleIndex[NUM_PIXELS];
 volatile uint16_t hueDiff = 256;
 std::atomic<uint16_t> totalAudioBumps = 0;
-int32_t dist = 1;
 std::atomic<bool> stripBrightnessLocked = false;
-bool dirFwd = true;
-EffectTransition transEffect;
+
+static_assert(FRAME_SIZE < NUM_PIXELS, "FRAME_SIZE must not exceed NUM_PIXELS");
+static_assert(FRAME_SIZE > 10, "FRAME_SIZE must be at least 10 pixels");
+static_assert(PIXEL_BUFFER_SPACE > FRAME_SIZE * 3, "PIXEL_BUFFER_SPACE must be at least 3 times the FRAME_SIZE");
+
+//~ fx namespace variables (keep these as single-task FX access)
+namespace fx {
+    CRGB leds[NUM_PIXELS];                                    //the main LEDs array of CRGB type
+    CRGBSet ledSet(leds, NUM_PIXELS);                     //the entire leds CRGB array as a CRGBSet
+    CRGBSet tpl(leds, FRAME_SIZE);                        //array length, indexes go from 0 to length-1
+    CRGBSet others(leds, tpl.size(), NUM_PIXELS-1);  //start and end indexes are inclusive
+    CRGBArray<PIXEL_BUFFER_SPACE> frame;                      //side LED buffer for preparing/saving state/etc. with main LEDs array
+    CRGBPalette16 palette;
+    CRGBPalette16 targetPalette;
+    OpMode mode = Chase;
+    uint16_t stripShuffleIndex[NUM_PIXELS];
+    int32_t dist = 1;
+    bool dirFwd = true;
+    EffectTransition transEffect;
+}
 
 //~ Support functions -----------------
 /**
