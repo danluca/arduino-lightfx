@@ -16,11 +16,35 @@
 ((uint32_t)((MINUTES)*(uint32_t)(60000))) + \
 ((uint32_t)((SECONDS)*(uint32_t)(1000)))))
 
+// There are two kinds of things you can put into this performance:
+// "FROM" and "AT".
+//
+// * "FROM" means starting FROM this time AND CALLING IT REPEATEDLY until the next "FROM" time comes.
+//
+// * "AT" means do this ONE TIME ONLY "AT" the designated time.
+//
+// At least one of the FROM clauses will ALWAYS be executed.
+// In the transitional times, TWO pieces of code will be executed back to back.
+// For example, if one piece says "FROM(0,0,1.000) {DrawRed()}" and another says
+// "FROM(0,0,2.000) {FlashBlue();}", what you'll get is this:
+//   00:00:01.950  -> calls DrawRed
+//   00:00:01.975  -> calls DrawRed
+//   00:00:02.000  -> calls DrawRed AND calls FlashBlue !
+//   00:00:02.025  -> calls FlashBlue
+//   00:00:02.050  -> calls FlashBlue
+// In most cases, this probably isn't significant in practice, but it's important to note.  It could be avoided by
+// listing the sequence steps in reverse chronological order, but that makes it hard to read.
 #define AT(HOURS,MINUTES,SECONDS) if( atTC(TC(HOURS,MINUTES,SECONDS)) )
 #define FROM(HOURS,MINUTES,SECONDS) if( fromTC(TC(HOURS,MINUTES,SECONDS)) )
 
 enum OpMode:uint8_t { TurnOff, Chase };
-enum EffectState:uint8_t { Idle, Setup, Running, WindDown, Cleanup };
+enum EffectState:uint8_t {
+    Idle,       //stable state
+    Setup,      //transient state
+    Running,    //stable state
+    WindDown,   //transient state
+    Cleanup     //transient state
+};
 
 class LedEffect;
 /**
@@ -46,7 +70,7 @@ struct EffectInfo {
 class LedEffect {
 public:
     explicit LedEffect(const EffectInfo& identity);
-    virtual ~LedEffect() = default;
+    virtual ~LedEffect();
 
     // Public interface
     [[nodiscard]] uint16_t getRegistryIndex() const;
@@ -58,8 +82,8 @@ public:
     [[nodiscard]] bool isRunning() const;
     void loop();
     void desiredState(EffectState dst);
-    bool atTC(uint32_t time);
-    bool fromTC(uint32_t time);
+    bool atTC(uint32_t time);       //use with AT macro
+    bool fromTC(uint32_t time);     //use with FROM macro
     void restartPerformance();
 
     // Virtual methods
@@ -89,6 +113,7 @@ private:
     EffectState state;
     const EffectDescription& identity;
     uint16_t registryIndex = 0;
+    EffectState lastProcessedState = Idle;  // Track last state to detect state entries
 
     // Private methods
     [[nodiscard]] static EffectState getNextState(EffectState current, EffectState desired);

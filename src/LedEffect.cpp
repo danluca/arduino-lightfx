@@ -47,6 +47,10 @@ LedEffect::LedEffect(const EffectInfo& identity) : state(Idle), identity(identit
     registryIndex = 0; // Will be set when factory creates the instance
 }
 
+LedEffect::~LedEffect() {
+    log_info(F("Effect %s signing off - Sayonara!"), name());
+}
+
 uint16_t LedEffect::getRegistryIndex() const {
     return registryIndex;
 }
@@ -109,6 +113,7 @@ void LedEffect::loop() {
         case WindDown: handleWindDown(); break;
         case Cleanup: handleCleanup(); break;
     }
+    lastProcessedState = state;
 }
 
 /**
@@ -131,7 +136,8 @@ EffectState LedEffect::getNextState(const EffectState current, const EffectState
 
 /**
  * Advances the current state of the LED effect to the next state in the path to the desired state provided.
- * If already at the desired state, simply returns
+ * If already at the desired state, simply returns. Makes more logical sense that invocations use desired states that are stable states (i.e., Running, Idle).
+ * Using desired states that are transient will not land the effect in the desired state, but the next stable state in the path.
  * @param dst final desired state
  */
 void LedEffect::desiredState(const EffectState dst) {
@@ -183,10 +189,11 @@ void LedEffect::nextState() {
 }
 
 // Handler implementations
+/**
+ * Prepares the effect for running by setting up initial conditions, resources and moving to the running state.
+ * Transient state - 1 cycle; advances to the next state.
+ */
 void LedEffect::handleSetup() {
-    log_info(F("Starting setup for effect: %s [%d]"), name(), getRegistryIndex());
-    logHeapStats();
-
     setup();
     restartPerformance();
 
@@ -195,22 +202,39 @@ void LedEffect::handleSetup() {
     nextState();
 }
 
+/**
+ * Effect is running, processing, and updating the LED state.
+ * Stable state. Requires external triggers for state transitions.
+ */
 void LedEffect::handleRunning() {
+    //log once when entering running state
+    if (lastProcessedState != Running) {
+        log_info(F("Effect %s [%d] running"), name(), getRegistryIndex());
+    }
     updateTimeCode();
     run();
 }
 
+/**
+ * Effect is transitioning to LED strip turned off - leverages the transition effect \code transEffect\endcode
+ * Transient state - ends when transition effect completes (all LEDs turned off); advances to the next state.
+ */
 void LedEffect::handleWindDown() {
+    // Log once when entering wind-down state
+    if (lastProcessedState != WindDown) {
+        log_info(F("Effect %s [%d] starting wind-down"), name(), getRegistryIndex());
+    }
     if (windDown()) {
-        log_info(F("Effect %s [%d] completed WindDown"), name(), getRegistryIndex());
+        log_info(F("Effect %s [%d] completed wind-down, moving to cleanup state"), name(), getRegistryIndex());
         nextState();
     }
 }
 
+/**
+ * Resets the effect to its initial state, frees up resources, preparing for a new cycle.
+ * Transient state - 1 cycle; advances to the next state.
+ */
 void LedEffect::handleCleanup() {
-    log_info(F("Starting cleanup for effect: %s [%d]"), name(), getRegistryIndex());
-    logHeapStats();
-
     cleanup();
 
     logHeapStats();
@@ -218,7 +242,15 @@ void LedEffect::handleCleanup() {
     nextState();
 }
 
+/**
+ * Idle state is a no-op state of the effect. In this state the effect can either be deleted or reactivated by moving it to setup state.
+ * Stable state. Requires external triggers for state transitions.
+ */
 void LedEffect::handleIdle() {
+    // log once when entering idle state
+    if (lastProcessedState != Idle) {
+        log_info(F("Effect %s [%d] idle"), name(), getRegistryIndex());
+    }
     // No-op
 }
 

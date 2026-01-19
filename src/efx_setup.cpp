@@ -86,9 +86,9 @@ void readFxState() {
         //we need the sleep mode flag setup first to properly advance to next effect
         const uint16_t sleepFxIndex = fxRegistry.findEffectIndex(FX_SLEEPLIGHT_ID);
         if (fx == sleepFxIndex && !fxRegistry.isAsleep())
-            fxRegistry.lastEffectRun = fxRegistry.currentEffect = random16(fxRegistry.effectsCount);
+            fxRegistry.lastEffectIndex = fxRegistry.desiredEffectIndex = random16(fxRegistry.effectsCount);
         else
-            fxRegistry.lastEffectRun = fxRegistry.currentEffect = fx;
+            fxRegistry.lastEffectIndex = fxRegistry.desiredEffectIndex = fx;
         if (doc[csBroadcast].is<bool>())
             fxBroadcastEnabled = doc[csBroadcast].as<bool>();
 
@@ -167,6 +167,11 @@ void fx_setup() {
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     //ensure the current effect is instantiated and moved to the setup state
     fxRegistry.transitionEffect();
+    
+    // With the new design, we need to manually trigger the first effect creation since loop hasn't run yet
+    // The first call to loop() will detect activeEffect is nullptr and create it
+    // For now during setup, we need to ensure activeEffect is created
+    fxRegistry.loop();
 
     //generate and cache the FX config data
     JsonDocument doc;
@@ -218,7 +223,7 @@ void updateBrightness() {
 }
 
 void switchToRandomEffect() {
-    log_info(F("Switching effect to a new random one"));
+    log_info(F("Attempting switching effect to a new random one"));
     fxRegistry.nextRandomEffectPos();
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     saveFxState();

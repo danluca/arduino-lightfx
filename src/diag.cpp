@@ -464,6 +464,21 @@ void readCalibrationInfo() {
                    calibFileName, calibSize, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
                    calibCpuTemp.slope, TimeFormat::asString(calibCpuTemp.time).c_str());
         doc.clear();
+    } else {
+        log_info(F("No CPU temp calibration information file %s found - creating a default one"), calibFileName);
+        //no ref set - hard code a ref point measured manually at room temperature
+        calibTempMeasurements.ref.value = 23.33f;
+        calibTempMeasurements.ref.time = 1762027200;    //epoch time of local 2025-11-01 15:00:00 CDT
+        calibTempMeasurements.ref.adcRaw = 746;
+        calibCpuTemp.refDelta = 0.0f;
+        calibCpuTemp.refTemp = 23.33f;
+        calibCpuTemp.vtref = 598.0f;
+        calibCpuTemp.slope = 1.721f;
+        calibCpuTemp.time = calibTempMeasurements.ref.time;
+        saveCalibrationInfo();
+        log_info(F("CPU temp calibration Information defaulted to %s: min %.2f 'C, max %.2f 'C; params: tempRange=%.2f, refTemp=%.2f, VTref=%f, slope=%f, time=%s"),
+                   calibFileName, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
+                   calibCpuTemp.slope, TimeFormat::asString(calibCpuTemp.time).c_str());
     }
     delete json;
 }

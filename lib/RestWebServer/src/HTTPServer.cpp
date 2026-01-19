@@ -26,6 +26,7 @@
 #include "HTTPServer.h"
 #include "FS.h"
 #include "detail/RequestHandlers.h"
+#include "detail/util.h"
 #include "LogProxy.h"
 
 static constexpr auto Canned503Response PROGMEM = "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n";
@@ -234,6 +235,6 @@ void HTTPServer::handleClient() {
             return;
     }
     if (delay)
-        SchedulerClassExt::delay(100);     //this makes sense if there is nothing else going on in the task where the server runs
+        Util::delay(100);     //this makes sense if there is nothing else going on in the task where the server runs
 }
 

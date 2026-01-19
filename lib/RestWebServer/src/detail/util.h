@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #ifndef UTIL_H
@@ -11,6 +11,7 @@ class Util {
     static String responseCodeToString(int code);
     static String getRandomHexString();
     static size_t readBytesWithTimeout(WiFiClient* client, char* buffer, size_t bufLength, int timeout_ms);
+    static void delay(const uint32_t ms) { ::vTaskDelay(pdMS_TO_TICKS(ms)); };
 };
 
 #endif //UTIL_H
