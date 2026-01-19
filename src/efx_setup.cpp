@@ -222,7 +222,7 @@ void checkAudioAndBumpEffect() {
         log_info(F("Audio triggered effect incremental change"));
         fxRegistry.nextEffectPos();
         fxBump = false;
-        totalAudioBumps++;
+        ++totalAudioBumps;
     }
 }
 
@@ -235,7 +235,7 @@ void updateBrightness() {
 }
 
 void switchToRandomEffect() {
-    log_info(F("Switching effect to a new random one"));
+    log_info(F("Attempting switching effect to a new random one"));
     fxRegistry.nextRandomEffectPos();
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     saveFxState();

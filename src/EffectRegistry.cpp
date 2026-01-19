@@ -65,7 +65,10 @@ uint16_t EffectRegistry::nextRandomEffectPos() {
                 break;
             }
         }
+        log_info(F("Random effect selection: index %d [%s]"), desiredEffectIndex, effectInfos[desiredEffectIndex]->desc.id);
         transitionEffect();
+    } else {
+        log_info(F("Random effect selection skipped - auto switch %s, sleep state %s"), StringUtils::asString(autoSwitch), StringUtils::asString(sleepState));
     }
     return desiredEffectIndex;
 }
@@ -179,8 +182,8 @@ void EffectRegistry::loop() {
         // Delete the old effect to free memory
         delete activeEffect;
         activeEffect = nullptr;
-        lastEffects.push(lastEffectIndex);
         desiredEffectIndex = lastEffectIndex = nextEffectIndex;
+        lastEffects.push(lastEffectIndex);
         postFxChangeEvent(lastEffectIndex);
     }
     
