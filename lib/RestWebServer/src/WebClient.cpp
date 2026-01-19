@@ -556,7 +556,7 @@ bool WebClient::_parseRequest() {
             const size_t lengthRead = Util::readBytesWithTimeout(&_rawWifiClient, plainBuf, min(leftToRead, HTTP_RAW_BUFLEN), HTTP_MAX_POST_WAIT);
             plainBuf[lengthRead] = '\0';
             request()._requestBody += plainBuf;
-            delete[] plainBuf;  // CRITICAL: free buffer to prevent memory leak
+            delete[] plainBuf;  // free buffer to prevent memory leak
             leftToRead -= lengthRead;
         }
         if (request()._requestBody.length() != request()._contentLength)
@@ -616,6 +616,7 @@ void WebClient::_parseArguments(const String &data) const {
         const auto arg = new NameValuePair();
         arg->key = Uri::urlDecode(data.substring(pos, equal_sign_index));
         arg->value = Uri::urlDecode(data.substring(equal_sign_index + 1, next_arg_index));
+        request()._requestArgs.push_back(arg);
         log_debug("Request arg %d key: %s value: %s", iArg, arg->key.c_str(), arg->value.c_str());
         if (next_arg_index < 0)
             break;
@@ -681,7 +682,7 @@ int WebClient::_uploadReadByte() {
             // loosely modeled after blinkWithoutDelay pattern
             while (!timedOut && !_rawWifiClient.available()) {
                 if (_rawWifiClient.connected()) {
-                    SchedulerClassExt::delay(5); // wait for data to become available
+                    Util::delay(5); // wait for data to become available
                     timedOut = millis() >= timeoutMillis;
                 } else
                     return -1;  //we're disconnected - game over
@@ -717,7 +718,7 @@ size_t WebClient::_uploadReadBytes(uint8_t *buf, const size_t len) {
         const unsigned long timeout = millis() + _rawWifiClient.getTimeout();
         int availToRead = 0;
         while ((availToRead = _rawWifiClient.available()) == 0 && timeout > millis())
-            SchedulerClassExt::delay(10);
+            Util::delay(10);
         if (!availToRead)
             break;
         const size_t toRead = min(len - readLength, availToRead);
@@ -743,7 +744,7 @@ HTTPClientStatus WebClient::handleRequest() {
             case HC_READING:
                 if (!_rawWifiClient.available()) {
                     if (millis() - _startHandlingTime <= HTTP_MAX_DATA_WAIT)
-                        SchedulerClassExt::delay(25);
+                        Util::delay(25);
                     else {
                         send(408, mime::mimeTable[mime::txt].mimeType, Util::responseCodeToString(408));
                         _status = HC_CLOSING;
@@ -777,7 +778,7 @@ HTTPClientStatus WebClient::handleRequest() {
             case HC_CLOSING:
                 // Give the client a chance to close the connection (the client has initiated it) - we always send the connection: close header
                 if (startClosing > 0 && millis() - startClosing <= HTTP_MAX_CLOSE_WAIT) {
-                    SchedulerClassExt::delay(50);
+                    Util::delay(50);
                     _status = _rawWifiClient.connected() ? HC_CLOSING : HC_DISCONNECTED;
                 } else
                     _status = HC_DISCONNECTED;

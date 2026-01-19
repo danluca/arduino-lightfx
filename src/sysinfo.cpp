@@ -136,45 +136,11 @@ void logTaskStats() {
         delay(12);
     }
     logHeapStats();
+    struct mallinfo mf = mallinfo();
+    log_info(F("Malloc memory stats: allocated=%u, used=%u, free=%u"), mf.arena, mf.uordblks, mf.fordblks);
+
     log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinBufferSpace());
     // log_info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
-    //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
-    extern char __exidx_start;
-    extern char __exidx_end;
-    extern char __etext;
-    extern char __data_start__;
-    extern char __preinit_array_start;
-    extern char __preinit_array_end;
-    extern char __init_array_start;
-    extern char __init_array_end;
-    extern char __fini_array_start;
-    extern char __fini_array_end;
-    extern char __data_end__;
-    extern char __bss_start__;
-    extern char __bss_end__;
-    extern char __end__;
-    extern char end;
-    extern char __HeapLimit;
-    extern char __StackLimit;
-    extern char __StackTop;
-    extern uint32_t __scratch_x_start__;
-    extern uint32_t __scratch_y_start__;
-    extern uint32_t* core1_separate_stack_address;
-    log_info(F("Memory map pointers:"));
-    log_info(F("  .text end:            __etext       = %#X"), (uint32_t)&__etext);
-    log_info(F("  .data start/end:      __data_start__/__data_end__ = %#X/%#X"), (uint32_t)&__data_start__, (uint32_t)&__data_end__);
-    log_info(F("  .bss start/end:       __bss_start__/__bss_end__   = %#X/%#X"), (uint32_t)&__bss_start__, (uint32_t)&__bss_end__);
-    log_info(F("  .exidx start/end:     __exidx_start__/__exidx_end__ = %#X/%#X"), (uint32_t)&__exidx_start, (uint32_t)&__exidx_end);
-    log_info(F("  .preinit_array start/end: __preinit_array_start__/__preinit_array_end__ = %#X/%#X"), (uint32_t)&__preinit_array_start, (uint32_t)&__preinit_array_end);
-    log_info(F("  .init_array start/end:    __init_array_start__/__init_array_end__     = %#X/%#X"), (uint32_t)&__init_array_start, (uint32_t)&__init_array_end);
-    log_info(F("  .fini_array start/end:    __fini_array_start__/__fini_array_end__     = %#X/%#X"), (uint32_t)&__fini_array_start, (uint32_t)&__fini_array_end);
-    log_info(F("  Program end markers:  __end__       = %#X"), (uint32_t)&__end__);
-    log_info(F("  Heap limits:          __HeapLimit   = %#X"), (uint32_t)&__HeapLimit);
-    log_info(F("  Stack limits:         __StackLimit  = %#X; __StackTop = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop);
-    log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_start__, __scratch_y_start__);
-    log_info(F("  Core 1 separate stack address = %#X"), (uint32_t)*core1_separate_stack_address);
-    struct mallinfo mf = mallinfo();
-    log_info(F("Old malloc memory stats: allocated=%u, used=%u, free=%u"), mf.arena, mf.uordblks, mf.fordblks);
 
 #endif
 }
@@ -232,6 +198,42 @@ void logSystemInfo() {
                sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->getBuildVersion().c_str(), sysInfo->getBuildTime().c_str(),
                sysInfo->get_flash_capacity());
     log_info(F("System reset reason %s"), resetReasonToString(rp2040.getResetReason()));
+
+    //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
+    extern char __exidx_start;
+    extern char __exidx_end;
+    extern char __etext;
+    extern char __data_start__;
+    extern char __preinit_array_start;
+    extern char __preinit_array_end;
+    extern char __init_array_start;
+    extern char __init_array_end;
+    extern char __fini_array_start;
+    extern char __fini_array_end;
+    extern char __data_end__;
+    extern char __bss_start__;
+    extern char __bss_end__;
+    extern char __end__;
+    extern char end;
+    extern char __HeapLimit;
+    extern char __StackLimit;
+    extern char __StackTop;
+    extern uint32_t __scratch_x_start__;
+    extern uint32_t __scratch_y_start__;
+    extern uint32_t* core1_separate_stack_address;
+    log_info(F("Memory map pointers:"));
+    log_info(F("  .text end:            __etext       = %#X"), (uint32_t)&__etext);
+    log_info(F("  .data start/end:      __data_start__/__data_end__ = %#X/%#X"), (uint32_t)&__data_start__, (uint32_t)&__data_end__);
+    log_info(F("  .bss start/end:       __bss_start__/__bss_end__   = %#X/%#X"), (uint32_t)&__bss_start__, (uint32_t)&__bss_end__);
+    log_info(F("  .exidx start/end:     __exidx_start__/__exidx_end__ = %#X/%#X"), (uint32_t)&__exidx_start, (uint32_t)&__exidx_end);
+    log_info(F("  .preinit_array start/end: __preinit_array_start__/__preinit_array_end__ = %#X/%#X"), (uint32_t)&__preinit_array_start, (uint32_t)&__preinit_array_end);
+    log_info(F("  .init_array start/end:    __init_array_start__/__init_array_end__     = %#X/%#X"), (uint32_t)&__init_array_start, (uint32_t)&__init_array_end);
+    log_info(F("  .fini_array start/end:    __fini_array_start__/__fini_array_end__     = %#X/%#X"), (uint32_t)&__fini_array_start, (uint32_t)&__fini_array_end);
+    log_info(F("  Program end markers:  __end__       = %#X"), (uint32_t)&__end__);
+    log_info(F("  Heap limits:          __HeapLimit   = %#X"), (uint32_t)&__HeapLimit);
+    log_info(F("  Stack limits:         __StackLimit  = %#X; __StackTop = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop);
+    log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_start__, __scratch_y_start__);
+    log_info(F("  Core 1 separate stack address = %#X"), (uint32_t)*core1_separate_stack_address);
 #endif
 }
 
