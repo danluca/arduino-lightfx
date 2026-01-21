@@ -122,7 +122,7 @@ void logTaskStats() {
 
         double fTotalCPULoadPercentage = 0.0;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            const TaskStatus_t *prevTaskStatus = findTaskStatus(curTaskStatusArray, uxArraySize, curTaskStatusArray[x].xTaskNumber);
+            const TaskStatus_t *prevTaskStatus = prevTaskStatusArray != nullptr ? findTaskStatus(prevTaskStatusArray, uxArraySize, curTaskStatusArray[x].xTaskNumber) : nullptr;
             const uint64_t taskDeltaTime = prevTaskStatus != nullptr ? (curTaskStatusArray[x].ulRunTimeCounter - prevTaskStatus->ulRunTimeCounter) : curTaskStatusArray[x].ulRunTimeCounter;
             const double fStatsAsPercentage = uxDeltaTime > 0 ? static_cast<double>(taskDeltaTime) / static_cast<double>(uxDeltaTime) : 0.0;
             //only add non-IDLE task percentages to total CPU load
