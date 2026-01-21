@@ -243,6 +243,7 @@ void web::handleGetStatus(WebClient &client) {
 
     //send it out - the size returned is http headers and response body (does not include the HTTP protocol header)
     const size_t sz = marshalJson(doc, client);
+    (void) sz;
     log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
@@ -266,6 +267,7 @@ void web::handlePutConfig(WebClient &client) {
     const DeserializationError error = deserializeJson(doc, body);
     if (error) {
         client.send(500, mime::mimeTable[mime::txt].mimeType, error.c_str());
+        doc.clear();
         return;
     }
     JsonDocument resp;
@@ -366,6 +368,8 @@ void web::handlePutConfig(WebClient &client) {
     contentDispositionHeader(client, statusJsonFilename);
     //send it out
     const size_t sz = marshalJson(resp, client);
+    doc.clear();
+    (void) sz;
     log_info(F("Handler handlePutConfig invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
@@ -397,6 +401,7 @@ void web::handleGetTasks(WebClient &client) {
 
     //send it out
     const size_t sz = marshalJson(doc, client);
+    (void) sz;
     log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 

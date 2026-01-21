@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_CONFIG_H
 #define LIGHTFX_CONFIG_H
@@ -18,10 +18,10 @@
 
 // These are lists and need to be commas instead of dots e.g., for IP address 192.168.0.1 use 192,168,0,1 instead
 // #define IP_DNS 8,8,8,8               // Google DNS
-#define IP_DNS 75,75,75,75              // Xfinity DNS
+#define IP_DNS 192,168,0,1              // Local DNS
 #define IP_GW 192,168,0,1           // default gateway (router)
 #define IP_SUBNET 255,255,255,0     // usual subnet mask
-#define BROADCAST_CLIENTS     10, 11, 12        //this is a CSV of last byte of board IP addresses
+#define BROADCAST_CLIENTS     10, 11, 12        //this is a CSV of last byte of board static IP addresses
 
 // in some networks, reaching the default NTP server pool may be challenging due to the simple UDP client we use and stricter control imposed on the network traffic
 // in those cases the best option is to define a local NTP server as proxy
