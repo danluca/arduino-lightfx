@@ -45,7 +45,7 @@ void timeSetupCheck();
 void enqueueTimeUpdate(TimerHandle_t xTimer);
 void enqueueTimeSetup(TimerHandle_t xTimer);
 // broadcast task definition - priority is overwritten during setup, see broadcastSetup
-FixedQueue<IPAddress*, 10> fxBroadcastRecipients;       //max 10 sync recipients
+FixedQueue<IPAddress, 10> fxBroadcastRecipients;       //max 10 sync recipients
 TimerHandle_t thTimeSetupTimer = nullptr;
 
 /**
@@ -54,15 +54,13 @@ TimerHandle_t thTimeSetupTimer = nullptr;
 void commInit() {
     const String& sysAddr = sysInfo->getIpAddress();
     for (auto &ipLSB : syncClientsLSB) {
-        auto clientAddr = new IPAddress();
-        clientAddr->fromString(sysAddr);
-        if (clientAddr->operator[](3) == ipLSB) {
-            delete clientAddr;
+        IPAddress clientAddr;
+        clientAddr.fromString(sysAddr);
+        if (clientAddr[3] == ipLSB)
             continue;
-        }
-        clientAddr->operator[](3) = ipLSB;
+        clientAddr[3] = ipLSB;
         fxBroadcastRecipients.push(clientAddr);
-        log_info(F("FX Broadcast recipient %s has been registered"), clientAddr->toString().c_str());
+        log_info(F("FX Broadcast recipient %s has been registered"), clientAddr.toString().c_str());
     }
     broadcastState = Configured;
     log_info(F("FX Broadcast setup completed - %zu clients registered"), fxBroadcastRecipients.size());
@@ -249,7 +247,7 @@ void fxBroadcast(const uint16_t index) {
     broadcastState = Broadcasting;
     log_info(F("Fx change event - start broadcasting %s [%hu] to %u recipients"), fxInfo->desc.id, index, static_cast<unsigned>(fxBroadcastRecipients.size()));
     for (const auto &client : fxBroadcastRecipients)
-        clientUpdate(client, index);
+        clientUpdate(&client, index);
     log_info(F("Finished broadcasting to %u recipients - check individual log statements for status of each recipient"), static_cast<unsigned>(fxBroadcastRecipients.size()));
     broadcastState = Waiting;
 }
