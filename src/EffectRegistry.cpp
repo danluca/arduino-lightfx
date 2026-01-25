@@ -96,6 +96,7 @@ void EffectRegistry::transitionEffect() {
         ledSet.nblend(ColorFromPalette(targetPalette, random8(), 72, LINEARBLEND), 80);
         FastLED.show(stripBrightness);
         transEffect.prepare(random8());
+        postFxChangeEvent(nextEffectIndex); //post the effect change to allow receiving boards to run their transition roughly in sync
     }
 }
 
@@ -184,7 +185,7 @@ void EffectRegistry::loop() {
         activeEffect = nullptr;
         desiredEffectIndex = lastEffectIndex = nextEffectIndex;
         lastEffects.push(lastEffectIndex);
-        postFxChangeEvent(lastEffectIndex);
+        // postFxChangeEvent(lastEffectIndex);
     }
     
     // Create the new effect if we don't have an active effect but have a pending one (startup or after transition)
