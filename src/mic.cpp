@@ -4,7 +4,7 @@
 
 #include <PDM.h>
 #include <cstring>
-#include <circular_buffer.h>
+// #include <circular_buffer.h>
 #include "mic.h"
 #include "efx_setup.h"
 #include "sysinfo.h"
@@ -25,7 +25,7 @@ uint16_t maxAudio[AUDIO_HIST_BINS_COUNT] {}; // audio max levels histogram
 std::atomic<uint16_t> audioBumpThreshold = 5000;    // the audio signal level beyond which entropy is added and an effect change is triggered
 mutex_t audioStatsMutex{};
 
-CircularBuffer<short> *audioData = nullptr;
+// CircularBuffer<short> *audioData = nullptr;
 QueueHandle_t micQueue = nullptr;
 
 void clearLevelHistory() {
@@ -48,7 +48,7 @@ void onPDMdata() {
 }
 
 void mic_setup() {
-    audioData = new CircularBuffer<short>(1024);
+    // audioData = new CircularBuffer<short>(1024);
 
     // Configure the data receive callback
     PDM.onReceive(onPDMdata);
@@ -82,7 +82,7 @@ void mic_run() {
 
     // Process the batch, if any
     if (count) {
-        audioData->push_back(localBuffer, count);
+        // audioData->push_back(localBuffer, count);
         //log_info(F("Audio data - added %d samples to circular buffer, size updated to %d items"), count, audioData->size());
         short maxSample = INT16_MIN;
         for (size_t i = 0; i < count; i++) {
