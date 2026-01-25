@@ -55,7 +55,7 @@ struct BroadcastClient {
 };
 
 // broadcast task definition - priority is overwritten during setup, see broadcastSetup
-FixedQueue<BroadcastClient*, 10> fxBroadcastRecipients;       //max 10 sync recipients
+FixedQueue<std::unique_ptr<BroadcastClient>, 10> fxBroadcastRecipients;       //max 10 sync recipients, using smart pointers
 TimerHandle_t thTimeSetupTimer = nullptr;
 
 /**
@@ -66,9 +66,9 @@ void commInit() {
     for (auto &ipLSB : syncClientsLSB) {
         if (selfAddr[3] == ipLSB)
             continue;
-        auto *clientAddr = new BroadcastClient(selfAddr, ipLSB);
-        fxBroadcastRecipients.push(clientAddr);
+        auto clientAddr = std::make_unique<BroadcastClient>(selfAddr, ipLSB);
         log_info(F("FX Broadcast recipient %s has been registered"), clientAddr->ip.toString().c_str());
+        fxBroadcastRecipients.push(std::move(clientAddr));
     }
     broadcastState = Configured;
     log_info(F("FX Broadcast setup completed - %zu clients registered"), fxBroadcastRecipients.size());
@@ -188,60 +188,65 @@ void enqueueScanClients(TimerHandle_t xTimer) {
  */
 void scanClients() {
 #if MDNS_ENABLED == 1
-    // Store existing client attributes in a map keyed by IP address string
-    std::map<String, BroadcastClient *> existingClients;
-    for (const auto &client: fxBroadcastRecipients) {
-        existingClients[client->ip.toString()] = client;
-    }
-
     // Discover boards via mDNS
     const std::vector<DiscoveredBoard>& discoveredBoards = mdns_trim_boards();
-
-    // Create new broadcast recipient list
-    FixedQueue<BroadcastClient *, 10> newRecipients;
     const auto selfAddr = sysInfo->refIpAddress();
 
+    // 1. Update/Add clients from mDNS discovery
     for (const auto &board: discoveredBoards) {
-        // Skip self
-        if (board.ip == selfAddr)
-            continue;
+        if (board.ip == selfAddr) continue;
 
-        const String ipStr = board.ip.toString();
-        BroadcastClient *client = nullptr;
+        bool found = false;
+        for (const auto &client : fxBroadcastRecipients) {
+            if (client && client->ip == board.ip) {
+                found = true;
+                break;
+            }
+        }
 
-        // Check if this IP was in the previous list
-        if (auto it = existingClients.find(ipStr); it != existingClients.end()) {
-            // Reuse existing client to preserve attributes
-            client = it->second;
-            existingClients.erase(it); // Remove from map to track which ones to delete
-        } else {
-            // Create new client
-            client = new BroadcastClient(board.ip, board.ip[3]);
+        if (!found) {
+            auto client = std::make_unique<BroadcastClient>(board.ip, board.ip[3]);
             log_info(F("New FX Broadcast recipient %s discovered and registered"), client->ip.toString().c_str());
+            fxBroadcastRecipients.push(std::move(client));
         }
-
-        newRecipients.push(client);
     }
 
-    // Delete clients that are no longer discovered
-    for (const auto &pair: existingClients) {
-        //ping them before deleting - sometimes mDNS gets out of sync
-        if (const int resPing = WiFi.ping(pair.first); resPing >= 0) {
-            log_warn(F("FX Broadcast recipient %s is still online but was not discovered by mDNS"), pair.first.c_str());
-            newRecipients.push(pair.second);
+    // 2. Remove clients that are no longer discovered and don't respond to ping
+    auto it = fxBroadcastRecipients.begin();
+    while (it != fxBroadcastRecipients.end()) {
+        if (!*it) {
+            it = fxBroadcastRecipients.erase(it);
+            continue;
+        }
+
+        bool discovered = false;
+        for (const auto &board : discoveredBoards) {
+            if (board.ip == (*it)->ip) {
+                discovered = true;
+                break;
+            }
+        }
+
+        if (!discovered) {
+            const IPAddress ip = (*it)->ip;
+            if (const int resPing = WiFi.ping(ip); resPing >= 0) {
+                log_warn(F("FX Broadcast recipient %s is still online but was not discovered by mDNS"), ip.toString().c_str());
+                ++it;
+            } else {
+                log_info(F("FX Broadcast recipient %s is no longer discovered and will be removed"), ip.toString().c_str());
+                it = fxBroadcastRecipients.erase(it);
+            }
         } else {
-            log_info(F("FX Broadcast recipient %s is no longer discovered and will be removed"), pair.first.c_str());
-            delete pair.second;
+            ++it;
         }
     }
 
-    // Replace the old list with new one
-    fxBroadcastRecipients = newRecipients;
     log_info(F("FX Broadcast recipients updated - %zu clients registered"), fxBroadcastRecipients.size());
 #endif
 
     // Ping all clients and update status
     for (const auto &client: fxBroadcastRecipients) {
+        if (!client) continue;
         if (const int resPing = WiFi.ping(client->ip); resPing >= 0) {
             client->isOnline = true;
             log_info(F("Client %s is online"), client->ip.toString().c_str());
@@ -253,7 +258,6 @@ void scanClients() {
         client->lastSeenMillis = millis();
         taskDelay(1000);
     }
-
 }
 
 /**
@@ -329,7 +333,6 @@ void fxBroadcast(const uint16_t index) {
             index, sysInfo->getSysStatus());
         return;
     }
-
     const EffectInfo *fxInfo = fxRegistry.getEffectInfo(index);
     if (!fxInfo) {
         log_error(F("Effect at index %d not found"), index);
@@ -342,7 +345,7 @@ void fxBroadcast(const uint16_t index) {
     broadcastState = Broadcasting;
     log_info(F("Fx change event - start broadcasting %s [%hu] to %u recipients"), fxInfo->desc.id, index, static_cast<unsigned>(fxBroadcastRecipients.size()));
     for (const auto &client : fxBroadcastRecipients)
-        clientUpdate(client, index);
+        clientUpdate(client.get(), index);
     log_info(F("Finished broadcasting to %u recipients - check individual log statements for status of each recipient"), static_cast<unsigned>(fxBroadcastRecipients.size()));
     broadcastState = Waiting;
 }
@@ -512,7 +515,7 @@ void postFxChangeEvent(const uint16_t index) {
 std::vector<arduino::IPAddress> getActiveClientIPs() {
     std::vector<arduino::IPAddress> activeIPs;
     for (const auto &client : fxBroadcastRecipients) {
-        if (client->isOnline && client->isActive) {
+        if (client && client->isOnline && client->isActive) {
             activeIPs.push_back(client->ip);
         }
     }
@@ -522,8 +525,9 @@ std::vector<arduino::IPAddress> getActiveClientIPs() {
 std::vector<arduino::IPAddress> getKnownClientIPs() {
     std::vector<arduino::IPAddress> knownIPs;
     for (const auto &client : fxBroadcastRecipients) {
-        knownIPs.push_back(client->ip);
+        if (client) {
+            knownIPs.push_back(client->ip);
+        }
     }
     return knownIPs;
-
 }
