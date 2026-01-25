@@ -73,10 +73,10 @@ void readFxState() {
         const bool autoAdvance = doc[csAutoFxRoll].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
 
-        const uint16_t seed = doc[csRandomSeed];
+        const uint16_t seed = doc[csRandomSeed].as<uint16_t>();
         random16_add_entropy(seed);
 
-        const uint16_t fx = doc[csCurFx];
+        const uint16_t fx = doc[csCurFx].as<uint16_t>();
 
         stripBrightness = doc[csStripBrightness].as<uint8_t>();
 
@@ -90,10 +90,8 @@ void readFxState() {
             fxRegistry.enableSleep(false);      //this doesn't invoke effect changing because sleep state is initialized with false
         //we need the sleep mode flag setup first to properly advance to next effect
         const uint16_t sleepFxIndex = fxRegistry.findEffectIndex(FX_SLEEPLIGHT_ID);
-        if (fx == sleepFxIndex && !fxRegistry.isAsleep())
-            fxRegistry.lastEffectIndex = fxRegistry.desiredEffectIndex = random16(fxRegistry.effectsCount);
-        else
-            fxRegistry.lastEffectIndex = fxRegistry.desiredEffectIndex = fx;
+        //set the desired effect directly, the fxSetup (caller of this method) will invoke transitionEffect after more setup is done
+        fxRegistry.desiredEffectIndex = fxRegistry.isAsleep() ? sleepFxIndex : fx == sleepFxIndex ? random16(fxRegistry.effectsCount) : fx;
         if (doc[csBroadcast].is<bool>())
             fxBroadcastEnabled = doc[csBroadcast].as<bool>();
 
