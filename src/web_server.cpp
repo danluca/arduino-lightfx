@@ -104,13 +104,12 @@ void contentDispositionHeader(WebClient &client, const char *fname) {
  * @param client web server to use for sending JSON out
  * @return number of bytes written in response
  */
-size_t web::marshalJson(JsonDocument &doc, WebClient &client) {
+size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
     //send it out
     const size_t docLength = measureJson(doc);
     size_t sz = client.sendHeaders(200, mime::mimeTable[mime::json].mimeType, docLength);
     WriteBufferingStream wbs(client.rawClient(), WL_STREAM_BUFFER_SIZE);
     sz += serializeJson(doc, wbs);
-    doc.clear();
     return sz;
 }
 
@@ -249,6 +248,7 @@ void web::handleGetStatus(WebClient &client) {
 
     //send it out - the size returned is http headers and response body (does not include the HTTP protocol header)
     const size_t sz = marshalJson(doc, client);
+    doc.clear();
     (void) sz;
     log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
@@ -370,6 +370,7 @@ void web::handlePutConfig(WebClient &client) {
     contentDispositionHeader(client, statusJsonFilename);
     //send it out
     const size_t sz = marshalJson(resp, client);
+    resp.clear();
     doc.clear();
     (void) sz;
     log_info(F("Handler handlePutConfig invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
@@ -403,6 +404,7 @@ void web::handleGetTasks(WebClient &client) {
 
     //send it out
     const size_t sz = marshalJson(doc, client);
+    doc.clear();
     (void) sz;
     log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
@@ -705,6 +707,7 @@ void handleGetFiles(WebClient &client) {
     entries.clear();
 
     const size_t sz = marshalJson(doc, client);
+    doc.clear();
     (void)sz;
     log_info(F("Handler handleGetFiles invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }

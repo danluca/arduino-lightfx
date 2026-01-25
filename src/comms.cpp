@@ -305,8 +305,7 @@ void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
     client.addHeader("Content-Length", String(bodyLen));
     client.addHeader(kHeaderUserAgent, hdUserAgent);
 
-    const int status = client.PUT(buf);
-    if (status > 0) {
+    if (const int status = client.PUT(buf); status > 0) {
         String response = client.getString();
 #if LOGGING_ENABLED == 1
         if (status / 100 == 2)
@@ -329,7 +328,7 @@ void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
         }
         doc.clear();
     } else {
-        log_error(F("Failed to connect to client %s, FX %hu not synced"), board->ip.toString().c_str(), fxIndex);
+        log_error(F("Failed to connect to client %s (request status %d), FX %hu not synced"), board->ip.toString().c_str(), status, fxIndex);
         board->setOnline(false);
         board->lastSeenMillis = millis();
     }
