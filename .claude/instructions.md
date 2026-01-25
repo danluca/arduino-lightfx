@@ -56,6 +56,8 @@ FreeRTOS is used for multitasking.
 - Use provided PowerShell scripts: `build.ps1`, `clean.ps1`, `update.ps1`, `ota_upgrade.ps1`
 - Serial logging available via `seriallog.ps1`
 - Build info is automatically generated via `build_info.py`
+- when running builds inline as part of the agent, always redirect the output to a 
+  file in `logs` folder. Create the folder if it doesn't exist.
 
 ## Key Areas
 - LED effects implementation

@@ -21,7 +21,7 @@ std::atomic<bool> fxBroadcastEnabled = false;
 volatile BroadcastState broadcastState = Uninitialized;
 
 //broadcast client list, using the last byte of IP addresses - e.g., 192.168.0.10, 192.168.0.11
-static constexpr auto syncClientsLSB PROGMEM = {BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
+static constexpr auto staticSyncClientsLSB PROGMEM = {STATIC_BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
 
 static constexpr auto hdContentJson PROGMEM = "application/json";
 static constexpr auto hdUserAgentVersion PROGMEM = "1.0.0";
@@ -44,14 +44,24 @@ void enqueueTimeSetup(TimerHandle_t xTimer);
 void scanClients();
 
 struct BroadcastClient {
+    static constexpr uint8_t BC_ONLINE = 1 << 0;
+    static constexpr uint8_t BC_ACTIVE = 1 << 1;
+    static constexpr uint8_t BC_STATIC = 1 << 2;
+
     IPAddress ip;
     unsigned long lastSeenMillis = 0;
-    bool isOnline = false;
-    bool isActive = true;
+    uint8_t flags = BC_ACTIVE;  //bitmap of flags - up to 8 boolean flags
 
     BroadcastClient(const IPAddress &ip, const uint8_t lsb) : ip(ip){
         this->ip[3] = lsb;
     }
+
+    [[nodiscard]] bool isOnline() const { return flags & BC_ONLINE; }
+    void setOnline(const bool online) { if (online) flags |= BC_ONLINE; else flags &= ~BC_ONLINE; }
+    [[nodiscard]] bool isActive() const { return flags & BC_ACTIVE; }
+    void setActive(const bool active) { if (active) flags |= BC_ACTIVE; else flags &= ~BC_ACTIVE; }
+    [[nodiscard]] bool isStatic() const { return flags & BC_STATIC; }
+    void setStatic(const bool st) { if (st) flags |= BC_STATIC; else flags &= ~BC_STATIC; }
 };
 
 // broadcast task definition - priority is overwritten during setup, see broadcastSetup
@@ -63,10 +73,11 @@ TimerHandle_t thTimeSetupTimer = nullptr;
  */
 void commInit() {
     const auto selfAddr = sysInfo->refIpAddress();
-    for (auto &ipLSB : syncClientsLSB) {
+    for (auto &ipLSB : staticSyncClientsLSB) {
         if (selfAddr[3] == ipLSB)
             continue;
         auto clientAddr = std::make_unique<BroadcastClient>(selfAddr, ipLSB);
+        clientAddr->setStatic(true);
         fxBroadcastRecipients.push(std::move(clientAddr));
         log_info(F("FX Broadcast recipient %s has been registered"), clientAddr->ip.toString().c_str());
     }
@@ -232,6 +243,8 @@ void scanClients() {
             if (const int resPing = WiFi.ping(ip); resPing >= 0) {
                 log_warn(F("FX Broadcast recipient %s is still online but was not discovered by mDNS"), ip.toString().c_str());
                 ++it;
+            } else if ((*it)->isStatic()) {
+                log_info(F("FX Broadcast recipient %s has not been discovered, but it's part of the static list and it won't be removed"), ip.toString().c_str());
             } else {
                 log_info(F("FX Broadcast recipient %s is no longer discovered and will be removed"), ip.toString().c_str());
                 it = fxBroadcastRecipients.erase(it);
@@ -248,15 +261,15 @@ void scanClients() {
     for (const auto &client: fxBroadcastRecipients) {
         if (!client) continue;
         if (const int resPing = WiFi.ping(client->ip); resPing >= 0) {
-            client->isOnline = true;
+            client->setOnline(true);
             log_info(F("Client %s is online"), client->ip.toString().c_str());
         }
         else {
-            client->isOnline = false;
+            client->setOnline(false);
             log_warn(F("Client %s is offline"), client->ip.toString().c_str());
         }
         client->lastSeenMillis = millis();
-        taskDelay(1000);
+        taskDelay(500);
     }
 }
 
@@ -266,8 +279,8 @@ void scanClients() {
  * @param fxIndex effect index to update
  */
 void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
-    if (!board->isOnline || !board->isActive) {
-        log_warn(F("Client %s is offline [%d] or disabled [%d]. Skipping FX %hu update"), board->ip.toString().c_str(), !board->isOnline, !board->isActive, fxIndex);
+    if (!board->isOnline() || !board->isActive()) {
+        log_warn(F("Client %s is offline [%d] or disabled [%d]. Skipping FX %hu update"), board->ip.toString().c_str(), !board->isOnline(), !board->isActive(), fxIndex);
         return;
     }
 
@@ -310,13 +323,14 @@ void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
             if (brdDisabled) {
                 log_info(F("Board %s is online and reports disabled for FX sync: %d response status"), board->ip.toString().c_str(), status);
             }
-            board->isActive = !brdDisabled;
-            board->isOnline = true;
+            board->setActive(!brdDisabled);
+            board->setOnline(true);
             board->lastSeenMillis = millis();
         }
+        doc.clear();
     } else {
         log_error(F("Failed to connect to client %s, FX %hu not synced"), board->ip.toString().c_str(), fxIndex);
-        board->isOnline = false;
+        board->setOnline(false);
         board->lastSeenMillis = millis();
     }
     client.end();
@@ -333,8 +347,8 @@ void fxBroadcast(const uint16_t index) {
             index, sysInfo->getSysStatus());
         return;
     }
-
-    if (const EffectInfo *fxInfo = fxRegistry.getEffectInfo(index); !fxInfo) {
+    const EffectInfo *fxInfo = fxRegistry.getEffectInfo(index);
+    if (!fxInfo) {
         log_error(F("Effect at index %d not found"), index);
         return;
     }
@@ -473,7 +487,7 @@ void commSetup() {
         log_error(F("Cannot create statusLEDCheck timer - Ignored."));
     else if (xTimerStart(thStatusLED, 0) != pdPASS)
         log_error(F("Cannot start the statusLEDCheck timer - Ignored."));
-    //scan for clients - repeated each 15 minutes
+    //scan for clients - repeated each 5 minutes
     const TimerHandle_t thScanClients = xTimerCreate("scanClients", pdMS_TO_TICKS(5 * 60 * 1000), pdTRUE, &tmrScanClients, enqueueScanClients);
     if (thScanClients == nullptr)
         log_error(F("Cannot create scanClients timer - Ignored. There is NO client scan scheduled"));
@@ -515,7 +529,7 @@ void postFxChangeEvent(const uint16_t index) {
 std::vector<arduino::IPAddress> getActiveClientIPs() {
     std::vector<arduino::IPAddress> activeIPs;
     for (const auto &client : fxBroadcastRecipients) {
-        if (client && client->isOnline && client->isActive) {
+        if (client && client->isOnline() && client->isActive()) {
             activeIPs.push_back(client->ip);
         }
     }
