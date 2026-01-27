@@ -12,6 +12,7 @@
 #include "version.h"
 #include "constants.hpp"
 #include "log.h"
+#include "stringutils.h"
 #if LOGGING_ENABLED == 1
 #include <stringutils.h>
 #endif
@@ -117,7 +118,9 @@ void logTaskStats() {
         }
         const uint64_t uxDeltaTime = (uxTotalRunTime - prevTaskStatsTime)/100;    //this accounts for number of cores
 
-        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu, current time %lu, %s]\n"), ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
+        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu00, current time %lu ms, %s\n"), ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
+        StringUtils::append(strTaskInfo, F("total CPU cycles 32/64bit %lu / %llu, total task cycles cur/prev %llu / %llu, CPU frequency %u Hz]\n"),
+            rp2040.getCycleCount(), rp2040.getCycleCount64(), uxTotalRunTime, prevTaskStatsTime, sysInfo->getCPUFrequency());
         strTaskInfo.concat(F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
 
         double fTotalCPULoadPercentage = 0.0;

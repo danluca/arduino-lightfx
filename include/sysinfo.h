@@ -77,6 +77,7 @@ public:
     [[nodiscard]] const String& getGatewayIpAddress() const { return strGatewayIpAddress; }
     [[nodiscard]] const String& getWiFiFwVersion() const { return wifiFwVersion; }
     [[nodiscard]] const String& getSSID() const { return ssid; }
+    [[nodiscard]] int getCPUFrequency() const { return cpuFrequency; }
     WatchdogQueue& watchdogReboots() { return wdReboots; }
     void markDirtyBoot() { cleanBoot = false; }
     [[nodiscard]] bool isCleanBoot() const { return cleanBoot; }
