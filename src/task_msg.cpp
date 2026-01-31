@@ -1,11 +1,12 @@
 // MIT License
 //
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include <Arduino.h>
 #include "task_msg.h"
 #include "constants.hpp"
+#include "log.h"
 
 /**
  * @brief Initializes the communication queues used for task interactions.
@@ -24,14 +25,27 @@
 void task_msg_setup() {
     //create a receiving queue for the ALM task for communication between cores
     almQueue = xQueueCreate(10, sizeof(AlmAction));
+    if (almQueue == nullptr) {
+        log_error(F("Failed to create almQueue - ALM communication will not work"));
+    }
 
     // create the broadcast queue, used by enqueue methods to send actions and execute method to receive and execute actions
     // stores pointers to bcTaskMessage allocated by producers; consumer deletes after processing
-    bcQueue = xQueueCreate(10, sizeof(bcTaskMessage*));
+    // Queue size increased from 10 to 20 to handle higher message throughput during network activity
+    bcQueue = xQueueCreate(20, sizeof(bcTaskMessage*));
+    if (bcQueue == nullptr) {
+        log_error(F("Failed to create bcQueue - broadcast communication will not work"));
+    }
 
     diagQueue = xQueueCreate(20, sizeof(DiagAction));
+    if (diagQueue == nullptr) {
+        log_error(F("Failed to create diagQueue - diagnostic messaging will not work"));
+    }
 
     fxQueue = xQueueCreate(10, sizeof(FxActionMessage));
+    if (fxQueue == nullptr) {
+        log_error(F("Failed to create fxQueue - FX messaging will not work"));
+    }
 }
 
 /**

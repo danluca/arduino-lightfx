@@ -119,7 +119,7 @@ void logTaskStats() {
         const uint64_t uxDeltaTime = (uxTotalRunTime - prevTaskStatsTime)/100;    //this accounts for number of cores
 
         StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu00, current time %lu ms, %s\n"), ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
-        StringUtils::append(strTaskInfo, F("total CPU cycles 32/64bit %lu / %llu, total task cycles cur/prev %llu / %llu, CPU frequency %u Hz]\n"),
+        StringUtils::append(strTaskInfo, F("total CPU cycles 32/64bit %lu / %llu, total task cycles cur/prev %llu / %llu, CPU frequency %d Hz]\n"),
             rp2040.getCycleCount(), rp2040.getCycleCount64(), uxTotalRunTime, prevTaskStatsTime, sysInfo->getCPUFrequency());
         strTaskInfo.concat(F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
 
@@ -599,9 +599,9 @@ void SysInfo::updateBoardLED(const uint32_t colorCode) {
 
 /**
  * Controls the onboard LED using individual values for R, G, B
- * NOTE: the \code analogWrite\endcode works with WiFi driver as the onboard LED is connected
- * to the WiFi chip. This function CANNOT be called from a different thread than WiFi operations as otherwise
- * undefined behavior may occur (I've observed thread lockout, resets).
+ * On RPI based boards (Pico 2W, Plasma, etc), the LED(s) are simple GPIO-controlled LED.
+ * On Plasma 2350 W, the RGB LED is on GPIO 16, 17, 18
+ * On RPi Pico 2 W, the status LED is on GPIO 15
  * @param rgb RGB value
  */
 void SysInfo::updateBoardLED(const CRGB rgb) {

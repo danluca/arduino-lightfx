@@ -52,8 +52,8 @@ struct BroadcastClient {
     unsigned long lastSeenMillis = 0;
     uint8_t flags = BC_ACTIVE;  //bitmap of flags - up to 8 boolean flags
 
-    BroadcastClient(const IPAddress &ip, const uint8_t lsb) : ip(ip){
-        this->ip[3] = lsb;
+    BroadcastClient(const IPAddress &src, const uint8_t lsb) : ip(src) {
+        ip[3] = lsb;
     }
 
     [[nodiscard]] bool isOnline() const { return flags & BC_ONLINE; }
@@ -78,8 +78,8 @@ void commInit() {
             continue;
         auto clientAddr = std::make_unique<BroadcastClient>(selfAddr, ipLSB);
         clientAddr->setStatic(true);
-        fxBroadcastRecipients.push(std::move(clientAddr));
         log_info(F("FX Broadcast recipient %s has been registered"), clientAddr->ip.toString().c_str());
+        fxBroadcastRecipients.push(std::move(clientAddr));  //moving clientAddr causes it to become invalid - do NOT use it after this statement
     }
     broadcastState = Configured;
     log_info(F("FX Broadcast setup completed - %zu clients registered"), fxBroadcastRecipients.size());
@@ -90,33 +90,44 @@ void commInit() {
  * Receives events from the broadcast queue and executes appropriate handlers.
  */
 void commRun() {
-    bcTaskMessage *msg = nullptr;
-    //check for a message to be received, return if we don't have any at this time
-    if (pdFALSE == xQueueReceive(bcQueue, &msg, 0))
+    if (bcQueue == nullptr) {
+        // Queue not initialized, skip processing
         return;
-    //the reception was successful, hence the msg is not null anymore
-    switch (msg->event) {
-        case TIME_SETUP: timeSetupCheck(); break;
-        case TIME_UPDATE: timeUpdate(); break;
-        case FX_SYNC: fxBroadcast(msg->data); break;
-        case WIFI_ENSURE: wifi_ensure(); break;
-        case STATUS_LED_CHECK: state_led_update(); break;
-        case ENABLE_BROADCAST: {
-            const bool syncMode = static_cast<bool>(msg->data);
-            const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
-            fxBroadcastEnabled = syncMode; //we need this enabled before we post the event, if we're doing that
-            saveFxState();  //persist change immediately
-            if (masterEnabled)
-                postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
-            break;
-        }
-        case SCAN_CLIENTS: scanClients(); break;
-        default:
-            log_error(F("Event type %hd not supported"), msg->event);
-            break;
     }
+    
+    // Process up to 5 messages per call for efficient queue draining (message batching)
+    // This ensures the queue doesn't overflow while avoiding starvation of other operations
+    constexpr uint8_t MAX_BATCH_SIZE = 5;
+    uint8_t messagesProcessed = 0;
+    
+    bcTaskMessage *msg = nullptr;
+    while (messagesProcessed < MAX_BATCH_SIZE && pdTRUE == xQueueReceive(bcQueue, &msg, 0)) {
+        //the reception was successful, hence the msg is not null anymore
+        switch (msg->event) {
+            case TIME_SETUP: timeSetupCheck(); break;
+            case TIME_UPDATE: timeUpdate(); break;
+            case FX_SYNC: fxBroadcast(msg->data); break;
+            case WIFI_ENSURE: wifi_ensure(); break;
+            case STATUS_LED_CHECK: state_led_update(); break;
+            case ENABLE_BROADCAST: {
+                const bool syncMode = static_cast<bool>(msg->data);
+                const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
+                fxBroadcastEnabled = syncMode; //we need this enabled before we post the event, if we're doing that
+                saveFxState();  //persist change immediately
+                if (masterEnabled)
+                    postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
+                break;
+            }
+            case SCAN_CLIENTS: scanClients(); break;
+            default:
+                log_error(F("Event type %hd not supported"), msg->event);
+                break;
+        }
 
-    delete msg;
+        delete msg;
+        msg = nullptr;
+        messagesProcessed++;
+    }
 }
 
 /**
@@ -124,6 +135,10 @@ void commRun() {
  * @param xTimer the timeUpdate timer that fired the callback
  */
 void enqueueTimeUpdate(TimerHandle_t xTimer) {
+    if (bcQueue == nullptr) {
+        log_error(F("Cannot enqueue TIME_UPDATE - bcQueue is not initialized"));
+        return;
+    }
     auto *msg = new bcTaskMessage{TIME_UPDATE, 0};   //gets deleted in execute method upon message receipt
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE) {
         log_error(F("Error sending TIME_UPDATE message to broadcast task for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
@@ -137,6 +152,10 @@ void enqueueTimeUpdate(TimerHandle_t xTimer) {
  * Enqueues a FX_SYNC event onto the broadcast task - called from FX task.
  */
 void enqueueFxUpdate(const uint16_t index) {
+    if (bcQueue == nullptr) {
+        log_error(F("Cannot enqueue FX_SYNC - bcQueue is not initialized"));
+        return;
+    }
     auto *msg = new bcTaskMessage{FX_SYNC, index};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT)); qResult == pdFALSE) {
         log_error(F("Error sending FX_SYNC message to broadcast task for FX %d - error %ld"), index, qResult);
@@ -151,6 +170,10 @@ void enqueueFxUpdate(const uint16_t index) {
  * @param xTimer the timeSetup timer that fired the callback
  */
 void enqueueTimeSetup(TimerHandle_t xTimer) {
+    if (bcQueue == nullptr) {
+        log_error(F("Cannot enqueue TIME_SETUP - bcQueue is not initialized"));
+        return;
+    }
     auto *msg = new bcTaskMessage{TIME_SETUP, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending TIME_SETUP message to BC queue for timer %s - error %ld"), xTimer == nullptr ? "on-demand" : getTimerName(xTimer), qResult);
@@ -161,6 +184,10 @@ void enqueueTimeSetup(TimerHandle_t xTimer) {
 }
 
 void enqueueWifiEnsure(TimerHandle_t xTimer) {
+    if (bcQueue == nullptr) {
+        log_error(F("Cannot enqueue WIFI_ENSURE - bcQueue is not initialized"));
+        return;
+    }
     auto *msg = new bcTaskMessage{WIFI_ENSURE, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending WIFI_ENSURE message to BC queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
@@ -169,17 +196,19 @@ void enqueueWifiEnsure(TimerHandle_t xTimer) {
 }
 
 /**
- * Callback for statusLEDCheck timer - this is called from the Timer task. Enqueues a STATUS_LED_CHECK message for the alarm task.
+ * Callback for statusLEDCheck timer - this is called from the Timer task. Enqueues a STATUS_LED_CHECK message for BC queue.
  * @param xTimer the statusLEDCheck timer that fired the callback
  */
 void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
+    if (bcQueue == nullptr) {
+        log_error(F("Cannot enqueue STATUS_LED_CHECK - bcQueue is not initialized"));
+        return;
+    }
     auto *msg = new bcTaskMessage{STATUS_LED_CHECK, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
         delete msg;
     }
-    // else
-    //     log_info(F("Sent STATUS_LED_CHECK event successfully to BC queue for timer %hu [%s]"), getTimerId(xTimer), getTimerName(xTimer));
 }
 
 /**
@@ -187,6 +216,10 @@ void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
  * @param xTimer the scanClients timer that fired the callback
  */
 void enqueueScanClients(TimerHandle_t xTimer) {
+    if (bcQueue == nullptr) {
+        log_error(F("Cannot enqueue SCAN_CLIENTS - bcQueue is not initialized"));
+        return;
+    }
     auto *msg = new bcTaskMessage{SCAN_CLIENTS, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending SCAN_CLIENTS message to BC queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
@@ -218,7 +251,7 @@ void scanClients() {
         if (!found) {
             auto client = std::make_unique<BroadcastClient>(board.ip, board.ip[3]);
             log_info(F("New FX Broadcast recipient %s discovered and registered"), client->ip.toString().c_str());
-            fxBroadcastRecipients.push(std::move(client));
+            fxBroadcastRecipients.push(std::move(client));  //moving client causes it to become invalid - do NOT use it after this statement
         }
     }
 
@@ -238,18 +271,21 @@ void scanClients() {
             }
         }
 
+        const IPAddress ip = (*it)->ip;
         if (!discovered) {
-            const IPAddress ip = (*it)->ip;
             if (const int resPing = WiFi.ping(ip); resPing >= 0) {
                 log_warn(F("FX Broadcast recipient %s is still online but was not discovered by mDNS"), ip.toString().c_str());
                 ++it;
             } else if ((*it)->isStatic()) {
                 log_info(F("FX Broadcast recipient %s has not been discovered, but it's part of the static list and it won't be removed"), ip.toString().c_str());
+                ++it;  // FIX: Must increment iterator to avoid infinite loop
             } else {
                 log_info(F("FX Broadcast recipient %s is no longer discovered and will be removed"), ip.toString().c_str());
                 it = fxBroadcastRecipients.erase(it);
             }
+            taskDelay(10);
         } else {
+            log_info(F("FX Broadcast recipient %s is still discovered"), ip.toString().c_str());
             ++it;
         }
     }
@@ -269,7 +305,7 @@ void scanClients() {
             log_warn(F("Client %s is offline"), client->ip.toString().c_str());
         }
         client->lastSeenMillis = millis();
-        taskDelay(500);
+        taskDelay(250);
     }
 }
 
@@ -333,7 +369,7 @@ void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
         board->lastSeenMillis = millis();
     }
     client.end();
-    taskDelay(1000);    //little break in between (multiple) client calls
+    taskDelay(100);    //little break in between (multiple) client calls
 }
 
 /**
