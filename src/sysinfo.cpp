@@ -12,14 +12,12 @@
 #include "version.h"
 #include "constants.hpp"
 #include "log.h"
-#include "stringutils.h"
 #if LOGGING_ENABLED == 1
 #include <stringutils.h>
 #endif
 
 #define BUF_ID_SIZE  20
 
-static constexpr auto unknown PROGMEM = "N/A";
 #if LOGGING_ENABLED == 1
 // static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
 static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
@@ -28,6 +26,7 @@ static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz]
 static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
 static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
 #endif
+static constexpr auto unknown PROGMEM = "N/A";
 static constexpr auto idleTaskMarker PROGMEM = "idle";
 constexpr CRGB CLR_ALL_OK = CRGB::Indigo;
 constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Green;

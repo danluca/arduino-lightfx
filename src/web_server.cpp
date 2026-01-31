@@ -160,16 +160,16 @@ void web::handleGetStatus(WebClient &client) {
     master["active"] = fxBroadcastEnabled.load();
     if (fxBroadcastEnabled) {
         const auto activeClients = master["activeClients"].to<JsonArray>();
-        for (const auto &ip : getActiveClientIPs()) {
+        forEachActiveClientIP([&activeClients](const IPAddress &ip) {
             (void)activeClients.add(ip.toString());
-        }
+        });
     } else if (masterBoardName.length() > 0) {
         master["masterBoard"] = masterBoardName;
     }
     const auto knownClients = master["knownClients"].to<JsonArray>();
-    for (const auto &ip : getKnownClientIPs()) {
+    forEachKnownClientIP([&knownClients](const IPAddress &ip) {
         (void)knownClients.add(ip.toString());
-    }
+    });
     // Time
     const auto time = doc["time"].to<JsonObject>();
     time["ntpSync"] = sysInfo->isSysStatus(SYS_STATUS_NTP);

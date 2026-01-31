@@ -278,7 +278,7 @@ void scanClients() {
                 ++it;
             } else if ((*it)->isStatic()) {
                 log_info(F("FX Broadcast recipient %s has not been discovered, but it's part of the static list and it won't be removed"), ip.toString().c_str());
-                ++it;  // FIX: Must increment iterator to avoid infinite loop
+                ++it;
             } else {
                 log_info(F("FX Broadcast recipient %s is no longer discovered and will be removed"), ip.toString().c_str());
                 it = fxBroadcastRecipients.erase(it);
@@ -561,22 +561,18 @@ void postFxChangeEvent(const uint16_t index) {
         log_warn(F("Broadcast system is not configured yet - effect %hu cannot be synced. Broadcast enabled=%s"), index, StringUtils::asString(fxBroadcastEnabled));
 }
 
-std::vector<arduino::IPAddress> getActiveClientIPs() {
-    std::vector<arduino::IPAddress> activeIPs;
+void forEachActiveClientIP(const std::function<void(const arduino::IPAddress&)>& consumer) {
     for (const auto &client : fxBroadcastRecipients) {
         if (client && client->isOnline() && client->isActive()) {
-            activeIPs.push_back(client->ip);
+            consumer(client->ip);
         }
     }
-    return activeIPs;
 }
 
-std::vector<arduino::IPAddress> getKnownClientIPs() {
-    std::vector<arduino::IPAddress> knownIPs;
+void forEachKnownClientIP(const std::function<void(const arduino::IPAddress&)>& consumer) {
     for (const auto &client : fxBroadcastRecipients) {
         if (client) {
-            knownIPs.push_back(client->ip);
+            consumer(client->ip);
         }
     }
-    return knownIPs;
 }

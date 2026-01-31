@@ -7,6 +7,7 @@
 
 #include <Arduino.h>
 #include <vector>
+#include <functional>
 
 enum BroadcastState:uint8_t {Uninitialized, Configured, Broadcasting, Waiting};
 
@@ -17,15 +18,15 @@ void postTimeSetupCheck();
 void enqueueAlarmSetup();
 
 /**
- * Get the list of active board IP addresses this board has identified (and may be controlling).
- * @return list of active board IP addresses
+ * Iterates over active client IP addresses and invokes the provided consumer function for each.
+ * @param consumer function to receive each active IPAddress
  */
-std::vector<arduino::IPAddress> getActiveClientIPs();
+void forEachActiveClientIP(const std::function<void(const arduino::IPAddress&)>& consumer);
 
 /**
- * Get the list of known board IP addresses this board has identified
- * @return list of known board IP addresses
+ * Iterates over known client IP addresses and invokes the provided consumer function for each.
+ * @param consumer function to receive each known IPAddress
  */
-std::vector<arduino::IPAddress> getKnownClientIPs();
+void forEachKnownClientIP(const std::function<void(const arduino::IPAddress&)>& consumer);
 
 #endif //ARDUINO_LIGHTFX_BROADCAST_H
