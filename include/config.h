@@ -5,7 +5,7 @@
 #define LIGHTFX_CONFIG_H
 
 // the PWM pin dedicated for LED control - see the schematics as well as packages\framework-arduinopico\variants\pimoroni_plasma2350\pins_arduino.h
-#define LED_PIN PIN_NEOPIXEL
+#define LED_PIN (15u)
 
 #define MAX_NUM_PIXELS  1024    //maximum number of pixels supported (equivalent of 330ft LED strips). If more are needed, we'd need to revisit memory allocation and PWM timings
 
@@ -34,7 +34,7 @@
 
 // Board 1 is the dev/xmas tree board, board 2 is the tree lighting controller
 #ifndef BOARD_ID
-#define BOARD_ID    2
+#define BOARD_ID    1
 #endif
 
 // DEV Board specific configurations
@@ -55,7 +55,8 @@
 // measured resistive Vcc voltage divisor for A0 pin, in ohms
 #define VCC_DIV_R4  22000
 #define VCC_DIV_R5  4700
-#define DEVICE_NAME  "Xmas2350"
+// #define DEVICE_NAME  "Xmas2350"
+#define DEVICE_NAME  "PicoDev"
 
 #endif
 

@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 /*
@@ -23,8 +23,19 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <cyw43_wrappers.h>
+#include <Arduino.h>
 
-extern "C" void initVariant() {
-    init_cyw43_wifi();
+// extern "C" void initVariant() {
+    // init_cyw43_wifi();
+// }
+
+void __attribute__((noreturn)) __printflike(1, 0) pico_panic(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    Serial.printf(fmt, args);
+    va_end(args);
+    Serial.printf("\nPANIC! System halted.\n");
+    // while(true) {
+    //     tight_loop_contents();
+    // }
 }

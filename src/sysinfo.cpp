@@ -177,6 +177,28 @@ void logHeapStats() {
     StringUtils::append(strHeapInfo, heapPSRAMInfoFmt, rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap(), rp2040.getUsedPSRAMHeap());
 #endif
     log_info(strHeapInfo.c_str());
+    log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinBufferSpace());
+    // log_info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
+    //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2350/memmap_default.ld
+    // extern uint32_t __exidx_start;
+    // extern uint32_t __exidx_end;
+    // extern uint32_t __etext;
+    // extern uint32_t __data_start__;
+    // extern uint32_t __preinit_array_start;
+    // extern uint32_t __preinit_array_end;
+    // extern uint32_t __init_array_start;
+    // extern uint32_t __init_array_end;
+    // extern uint32_t __fini_array_start;
+    // extern uint32_t __fini_array_end;
+    // extern uint32_t __data_end__;
+    // extern uint32_t __bss_start__;
+    // extern uint32_t __bss_end__;
+    // extern uint32_t __end__;
+    // extern uint32_t end;
+    // extern uint32_t __HeapLimit;
+    // extern uint32_t __StackLimit;
+    // extern uint32_t __StackTop;
+
 #endif
 }
 
@@ -581,9 +603,7 @@ void saveSysInfo() {
  * Set-up the on-board status LED
  */
 void SysInfo::setupStateLED() {
-    pinMode(PIN_LED_R, OUTPUT);
-    pinMode(PIN_LED_G, OUTPUT);
-    pinMode(PIN_LED_B, OUTPUT);
+    pinMode(PIN_LED, OUTPUT);
     updateBoardLED(CRGB::Black);    //black, turned off
 }
 /**
@@ -602,9 +622,7 @@ void SysInfo::updateBoardLED(const uint32_t colorCode) {
  * @param rgb RGB value
  */
 void SysInfo::updateBoardLED(const CRGB rgb) {
-    analogWrite(PIN_LED_R, 255 - rgb.red);
-    analogWrite(PIN_LED_G, 255 - rgb.green);
-    analogWrite(PIN_LED_B, 255 - rgb.blue);
+    digitalWrite(PIN_LED, rgb.getAverageLight() > 16 ? HIGH : LOW);
 }
 
 /**

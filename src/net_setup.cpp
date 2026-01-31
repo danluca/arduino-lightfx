@@ -162,6 +162,7 @@ bool wifi_connect() {
             log_error("Error installing lucasfx service query");
         MDNS.setServiceProbeResultCallback(hFxSvc, hostServiceCallback);
         MDNS.setHostProbeResultCallback(hostProbeCallback);
+        // panic("mDNS setup failed");
     }
 #endif
 
