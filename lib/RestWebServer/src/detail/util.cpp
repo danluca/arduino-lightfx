@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "util.h"
@@ -75,7 +75,7 @@ size_t Util::readBytesWithTimeout(WiFiClient* client, char* buffer, const size_t
             delay(10);
         if (!availToRead)
             break;
-        const size_t toRead = min(bufLength - dataLength, availToRead);
+        const size_t toRead = min(bufLength - dataLength, static_cast<size_t>(availToRead));
         dataLength += client->readBytes(buffer + dataLength, toRead);
     }
     return dataLength;

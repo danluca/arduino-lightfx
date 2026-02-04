@@ -227,7 +227,7 @@ void web::handleGetStatus(WebClient &client) {
     //human readable format
     char timeBuf[16];
     const unsigned long upTime = millis();
-    snprintf(timeBuf, 15, "%2dD %2dH %2dm", upTime / 86400000l, (upTime / 3600000l % 24), (upTime / 60000 % 60));
+    snprintf(timeBuf, 15, "%2luD %2luH %2lum", upTime / 86400000l, (upTime / 3600000l % 24), (upTime / 60000 % 60));
     doc["upTime"] = timeBuf;
     doc["bootTime"] = upTime;
     const auto cpuTempCal = doc["cpuTempCal"].to<JsonObject>();
@@ -264,8 +264,8 @@ void web::handlePutConfig(WebClient &client) {
     const WebRequest &req = client.request();
     const String userAgent = req.header("User-Agent");
     const String xSource = req.header(kHeaderXSource);
-    const bool isUi = xSource.equalsIgnoreCase(kXSourceUi);
-    const bool isBoard = xSource.equalsIgnoreCase(kXSourceBoard) || userAgent.startsWith(kUaBoardPrefix);
+    // const bool isUi = xSource.equalsIgnoreCase(kXSourceUi);
+    // const bool isBoard = xSource.equalsIgnoreCase(kXSourceBoard) || userAgent.startsWith(kUaBoardPrefix);
     String body = req.body();
 
     //process the body - parse JSON body and react to inputs
@@ -526,7 +526,7 @@ static bool ensureParentDirs(const String &filePath) {
     const String dir = filePath.substring(0, lastSlash);
     // build progressively
     String cur;
-    int start = 0;
+    unsigned int start = 0;
     while (start < dir.length()) {
         int slash = dir.indexOf('/', start);
         if (slash < 0) slash = dir.length();

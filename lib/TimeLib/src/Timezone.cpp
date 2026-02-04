@@ -2,7 +2,7 @@
  * Arduino Timezone Library                                             *
  * Jack Christensen Mar 2012                                            *
  *                                                                      *
- * Arduino Timezone Library Copyright (C) 2018,2025 by Jack Christensen and  *
+ * Arduino Timezone Library Copyright (C) 2018,2025,2026 by Jack Christensen and  *
  * licensed under GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html   *
  *----------------------------------------------------------------------*/
 //
@@ -145,7 +145,7 @@ const dstTransitions * Timezone::getTransitions(const int year) {
     // find a DST transitions structure for the year; make a new one if we don't have it
     const dstTransitions *transitions = nullptr;
     for (auto const &t : currentTransitions) {
-        if (t.m_year == year) {
+        if (t.m_year == static_cast<uint>(year)) {
             transitions = &t;
             break;
         }

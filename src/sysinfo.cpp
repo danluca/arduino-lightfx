@@ -24,7 +24,7 @@ static constexpr auto unknown PROGMEM = "N/A";
 static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
 static constexpr auto heapPSRAMInfoFmt PROGMEM = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
-static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
+static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f%%\n";
 static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
 #endif
 static constexpr auto idleTaskMarker PROGMEM = "idle";
@@ -254,7 +254,6 @@ void logSystemInfo() {
     extern char __bss_start__;
     extern char __bss_end__;
     extern char __end__;
-    extern char end;
     extern char __HeapLimit;
     extern char __StackLimit;
     extern char __StackTop;
@@ -524,6 +523,7 @@ void readSysInfo() {
     const auto json = new String();
     json->reserve(512);  // approximation
     if (const size_t sysSize = SyncFsImpl.readFile(sysFileName, json); sysSize > 0) {
+        log_info(F("System information [%s]:\n%s"), sysFileName, json->c_str());
         JsonDocument doc;
         if (const DeserializationError error = deserializeJson(doc, *json)) {
             log_error(F("Error reading the system information JSON file %s [%zu bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());

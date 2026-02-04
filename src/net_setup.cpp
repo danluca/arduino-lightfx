@@ -98,11 +98,25 @@ void serviceQueryCallback(const MDNSResponder::MDNSServiceInfo& service, MDNSRes
     }
 }
 
+/**
+ * When the board starts mDNS (e.g., claiming the name lightfx-dev.local), it must first "probe" the network to ensure no other device
+ * is already using that name.
+ * @param p_pcDomainName the name of the domain being probed
+ * @param p_bProbeResult the result of the probe - true means the name is unique and has been successfully claimed;
+ *    false means the name is already in use by another device
+ */
 void hostProbeCallback(const char *p_pcDomainName, bool p_bProbeResult) {
     log_info(F("mDNS host probe callback for domain %s - probe result: %s"), p_pcDomainName ? p_pcDomainName : strNR,
              StringUtils::asString(p_bProbeResult));
 }
 
+/**
+ * The service probe callback is invoked when the board attempts to register a service with mDNS.
+ * @param p_pcServiceName the name of the service being probed
+ * @param p_hMDNSService the handle to the service being probed
+ * @param p_bProbeResult the result of the probe - true means the name is unique and has been successfully claimed;
+ *    false means the name is already in use by another device
+ */
 void hostServiceCallback(const char *p_pcServiceName, const MDNSResponder::hMDNSService p_hMDNSService, bool p_bProbeResult) {
     log_info(F("mDNS service probe callback for service %s (handle: %p) - probe result: %s"), p_pcServiceName ? p_pcServiceName : strNR,
              p_hMDNSService, StringUtils::asString(p_bProbeResult));

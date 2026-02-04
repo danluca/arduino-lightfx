@@ -67,6 +67,7 @@ void readFxState() {
     if (const size_t stateSize = SyncFsImpl.readFile(stateFileName, json); stateSize > 0) {
         JsonDocument doc;
         deserializeJson(doc, *json);
+        log_info(F("FX state [%s]:\n%s"), stateFileName, json->c_str());
 
         const bool autoAdvance = doc[csAutoFxRoll].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
@@ -94,9 +95,9 @@ void readFxState() {
         if (doc[csBroadcast].is<bool>())
             fxBroadcastEnabled = doc[csBroadcast].as<bool>();
 
-        log_info(F("System state restored from %s [%zu bytes]: autoFx=%s, randomSeed=%d, nextEffect=%hu, brightness=%hu (auto adjust), holiday=%s (auto=%s), sleepEnabled=%s"),
+        log_info(F("System state restored from %s [%zu bytes]: autoFx=%s, randomSeed=%d, nextEffect=%hu, brightness=%hu (auto adjust), holiday=%s (auto=%s), sleepEnabled=%s, broadcast=%s"),
             stateFileName, stateSize, StringUtils::asString(autoAdvance), seed, fx, stripBrightness, holidayToString(paletteFactory.getHoliday()),
-            StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(fxRegistry.isSleepEnabled()));
+            StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(fxRegistry.isSleepEnabled()), StringUtils::asString(fxBroadcastEnabled));
         doc.clear();
     }
     delete json;

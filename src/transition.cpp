@@ -19,7 +19,7 @@ void EffectTransition::resetRandomBars() {
 }
 
 bool EffectTransition::transition() {
-    switch (uint8_t effect = prefFx ? (prefFx-1) : sel/2) {
+    switch (prefFx ? (prefFx-1) : sel/2) {
         case 0: return offSpots();
         case 1: return offWipe(sel % 2);
         case 2: return offFade();
