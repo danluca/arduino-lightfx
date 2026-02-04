@@ -115,13 +115,13 @@ void logTaskStats() {
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
             uxTotalRunTime += (curTaskStatusArray[x].ulRunTimeCounter);
         }
-        const uint64_t uxDeltaTime = (uxTotalRunTime - prevTaskStatsTime)/100;    //this accounts for number of cores
+        uint64_t uxDeltaTime = uxTotalRunTime - prevTaskStatsTime;    //this accounts for number of cores
 
-        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu00, current time %lu ms, %s\n"), ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
+        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu, current time %lu ms, %s\n"), ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
         StringUtils::append(strTaskInfo, F("total CPU cycles 32/64bit %lu / %llu, total task cycles cur/prev %llu / %llu, CPU frequency %d Hz]\n"),
             rp2040.getCycleCount(), rp2040.getCycleCount64(), uxTotalRunTime, prevTaskStatsTime, sysInfo->getCPUFrequency());
         strTaskInfo.concat(F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
-
+        uxDeltaTime /= 100; //prepares for percentage calculation
         double fTotalCPULoadPercentage = 0.0;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
             const TaskStatus_t *prevTaskStatus = prevTaskStatusArray != nullptr ? findTaskStatus(prevTaskStatusArray, uxArraySize, curTaskStatusArray[x].xTaskNumber) : nullptr;
