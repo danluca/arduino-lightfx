@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #include "stringutils.h"
 #include <FastLED.h>
@@ -10,7 +10,7 @@ String StringUtils::asString(const CRGB &rgb) {
     const uint32_t numClr = rgb.as_uint32_t() & 0xFFFFFF;
     char buf[11];   //max hex character for a 32bit number - 2 chars for 0X, 8 hex chars, and null terminator
     // "%06X" produces exactly 6 chars plus null terminator
-    const int sz = snprintf(buf, 7, "%06X", numClr);
+    const int sz = snprintf(buf, 7, "%06lX", numClr);
     String str(buf, sz);
     return str;
 }
@@ -23,7 +23,7 @@ String StringUtils::asString(const CRGBSet &rgbSet) {
     snprintf(buf, 11, "RGB[%u]{", rgbSet.len);
     str.concat(buf);
     for (const CRGB &rgb : rgbSet) {
-        snprintf(buf, 8, "%06X ", rgb.as_uint32_t() & 0xFFFFFF);
+        snprintf(buf, 8, "%06lX ", rgb.as_uint32_t() & 0xFFFFFF);
         str.concat(buf);
     }
     str.concat("}");

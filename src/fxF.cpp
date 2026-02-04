@@ -294,6 +294,7 @@ void EyeBlink::step() {
             if (idleTime == 0)
                 curStep = Off;
             break;
+        default: break;
     }
 }
 

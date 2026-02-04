@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #pragma once
@@ -117,11 +117,11 @@ extern CalibrationMeasurement cpuTempRange;
 extern MeasurementRange lineVoltage;
 
 
-static float toFahrenheit(const float celsius) {
+inline float toFahrenheit(const float celsius) {
     return celsius * 9.0f / 5 + 32;
 }
 
-static Measurement toFahrenheit(const Measurement &msmt) {
+inline Measurement toFahrenheit(const Measurement &msmt) {
     return Measurement {toFahrenheit(msmt.value), msmt.time, Deg_F};
 }
 

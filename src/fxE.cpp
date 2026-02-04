@@ -180,7 +180,7 @@ void FxE3::run() {
                     incr(curPos, 1, tpl.size()+sasquatchSize-1);
                     break;
                 case forward:
-                case backward:
+                case backward: {
                     uint16_t newPos = curPos + random8(1, 5);
                     newPos = capu(newPos, maxIndex);
                     if (move == forward) {
@@ -199,6 +199,8 @@ void FxE3::run() {
                     colorIndex = beatsin8(7);
                     curPos = newPos == maxIndex ? 0 : (newPos + 1);
                     break;
+                }
+                default: break;
             }
         } else if (timerSlot == 25) {
             if (move == pauseF)
@@ -211,6 +213,7 @@ void FxE3::run() {
             case forward: seg = ColorFromPalette(palette, colorIndex, fade, LINEARBLEND); break;
             case backward: seg.fadeToBlackBy(fade); break;
             case sasquatch: seg[seg.size()-1].fadeToBlackBy(252); break;
+            default: break;
         }
 
         fade = capu(fade + delta, brightness);

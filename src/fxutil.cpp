@@ -367,8 +367,8 @@ bool fx::isAnyLedOn(CRGBSet *set, const CRGB backg) {
 
 void fx::fillSet(const CRGBSet *src, CRGBSet *dest, const uint16_t destOfs) {
     size_t curFrameIndex = destOfs;
-    while (curFrameIndex < dest->size()) {
-        const size_t len = capu(curFrameIndex + abs(src->len), dest->size()) - curFrameIndex;
+    while (curFrameIndex < static_cast<size_t>(dest->size())) {
+        const size_t len = capu(curFrameIndex + abs(src->len), static_cast<size_t>(dest->size()) - curFrameIndex);
         copySubSet(src, 0, dest, curFrameIndex, len);
         curFrameIndex += abs(src->len);
     }

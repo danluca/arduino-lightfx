@@ -17,8 +17,8 @@ TaskWrapper *twStream;
 
 #define SERIAL_BUFFER_SIZE 256
 static constexpr char fmtTimestamp[] PROGMEM = "%02lu:%02lu:%02lu.%03lu";
-static constexpr char fmtTaskPriorityChanged[] PROGMEM = " [C%u-%s-%u/%u]";
-static constexpr char fmtTaskPriorityRegular[] PROGMEM = " [C%u-%s-%u]";
+static constexpr char fmtTaskPriorityChanged[] PROGMEM = " [C%u-%s-%lu/%lu]";
+static constexpr char fmtTaskPriorityRegular[] PROGMEM = " [C%u-%s-%lu]";
 static constexpr char logLevelTags[] PROGMEM = "SFEWIDT";    //NOTE this string must be as long as LogLevel enum!
 static constexpr char fmtLevel[] PROGMEM = " %c: ";
 
@@ -36,7 +36,7 @@ void flushData() {
         Log.m_maxBufferSize = logSize;
     while (!Log.m_queue.empty()) {
         char buf[SERIAL_BUFFER_SIZE]{0};    //zero-initialized buffer
-        const size_t sz = min(Log.m_queue.size(), SERIAL_BUFFER_SIZE - 1);    //leave room for null terminator
+        const size_t sz = min(Log.m_queue.size(), static_cast<size_t>(SERIAL_BUFFER_SIZE - 1));    //leave room for null terminator
         Log.m_queue.pop_front(buf, sz);
         buf[sz] = '\0'; //null-terminate for safety (not strictly required since we control write length)
         Log.m_stream->write(buf, sz);
