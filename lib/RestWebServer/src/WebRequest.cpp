@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "WebRequest.h"
@@ -28,11 +28,11 @@ String WebRequest::arg(const String &name) const {
 }
 
 String WebRequest::arg(const int i) const {
-    return i < _requestArgs.size() ? _requestArgs[i]->value : "";
+    return static_cast<size_t>(i) < _requestArgs.size() ? _requestArgs[i]->value : "";
 }
 
 String WebRequest::argName(const int i) const {
-    return i < _requestArgs.size() ? _requestArgs[i]->key : "";
+    return static_cast<size_t>(i) < _requestArgs.size() ? _requestArgs[i]->key : "";
 }
 
 size_t WebRequest::argsCount() const {
@@ -56,11 +56,11 @@ String WebRequest::header(const String &name) const {
 }
 
 String WebRequest::header(const int i) const {
-    return i < _headers.size() ? _headers[i]->value : "";
+    return static_cast<size_t>(i) < _headers.size() ? _headers[i]->value : "";
 }
 
 String WebRequest::headerName(const int i) const {
-    return i < _headers.size() ? _headers[i]->key : "";
+    return static_cast<size_t>(i) < _headers.size() ? _headers[i]->key : "";
 }
 
 size_t WebRequest::headersCount() const {

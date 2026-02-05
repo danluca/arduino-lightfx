@@ -17,7 +17,7 @@ constexpr auto pass PROGMEM = WF_PSW;
 constexpr auto hostname PROGMEM = "lightfx-" DEVICE_NAME;
 
 #if MDNS_ENABLED==1
-UDP* mUdp = nullptr;  // mDNS UDP instance
+WiFiUDP* mUdp = nullptr;  // mDNS UDP instance
 MDNS* mdns = nullptr;
 #endif
 

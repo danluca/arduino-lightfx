@@ -450,15 +450,16 @@ CRGB FxH4::computeOneTwinkle(uint32_t ms, uint32_t salt) {
     return c;
 }
 
-// This function is like 'triwave8', which produces a symmetrical up-and-down triangle sawtooth waveform, except that
-// this function produces a triangle wave with a faster attack and a slower decay:
-//
-//     / \
-//    /     \
-//   /         \
-//  /             \
-//
-
+/**
+ * This function is like 'triwave8', which produces a symmetrical up-and-down triangle sawtooth waveform, except that
+ * this function produces a triangle wave with a faster attack and a slower decay:
+ *
+ *     / \
+ *    /     \
+ *   /         \
+ *  /             \
+ *
+ */
 uint8_t FxH4::attackDecayWave8(uint8_t i) {
     if (i < 86) {
         return i * 3;
@@ -501,6 +502,7 @@ void FxH5::run() {
         switch (fxState) {
             case Sparkle: small[pixelPos] = BKG; break;
             case Glitter: small[pixelPos] = prevClr; break;
+            default: break;
         }
         pixelPos = random16(small.size());
         prevClr = small[pixelPos];
@@ -533,7 +535,7 @@ void FxH5::run() {
     EVERY_N_MILLISECONDS(350) {
         electromagneticSpectrum(20);
         //effect phases
-        FxState prevState = fxState;
+        // FxState prevState = fxState;
         fxState = static_cast<FxState>((timer++ / 28) % 4);       //fxState increments every 28*250ms=7sec, modulo 4 (size of state enum)
 //        if (fxState == Sparkle && prevState == RampDown) {
 //        }
@@ -759,6 +761,7 @@ Spark::State Spark::step(const uint8_t dice) {
                 curCycle = pattern; //end of off state means all counters are at 0; copy pattern into current cycle to start over, if needed
             }
             break;
+        default: break;
     }
     return state;
 }

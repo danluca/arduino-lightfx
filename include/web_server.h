@@ -9,7 +9,7 @@
 #if MDNS_ENABLED==1
 #include "LightMDNS.hpp"
 
-extern UDP* mUdp;
+extern WiFiUDP* mUdp;
 extern MDNS* mdns;
 #endif
 

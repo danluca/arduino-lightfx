@@ -472,7 +472,7 @@ SleepLight::SleepLightState SleepLight::step() {
             ledSet = *refPixel;
             break;
         case SleepTransition:
-            timer = ++timer%12;
+            timer = (timer+1)%12;
             if (timer == 0) {
                 for (auto &seg : slOffSegs)
                     seg.fadeToBlackBy(1);

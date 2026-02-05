@@ -553,7 +553,7 @@ bool WebClient::_parseRequest() {
         request()._requestBody.reserve(request()._contentLength);
         while (_rawWifiClient.connected() && leftToRead > 0) {
             const auto plainBuf = new char[HTTP_RAW_BUFLEN + 1];
-            const size_t lengthRead = Util::readBytesWithTimeout(&_rawWifiClient, plainBuf, min(leftToRead, HTTP_RAW_BUFLEN), HTTP_MAX_POST_WAIT);
+            const size_t lengthRead = Util::readBytesWithTimeout(&_rawWifiClient, plainBuf, min(leftToRead, static_cast<size_t>(HTTP_RAW_BUFLEN)), HTTP_MAX_POST_WAIT);
             plainBuf[lengthRead] = '\0';
             request()._requestBody += plainBuf;
             delete[] plainBuf;  // free buffer to prevent memory leak
@@ -588,7 +588,7 @@ void WebClient::_parseArguments(const String &data) const {
         return;
     }
     int argCount = 1; //we have at least 1 arg if the search data string has any length
-    for (int i = 0; i < data.length();) {
+    for (int i = 0; static_cast<size_t>(i) < data.length();) {
         i = data.indexOf('&', i + 1);
         if (i == -1)
             break;
@@ -721,7 +721,7 @@ size_t WebClient::_uploadReadBytes(uint8_t *buf, const size_t len) {
             Util::delay(10);
         if (!availToRead)
             break;
-        const size_t toRead = min(len - readLength, availToRead);
+        const size_t toRead = min(len - readLength, static_cast<size_t>(availToRead));
         readLength += _rawWifiClient.readBytes(buf + readLength, toRead);
     }
     return readLength;

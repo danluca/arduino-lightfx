@@ -139,7 +139,7 @@ void FxC3::setup() {
     brightness = 255;
     targetPalette = paletteFactory.mainPalette();
     palette = paletteFactory.secondaryPalette();
-    dist = random16() << 16 + random16();
+    dist = (random16() << 16) + random16();
 }
 
 void FxC3::run() {

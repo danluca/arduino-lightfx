@@ -28,7 +28,7 @@
  * @param cap upper bound
  * @return the result of adding i to j saturating at cap
  */
-static uint8_t cadd8(const uint8_t i, const uint8_t j, const uint8_t cap) {
+inline uint8_t cadd8(const uint8_t i, const uint8_t j, const uint8_t cap) {
     uint t = i + j;
     if (t > cap)
         t = cap;
@@ -42,7 +42,7 @@ static uint8_t cadd8(const uint8_t i, const uint8_t j, const uint8_t cap) {
  * @param cap lower bound
  * @return the result of i-j saturating at cap
  */
-static uint8_t csub8(const uint8_t i, const uint8_t j, const uint8_t cap) {
+inline uint8_t csub8(const uint8_t i, const uint8_t j, const uint8_t cap) {
     int t = i - j;
     if (t < cap)
         t = cap;

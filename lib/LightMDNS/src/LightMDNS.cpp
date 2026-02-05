@@ -584,7 +584,7 @@ MDNS::Status MDNS::start(const IPAddress& addr, const String& name, const bool c
     else {
         log_info(F("MDNS: start: active ip=%s, name=%s"), IPAddress(_addr).toString().c_str(), _fqhn.c_str());
         if (checkForConflicts) {
-            for (auto i = 0; i < DNS_PROBE_COUNT; i++) {
+            for (size_t i = 0; i < DNS_PROBE_COUNT; i++) {
                 (void)_messageSend(XID_DEFAULT, PacketTypeProbe);
                 delay(DNS_PROBE_WAIT_MS);
             }
@@ -756,7 +756,7 @@ static const char* checkHeader(const Header& header, const uint16_t packetSize, 
         return "unreasonable record counts";
     if (header.zReserved != 0)
         return "reserved bit set";
-    if (firstByte < 0 || firstByte > DNS_LABEL_LENGTH_MAX)
+    if (firstByte < 0 || static_cast<size_t>(firstByte) > DNS_LABEL_LENGTH_MAX)
         return "invalid first label length";
     if (header.truncated && packetSize < 512)
         return "suspicious: TC set but packet small";
@@ -802,7 +802,7 @@ MDNS::Status MDNS::_messageRecv() {
     }
 
     Header header;
-    for (auto z = 0; z < sizeof(Header); z++)
+    for (auto z = 0; static_cast<size_t>(z) < sizeof(Header); z++)
         UDP_READ_BYTE_OR_FAIL(uint8_t, reinterpret_cast<uint8_t*>(&header)[z], return packetFailedHandler(header, "invalid header"));    // should throw
     header.xid = ntohs(header.xid);
     header.queryCount = ntohs(header.queryCount);

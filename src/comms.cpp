@@ -187,7 +187,7 @@ void clientUpdate(const IPAddress *ip, const uint16_t fxIndex) {
 
     char buf[64];   //size deemed enough based on fmtFxChange pattern and fxIndex values (16bit int)
     const int written = snprintf(buf, sizeof(buf), fmtFxChange, fxIndex);
-    const int bodyLen = written < 0 ? 0 : (written >= sizeof(buf) ? static_cast<int>(sizeof(buf) - 1) : written);
+    const int bodyLen = written < 0 ? 0 : (static_cast<size_t>(written) >= sizeof(buf) ? static_cast<int>(sizeof(buf) - 1) : written);
 
     String hdUserAgent;
     hdUserAgent.concat(kHeaderUserAgent);

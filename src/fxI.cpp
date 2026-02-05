@@ -399,7 +399,7 @@ void FxI3::run() {
 
             // speed-based brightness
             auto spd = static_cast<uint32_t>(vel256 >= 0 ? vel256 : -vel256);
-            spd = min<uint32_t>(spd, 512); // cap
+            spd = min<uint32_t>(spd, 512u); // cap
             const uint8_t coreBri = qadd8(110, scale8((uint8_t)min<uint32_t>(255, spd), 160));
             const CRGB coreCol = ColorFromPalette(palette, hueIdx, coreBri, LINEARBLEND);
 

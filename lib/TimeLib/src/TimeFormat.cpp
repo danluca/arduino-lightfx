@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include <Arduino.h>
@@ -195,11 +195,11 @@ String TimeFormat::asString(const time_t &time, const char *formatter, const boo
  */
 String TimeFormat::dateAsString(const time_t &time) {
    String str;
-   str.reserve(12);  //the date pattern is 10 chars long
-   char buf[12]{};
+   str.reserve(12);  //the date pattern is 10 chars long, in nominal cases
+   char buf[36]{};   //while we intend to write 10 characters for a typical date, the maximum size of the formatted string could be (11+1)x3 (including signs and null terminator)
    tmElements_t tm;
    timeService.breakTime(time, tm);
-   snprintf(buf, 12, defaultDatePattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday);
+   snprintf(buf, 36, defaultDatePattern, tm.tm_year + TM_EPOCH_YEAR, tm.tm_mon+1, tm.tm_mday);
    str.concat(buf);
    return str;
 }
@@ -214,8 +214,9 @@ String TimeFormat::dateAsString(const time_t &time) {
  */
 String TimeFormat::timeAsString(const time_t &time, const bool includeTZ) {
    String str;
-   str.reserve(20);  //the time pattern is 8 chars long ('HH:mm:ss'), offset pattern is 10 ('+HH:mm XYZ') plus a separator space
-   char buf[21]{};
+   str.reserve(20);  //nominally, the time pattern is 8 chars long ('HH:mm:ss'), offset pattern is 10 ('+HH:mm XYZ') plus a separator space
+   //the max size for these two formats is 63 chars ('HH:mm:ss +HH:mm XYZ') when using max/min integer values
+   char buf[64]{};
    tmElements_t tm;
    timeService.breakTime(time, tm);
    const size_t sz = snprintf(buf, 9, defaultLocalTimePattern, tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -223,7 +224,8 @@ String TimeFormat::timeAsString(const time_t &time, const bool includeTZ) {
       const int ofsHour = tm.tm_offset / 3600;
       const int ofsMin = (abs(tm.tm_offset) % 3600) / 60;
       buf[sz] = ' ';    //add a space between time and offset
-      snprintf(buf+sz+1, 11, defaultOffsetPattern, ofsHour, ofsMin, tm.tm_zone);
+      //buffer size: 4 (sign+digits) + 1 (colon) + 2 (minutes) + 1 (space) + 5 (zone name) + 1 (null) = 14 bytes
+      snprintf(buf+sz+1, 14, defaultOffsetPattern, ofsHour, ofsMin, tm.tm_zone);
    }
    str.concat(buf);
    return str;

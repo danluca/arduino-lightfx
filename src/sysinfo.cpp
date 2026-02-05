@@ -12,6 +12,7 @@
 #include "version.h"
 #include "constants.hpp"
 #include "log.h"
+#include "stringutils.h"
 #if LOGGING_ENABLED == 1
 #include <stringutils.h>
 #endif
@@ -24,7 +25,7 @@ static constexpr auto unknown PROGMEM = "N/A";
 static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
 static constexpr auto heapPSRAMInfoFmt PROGMEM = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
 static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
-static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12lu  %.2f%%\n";
+static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f%%\n";
 static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
 #endif
 static constexpr auto idleTaskMarker PROGMEM = "idle";
@@ -101,6 +102,7 @@ void logTaskStats() {
         uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
         // ulTotalRunTime = (ulTotalRunTime >> 8) / (configRUN_TIME_COUNTER_TYPE)100U;    // For percentage calculations
         StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, current time %lu, %s]\n"), ulTotalRunTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
+        StringUtils::append(strTaskInfo, F("Timings: cycles 32bit %lu, cycles 64bit %llu, CPU frequency %u Hz\n"), rp2040.getCycleCount(), rp2040.getCycleCount64(), RP2040::f_cpu());
         strTaskInfo.concat(F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
 
         uint64_t uxTotalRunTime = 0ul;  // Summing up times spent by ALL tasks (as reported by each task) should account for NUM_CORES - this value should be NUM_CORES*ulTotalRunTime
@@ -214,7 +216,6 @@ void logSystemInfo() {
     extern char __bss_start__;
     extern char __bss_end__;
     extern char __end__;
-    extern char end;
     extern char __HeapLimit;
     extern char __StackLimit;
     extern char __StackTop;
