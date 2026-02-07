@@ -19,4 +19,6 @@ if ($clean) {
 }
 
 # Call the build function with the appropriate environment name based on debug flag
+start-transcript -path $PSScriptRoot/logs/build-$board.log
 Build-Application $board $log $ignoreBroadcast $dbg
+stop-transcript

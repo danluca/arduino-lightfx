@@ -64,7 +64,7 @@ if (-not $fwPath) {
     if ($ignoreBroadcast) {
         Write-Information "${clrMsg}  with IGNORE_WEB_EFFECT_CHANGES enabled.${clrReset}" -InformationAction Continue
     }
-    ./build.ps1 -board $board -ignoreBroadcast:$ignoreBroadcast | Tee-Object -FilePath logs/build-$board.log
+    ./build.ps1 -board $board -ignoreBroadcast:$ignoreBroadcast *>&1 | Tee-Object -FilePath logs/build-$board.log
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed. Please check the build.log for details."
     }
