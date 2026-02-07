@@ -1,17 +1,46 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef ARDUINO_LIGHTFX_UTIL_H
 #define ARDUINO_LIGHTFX_UTIL_H
 
-#define SYS_STATUS_SETUP0       0x0001
-#define SYS_STATUS_SETUP1       0x0002
-#define SYS_STATUS_FILESYSTEM   0x0004
-#define SYS_STATUS_WIFI         0x0008
-#define SYS_STATUS_NTP          0x0010
-#define SYS_STATUS_DST          0x0020
-#define SYS_STATUS_DIAG         0x0040
+enum class SysStatus : uint16_t {
+    None       = 0x0000,
+    Setup0     = 0x0001,
+    Setup1     = 0x0002,
+    Filesystem = 0x0004,
+    Wifi       = 0x0008,
+    Ntp        = 0x0010,
+    Dst        = 0x0020,
+    Diag       = 0x0040
+};
+
+// Enable bitwise operations for SysStatus
+inline SysStatus operator|(SysStatus a, SysStatus b) {
+    return static_cast<SysStatus>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
+}
+inline SysStatus operator&(SysStatus a, SysStatus b) {
+    return static_cast<SysStatus>(static_cast<uint16_t>(a) & static_cast<uint16_t>(b));
+}
+inline SysStatus operator^(SysStatus a, SysStatus b) {
+    return static_cast<SysStatus>(static_cast<uint16_t>(a) ^ static_cast<uint16_t>(b));
+}
+inline SysStatus operator~(SysStatus a) {
+    return static_cast<SysStatus>(~static_cast<uint16_t>(a));
+}
+inline SysStatus& operator|=(SysStatus& a, SysStatus b) {
+    return a = a | b;
+}
+inline SysStatus& operator&=(SysStatus& a, SysStatus b) {
+    return a = a & b;
+}
+inline SysStatus& operator^=(SysStatus& a, SysStatus b) {
+    return a = a ^ b;
+}
+inline bool operator!(SysStatus a) {
+    return static_cast<uint16_t>(a) == 0;
+}
 
 #define TWENTY_TWENTY    1577836800L    //2020-01-01 00:00
 #define TWENTY_SEVENTY   3155760000L    //2070-01-01 00:00 - if this code is still relevant in 2070, something is wrong...

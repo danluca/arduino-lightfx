@@ -78,7 +78,7 @@ void commInit() {
             continue;
         auto clientAddr = std::make_unique<BroadcastClient>(selfAddr, ipLSB);
         clientAddr->setStatic(true);
-        log_info(F("FX Broadcast recipient %s has been registered"), clientAddr->ip.toString().c_str());
+        log_info(F("FX Broadcast static recipient %s has been registered"), clientAddr->ip.toString().c_str());
         fxBroadcastRecipients.push(std::move(clientAddr));  //moving clientAddr causes it to become invalid - do NOT use it after this statement
     }
     broadcastState = Configured;
@@ -378,7 +378,7 @@ void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
  * @param index the effect index to broadcast
  */
 void fxBroadcast(const uint16_t index) {
-    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+    if (!sysInfo->isSysStatus(SysStatus::Wifi)) {
         log_warn(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform FX  update for %d. System status: %#hX"),
             index, sysInfo->getSysStatus());
         return;
@@ -425,12 +425,12 @@ void startTimeSetupTimer() {
  * Update time with NTP, assert offset (DST or not) and track drift
  */
 void timeUpdate() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+    if (!sysInfo->isSysStatus(SysStatus::Wifi)) {
         log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform NTP time sync. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
     timeBegin();    //ensures we have network connectivity infrastructure
-    const bool bHadNtpSync = sysInfo->isSysStatus(SYS_STATUS_NTP);
+    const bool bHadNtpSync = sysInfo->isSysStatus(SysStatus::Ntp);
     if (const time_t syncElapsedHours = (millis() - timeService.syncLocalTimeMillis())/1000/SECS_PER_HOUR; bHadNtpSync && syncElapsedHours < 12) {
         log_info(F("Time NTP sync was already performed recently %lld hours ago. Skipping - we want to check NTP at least 12 hours apart"), syncElapsedHours);
         return;    //we already did the sync recently, so no need to do it again
@@ -443,7 +443,7 @@ void timeUpdate() {
         updateLoggingTimebase();
     } else
         log_warn(F("No NTP; Current time %s."), TimeFormat::asStringMs(nowMillis()).c_str());
-    result ? sysInfo->setSysStatus(SYS_STATUS_NTP) : sysInfo->resetSysStatus(SYS_STATUS_NTP);
+    result ? sysInfo->setSysStatus(SysStatus::Ntp) : sysInfo->resetSysStatus(SysStatus::Ntp);
     log_info(F("System status: %#hX"), sysInfo->getSysStatus());
 
     // if we did not have NTP sync before, react to the current attempt result - if failed, schedule a timer to try again; if succeeded, notify the alarm task for setup
@@ -459,8 +459,8 @@ void timeUpdate() {
 
     //check for a DST transition
     const time_t nixTime = now();
-    if (const bool dst = timeService.timezone()->isDST(nixTime); dst != sysInfo->isSysStatus(SYS_STATUS_DST)) {
-        dst ? sysInfo->setSysStatus(SYS_STATUS_DST) : sysInfo->resetSysStatus(SYS_STATUS_DST);
+    if (const bool dst = timeService.timezone()->isDST(nixTime); dst != sysInfo->isSysStatus(SysStatus::Dst)) {
+        dst ? sysInfo->setSysStatus(SysStatus::Dst) : sysInfo->resetSysStatus(SysStatus::Dst);
 #if LOGGING_ENABLED == 1
         log_info(F("Time DST status changed to %s [offset %d] - current time %s"), dst ? "ON" : "OFF", timeService.timezone()->getOffset(nixTime),
             TimeFormat::asString(nixTime).c_str());
@@ -485,7 +485,7 @@ void timeUpdate() {
  * Time setup re-attempt, in case we weren't successful during system bootstrap
  */
 void timeSetupCheck() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_NTP)) {
+    if (!sysInfo->isSysStatus(SysStatus::Ntp)) {
         if (timeSetup()) {
             //enqueues the alarm setup event if time is ok
             enqueueAlarmSetup();
@@ -501,7 +501,7 @@ void timeSetupCheck() {
  * Called from the main thread - sets up a task and timers for handling events
  */
 void commSetup() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+    if (!sysInfo->isSysStatus(SysStatus::Wifi)) {
         log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot setup broadcasting. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
@@ -543,7 +543,7 @@ void commSetup() {
  * Note: this method can be called from any other thread
  */
 void postTimeSetupCheck() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_NTP)) {
+    if (!sysInfo->isSysStatus(SysStatus::Ntp)) {
         //enqueue a time setup in 5 seconds
         startTimeSetupTimer();
     } else

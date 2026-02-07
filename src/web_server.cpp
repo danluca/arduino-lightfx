@@ -172,13 +172,13 @@ void web::handleGetStatus(WebClient &client) {
     });
     // Time
     const auto time = doc["time"].to<JsonObject>();
-    time["ntpSync"] = sysInfo->isSysStatus(SYS_STATUS_NTP);
+    time["ntpSync"] = sysInfo->isSysStatus(SysStatus::Ntp);
     time["millis"] = millis(); //current time in ms
     const time_t curTime = now();
     time["sdate"] = TimeFormat::dateAsString(curTime);  //string date
     time["stime"] = TimeFormat::timeAsString(curTime);  //string time
     time["time"] = curTime; //numeric time
-    const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
+    const bool bDST = sysInfo->isSysStatus(SysStatus::Dst);
     time["dst"] = bDST;
     time["zoneDST"] = timeService.timezone()->isDST(curTime);
     time["offset"] = timeService.timezone()->getOffset(curTime);
@@ -217,7 +217,7 @@ void web::handleGetStatus(WebClient &client) {
     vcc["current"] = lineVoltage.current.value;
     vcc["max"] = lineVoltage.max.value;
     vcc["min"] = lineVoltage.min.value;
-    doc["overallStatus"] = sysInfo->getSysStatus();
+    doc["overallStatus"] = static_cast<uint16_t>(sysInfo->getSysStatus());
 #if MDNS_ENABLED==1
     doc["mdnsEnabled"] = MDNS.isRunning();
 #endif

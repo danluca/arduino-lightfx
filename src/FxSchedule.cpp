@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "FxSchedule.h"
@@ -87,7 +87,7 @@ uint countTodayAlarms(const AlarmType alType, const time_t refTime) {
 void scheduleDay(const time_t time) {
     const time_t startDay = previousMidnight(time);
 
-    const uint8_t curAlarmCount = scheduledAlarms.size();
+    // const uint8_t curAlarmCount = scheduledAlarms.size();
     uint alarmCount = countUpcomingAlarms(WAKEUP, time);
     if (alarmCount < 1) {
         //add wake-up alarm for today (if we have not passed it) or tomorrow (if we did)
@@ -119,7 +119,7 @@ void logAlarms() {
  * Setup the default sleep/wake-up schedule
  */
 void setupAlarmSchedule() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+    if (!sysInfo->isSysStatus(SysStatus::Wifi)) {
         log_warn(F("Cannot setup alarms without WiFi, likely time is not set"));
         return;
     }

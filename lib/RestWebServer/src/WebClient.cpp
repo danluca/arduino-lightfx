@@ -426,7 +426,7 @@ void WebClient::_parseHttpHeaders() {
         bool hdCollected = false;
         for (const auto &h: _server->_headersOfInterest) {
             if (h.equalsIgnoreCase(headerName)) {
-                auto header = new NameValuePair();
+                auto header = new NameValuePair();  //freed up by WebRequest destructor
                 header->key = headerName;
                 header->value = headerValue;
                 _request->_headers.push_back(header);

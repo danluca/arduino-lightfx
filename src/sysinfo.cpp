@@ -283,7 +283,7 @@ SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(DEVICE_NAME), buildVersio
     cpuVersion = 0;
     cpuModel.reserve(BUF_ID_SIZE);
     psramSize = 0;
-    status = 0;
+    status = SysStatus::None;
     cleanBoot = true;
 }
 
@@ -319,25 +319,23 @@ uint SysInfo::get_flash_capacity() const {
     return PICO_FLASH_SIZE_BYTES;
 }
 
-uint16_t SysInfo::setSysStatus(const uint16_t bitMask) {
+SysStatus SysInfo::setSysStatus(const SysStatus bitMask) {
     CoreMutex coreMutex(&mutex);
     status |= bitMask;
-    // updateStatusLED();
     return status;
 }
 
-uint16_t SysInfo::resetSysStatus(const uint16_t bitMask) {
+SysStatus SysInfo::resetSysStatus(const SysStatus bitMask) {
     CoreMutex coreMutex(&mutex);
     status &= (~bitMask);
-    // updateStatusLED();
     return status;
 }
 
-bool SysInfo::isSysStatus(const uint16_t bitMask) const {
+bool SysInfo::isSysStatus(const SysStatus bitMask) const {
     return (status & bitMask) == bitMask;
 }
 
-uint16_t SysInfo::getSysStatus() const {
+SysStatus SysInfo::getSysStatus() const {
     return status;
 }
 
@@ -398,7 +396,7 @@ void SysInfo::sysConfig(JsonDocument &doc) {
     doc[csMacAddress] = sysInfo->macAddress;
     doc[csIpAddress] = sysInfo->strIpAddress;
     doc[csGatewayAddress] = sysInfo->strGatewayIpAddress;
-    doc[csStatus] = sysInfo->status;
+    doc[csStatus] = static_cast<uint16_t>(sysInfo->status);
     doc[csHeapSize] = sysInfo->heapSize;
     doc[csFreeHeap] = sysInfo->freeHeap;
     doc[csStackSize] = sysInfo->stackSize;
@@ -534,7 +532,7 @@ void readSysInfo() {
         sysInfo->stackSize = doc[csStackSize];
         sysInfo->freeStack = doc[csFreeStack];
         //do not override the current status (in progress of populating) with the last run status
-        const uint8_t lastStatus = doc[csStatus];
+        const auto lastStatus = doc[csStatus].as<uint16_t>();
         log_info(F("System Information restored from %s [%d bytes]: boardName=%s, deviceName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), devName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status,
                    lastStatus, sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
@@ -613,8 +611,8 @@ void SysInfo::updateBoardLED(const CRGB rgb) {
  * Adjusts the LED state (color, illumination style) in response to the overall system's state
  */
 void SysInfo::updateStatusLED() const {
-    const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_DIAG);
-    const CRGB colorCode = isOk ? CLR_ALL_OK : !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1) ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
+    const bool isOk = isSysStatus(SysStatus::Wifi | SysStatus::Ntp | SysStatus::Filesystem | SysStatus::Diag);
+    const CRGB colorCode = isOk ? CLR_ALL_OK : !isSysStatus(SysStatus::Setup0 | SysStatus::Setup1) ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
     updateBoardLED(colorCode);
 }
 
@@ -622,7 +620,7 @@ void SysInfo::updateStatusLED() const {
  * Flash status LED for as long as both cores are in setup mode
  */
 void state_led_begin() {
-    while (!sysInfo->isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1)) {
+    while (!sysInfo->isSysStatus(SysStatus::Setup0 | SysStatus::Setup1)) {
         SysInfo::updateBoardLED(CRGB::Black);
         taskDelay(640);
         SysInfo::updateBoardLED(CLR_SETUP_IN_PROGRESS);

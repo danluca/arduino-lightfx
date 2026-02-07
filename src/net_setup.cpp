@@ -144,7 +144,7 @@ bool wifi_connect() {
     }
     const bool result = wifiStatus == WL_CONNECTED;
     if (result) {
-        sysInfo->setSysStatus(SYS_STATUS_WIFI);
+        sysInfo->setSysStatus(SysStatus::Wifi);
         if (const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress()); resPing >= 0)
             log_info(F("Connected to WiFi after %d tries. Gateway ping successful: %d ms"), attCount, resPing);
         else
@@ -205,7 +205,7 @@ bool wifi_setup() {
  */
 bool wifi_check() {
     if (WiFi.status() != WL_CONNECTED) {
-        sysInfo->resetSysStatus(SYS_STATUS_WIFI);
+        sysInfo->resetSysStatus(SysStatus::Wifi);
         log_warn(F("WiFi Connection lost"));
         return false;
     }
@@ -213,12 +213,12 @@ bool wifi_check() {
     const int32_t rssi = WiFi.RSSI();
     const uint8_t wifiBars = barSignalLevel(rssi);
     if ((gwPingTime < 0) || (rssi < -73)) {
-        sysInfo->resetSysStatus(SYS_STATUS_WIFI);
+        sysInfo->resetSysStatus(SysStatus::Wifi);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
         log_warn(F("Ping test failed (%d) or signal strength low (%d dbM, %hhu bars), WiFi Connection unusable"), gwPingTime, rssi, wifiBars);
         return false;
     }
-    sysInfo->setSysStatus(SYS_STATUS_WIFI);
+    sysInfo->setSysStatus(SysStatus::Wifi);
     log_info(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%hhu bars)"), gwPingTime, rssi, wifiBars);
     return true;
 }
@@ -229,7 +229,7 @@ bool wifi_check() {
  * Should we invoke a board reset instead? (NVIC_SystemReset)
  */
 void wifi_reconnect() {
-    sysInfo->resetSysStatus(SYS_STATUS_WIFI);
+    sysInfo->resetSysStatus(SysStatus::Wifi);
     web::server.stop();
     timeService.end();
     delete ntpUDP;
@@ -259,7 +259,7 @@ void wifi_ensure() {
         wifi_reconnect();
         web::server_setup();
     }
-    if (sysInfo->isSysStatus(SYS_STATUS_WIFI))
+    if (sysInfo->isSysStatus(SysStatus::Wifi))
         postTimeSetupCheck();
     log_info(F("System status: %#hX"), sysInfo->getSysStatus());
 }

@@ -75,7 +75,7 @@ void deviceSetup() {
 
     readCalibrationInfo();
 
-    sysInfo->setSysStatus(SYS_STATUS_DIAG);
+    sysInfo->setSysStatus(SysStatus::Diag);
 
     taskDelay(250);
 

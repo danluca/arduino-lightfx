@@ -544,7 +544,7 @@ bool fx::rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay) {
  * <p>After 12am - reduce to 60% of full brightness, i.e., scale with 152</p>
  */
 uint8_t fx::adjustStripBrightness() {
-    if (!stripBrightnessLocked && sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+    if (!stripBrightnessLocked && sysInfo->isSysStatus(SysStatus::Wifi)) {
         const int hr = hour();
 
         // 6am–10pm: 0, 10pm–11pm: 204, 11pm–12am: 152, 12am–6am: 100

@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 #include "../lib/Utils/src/fixed_queue.h"
+#include "util.h"
 
 #define MAX_WATCHDOG_REBOOT_TIMESTAMPS  10      // max number of watchdog reboots to keep in the list
 typedef FixedQueue<time_t, MAX_WATCHDOG_REBOOT_TIMESTAMPS> WatchdogQueue;
@@ -49,7 +50,7 @@ class SysInfo {
     String ssid;
     IPAddress ipAddress;
     IPAddress ipGateway;
-    uint16_t status {0};
+    SysStatus status {SysStatus::None};
     bool cleanBoot {true};
     WatchdogQueue wdReboots{};   // keep only the last 10 watchdog reboots
     mutex_t mutex{};
@@ -86,10 +87,10 @@ public:
 
     void fillBoardId();
     [[nodiscard]] uint get_flash_capacity() const;
-    uint16_t setSysStatus(uint16_t bitMask);
-    uint16_t resetSysStatus(uint16_t bitMask);
-    [[nodiscard]] bool isSysStatus(uint16_t bitMask) const;
-    [[nodiscard]] uint16_t getSysStatus() const;
+    SysStatus setSysStatus(SysStatus bitMask);
+    SysStatus resetSysStatus(SysStatus bitMask);
+    [[nodiscard]] bool isSysStatus(SysStatus bitMask) const;
+    [[nodiscard]] SysStatus getSysStatus() const;
     void setWiFiInfo(::WiFiClass & wifi);
     void setSecureElementId(const String & secId);
     void begin();

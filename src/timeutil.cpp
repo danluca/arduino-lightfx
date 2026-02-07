@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 #include "timeutil.h"
@@ -50,9 +50,9 @@ void logTimeStatus(const time_t curTime, const Holiday& holiday) {
     const int offset = timeService.timezone()->getOffset(curTime);
 
     const String strTime = TimeFormat::asString(curTime);
-    
+
     log_info(F("%s %s time, time offset set to %d s, current time %s. NTP sync %s."), timeService.timezone()->getName(), savingsType,
-        offset, strTime.c_str(), sysInfo->isSysStatus(SYS_STATUS_NTP) ? "ok" : "failed (fallback to other source)");
+        offset, strTime.c_str(), sysInfo->isSysStatus(SysStatus::Ntp) ? "ok" : "failed (fallback to other source)");
     log_info(F("Current time %s (holiday adjusted to %s); system status %#hX"), strTime.c_str(), holidayToString(holiday), sysInfo->getSysStatus());
     log_info(F("Time Sync: local millis RTC %lld to unix millis %lld"), timeService.syncLocalTimeMillis(), timeService.syncUTCTimeMillis());
 #endif
@@ -66,12 +66,12 @@ void logTimeStatus(const time_t curTime, const Holiday& holiday) {
 bool handleNTPSuccess() {
     const time_t curTime = now();
     const bool isDaylightSavings = timeService.timezone()->isDST(curTime);
-    sysInfo->setSysStatus(SYS_STATUS_NTP);
-    
+    sysInfo->setSysStatus(SysStatus::Ntp);
+
     if (isDaylightSavings)
-        sysInfo->setSysStatus(SYS_STATUS_DST);
+        sysInfo->setSysStatus(SysStatus::Dst);
     else
-        sysInfo->resetSysStatus(SYS_STATUS_DST);
+        sysInfo->resetSysStatus(SysStatus::Dst);
 
     const Holiday holiday = paletteFactory.adjustHoliday(curTime);
     updateLoggingTimebase();
@@ -105,7 +105,7 @@ bool handleNTPSuccess() {
  * fallback to Party if not.
  */
 void handleNTPFailure() {
-    sysInfo->resetSysStatus(SYS_STATUS_NTP);
+    sysInfo->resetSysStatus(SysStatus::Ntp);
 
     if (const time_t wifiTime = WiFi.getTime(); wifiTime > 0) {
         timeService.setTime(wifiTime);
@@ -114,7 +114,7 @@ void handleNTPFailure() {
         updateLoggingTimebase();
         const bool isDaylightSavings = timeService.timezone()->isDST(wifiTime, false);
         if (isDaylightSavings)
-            sysInfo->setSysStatus(SYS_STATUS_DST);
+            sysInfo->setSysStatus(SysStatus::Dst);
         log_warn(F("No NTP; Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), TimeFormat::asString(curTime).c_str(),
             isDaylightSavings ? timeService.timezone()->getDSTShort() : timeService.timezone()->getSTDShort(), holidayToString(holiday));
         logTimeStatus(curTime, holiday);
@@ -135,7 +135,7 @@ void handleNTPFailure() {
 bool timeSetup() {
     timeBegin();
     timeService.applyTimezone(centralTime);
-    if (sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+    if (sysInfo->isSysStatus(SysStatus::Wifi)) {
         // WiFi module does not grab NTP time, and the result to getTime is an odd 10 hours after UTC epoch
         const bool ntpTimeAvailable = timeService.syncTimeNTP();
         if (ntpTimeAvailable)
@@ -214,7 +214,7 @@ Holiday buildHoliday(const time_t time) {
 }
 
 Holiday currentHoliday() {
-    return sysInfo->isSysStatus(SYS_STATUS_WIFI) ? buildHoliday(now()) : Party;
+    return sysInfo->isSysStatus(SysStatus::Wifi) ? buildHoliday(now()) : Party;
 }
 
 /**

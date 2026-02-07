@@ -125,7 +125,7 @@ void web_run() {
 void filesystem_setup() {
     SyncFsImpl.begin(LittleFS);
     log_info(F("Filesystem setup completed"));
-    sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
+    sysInfo->setSysStatus(SysStatus::Filesystem);
 }
 
 //===First core tasks===
@@ -170,7 +170,7 @@ void setup() {
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
     taskDelay(250);         // leave reasonable time to the alarm task to set up
     //enqueues the alarm setup event if time is ok
-    if (sysInfo->isSysStatus(SYS_STATUS_NTP))
+    if (sysInfo->isSysStatus(SysStatus::Ntp))
         enqueueAlarmSetup();
     else
         log_warn(F("System time not yet synchronized with NTP, skipping alarm setup; retrying later"));
@@ -178,7 +178,7 @@ void setup() {
     //wait for the other core to finish all initializations before allowing web server to respond to requests
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    sysInfo->setSysStatus(SYS_STATUS_SETUP0);
+    sysInfo->setSysStatus(SysStatus::Setup0);
     log_info(F("Main CORE0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
     logHeapStats();
@@ -217,7 +217,7 @@ void setup1() {
 
     // const TaskHandle_t core0 = xTaskGetHandle(csCORE0);    //retrieve a task handle for the first core
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
-    sysInfo->setSysStatus(SYS_STATUS_SETUP1);
+    sysInfo->setSysStatus(SysStatus::Setup1);
     log_info(F("Main CORE1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
     logHeapStats();
 }
