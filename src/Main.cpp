@@ -131,7 +131,8 @@ void filesystem_setup() {
 //===First core tasks===
 /**
  * Core 0 Setup LED strip and global data structures
- * NOTE: Core 0 task (setup and loop) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico\libraries\FreeRTOS\src\variantHooks.cpp#startFreeRTOS)
+ * NOTE: Core 0 task (setup and loop) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico/cores/rp2040/freertos/freertos-main.cpp#startFreeRTOS)
+ * NOTE: Manual updates to the pico framework code changed the stack size to 2048 bytes; this is how the code is compiled
  */
 void setup() {
     taskDelay(2000);    //safety delay
@@ -195,7 +196,11 @@ void loop() {
 //===Second core tasks===
 /**
  * Core 1 Setup communication and diagnostic tasks
- * NOTE: Core 1 task (setup1 and loop1) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico\libraries\FreeRTOS\src\variantHooks.cpp#startFreeRTOS)
+ * NOTE: Core 1 task (setup1 and loop1) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico/cores/rp2040/freertos/freertos-main.cpp#__core0 function - CORE1 task is launched by CORE0)
+ * NOTE: Manual updates to the pico framework code changed the stack size to 2048 bytes; this is how the code is compiled
+ * NOTE: Keeping this task priority to default (same as FX task) allows both of these to round-robin. RPi RP2350 boards don't have devices attached to I2C bus.
+ * Since FX task owns the watchdog, round-robin is much desirable as several functions on diagnostic side can take long time to complete and block execution - i.e. WiFi ping has 6 seconds timeout.
+ * Priority inversion risk: If FX task held a resource CORE1 needed, CORE1 would block waiting for a lower-priority task
  */
 void setup1() {
     //wait for the main core to notify us that the core components are ready (filesystem, logging, secure element), not interested in the notification value
@@ -203,15 +208,13 @@ void setup1() {
 
     logHeapStats();
     Scheduler.startTask(&fxTasks);
-    // taskDelay(250);         // leave reasonable time to FX task to set-up
+    taskDelay(250);         // leave reasonable time to FX task to set-up
 
     //wait for the main core to notify us that WiFi is ready, not interested in the notification value
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     diagSetup();
 
-    vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)+1);    //raise the priority of the diag task to allow uninterrupted I2C interactions
-    taskDelay(250);    // safety delay after priority bump
     // const TaskHandle_t core0 = xTaskGetHandle(csCORE0);    //retrieve a task handle for the first core
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
     sysInfo->setSysStatus(SYS_STATUS_SETUP1);

@@ -130,7 +130,7 @@ bool wifi_connect() {
     WiFi.setHostname(hostname);
     log_info(F("Connecting to WiFI '%s'"), ssid);  // print the network name (SSID);
     // attempt to connect to WiFi network:
-    // WiFi.setTimeout(10000);     // default timeout is 15 seconds - see WiFiClass.h
+    WiFi.setTimeout(7500);     // default timeout is 15 seconds - see WiFiClass.h
     uint attCount = 0;
     uint8_t wifiStatus = WiFi.begin(ssid, pass);
     while (wifiStatus != WL_CONNECTED) {

@@ -296,6 +296,7 @@ void scanClients() {
     // Ping all clients and update status
     for (const auto &client: fxBroadcastRecipients) {
         if (!client) continue;
+        //note one ping can take up to 7.5 seconds
         if (const int resPing = WiFi.ping(client->ip); resPing >= 0) {
             client->setOnline(true);
             log_info(F("Client %s is online"), client->ip.toString().c_str());
