@@ -6,14 +6,14 @@
 #define ARDUINO_LIGHTFX_UTIL_H
 
 enum class SysStatus : uint16_t {
-    None       = 0x0000,
-    Setup0     = 0x0001,
-    Setup1     = 0x0002,
-    Filesystem = 0x0004,
-    Wifi       = 0x0008,
-    Ntp        = 0x0010,
-    Dst        = 0x0020,
-    Diag       = 0x0040
+    None       = 0x0000,    // 0 << 0
+    Setup0     = 0x0001,    // 1 << 0
+    Setup1     = 0x0002,    // 1 << 1
+    Filesystem = 0x0004,    // 1 << 2
+    Wifi       = 0x0008,    // 1 << 3
+    Ntp        = 0x0010,    // 1 << 4
+    Dst        = 0x0020,    // 1 << 5
+    Diag       = 0x0040     // 1 << 6
 };
 
 // Enable bitwise operations for SysStatus

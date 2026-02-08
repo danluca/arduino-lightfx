@@ -90,43 +90,31 @@ void commInit() {
  * Receives events from the broadcast queue and executes appropriate handlers.
  */
 void commRun() {
-    if (bcQueue == nullptr) {
-        // Queue not initialized, skip processing
+    bcTaskMessage msg{};
+    //check for a message to be received, return if we don't have any at this time
+    if (pdFALSE == xQueueReceive(bcQueue, &msg, 0))
         return;
-    }
-    
-    // Process up to 5 messages per call for efficient queue draining (message batching)
-    // This ensures the queue doesn't overflow while avoiding starvation of other operations
-    constexpr uint8_t MAX_BATCH_SIZE = 5;
-    uint8_t messagesProcessed = 0;
-    
-    bcTaskMessage *msg = nullptr;
-    while (messagesProcessed < MAX_BATCH_SIZE && pdTRUE == xQueueReceive(bcQueue, &msg, 0)) {
-        //the reception was successful, hence the msg is not null anymore
-        switch (msg->event) {
-            case TIME_SETUP: timeSetupCheck(); break;
-            case TIME_UPDATE: timeUpdate(); break;
-            case FX_SYNC: fxBroadcast(msg->data); break;
-            case WIFI_ENSURE: wifi_ensure(); break;
-            case STATUS_LED_CHECK: state_led_update(); break;
-            case ENABLE_BROADCAST: {
-                const bool syncMode = static_cast<bool>(msg->data);
-                const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
-                fxBroadcastEnabled = syncMode; //we need this enabled before we post the event, if we're doing that
-                saveFxState();  //persist change immediately
-                if (masterEnabled)
-                    postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
-                break;
-            }
-            case SCAN_CLIENTS: scanClients(); break;
-            default:
-                log_error(F("Event type %hd not supported"), msg->event);
-                break;
-        }
 
-        delete msg;
-        msg = nullptr;
-        messagesProcessed++;
+    //the reception was successful, process the message
+    switch (msg.event) {
+        case TIME_SETUP: timeSetupCheck(); break;
+        case TIME_UPDATE: timeUpdate(); break;
+        case FX_SYNC: fxBroadcast(msg.data); break;
+        case WIFI_ENSURE: wifi_ensure(); break;
+        case STATUS_LED_CHECK: state_led_update(); break;
+        case ENABLE_BROADCAST: {
+            const bool syncMode = static_cast<bool>(msg.data);
+            const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
+            fxBroadcastEnabled = syncMode; //we need this enabled before we post the event, if we're doing that
+            saveFxState();  //persist change immediately
+            if (masterEnabled)
+                postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
+            break;
+        }
+        case SCAN_CLIENTS: scanClients(); break;
+        default:
+            log_error(F("Event type %hd not supported"), msg.event);
+            break;
     }
 }
 
@@ -135,34 +123,24 @@ void commRun() {
  * @param xTimer the timeUpdate timer that fired the callback
  */
 void enqueueTimeUpdate(TimerHandle_t xTimer) {
-    if (bcQueue == nullptr) {
-        log_error(F("Cannot enqueue TIME_UPDATE - bcQueue is not initialized"));
-        return;
-    }
-    auto *msg = new bcTaskMessage{TIME_UPDATE, 0};   //gets deleted in execute method upon message receipt
+    constexpr bcTaskMessage msg{TIME_UPDATE, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE) {
         log_error(F("Error sending TIME_UPDATE message to broadcast task for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
-        delete msg;
     }
     // else
-    //     log_infoln(F("Sent TIME_UPDATE event successfully to broadcast task for timer %d [%s]"), getTimerId(xTimer), getTimerName(xTimer));
+    //     log_info(F("Sent TIME_UPDATE event successfully to broadcast task for timer %hu [%s]"), getTimerId(xTimer), getTimerName(xTimer));
 }
 
 /**
  * Enqueues a FX_SYNC event onto the broadcast task - called from FX task.
  */
 void enqueueFxUpdate(const uint16_t index) {
-    if (bcQueue == nullptr) {
-        log_error(F("Cannot enqueue FX_SYNC - bcQueue is not initialized"));
-        return;
-    }
-    auto *msg = new bcTaskMessage{FX_SYNC, index};
+    const bcTaskMessage msg{FX_SYNC, index};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT)); qResult == pdFALSE) {
         log_error(F("Error sending FX_SYNC message to broadcast task for FX %d - error %ld"), index, qResult);
-        delete msg;
     }
     // else
-    //     log_infoln(F("Sent FX_SYNC event successfully to broadcast task for FX %d"), index);
+    //     log_info(F("Sent FX_SYNC event successfully to broadcast task for FX %d"), index);
 }
 
 /**
@@ -170,28 +148,18 @@ void enqueueFxUpdate(const uint16_t index) {
  * @param xTimer the timeSetup timer that fired the callback
  */
 void enqueueTimeSetup(TimerHandle_t xTimer) {
-    if (bcQueue == nullptr) {
-        log_error(F("Cannot enqueue TIME_SETUP - bcQueue is not initialized"));
-        return;
-    }
-    auto *msg = new bcTaskMessage{TIME_SETUP, 0};
+    constexpr bcTaskMessage msg{TIME_SETUP, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending TIME_SETUP message to BC queue for timer %s - error %ld"), xTimer == nullptr ? "on-demand" : getTimerName(xTimer), qResult);
-        delete msg;
     }
     // else
-    //     log_infoln(F("Sent TIME_SETUP event successfully to BC queue for timer %s"), xTimer == nullptr ? "on-demand" : getTimerName(xTimer));
+    //     log_info(F("Sent TIME_SETUP event successfully to BC queue for timer %s"), xTimer == nullptr ? "on-demand" : getTimerName(xTimer));
 }
 
 void enqueueWifiEnsure(TimerHandle_t xTimer) {
-    if (bcQueue == nullptr) {
-        log_error(F("Cannot enqueue WIFI_ENSURE - bcQueue is not initialized"));
-        return;
-    }
-    auto *msg = new bcTaskMessage{WIFI_ENSURE, 0};
+    constexpr bcTaskMessage msg{WIFI_ENSURE, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending WIFI_ENSURE message to BC queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
-        delete msg;
     }
 }
 
@@ -200,14 +168,9 @@ void enqueueWifiEnsure(TimerHandle_t xTimer) {
  * @param xTimer the statusLEDCheck timer that fired the callback
  */
 void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
-    if (bcQueue == nullptr) {
-        log_error(F("Cannot enqueue STATUS_LED_CHECK - bcQueue is not initialized"));
-        return;
-    }
-    auto *msg = new bcTaskMessage{STATUS_LED_CHECK, 0};
+    constexpr bcTaskMessage msg{STATUS_LED_CHECK, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending STATUS_LED_CHECK message to BC queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
-        delete msg;
     }
 }
 
@@ -216,14 +179,9 @@ void enqueueStatusLEDCheck(TimerHandle_t xTimer) {
  * @param xTimer the scanClients timer that fired the callback
  */
 void enqueueScanClients(TimerHandle_t xTimer) {
-    if (bcQueue == nullptr) {
-        log_error(F("Cannot enqueue SCAN_CLIENTS - bcQueue is not initialized"));
-        return;
-    }
-    auto *msg = new bcTaskMessage{SCAN_CLIENTS, 0};
+    constexpr bcTaskMessage msg{SCAN_CLIENTS, 0};
     if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
         log_error(F("Error sending SCAN_CLIENTS message to BC queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
-        delete msg;
     }
 }
 
@@ -300,8 +258,7 @@ void scanClients() {
         if (const int resPing = WiFi.ping(client->ip); resPing >= 0) {
             client->setOnline(true);
             log_info(F("Client %s is online"), client->ip.toString().c_str());
-        }
-        else {
+        } else {
             client->setOnline(false);
             log_warn(F("Client %s is offline"), client->ip.toString().c_str());
         }

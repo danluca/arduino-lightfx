@@ -30,9 +30,8 @@ void task_msg_setup() {
     }
 
     // create the broadcast queue, used by enqueue methods to send actions and execute method to receive and execute actions
-    // stores pointers to bcTaskMessage allocated by producers; consumer deletes after processing
-    // Queue size increased from 10 to 20 to handle higher message throughput during network activity
-    bcQueue = xQueueCreate(20, sizeof(bcTaskMessage*));
+    // stores bcTaskMessage by value; no allocations needed
+    bcQueue = xQueueCreate(20, sizeof(bcTaskMessage));
     if (bcQueue == nullptr) {
         log_error(F("Failed to create bcQueue - broadcast communication will not work"));
     }

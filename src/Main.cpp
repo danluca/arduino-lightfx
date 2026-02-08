@@ -25,13 +25,13 @@
  *   - CORE0 (default task - setup, loop) - Web and communications, lowered priority (5)
  *   - ALM - alarm processing and some misc actions (inherited priority - 5)
  *   - FS - filesystem interaction (raised priority from calling task - 7)
- *   - IdleCore0, USB - default kernel tasks
+ *   - IdleCore0 - default kernel tasks (high priority - 11), used to stop temporarily first core
+ * NOTE: The USB task is bound to first core (high priority - 10), however, the task is disabled in release mode.
  *
  * Second Core
- *   - CORE1 (default task - setup1, loop1) - Diag - diagnostic tasks, interaction with I2C devices, elevated priority (7)
+ *   - CORE1 (default task - setup1, loop1) - Diag - diagnostic tasks, interaction with I2C devices, regular priority (6)
  *   - FX - light effects (regular priority - 6)
- *   - Mic - microphone processing (regular priority - 6)
- *   - IdleCore1 - default kernel task
+ *   - IdleCore1 - default kernel task (high priority - 11), used to stop temporarily second core
  *
  * Following kernel tasks are set to run on either core (core affinity 0xFFFFFFFF):
  *   - SRL - serial logging, enabled for either core, started from a Core0 task (regular priority - 6)
@@ -199,7 +199,7 @@ void loop() {
  * NOTE: Core 1 task (setup1 and loop1) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico/cores/rp2040/freertos/freertos-main.cpp#__core0 function - CORE1 task is launched by CORE0)
  * NOTE: Manual updates to the pico framework code changed the stack size to 2048 bytes; this is how the code is compiled
  * NOTE: Keeping this task priority to default (same as FX task) allows both of these to round-robin. RPi RP2350 boards don't have devices attached to I2C bus.
- * Since FX task owns the watchdog, round-robin is much desirable as several functions on diagnostic side can take long time to complete and block execution - i.e. WiFi ping has 6 seconds timeout.
+ * Since FX task owns the watchdog, round-robin is much desirable as to avoid tasks starving each other.
  * Priority inversion risk: If FX task held a resource CORE1 needed, CORE1 would block waiting for a lower-priority task
  */
 void setup1() {
