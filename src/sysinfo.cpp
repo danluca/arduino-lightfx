@@ -62,6 +62,12 @@ TaskStatus_t* findTaskStatus(TaskStatus_t* taskStatusArray, const UBaseType_t ar
     return nullptr;
 }
 
+static int compareTasksByNumber(const void* a, const void* b) {
+    const auto* taskA = static_cast<const TaskStatus_t*>(a);
+    const auto* taskB = static_cast<const TaskStatus_t*>(b);
+    return static_cast<int>(taskA->xTaskNumber) - static_cast<int>(taskB->xTaskNumber);
+}
+
 /**
  * Logs detailed information about FreeRTOS task statistics and heap usage.
  * This method retrieves and processes data on tasks and heap memory allocation,
@@ -111,6 +117,7 @@ void logTaskStats() {
         // https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
         configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
         uxArraySize = uxTaskGetSystemState( curTaskStatusArray, uxArraySize, &ulTotalRunTime );
+        qsort(curTaskStatusArray, uxArraySize, sizeof(TaskStatus_t), compareTasksByNumber);
         uint64_t uxTotalRunTime = 0ul;  // Summing up times spent by ALL tasks (as reported by each task) should account for NUM_CORES - this value should be NUM_CORES*ulTotalRunTime
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
             uxTotalRunTime += (curTaskStatusArray[x].ulRunTimeCounter);

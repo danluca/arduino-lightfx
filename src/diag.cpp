@@ -216,7 +216,7 @@ void diagExecute() {
         case DIAG_INFO: logDiagInfo(); break;
 #endif
         default:
-            log_error(F("Event type %d not supported"), msg);
+            log_error(F("Event type %hd not supported"), msg);
             break;
     }
 }

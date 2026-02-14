@@ -50,12 +50,8 @@ static mutex_t discBoardsMutex;
 static std::vector<MDNSResponder::hMDNSService> serviceHandles;
 // storage for service queries
 static std::vector<MDNSResponder::hMDNSServiceQuery> serviceQueries;
-// Storage for discovered boards
+// Storage for discovered boards - by itself is not thread-safe
 static std::vector<DiscoveredBoard> discoveredBoards;
-
-const std::vector<DiscoveredBoard> & getDiscoveredBoards() {
-    return discoveredBoards;
-}
 
 /**
  * Callback for MDNS service query results - we're registering the new board into the discoveredBoards vector
@@ -292,25 +288,32 @@ void checkFirmwareVersion() {
 }
 
 #if MDNS_ENABLED==1
+
+// Read-only access - returns a copy
+std::vector<DiscoveredBoard> mdns_get_discovered_boards() {
+    CoreMutex lock(&discBoardsMutex);
+    return discoveredBoards;  // Copy elision/move will optimize this
+}
 /**
- * Trims the boards not seen in a while
+ * Trims the boards not seen in a while - call periodically from maintenance task
  */
-const std::vector<DiscoveredBoard> & mdns_trim_boards() {
+void mdns_trim_boards() {
     CoreMutex lock(&discBoardsMutex);   //we're modifying shared data (across multiple tasks) - lock it
     //remove boards last seen more than 60 minutes ago
-    discoveredBoards.erase(std::remove_if(discoveredBoards.begin(), discoveredBoards.end(),
+    discoveredBoards.erase(
+std::remove_if(discoveredBoards.begin(), discoveredBoards.end(),
         [](const DiscoveredBoard& board) {
             const bool bDel = (millis() - board.lastSeen) > MDNS_CACHING_TIMEOUT_MS;
             if (bDel)
                 log_info(F("Removing board %s (%s) from list - not seen in last %d minutes"), board.hostname.c_str(), board.ip.toString().c_str(), MDNS_CACHING_TIMEOUT_MS/60000);
             return bDel;
-        }), discoveredBoards.end());
+        }),
+discoveredBoards.end());
 
     log_info(F("Total discovered boards: %d"), discoveredBoards.size());
-    return discoveredBoards;
 }
 #else
-const std::vector<DiscoveredBoard> & mdns_discover_boards() {
+const std::vector<DiscoveredBoard> & mdns_get_discovered_boards() {
     log_warn(F("mDNS is not enabled, cannot discover boards"));
     return std::vector<DiscoveredBoard>{};
 }

@@ -352,10 +352,9 @@ void web::handlePutConfig(WebClient &client) {
 #endif
         {
             const bool syncMode = doc[csBroadcast].as<bool>();
-            auto *msg = new bcTaskMessage{ENABLE_BROADCAST, static_cast<uint16_t>(syncMode)};
+            auto msg = bcTaskMessage{ENABLE_BROADCAST, static_cast<uint16_t>(syncMode)};
             if ((qResult = xQueueSend(bcQueue, &msg, 0)) != pdTRUE) {
                 log_error(F("Error sending ENABLE_BROADCAST message to COMM queue with value %d - error %ld"), syncMode, qResult);
-                delete msg;
             } else
                 upd[csBroadcast] = syncMode;
         }

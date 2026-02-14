@@ -322,7 +322,7 @@ int getAverageTimeDrift() {
     if (timeSyncs.size() < 2)
         return 0;
     const time_t start = timeSyncs.begin()->unixMillis;
-    const time_t end = timeSyncs.end()[-1].unixMillis;       // end() is past the last element, -1 for the last element
+    const time_t end = timeSyncs.back().unixMillis;
     return static_cast<int>(getTotalDrift() * 3600000L / static_cast<long>(end - start));
 }
 
@@ -334,6 +334,6 @@ int getLastTimeDrift() {
     if (timeSyncs.size() < 2)
         return 0;
     const TimeSync &lastSync = timeSyncs.back();
-    const TimeSync &prevSync = timeSyncs.end()[-2];   // end() is past the last element, -1 for last element, -2 for second-last
+    const TimeSync &prevSync = timeSyncs.end()[-2];
     return getDrift(prevSync, lastSync);
 }

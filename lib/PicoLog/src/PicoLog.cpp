@@ -124,8 +124,9 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     // Use a fresh copy of args for formatting to be safe
     va_list argsFormat;
     va_copy(argsFormat, args);
-    sz += vsnprintf(buf + sz, payloadCap, format, argsFormat);  //at most payloadCap-1 bytes are written; terminated with null character
+    const int wr = vsnprintf(buf + sz, payloadCap, format, argsFormat);  //at most payloadCap-1 bytes are written; terminated with null character
     va_end(argsFormat);
+    sz += wr < 0 ? 0 : wr >= payloadCap ? payloadCap-1 : wr;
 
     // Ensure we don't write past our buffer; clamp sz to actual capacity
     if (const size_t maxWritable = (heapUsed ? needed : STACK_CAP) - 1; sz > maxWritable) sz = maxWritable;
@@ -169,7 +170,8 @@ size_t PicoLog::printTimestamp(char *msg) const {
     const unsigned long Hours = (secs % SECS_PER_DAY) / SECS_PER_HOUR;
 
     // Time as a string
-    return snprintf(msg, 20, fmtTimestamp, Hours, Minutes, Seconds, MilliSeconds);
+    const int sz = snprintf(msg, 20, fmtTimestamp, Hours, Minutes, Seconds, MilliSeconds);
+    return  sz < 0 ? 0 : sz >= 20 ? 19 : sz;
 }
 
 /**
@@ -186,11 +188,15 @@ size_t PicoLog::printThread(char *msg) {
     vTaskGetInfo(nullptr, &taskStatus, pdFALSE, eRunning);
     const uint coreNumber = get_core_num();
     if (taskStatus.uxCurrentPriority == taskStatus.uxBasePriority) {
-        const size_t sz = snprintf(nullptr, 0, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
-        return snprintf(msg, sz + 1, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
+        const int sz = snprintf(nullptr, 0, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
+        if (sz < 0) return 0;
+        const int wr = snprintf(msg, sz + 1, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
+        return wr < 0 ? 0 : wr >= sz ? sz : wr;
     }
-    const size_t sz = snprintf(nullptr, 0, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
-    return snprintf(msg, sz + 1, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+    const int sz = snprintf(nullptr, 0, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+    if (sz < 0) return 0;
+    const int wr = snprintf(msg, sz + 1, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+    return wr < 0 ? 0 : wr >= sz ? sz : wr;
 }
 
 /**
@@ -206,7 +212,8 @@ size_t PicoLog::printThread(char *msg) {
 size_t PicoLog::printLevel(const LogLevel level, char *msg) {
     // Show log description based on log level
     const char *cLevel = logLevelTags + level;
-    return snprintf(msg, 5, fmtLevel, *cLevel);
+    const int sz = snprintf(msg, 5, fmtLevel, *cLevel);
+    return sz < 0 ? 0 : sz >= 5 ? 4 : sz;
 }
 
 /**

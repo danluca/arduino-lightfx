@@ -15,8 +15,6 @@
 #include "log.h"
 #endif
 
-#define BCAST_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
-
 std::atomic<bool> fxBroadcastEnabled = false;
 volatile BroadcastState broadcastState = Uninitialized;
 
@@ -136,7 +134,7 @@ void enqueueTimeUpdate(TimerHandle_t xTimer) {
  */
 void enqueueFxUpdate(const uint16_t index) {
     const bcTaskMessage msg{FX_SYNC, index};
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, pdMS_TO_TICKS(BCAST_QUEUE_TIMEOUT)); qResult == pdFALSE) {
+    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE) {
         log_error(F("Error sending FX_SYNC message to broadcast task for FX %d - error %ld"), index, qResult);
     }
     // else
@@ -190,8 +188,8 @@ void enqueueScanClients(TimerHandle_t xTimer) {
  */
 void scanClients() {
 #if MDNS_ENABLED == 1
-    // Discover boards via mDNS
-    const std::vector<DiscoveredBoard>& discoveredBoards = mdns_trim_boards();
+    mdns_trim_boards();     //ensure to remove stale boards
+    const std::vector<DiscoveredBoard> discoveredBoards = mdns_get_discovered_boards();
     const auto selfAddr = sysInfo->refIpAddress();
 
     // 1. Update/Add clients from mDNS discovery
@@ -216,11 +214,6 @@ void scanClients() {
     // 2. Remove clients that are no longer discovered and don't respond to ping
     auto it = fxBroadcastRecipients.begin();
     while (it != fxBroadcastRecipients.end()) {
-        if (!*it) {
-            it = fxBroadcastRecipients.erase(it);
-            continue;
-        }
-
         bool discovered = false;
         for (const auto &board : discoveredBoards) {
             if (board.ip == (*it)->ip) {
@@ -253,7 +246,6 @@ void scanClients() {
 
     // Ping all clients and update status
     for (const auto &client: fxBroadcastRecipients) {
-        if (!client) continue;
         //note one ping can take up to 7.5 seconds
         if (const int resPing = WiFi.ping(client->ip); resPing >= 0) {
             client->setOnline(true);
@@ -425,8 +417,8 @@ void timeUpdate() {
     }
     if (timeSyncs.size() > 1) {
         //log the current drift
-        const auto fromSync = timeSyncs.end()[-2];  //second before last
-        const auto toSync = timeSyncs.end()[-1];    //last
+        const auto fromSync = timeSyncs.end()[-2];
+        const auto toSync = timeSyncs.back();
         if (const int driftMs = getDrift(fromSync, toSync); abs(driftMs) > SECS_PER_HOUR * 1000) {
             log_warn(F("Drift between %s and %s (%lld ms) is too high (%d ms; threshold is 1 hr) - no adjustments made to time base"), TimeFormat::asStringMs(fromSync.unixMillis).c_str(),
                 TimeFormat::asStringMs(toSync.unixMillis).c_str(), toSync.unixMillis-fromSync.unixMillis, driftMs);

@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_NET_SETUP_H
 #define LIGHTFX_NET_SETUP_H
@@ -18,8 +18,8 @@ struct DiscoveredBoard {
 
 bool wifi_setup();
 void wifi_ensure();
-const std::vector<DiscoveredBoard> & mdns_trim_boards();
-const std::vector<DiscoveredBoard>& getDiscoveredBoards();
+std::vector<DiscoveredBoard> mdns_get_discovered_boards();
+void mdns_trim_boards();
 
 void printSuccessfulWifiStatus();
 void checkFirmwareVersion();
