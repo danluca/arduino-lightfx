@@ -8,6 +8,8 @@
 #include "transition.h"
 #include "util.h"
 #include "task_msg.h"
+#include "constants.hpp"
+#include <hardware/watchdog.h>
 
 //~ Global variables definition
 using namespace fx;
@@ -233,6 +235,7 @@ void switchToRandomEffect() {
 //FX Run -------
 void fx_run() {
     static bool isFirmwareUpgrading = false;
+    watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageEnter;
 
     FxActionMessage msg{};
     if (pdTRUE == xQueueReceive(fxQueue, &msg, 0)) {
@@ -241,6 +244,7 @@ void fx_run() {
             case MANUAL_FX: fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data)); break;
             case COLOR_THEME: paletteFactory.setHoliday(static_cast<Holiday>(msg.data)); break;
             case SLEEP_ENABLED: fxRegistry.enableSleep(static_cast<bool>(msg.data)); break;
+            case SAVE_STATE: saveFxState(); break;
             case STRIP_BRIGHTNESS: {
                 const auto br = static_cast<uint8_t>(msg.data);
                 stripBrightnessLocked = br > 0;
@@ -251,15 +255,19 @@ void fx_run() {
                 log_error(F("Fx Action %hu not supported"), msg.action);
         }
     }
+    watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterQueue;
 
-    if (ulTaskNotifyTake(pdTRUE, 1) == OTA_UPGRADE_NOTIFY) {
+    if (ulTaskNotifyTake(pdTRUE, 0) == OTA_UPGRADE_NOTIFY) {
         log_info(F("OTA upgrade light pattern"));
         isFirmwareUpgrading = true;
     }
+    watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterOtaCheck;
 
     if (isFirmwareUpgrading) {
+        watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageFirmwareUpgrade;
         displayFirmwareUpgradePattern();
         watchdogPing();
+        watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
         return;
     }
 
@@ -271,8 +279,11 @@ void fx_run() {
         switchToRandomEffect();
     }
 
+    watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageBeforeLoop;
     fxRegistry.loop();
+    watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterLoop;
     watchdogPing();
+    watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
 }
 
 // FxSchedule functions

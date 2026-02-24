@@ -126,7 +126,7 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     va_copy(argsFormat, args);
     const int wr = vsnprintf(buf + sz, payloadCap, format, argsFormat);  //at most payloadCap-1 bytes are written; terminated with null character
     va_end(argsFormat);
-    sz += wr < 0 ? 0 : wr >= payloadCap ? payloadCap-1 : wr;
+    sz += wr < 0 ? 0 : (static_cast<size_t>(wr) >= payloadCap ? payloadCap-1 : wr);
 
     // Ensure we don't write past our buffer; clamp sz to actual capacity
     if (const size_t maxWritable = (heapUsed ? needed : STACK_CAP) - 1; sz > maxWritable) sz = maxWritable;

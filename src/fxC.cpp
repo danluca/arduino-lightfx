@@ -9,12 +9,12 @@ using namespace FxC;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxc1Desc PROGMEM = {EFFECT_FACTORY(FxC1), "FXC1", "blend between two concurrent animations", 35};
-static const EffectInfo fxc2Desc PROGMEM = {EFFECT_FACTORY(FxC2), "FXC2", "blur function", 5};
-static const EffectInfo fxc3Desc PROGMEM = {EFFECT_FACTORY(FxC3), "FXC3", "Perlin Noise for moving up and down the strand", 4};
-static const EffectInfo fxc4Desc PROGMEM = {EFFECT_FACTORY(FxC4), "FxC4", "lightnings", 9};
-static const EffectInfo fxc5Desc PROGMEM = {EFFECT_FACTORY(FxC5), "FXC5", "matrix", 20};
-static const EffectInfo fxc6Desc PROGMEM = {EFFECT_FACTORY(FxC6), "FXC6", "one sine", 20};
+static const EffectInfo fxc1Desc = {EFFECT_FACTORY(FxC1), "FXC1", "blend between two concurrent animations", 35};
+static const EffectInfo fxc2Desc = {EFFECT_FACTORY(FxC2), "FXC2", "blur function", 5};
+static const EffectInfo fxc3Desc = {EFFECT_FACTORY(FxC3), "FXC3", "Perlin Noise for moving up and down the strand", 4};
+static const EffectInfo fxc4Desc = {EFFECT_FACTORY(FxC4), "FxC4", "lightnings", 9};
+static const EffectInfo fxc5Desc = {EFFECT_FACTORY(FxC5), "FXC5", "matrix", 20};
+static const EffectInfo fxc6Desc = {EFFECT_FACTORY(FxC6), "FXC6", "one sine", 20};
 
 void FxC::fxRegister() {
     fxRegistry.registerEffect(&fxc1Desc);

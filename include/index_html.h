@@ -1,5 +1,5 @@
 #pragma once
-inline constexpr auto index_html PROGMEM = R"~~~(
+inline constexpr auto index_html = R"~~~(
 <!DOCTYPE html>
 <html lang="en">
 

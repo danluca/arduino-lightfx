@@ -117,7 +117,7 @@ bool EffectTransition::offWipe(bool rightDir) {
 bool EffectTransition::offHalfWipe(bool inward) {
     bool allOff = false;
     EVERY_N_MILLIS(60) {
-        constexpr uint16_t halfSize = NUM_PIXELS/2;
+        static constexpr uint16_t halfSize = NUM_PIXELS/2;
         CRGBSet stripH1(leds, halfSize);
         CRGBSet stripH2(leds, halfSize, NUM_PIXELS-1);
         if (inward) {
@@ -163,8 +163,8 @@ bool EffectTransition::offFade() {
 bool EffectTransition::offSplit(bool outward) {
     bool allOff = false;
     EVERY_N_MILLIS(50) {
-        constexpr uint16_t halfSize = NUM_PIXELS/2;
-        constexpr uint16_t maxIndex = NUM_PIXELS-1;
+        static constexpr uint16_t halfSize = NUM_PIXELS/2;
+        static constexpr uint16_t maxIndex = NUM_PIXELS-1;
         const uint16_t offSegSize = 1+offPosIndex/8;
         CRGBSet s1(leds, outward?offPosIndex:qsuba(halfSize-1, offPosIndex), outward?(offPosIndex+offSegSize):qsuba(halfSize-1, offPosIndex+offSegSize));
         CRGBSet s2(leds, outward?(maxIndex-offPosIndex):capu(halfSize+offPosIndex, maxIndex), outward?(maxIndex-offPosIndex-offSegSize):capu(halfSize+offPosIndex+offSegSize, maxIndex));

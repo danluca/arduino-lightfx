@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef RP2040_LIGHTFX_TASK_MSG_H
@@ -17,7 +17,7 @@ extern QueueHandle_t diagQueue;
 
 enum AlmAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO, HOLIDAY_UPDATE};
 
-enum FxAction:uint8_t {AUTO_FX, MANUAL_FX, COLOR_THEME, STRIP_BRIGHTNESS, AUDIO_THRESHOLD, SLEEP_ENABLED, AUDIO_CHANGE};
+enum FxAction:uint8_t {AUTO_FX, MANUAL_FX, COLOR_THEME, STRIP_BRIGHTNESS, AUDIO_THRESHOLD, SLEEP_ENABLED, AUDIO_CHANGE, SAVE_STATE};
 struct FxActionMessage {
     FxAction action;
     uint32_t data;
@@ -33,7 +33,7 @@ struct bcTaskMessage {
     uint16_t data;
 };
 
-enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO, RESET_CALIBRATION};
+enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO, RESET_CALIBRATION, FX_HEARTBEAT};
 
 enum MikeAction:uint8_t {AUDIO_THRESHOLD_UPDATE};
 struct AudioActionMessage {

@@ -31,19 +31,19 @@
 
 using namespace web;
 // using namespace colTheme;
-static constexpr auto hdCacheControl PROGMEM = "Cache-Control";
-static constexpr auto hdCacheStatic PROGMEM = "public, max-age=2592000, immutable";
-static constexpr auto hdCacheJson PROGMEM = "no-cache, no-store";
-static constexpr auto serverAgent PROGMEM = "rp2040-luca/1.0.0";
-static constexpr auto hdFmtDate PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d CST";
-static constexpr auto hdFmtContentDisposition PROGMEM = "inline; filename=\"%s\"";
-static constexpr auto msgRequestNotMapped PROGMEM = "URI not mapped to a handler on this server";
-// static constexpr auto configJsonFilename PROGMEM = "config.json";
-static constexpr auto statusJsonFilename PROGMEM = "status.json";
-static constexpr auto tasksJsonFilename PROGMEM = "tasks.json";
-static constexpr auto filesJsonFilename PROGMEM = "files.json";
-static constexpr auto authToken PROGMEM = "KlFpc1dAdFd0eDRXdkVSZg";
-static constexpr uint16_t serverPort PROGMEM = 80;
+static constexpr auto hdCacheControl = "Cache-Control";
+static constexpr auto hdCacheStatic = "public, max-age=2592000, immutable";
+static constexpr auto hdCacheJson = "no-cache, no-store";
+static constexpr auto serverAgent = "rp2040-luca/1.0.0";
+static constexpr auto hdFmtDate = "%4d-%02d-%02d %02d:%02d:%02d CST";
+static constexpr auto hdFmtContentDisposition = "inline; filename=\"%s\"";
+static constexpr auto msgRequestNotMapped = "URI not mapped to a handler on this server";
+// static constexpr auto configJsonFilename = "config.json";
+static constexpr auto statusJsonFilename = "status.json";
+static constexpr auto tasksJsonFilename = "tasks.json";
+static constexpr auto filesJsonFilename = "files.json";
+static constexpr auto authToken = "KlFpc1dAdFd0eDRXdkVSZg";
+static constexpr uint16_t serverPort = 80;
 #if MDNS_ENABLED==1
 static auto mdnsStatus = false;
 #endif

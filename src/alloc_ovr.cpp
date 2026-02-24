@@ -8,12 +8,14 @@
 #include "task.h"
 #include "pico/stdlib.h"
 #include "hardware/watchdog.h"
+#include "constants.hpp"
 
  /**
   *  @brief Warm-reboots the chip in normal mode
   *  See RP2040Support.h (cores/rp2040/RP2040Support.h)
   */
 [[noreturn]] void reboot() {
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerReboot;
     watchdog_reboot(0, 0, 10);
     while (true)
         tight_loop_contents();

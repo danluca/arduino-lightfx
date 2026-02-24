@@ -11,11 +11,11 @@ using namespace FxF;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxf1Desc PROGMEM = {EFFECT_FACTORY(FxF1), "FXF1", "beat wave", 12};
-static const EffectInfo fxf2Desc PROGMEM = {EFFECT_FACTORY(FxF2), "FXF2", "Halloween breathe with various color blends", 32};
-static const EffectInfo fxf3Desc PROGMEM = {EFFECT_FACTORY(FxF3), "FXF3", "Eye Blink", 32};
-static const EffectInfo fxf4Desc PROGMEM = {EFFECT_FACTORY(FxF4), "FXF4", "Bouncy segments", 32};
-static const EffectInfo fxf5Desc PROGMEM = {EFFECT_FACTORY(FxF5), "FXF5", "Fireworks", 37};
+static const EffectInfo fxf1Desc = {EFFECT_FACTORY(FxF1), "FXF1", "beat wave", 12};
+static const EffectInfo fxf2Desc = {EFFECT_FACTORY(FxF2), "FXF2", "Halloween breathe with various color blends", 32};
+static const EffectInfo fxf3Desc = {EFFECT_FACTORY(FxF3), "FXF3", "Eye Blink", 32};
+static const EffectInfo fxf4Desc = {EFFECT_FACTORY(FxF4), "FXF4", "Bouncy segments", 32};
+static const EffectInfo fxf5Desc = {EFFECT_FACTORY(FxF5), "FXF5", "Fireworks", 37};
 
 void FxF::fxRegister() {
     fxRegistry.registerEffect(&fxf1Desc);
@@ -38,7 +38,7 @@ void FxF1::setup() {
 
 void FxF1::run() {
     EVERY_N_MILLISECONDS(speed) {
-        constexpr uint8_t dotSize = 2;
+        static constexpr uint8_t dotSize = 2;
         tpl.fadeToBlackBy(fade);
 
         const uint16_t w1 = (beatsin16(12, 0, tpl.size()-dotSize-1) + beatsin16(24, 0, tpl.size()-dotSize-1))/2;
@@ -247,7 +247,7 @@ void EyeBlink::step() {
     if (!isActive())
         return;
     const CRGBSet eye = (*holderSet)(pos, pos+size-1);
-    constexpr uint8_t halfEyeSize = eyeSize/2;
+    static constexpr uint8_t halfEyeSize = eyeSize/2;
     switch (curStep) {
         case OpenLid:
             curBrightness = qadd8(curBrightness, brIncr);
@@ -473,7 +473,7 @@ void FxF5::setup() {
  * Send up a flare
  */
 void FxF5::flare() {
-    constexpr ushort flareSparksCount = 3;
+    static constexpr ushort flareSparksCount = 3;
     float flareStep = flarePos = 0;
     bFade = random8() % 2;
     curPos = random16(tpl.size()*explRangeLow/10, tpl.size()*explRangeHigh/10);

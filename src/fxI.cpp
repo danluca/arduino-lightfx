@@ -13,12 +13,12 @@ using namespace FxI;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxi1Desc PROGMEM = {EFFECT_FACTORY(FxI1), "FXI1", "Ping Pong", 7};
-static const EffectInfo fxi2Desc PROGMEM = {EFFECT_FACTORY(FxI2), "FXI2", "Pacifica - gentle ocean waves", 9};
-static const EffectInfo fxi3Desc PROGMEM = {EFFECT_FACTORY(FxI3), "FXI3", "Bouncy Ball", 10};
-static const EffectInfo fxi4Desc PROGMEM = {EFFECT_FACTORY(FxI4), "FXI4", "Audio-seeded VU meter", 12};
-static const EffectInfo fxi5Desc PROGMEM = {EFFECT_FACTORY(FxI5), "FXI5", "Shore waves with backwash", 10};
-static const EffectInfo fxi6Desc PROGMEM = {EFFECT_FACTORY(FxI6), "FXI6", "Bowling alley", 9};
+static const EffectInfo fxi1Desc = {EFFECT_FACTORY(FxI1), "FXI1", "Ping Pong", 7};
+static const EffectInfo fxi2Desc = {EFFECT_FACTORY(FxI2), "FXI2", "Pacifica - gentle ocean waves", 9};
+static const EffectInfo fxi3Desc = {EFFECT_FACTORY(FxI3), "FXI3", "Bouncy Ball", 10};
+static const EffectInfo fxi4Desc = {EFFECT_FACTORY(FxI4), "FXI4", "Audio-seeded VU meter", 12};
+static const EffectInfo fxi5Desc = {EFFECT_FACTORY(FxI5), "FXI5", "Shore waves with backwash", 10};
+static const EffectInfo fxi6Desc = {EFFECT_FACTORY(FxI6), "FXI6", "Bowling alley", 9};
 
 /**
  * Register FxI effects

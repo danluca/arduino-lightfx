@@ -10,8 +10,8 @@
 #include "diag.h"
 #include "log.h"
 
-constexpr auto fmtDate PROGMEM = "%4d-%02d-%02d";
-constexpr auto fmtTime PROGMEM = "%02d:%02d:%02d";
+constexpr auto fmtDate = "%4d-%02d-%02d";
+constexpr auto fmtTime = "%02d:%02d:%02d";
 constexpr size_t TIME_BUFFER_SIZE = 32;
 constexpr auto TIME_ZONE_NAME = "America/Chicago";
 constexpr TimeChangeRule cdt {.name = "CDT", .week = Second, .dow = Sun, .month = Mar, .hour = 2, .offsetMin = -300};

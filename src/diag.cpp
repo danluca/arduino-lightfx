@@ -7,6 +7,7 @@
 #include <TimeLib.h>
 #include <queue.h>
 #include <hardware/adc.h>
+#include <hardware/watchdog.h>
 #include <FastLED.h>
 #include "SchedulerExt.h"
 #include "diag.h"
@@ -35,6 +36,7 @@ static uint16_t tmrSysTempId = 11;
 static uint16_t tmrSysVoltageId = 12;
 static uint16_t tmrSaveSysInfoId = 13;
 static uint16_t tmrDiagInfoId = 14;
+static uint16_t tmrFxHeartbeatId = 15;
 
 // declarations ahead
 void deviceSetup();
@@ -47,6 +49,8 @@ void enqueueSysTemp(TimerHandle_t xTimer);
 void enqueueSysVoltage(TimerHandle_t xTimer);
 void enqueueSaveSysInfo(TimerHandle_t xTimer);
 void enqueueDiagInfo(TimerHandle_t xTimer);
+void enqueueFxHeartbeat(TimerHandle_t xTimer);
+void checkFxHeartbeat();
 
 // diag task definition - priority is overwritten during setup, see diagSetup
 // TaskDef diagDef {deviceSetup, diagExecute, 3072, "Diag", 1, CORE_1};
@@ -112,6 +116,12 @@ void diagSetup() {
         log_error(F("Cannot create diagInfo timer - Ignored."));
     else if (xTimerStart(thDiagInfo, 0) != pdPASS)
         log_error(F("Cannot start the diagInfo timer - Ignored."));
+    //monitor FX heartbeat for stalls - repeated each 1 second
+    const TimerHandle_t thFxHeartbeat = xTimerCreate("fxHeartbeat", pdMS_TO_TICKS(1000), pdTRUE, &tmrFxHeartbeatId, enqueueFxHeartbeat);
+    if (thFxHeartbeat == nullptr)
+        log_error(F("Cannot create fxHeartbeat timer - Ignored."));
+    else if (xTimerStart(thFxHeartbeat, 0) != pdPASS)
+        log_error(F("Cannot start the fxHeartbeat timer - Ignored."));
     //save the current system info event to filesystem - repeated each 90 seconds
     const TimerHandle_t thSaveSysInfo = xTimerCreate("saveSysInfo", pdMS_TO_TICKS(90 * 1000), pdTRUE, &tmrSaveSysInfoId, enqueueSaveSysInfo);
     if (thSaveSysInfo == nullptr)
@@ -132,7 +142,7 @@ void diagSetup() {
  * @param xTimer the rndEntropy timer that fired the callback
  */
 void enqueueRndEntropy(TimerHandle_t xTimer) {
-    constexpr DiagAction msg = RND_ENTROPY;
+    static constexpr DiagAction msg = RND_ENTROPY;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending RND_ENTROPY message to diagnostic task for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
     // else
@@ -144,7 +154,7 @@ void enqueueRndEntropy(TimerHandle_t xTimer) {
  * @param xTimer the sysTemp timer that fired the callback
  */
 void enqueueSysTemp(TimerHandle_t xTimer) {
-    constexpr DiagAction msg = SYS_TEMP;
+    static constexpr DiagAction msg = SYS_TEMP;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending SYS_TEMP message to diagnostic task for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
     // else
@@ -156,7 +166,7 @@ void enqueueSysTemp(TimerHandle_t xTimer) {
  * @param xTimer the sysVoltage timer that fired the callback
  */
 void enqueueSysVoltage(TimerHandle_t xTimer) {
-    constexpr DiagAction msg = SYS_VOLTAGE;
+    static constexpr DiagAction msg = SYS_VOLTAGE;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending SYS_VOLTAGE message to diagnostic task for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
     // else
@@ -168,7 +178,7 @@ void enqueueSysVoltage(TimerHandle_t xTimer) {
  * @param xTimer the saveSysInfo timer that fired the callback
  */
 void enqueueSaveSysInfo(TimerHandle_t xTimer) {
-    constexpr AlmAction msg = SAVE_SYS_INFO;
+    static constexpr AlmAction msg = SAVE_SYS_INFO;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending SAVE_SYS_INFO message to ALM queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
     // else
@@ -181,11 +191,21 @@ void enqueueSaveSysInfo(TimerHandle_t xTimer) {
  * @param xTimer the diagInfo timer that fired the callback
  */
 void enqueueDiagInfo(TimerHandle_t xTimer) {
-    constexpr DiagAction msg = DIAG_INFO;
+    static constexpr DiagAction msg = DIAG_INFO;
     if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
         log_error(F("Error sending DIAG_INFO message to DIAG queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
     // else
     //     log_info(F("Sent DIAG_INFO event successfully to DIAG queue for timer %hu [%s]"), getTimerId(xTimer), getTimerName(xTimer));
+}
+
+/**
+ * Callback for fxHeartbeat timer - this is called from Timer task. Enqueues a FX_HEARTBEAT message for the diagnostic task.
+ * @param xTimer the fxHeartbeat timer that fired the callback
+ */
+void enqueueFxHeartbeat(TimerHandle_t xTimer) {
+    static constexpr DiagAction msg = FX_HEARTBEAT;
+    if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
+        log_error(F("Error sending FX_HEARTBEAT message to DIAG queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
 }
 
 /**
@@ -212,6 +232,7 @@ void diagExecute() {
             log_info(F("Calibration parameters reset for CPU & Board temperature, %s file removed"), calibFileName);
             break;
         }
+        case FX_HEARTBEAT: checkFxHeartbeat(); break;
 #if LOGGING_ENABLED == 1
         case DIAG_INFO: logDiagInfo(); break;
 #endif
@@ -322,7 +343,7 @@ bool calibrate() {
  * @return measurement object with line voltage, current time and Volts unit
  */
 Measurement controllerVoltage() {
-    constexpr uint avgSize = 8;  //we'll average 8 readings back to back
+    static constexpr uint avgSize = 8;  //we'll average 8 readings back to back
     uint valSum = 0;
     for (uint x = 0; x < avgSize; x++)
         valSum += analogRead(A0);
@@ -339,7 +360,7 @@ Measurement controllerVoltage() {
  */
 MeasurementPair chipTemperature() {
     const uint curAdc = adc_get_selected_input();
-    constexpr uint avgSize = 8;   //we'll average 8 readings back to back
+    static constexpr uint avgSize = 8;   //we'll average 8 readings back to back
 
     adc_select_input(4);    //internal temperature sensor is on ADC channel 4
     uint valSum = 0;
@@ -541,5 +562,26 @@ void logDiagInfo() {
     //log task and RAM metrics
     logTaskStats();
     //logSystemInfo();
+}
+
+void checkFxHeartbeat() {
+    static uint32_t lastHeartbeatMs = 0;
+    static bool fxStallReported = false;
+    const uint32_t nowMs = millis();
+    const uint32_t heartbeatMs = watchdog_hw->scratch[kFxHeartbeatScratchIndex];
+    if (heartbeatMs == 0u)
+        return;
+    if (heartbeatMs != lastHeartbeatMs) {
+        lastHeartbeatMs = heartbeatMs;
+        fxStallReported = false;
+        return;
+    }
+    constexpr uint32_t fxStallWarnMs = 2500u;
+    if (!fxStallReported && (nowMs - heartbeatMs) > fxStallWarnMs) {
+        fxStallReported = true;
+        watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerFxStall;
+        log_warn(F("FX heartbeat stalled for %lu ms - capturing task stats"), static_cast<unsigned long>(nowMs - heartbeatMs));
+        logTaskStats();
+    }
 }
 

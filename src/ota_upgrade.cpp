@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "ota_upgrade.h"
@@ -6,6 +6,7 @@
 #include <LittleFS.h>
 #include <PicoLog.h>
 #include <PicoOTA.h>
+#include "hardware/watchdog.h"
 #include "constants.hpp"
 #include "util.h"
 #include "log.h"
@@ -77,5 +78,6 @@ void fw_upgrade() {
 #endif
     //restart the system
     taskDelay(1000);
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerOta;
     rp2040.reboot();
 }

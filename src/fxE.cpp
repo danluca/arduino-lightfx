@@ -8,11 +8,11 @@ using namespace FxE;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxe1Desc PROGMEM = {EFFECT_FACTORY(FxE1), "FXE1", "twinkle", 22};
-static const EffectInfo fxe2Desc PROGMEM = {EFFECT_FACTORY(FxE2), "FXE2", "beat wave", 17};
-static const EffectInfo fxe3Desc PROGMEM = {EFFECT_FACTORY(FxE3), "FXE3", "sawtooth back/forth", 27};
-static const EffectInfo fxe4Desc PROGMEM = {EFFECT_FACTORY(FxE4), "FXE4", "serendipitous", 36};
-static const EffectInfo fxe5Desc PROGMEM = {EFFECT_FACTORY(FxE5), "FXE5", "three single color beat-waves", 42};
+static const EffectInfo fxe1Desc = {EFFECT_FACTORY(FxE1), "FXE1", "twinkle", 22};
+static const EffectInfo fxe2Desc = {EFFECT_FACTORY(FxE2), "FXE2", "beat wave", 17};
+static const EffectInfo fxe3Desc = {EFFECT_FACTORY(FxE3), "FXE3", "sawtooth back/forth", 27};
+static const EffectInfo fxe4Desc = {EFFECT_FACTORY(FxE4), "FXE4", "serendipitous", 36};
+static const EffectInfo fxe5Desc = {EFFECT_FACTORY(FxE5), "FXE5", "three single color beat-waves", 42};
 
 uint8_t FxE::twinkRate = 100;
 bool FxE::randHue = true;

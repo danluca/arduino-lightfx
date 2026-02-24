@@ -8,12 +8,12 @@ using namespace FxH;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxh1Desc PROGMEM = {EFFECT_FACTORY(FxH1), "FXH1", "Fire segments", 48};
-static const EffectInfo fxh2Desc PROGMEM = {EFFECT_FACTORY(FxH2), "FXH2", "confetti H", 24};
-static const EffectInfo fxh3Desc PROGMEM = {EFFECT_FACTORY(FxH3), "FXH3", "filling the strand with colours", 18};
-static const EffectInfo fxh4Desc PROGMEM = {EFFECT_FACTORY(FxH4), "FXH4", "TwinkleFox", 12};
-static const EffectInfo fxh5Desc PROGMEM = {EFFECT_FACTORY(FxH5), "FXH5", "RainbowSparkle", 5};
-static const EffectInfo fxh6Desc PROGMEM = {EFFECT_FACTORY(FxH6), "FXH6", "JustSparkle", 5};
+static const EffectInfo fxh1Desc = {EFFECT_FACTORY(FxH1), "FXH1", "Fire segments", 48};
+static const EffectInfo fxh2Desc = {EFFECT_FACTORY(FxH2), "FXH2", "confetti H", 24};
+static const EffectInfo fxh3Desc = {EFFECT_FACTORY(FxH3), "FXH3", "filling the strand with colours", 18};
+static const EffectInfo fxh4Desc = {EFFECT_FACTORY(FxH4), "FXH4", "TwinkleFox", 12};
+static const EffectInfo fxh5Desc = {EFFECT_FACTORY(FxH5), "FXH5", "RainbowSparkle", 5};
+static const EffectInfo fxh6Desc = {EFFECT_FACTORY(FxH6), "FXH6", "JustSparkle", 5};
 
 void FxH::fxRegister() {
     fxRegistry.registerEffect(&fxh1Desc);

@@ -301,7 +301,7 @@ bool SynchronizedFS::begin() {
  */
 bool SynchronizedFS::begin(FS &fs) {
     fsPtr = &fs;
-    queue = xQueueCreate(10, sizeof(fsTaskMessage*));
+    queue = xQueueCreate(32, sizeof(fsTaskMessage*));
     //mirror the priority of the calling task - the filesystem task is intended to have the same priority
     fsDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle())+1;
     fsTask = Scheduler.startTask(&fsDef);
@@ -326,7 +326,7 @@ size_t SynchronizedFS::readFile(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::READ_FILE, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
@@ -349,7 +349,7 @@ size_t SynchronizedFS::writeFile(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
@@ -372,7 +372,7 @@ bool SynchronizedFS::writeFileAsync(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE_ASYNC, nullptr, args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     if (qResult != pdTRUE) {
         log_error(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
@@ -392,7 +392,7 @@ size_t SynchronizedFS::appendFile(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::APPEND_FILE, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
@@ -409,7 +409,7 @@ size_t SynchronizedFS::appendFile(const char *fname, uint8_t *buffer, const size
     auto *args = new fsOperationData {fname, nullptr, buffer, size};
     auto *msg = new fsTaskMessage {fsTaskMessage::APPEND_FILE_BIN, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
@@ -431,7 +431,7 @@ bool SynchronizedFS::remove(const char *path) {
     auto *args = new fsOperationData {path, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::DELETE, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
     if (qResult == pdTRUE) {
         success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -454,7 +454,7 @@ bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
     auto *args = new fsOperationData {pathFrom, &pathToStr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::RENAME, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
     if (qResult == pdTRUE) {
         success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -475,7 +475,7 @@ bool SynchronizedFS::exists(const char *fname) {
     auto *args = new fsOperationData {fname, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::EXISTS, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool exists = false;
     if (qResult == pdTRUE) {
         exists = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -495,7 +495,7 @@ bool SynchronizedFS::format() {
     auto *args = new fsOperationData {nullptr, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::FORMAT, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool formatted = false;
     if (qResult == pdTRUE) {
         formatted = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -517,7 +517,7 @@ bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
     auto *args = new fsOperationData {path, nullptr, list};
     auto *msg = new fsTaskMessage{fsTaskMessage::LIST_FIlES, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool completed = false;
     if (qResult == pdTRUE) {
         completed = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -539,7 +539,7 @@ bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
     auto *args = new fsOperationData {path, nullptr, info};
     auto *msg = new fsTaskMessage{fsTaskMessage::INFO, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
     if (qResult == pdTRUE)
         successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -556,7 +556,7 @@ bool SynchronizedFS::stat(const char *path, FSStat *st) {
     auto *args = new fsOperationData {path, nullptr, st};
     auto *msg = new fsTaskMessage{fsTaskMessage::STAT, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
     if (qResult == pdTRUE)
         successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -575,7 +575,7 @@ String SynchronizedFS::sha256(const char *path) const {
     auto *args = new fsOperationData {path, &strSha2, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::SHA256, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
     if (qResult == pdTRUE)
         successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
@@ -604,7 +604,7 @@ bool SynchronizedFS::mkdir(const char *path) {
     auto *args = new fsOperationData {path, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::MAKE_DIR, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
     if (qResult == pdTRUE) {
         success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));

@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <SchedulerExt.h>
 #include <FastLED.h>
+#include "hardware/watchdog.h"
 #include "filesystem.h"
 #include "util.h"
 #include "sysinfo.h"
@@ -19,15 +20,15 @@
 #define BUF_ID_SIZE  20
 
 #if LOGGING_ENABLED == 1
-// static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
-static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
-static constexpr auto heapPSRAMInfoFmt PROGMEM = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
-static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
-static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f%%\n";
-static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
+// static constexpr char threadInfoFmt[] = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
+static constexpr auto heapStackInfoFmt = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
+static constexpr auto heapPSRAMInfoFmt = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
+static constexpr auto sysInfoFmt = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
+static constexpr auto fmtTaskInfo = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f %%\n";
+static constexpr auto fmtTotalCPULoad = "\nTotal CPU Load:    %.2f %% / %.2f s\n";
 #endif
-static constexpr auto unknown PROGMEM = "N/A";
-static constexpr auto idleTaskMarker PROGMEM = "idle";
+static constexpr auto unknown = "N/A";
+static constexpr auto idleTaskMarker = "idle";
 constexpr CRGB CLR_ALL_OK = CRGB::Indigo;
 constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Green;
 constexpr CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
@@ -106,6 +107,7 @@ void logTaskStats() {
     if (!Log.isEnabled(INFO))
         return;
     static uint64_t prevTaskStatsTime = 0ul;
+    static unsigned long prevSysTime = 0ul;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
     UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
     /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time. */
@@ -152,11 +154,13 @@ void logTaskStats() {
         prevTaskStatusArray = curTaskStatusArray;
         prevTaskStatsTime = uxTotalRunTime;
         //add the total CPU load
+        unsigned long curSysTime = millis();
+        float fTimeWindow = (curSysTime - prevSysTime) / 1000.0f;
+        prevSysTime = curSysTime;
         char buf[80];
-        snprintf(buf, 80, fmtTotalCPULoad, fTotalCPULoadPercentage);
+        snprintf(buf, 80, fmtTotalCPULoad, fTotalCPULoadPercentage, fTimeWindow);
         strTaskInfo.concat(buf);
         log_info(strTaskInfo.c_str());
-        delay(12);
     }
     // Simple heap stats
     logHeapStats();
@@ -208,6 +212,36 @@ const char *resetReasonToString(const RP2040::resetReason_t reason) {
     }
 }
 
+const char *resetMarkerToString(const uint32_t marker) {
+    switch (marker) {
+        case kResetMarkerNone: return "none";
+        case kResetMarkerPanic: return "panic";
+        case kResetMarkerAssert: return "assert";
+        case kResetMarkerHardFault: return "hardfault";
+        case kResetMarkerMalloc: return "malloc_failed";
+        case kResetMarkerStackOverflow: return "stack_overflow";
+        case kResetMarkerFxStall: return "fx_stall";
+        case kResetMarkerOta: return "ota";
+        case kResetMarkerReboot: return "reboot";
+        case kResetMarkerUnknown: return "unknown";
+        default: return "other";
+    }
+}
+
+const char *fxStageToString(const uint32_t stage) {
+    switch (stage) {
+        case kFxStageNone: return "none";
+        case kFxStageEnter: return "enter";
+        case kFxStageAfterQueue: return "after_queue";
+        case kFxStageAfterOtaCheck: return "after_ota_check";
+        case kFxStageFirmwareUpgrade: return "fw_upgrade";
+        case kFxStageBeforeLoop: return "before_loop";
+        case kFxStageAfterLoop: return "after_loop";
+        case kFxStageAfterPing: return "after_ping";
+        default: return "unknown";
+    }
+}
+
 /**
  * Logs detailed system information for debugging and diagnostic purposes.
  * This function outputs various system-level details, including:
@@ -225,6 +259,15 @@ void logSystemInfo() {
                sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->getBuildVersion().c_str(), sysInfo->getBuildTime().c_str(),
                sysInfo->get_flash_capacity());
     log_info(F("System reset reason %s"), resetReasonToString(rp2040.getResetReason()));
+    const uint32_t resetMarker = watchdog_hw->scratch[kResetMarkerScratchIndex];
+    log_info(F("System reset marker %s (0x%08lX)"), resetMarkerToString(resetMarker), resetMarker);
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerNone;
+    const uint32_t fxHeartbeat = watchdog_hw->scratch[kFxHeartbeatScratchIndex];
+    log_info(F("FX heartbeat marker 0x%08lX"), fxHeartbeat);
+    watchdog_hw->scratch[kFxHeartbeatScratchIndex] = 0u;
+    const uint32_t fxStage = watchdog_hw->scratch[kFxStageScratchIndex];
+    log_info(F("FX stage marker %s (0x%08lX)"), fxStageToString(fxStage), fxStage);
+    watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageNone;
 
     //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
     extern char __exidx_start;

@@ -18,6 +18,8 @@
 #include "task_msg.h"
 #include "web_server.h"
 #include "ota_upgrade.h"
+#include "hardware/watchdog.h"
+#include "constants.hpp"
 
 /**
  * TASK ALLOCATIONS
@@ -46,7 +48,7 @@ void web_run();
 void alarm_misc_begin();
 void alarm_misc_run();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
-constexpr TaskDef fxTasks {fx_setup, fx_run, 1024, csFxTask, 255, CORE_1};
+constexpr TaskDef fxTasks {fx_setup, fx_run, 1024, csFxTask, 7, CORE_1};
 constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1024, "ALM", 5, CORE_0};
 bool core1_separate_stack = true;
 
@@ -63,7 +65,7 @@ bool core1_separate_stack = true;
  * - Logs an error if the message could not be enqueued.
  */
 void enqueueAlarmSetup() {
-    constexpr AlmAction msgSetup = ALARM_SETUP;
+    static constexpr AlmAction msgSetup = ALARM_SETUP;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msgSetup, 0); qResult != pdTRUE)
         log_error(F("Error sending ALARM_SETUP message to ALM queue - error %ld"), qResult);
 }
@@ -116,6 +118,10 @@ void alarm_misc_run() {
 /**
  * Executes the primary web-related tasks - runs the web server and communication functions
  * This function is intended to be invoked regularly to handle web communication and actions efficiently.
+ * NOTE: It is by design that both web-server and comms activities are sequenced and run in the same task.
+ * Without this feature, the web server and communication functions would run concurrently requiring all data structures to be thread-safe,
+ * engage locks; which would increase code complexity. In particular \code fxBroadcastRecipients \endcode is at risk of data corruption.
+ *
  */
 void web_run() {
     web::webserver();
@@ -138,7 +144,6 @@ void setup() {
     taskDelay(2000);    //safety delay
     SysInfo::setupStateLED();
     log_setup();
-    logHeapStats();
 
     // RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
 
@@ -181,7 +186,6 @@ void setup() {
     sysInfo->setSysStatus(SysStatus::Setup0);
     log_info(F("Main CORE0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
-    logHeapStats();
 }
 
 /**
@@ -190,6 +194,38 @@ void setup() {
 void loop() {
     web_run();
     handle_fw_upgrade();
+    taskDelay(5);   //this is important to allow other tasks to execute on core 0
+
+    static uint32_t lastCheckMs = 0;
+    static uint32_t lastHeartbeatMs = 0;
+    static bool fxStallReported = false;
+    const uint32_t nowMs = millis();
+    if (nowMs - lastCheckMs < 1000u)
+        return;
+    lastCheckMs = nowMs;
+
+    const uint32_t heartbeatMs = watchdog_hw->scratch[kFxHeartbeatScratchIndex];
+    if (heartbeatMs == 0u)
+        return;
+    if (heartbeatMs != lastHeartbeatMs) {
+        lastHeartbeatMs = heartbeatMs;
+        fxStallReported = false;
+        return;
+    }
+
+    constexpr uint32_t fxStallWarnMs = 2500u;
+    if (!fxStallReported && (nowMs - heartbeatMs) > fxStallWarnMs) {
+        fxStallReported = true;
+        watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerFxStall;
+        log_warn(F("FX heartbeat stalled for %lu ms - capturing task stats"), static_cast<unsigned long>(nowMs - heartbeatMs));
+        if (const TaskHandle_t fxHandle = xTaskGetHandle(csFxTask); fxHandle != nullptr) {
+            const eTaskState fxState = eTaskGetState(fxHandle);
+            log_warn(F("FX task state at stall: %s (%d)"), taskStatusToString(fxState), static_cast<int>(fxState));
+        } else {
+            log_warn(F("FX task handle not found at stall"));
+        }
+        logTaskStats();
+    }
 }
 
 
@@ -206,7 +242,6 @@ void setup1() {
     //wait for the main core to notify us that the core components are ready (filesystem, logging, secure element), not interested in the notification value
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    logHeapStats();
     Scheduler.startTask(&fxTasks);
     taskDelay(250);         // leave reasonable time to FX task to set-up
 
@@ -219,7 +254,6 @@ void setup1() {
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
     sysInfo->setSysStatus(SysStatus::Setup1);
     log_info(F("Main CORE1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
-    logHeapStats();
 }
 
 /**
@@ -235,8 +269,26 @@ void loop1() {
  * @param pcTaskName name of the task that exceeded stack
  */
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerStackOverflow;
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
         Serial.printf("Stack overflow in task %s [%p]\n", pcTaskName, xTask);
 #endif
+    watchdog_reboot(0, 0, 10);
+    while (true)
+        tight_loop_contents();
+}
+
+/**
+ * Log an event to the console when malloc fails
+ */
+void vApplicationMallocFailedHook() {
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerMalloc;
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+    if (Serial)
+        Serial.println("Malloc failed");
+#endif
+    watchdog_reboot(0, 0, 10);
+    while (true)
+        tight_loop_contents();
 }

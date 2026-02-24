@@ -1,7 +1,7 @@
 #pragma once
-inline constexpr auto stats_css PROGMEM = R"~~~(
+inline constexpr auto stats_css = R"~~~(
 /*
- * Copyright (c) 2025 by Dan Luca. All rights reserved.
+ * Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
  *
  */
 

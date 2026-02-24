@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #include <FreeRTOS.h>
 #include <task.h>
@@ -10,6 +10,7 @@
 #include "util.h"
 #include "stringutils.h"
 #include "log.h"
+#include "constants.hpp"
 
 
 FixedQueue<TimeSync, 8> timeSyncs;
@@ -142,6 +143,7 @@ void watchdogSetup() {
  */
 void watchdogPing() {
     watchdog_update();
+    watchdog_hw->scratch[kFxHeartbeatScratchIndex] = millis();
     //rp2040.wdt_reset();
 }
 

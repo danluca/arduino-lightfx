@@ -1,5 +1,5 @@
 #pragma once
-inline constexpr auto pixel_css PROGMEM = R"~~~(
+inline constexpr auto pixel_css = R"~~~(
 /* Set padding and margins to 0 then change later
 Helps with cross browser support */
 * {

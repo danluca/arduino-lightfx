@@ -20,11 +20,11 @@
 #define DEVICE_NAME_PREFIX "lightfx-"
 
 // using namespace colTheme;
-constexpr auto ssid PROGMEM = WF_SSID;
-constexpr auto pass PROGMEM = WF_PSW;
-constexpr auto hostname PROGMEM = DEVICE_NAME_PREFIX DEVICE_NAME;
-constexpr auto service_type PROGMEM = "lucasfx";
-constexpr auto service_protocol PROGMEM = "tcp";
+constexpr auto ssid = WF_SSID;
+constexpr auto pass = WF_PSW;
+constexpr auto hostname = DEVICE_NAME_PREFIX DEVICE_NAME;
+constexpr auto service_type = "lucasfx";
+constexpr auto service_protocol = "tcp";
 
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from \code WiFi.RSSI() \endcode
@@ -40,8 +40,8 @@ uint8_t barSignalLevel(const int32_t rssi) {
         return 0;
     if (rssi >= maxRSSI)
         return numLevels - 1;
-    constexpr float inRange = maxRSSI - minRSSI;
-    constexpr float outRange = numLevels - 1;
+    static constexpr float inRange = maxRSSI - minRSSI;
+    static constexpr float outRange = numLevels - 1;
     return static_cast<uint8_t>(static_cast<float>(rssi - minRSSI) * outRange / inRange);
 }
 
@@ -102,8 +102,13 @@ void serviceQueryCallback(const MDNSResponder::MDNSServiceInfo& service, MDNSRes
  *    false means the name is already in use by another device
  */
 void hostProbeCallback(const char *p_pcDomainName, bool p_bProbeResult) {
-    log_info(F("mDNS host probe callback for domain %s - probe result: %s"), p_pcDomainName ? p_pcDomainName : strNR,
-             StringUtils::asString(p_bProbeResult));
+#if LOGGING_ENABLED == 1
+    if (p_bProbeResult) {
+        log_info(F("mDNS host - successfully claimed host domain %s"), p_pcDomainName ? p_pcDomainName : strNR);
+    } else {
+        log_error(F("mDNS host - failed to claim host domain %s"), p_pcDomainName ? p_pcDomainName : strNR);
+    }
+#endif
 }
 
 /**
@@ -114,8 +119,13 @@ void hostProbeCallback(const char *p_pcDomainName, bool p_bProbeResult) {
  *    false means the name is already in use by another device
  */
 void hostServiceCallback(const char *p_pcServiceName, const MDNSResponder::hMDNSService p_hMDNSService, bool p_bProbeResult) {
-    log_info(F("mDNS service probe callback for service %s (handle: %p) - probe result: %s"), p_pcServiceName ? p_pcServiceName : strNR,
-             p_hMDNSService, StringUtils::asString(p_bProbeResult));
+#if LOGGING_ENABLED == 1
+    if (p_bProbeResult) {
+        log_info(F("mDNS service - successfully claimed service %s (handle: %p)"), p_pcServiceName ? p_pcServiceName : strNR, p_hMDNSService);
+    } else {
+        log_error(F("mDNS service - failed to claim service %s (handle: %p)"), p_pcServiceName ? p_pcServiceName : strNR, p_hMDNSService);
+    }
+#endif
 }
 
 #endif
@@ -313,7 +323,7 @@ discoveredBoards.end());
     log_info(F("Total discovered boards: %d"), discoveredBoards.size());
 }
 #else
-const std::vector<DiscoveredBoard> & mdns_get_discovered_boards() {
+const std::vector<DiscoveredBoard> mdns_get_discovered_boards() {
     log_warn(F("mDNS is not enabled, cannot discover boards"));
     return std::vector<DiscoveredBoard>{};
 }
