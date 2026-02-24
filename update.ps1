@@ -64,7 +64,7 @@ function updateFirmwareOTA() {
 #######################################
 Push-Location $PSScriptRoot
 
-start-transcript -path logs/build-$board.log
+start-transcript -path logs/build-$board.log -force
 updateFirmwareOTA
 stop-transcript
 

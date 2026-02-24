@@ -6,6 +6,7 @@
 
 #include <WiFi.h>
 #include <ArduinoJson.h>
+#include <task.h>
 #include "../lib/Utils/src/fixed_queue.h"
 #include "util.h"
 
@@ -24,6 +25,7 @@ void logSystemInfo();
 void logSystemState();
 void readSysInfo();
 void saveSysInfo();
+const char *taskStatusToString(eTaskState state);
 
 struct CRGB;
 

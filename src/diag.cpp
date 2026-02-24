@@ -581,6 +581,19 @@ void checkFxHeartbeat() {
         fxStallReported = true;
         watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerFxStall;
         log_warn(F("FX heartbeat stalled for %lu ms - capturing task stats"), static_cast<unsigned long>(nowMs - heartbeatMs));
+        log_warn(F("Watchdog remaining %u ms"), watchdog_get_time_remaining_ms());
+        if (const TaskHandle_t fxHandle = xTaskGetHandle(csFxTask); fxHandle != nullptr) {
+            const eTaskState fxState = eTaskGetState(fxHandle);
+            log_warn(F("FX task state at stall: %s (%d)"), taskStatusToString(fxState), static_cast<int>(fxState));
+        } else {
+            log_warn(F("FX task handle not found at stall"));
+        }
+        if (const TaskHandle_t core1Handle = xTaskGetHandle(csCORE1); core1Handle != nullptr) {
+            const eTaskState core1State = eTaskGetState(core1Handle);
+            log_warn(F("CORE1 task state at stall: %s (%d)"), taskStatusToString(core1State), static_cast<int>(core1State));
+        } else {
+            log_warn(F("CORE1 task handle not found at stall"));
+        }
         logTaskStats();
     }
 }

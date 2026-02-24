@@ -268,6 +268,14 @@ void logSystemInfo() {
     const uint32_t fxStage = watchdog_hw->scratch[kFxStageScratchIndex];
     log_info(F("FX stage marker %s (0x%08lX)"), fxStageToString(fxStage), fxStage);
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageNone;
+#if DIAG_CORE_HEARTBEATS
+    const uint32_t core0Heartbeat = watchdog_hw->scratch[kCore0HeartbeatScratchIndex];
+    log_info(F("CORE0 heartbeat marker 0x%08lX"), core0Heartbeat);
+    watchdog_hw->scratch[kCore0HeartbeatScratchIndex] = 0u;
+    const uint32_t core1Heartbeat = watchdog_hw->scratch[kCore1HeartbeatScratchIndex];
+    log_info(F("CORE1 heartbeat marker 0x%08lX"), core1Heartbeat);
+    watchdog_hw->scratch[kCore1HeartbeatScratchIndex] = 0u;
+#endif
 
     //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
     extern char __exidx_start;

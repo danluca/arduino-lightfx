@@ -97,6 +97,16 @@ inline constexpr uint32_t kResetMarkerUnknown = 0xA11CE504u;
 inline constexpr uint8_t kResetMarkerScratchIndex = 7u;
 inline constexpr uint8_t kFxHeartbeatScratchIndex = 6u;
 inline constexpr uint8_t kFxStageScratchIndex = 5u;
+inline constexpr uint8_t kCore0HeartbeatScratchIndex = 4u;
+inline constexpr uint8_t kCore1HeartbeatScratchIndex = 3u;
+
+// Diagnostic toggles (temporary for watchdog investigation).
+#ifndef DIAG_CORE_HEARTBEATS
+#define DIAG_CORE_HEARTBEATS 1
+#endif
+#ifndef DIAG_WDT_PING_CORE0
+#define DIAG_WDT_PING_CORE0 1
+#endif
 
 // FX task stage markers stored in watchdog scratch register.
 inline constexpr uint32_t kFxStageNone = 0x00000000u;
