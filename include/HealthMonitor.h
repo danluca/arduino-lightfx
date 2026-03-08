@@ -27,9 +27,10 @@ public:
     /**
      * Perform the watchdog update if all tasks are healthy.
      * This should be called from one place (e.g. Core 0 loop)
-     * @param timeoutMs the timeout in milliseconds for each health bit
+     * @param timeoutMs the threshold in milliseconds for each health bit to stop feeding the watchdog (default 7000)
+     * @param warnMs the threshold in milliseconds for logging a warning (default 3000)
      */
-    static void update(uint32_t timeoutMs = 4000);
+    static void update(uint32_t timeoutMs = 7000, uint32_t warnMs = 3000);
 
     /**
      * Initialize the health monitor
