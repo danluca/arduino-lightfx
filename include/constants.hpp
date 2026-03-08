@@ -99,6 +99,8 @@ inline constexpr uint8_t kFxHeartbeatScratchIndex = 6u;
 inline constexpr uint8_t kFxStageScratchIndex = 5u;
 inline constexpr uint8_t kCore0HeartbeatScratchIndex = 4u;
 inline constexpr uint8_t kCore1HeartbeatScratchIndex = 3u;
+inline constexpr uint8_t kFsBlockedScratchIndex = 2u;
+inline constexpr uint32_t kFsBlockedMagic = 0xFB000000u;
 
 // Diagnostic toggles (temporary for watchdog investigation).
 #ifndef DIAG_CORE_HEARTBEATS

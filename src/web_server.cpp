@@ -143,15 +143,12 @@ void web::handleGetStatus(WebClient &client) {
     const auto fx = doc["fx"].to<JsonObject>();
     uint16_t curFxIndex = 0;
     const char *curFxName = strNR;
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        fx[csAuto] = fxRegistry.isAutoRoll();
-        fx[csSleepEnabled] = fxRegistry.isSleepEnabled();
-        fx["asleep"] = fxRegistry.isAsleep();
-        curFxIndex = fxRegistry.curEffectPos();
-        if (const EffectInfo *info = fxRegistry.getEffectInfo(curFxIndex); info != nullptr)
-            curFxName = info->desc.id;
-    }
+    fx[csAuto] = fxRegistry.isAutoRoll();
+    fx[csSleepEnabled] = fxRegistry.isSleepEnabled();
+    fx["asleep"] = fxRegistry.isAsleep();
+    curFxIndex = fxRegistry.curEffectPos();
+    if (const EffectInfo *info = fxRegistry.getEffectInfo(curFxIndex); info != nullptr)
+        curFxName = info->desc.id;
     fx["autoTheme"] = paletteFactory.isAuto();
     fx["theme"] = holidayToString(paletteFactory.getHoliday()); //could be forced to a fixed value
     fx["index"] = curFxIndex;
@@ -159,10 +156,7 @@ void web::handleGetStatus(WebClient &client) {
     fx[csBroadcast] = fxBroadcastEnabled.load();
     fx[csIgnoreWebFx] = (IGNORE_WEB_EFFECT_CHANGES == 1);   // Reflect compile-time ability to ignore web effect changes
     auto lastFx = fx["pastEffects"].to<JsonArray>();
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
-    }
+    fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness.load();
     fx[csBrightnessLocked] = stripBrightnessLocked.load();
     // Master/Slave status
@@ -372,17 +366,14 @@ void web::handlePutConfig(WebClient &client) {
     uint16_t curFxPos = 0;
     bool autoRoll = false;
     bool sleepEnabled = false;
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        curFxPos = fxRegistry.curEffectPos();
-        autoRoll = fxRegistry.isAutoRoll();
-        sleepEnabled = fxRegistry.isSleepEnabled();
-    }
+    curFxPos = fxRegistry.curEffectPos();
+    autoRoll = fxRegistry.isAutoRoll();
+    sleepEnabled = fxRegistry.isSleepEnabled();
     const Holiday holiday = paletteFactory.getHoliday();
 
     log_info(F("FX: Current config updated effect %hu, autoswitch %s, sleep %s, holiday %s, brightness %hu, brightness adjustment %s"),
         curFxPos, StringUtils::asString(autoRoll), StringUtils::asString(sleepEnabled),
-        holidayToString(holiday), stripBrightness, stripBrightnessLocked?"fixed":"automatic");
+        holidayToString(holiday), stripBrightness.load(), stripBrightnessLocked?"fixed":"automatic");
 
     //main status and headers
     resp["status"] = qResult == pdTRUE;

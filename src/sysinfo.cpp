@@ -242,6 +242,26 @@ const char *fxStageToString(const uint32_t stage) {
     }
 }
 
+[[maybe_unused]] static const char *fsBlockedActionToString(const uint8_t action) {
+    switch (action) {
+        case 0: return "READ_FILE";
+        case 1: return "WRITE_FILE";
+        case 2: return "WRITE_FILE_ASYNC";
+        case 3: return "APPEND_FILE";
+        case 4: return "APPEND_FILE_BIN";
+        case 5: return "RENAME";
+        case 6: return "DELETE";
+        case 7: return "EXISTS";
+        case 8: return "FORMAT";
+        case 9: return "LIST_FILES";
+        case 10: return "INFO";
+        case 11: return "STAT";
+        case 12: return "MAKE_DIR";
+        case 13: return "SHA256";
+        default: return "UNKNOWN";
+    }
+}
+
 /**
  * Logs detailed system information for debugging and diagnostic purposes.
  * This function outputs various system-level details, including:
@@ -276,6 +296,15 @@ void logSystemInfo() {
     log_info(F("CORE1 heartbeat marker 0x%08lX"), core1Heartbeat);
     watchdog_hw->scratch[kCore1HeartbeatScratchIndex] = 0u;
 #endif
+    const uint32_t fsBlocked = watchdog_hw->scratch[kFsBlockedScratchIndex];
+    if ((fsBlocked & 0xFF000000u) == kFsBlockedMagic) {
+        const uint8_t op = static_cast<uint8_t>((fsBlocked >> 16) & 0xFFu);
+        const uint16_t waitedSeconds = static_cast<uint16_t>(fsBlocked & 0xFFFFu);
+        log_info(F("FS blocked marker op=%s (%u) waited=%u sec"), fsBlockedActionToString(op), op, waitedSeconds);
+    } else if (fsBlocked != 0u) {
+        log_info(F("FS blocked marker raw 0x%08lX"), fsBlocked);
+    }
+    watchdog_hw->scratch[kFsBlockedScratchIndex] = 0u;
 
     //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
     extern char __exidx_start;
@@ -295,9 +324,11 @@ void logSystemInfo() {
     extern char __HeapLimit;
     extern char __StackLimit;
     extern char __StackTop;
+    extern char __StackBottom;
+    extern char __StackOneTop;
+    extern char __StackOneBottom;
     extern uint32_t __scratch_x_start__;
     extern uint32_t __scratch_y_start__;
-    extern uint32_t* core1_separate_stack_address;
     log_info(F("Memory map pointers:"));
     log_info(F("  .text end:            __etext       = %#X"), (uint32_t)&__etext);
     log_info(F("  .data start/end:      __data_start__/__data_end__ = %#X/%#X"), (uint32_t)&__data_start__, (uint32_t)&__data_end__);
@@ -308,9 +339,9 @@ void logSystemInfo() {
     log_info(F("  .fini_array start/end:    __fini_array_start__/__fini_array_end__     = %#X/%#X"), (uint32_t)&__fini_array_start, (uint32_t)&__fini_array_end);
     log_info(F("  Program end markers:  __end__       = %#X"), (uint32_t)&__end__);
     log_info(F("  Heap limits:          __HeapLimit   = %#X"), (uint32_t)&__HeapLimit);
-    log_info(F("  Stack limits:         __StackLimit  = %#X; __StackTop = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop);
+    log_info(F("  Stack limits CORE0:         __StackLimit  = %#X; __StackTop = %#X; __StackBottom = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop, (uint32_t)&__StackBottom);
+    log_info(F("  Stack limits CORE1:         __StackLimit  = %#X; __StackTop = %#X; __StackBottom = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackOneTop, (uint32_t)&__StackOneBottom);
     log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_start__, __scratch_y_start__);
-    log_info(F("  Core 1 separate stack address = %#X"), (uint32_t)*core1_separate_stack_address);
 #endif
 }
 

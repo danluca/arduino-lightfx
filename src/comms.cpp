@@ -109,7 +109,6 @@ void commRun() {
                 log_error(F("Failed to enqueue FX SAVE_STATE message"));
             if (masterEnabled)
             {
-                CoreMutex lock(&fxRegistryMutex);
                 postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
             }
             break;
@@ -337,10 +336,7 @@ void fxBroadcast(const uint16_t index) {
         return;
     }
     const EffectInfo *fxInfo;
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        fxInfo = fxRegistry.getEffectInfo(index);
-    }
+    fxInfo = fxRegistry.getEffectInfo(index);
     if (!fxInfo) {
         log_error(F("Effect at index %d not found"), index);
         return;

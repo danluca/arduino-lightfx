@@ -37,7 +37,6 @@ extern volatile uint16_t hueDiff;
 extern std::atomic<bool> fxBroadcastEnabled;
 extern std::atomic<uint16_t> speed;
 extern std::atomic<uint16_t> curPos;
-extern mutex_t fxRegistryMutex;
 extern String masterBoardName;
 
 namespace fx {

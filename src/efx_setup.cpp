@@ -33,7 +33,6 @@ volatile uint8_t saturation = 100;
 volatile uint8_t dotBpm = 30;
 volatile uint16_t hueDiff = 256;
 std::atomic<bool> stripBrightnessLocked = false;
-mutex_t fxRegistryMutex;
 
 static_assert(FRAME_SIZE < NUM_PIXELS, "FRAME_SIZE must not exceed NUM_PIXELS");
 static_assert(FRAME_SIZE > 10, "FRAME_SIZE must be at least 10 pixels");
@@ -74,10 +73,7 @@ void readFxState() {
         log_info(F("FX state [%s]:\n%s"), stateFileName, json->c_str());
 
         const bool autoAdvance = doc[csAutoFxRoll].as<bool>();
-        {
-            CoreMutex lock(&fxRegistryMutex);
-            fxRegistry.autoRoll(autoAdvance);
-        }
+        fxRegistry.autoRoll(autoAdvance);
 
         const uint16_t seed = doc[csRandomSeed].as<uint16_t>();
         random16_add_entropy(seed);
@@ -89,31 +85,19 @@ void readFxState() {
         const auto savedHoliday = doc[csColorTheme].as<String>();
         paletteFactory.setHoliday(parseHoliday(&savedHoliday));
         paletteFactory.setAuto(doc[csAutoColorAdjust].as<bool>());
-        {
-            CoreMutex lock(&fxRegistryMutex);
-            if (doc[csSleepEnabled].is<bool>())
-                fxRegistry.enableSleep(doc[csSleepEnabled].as<bool>());
-            else
-                fxRegistry.enableSleep(false);      //this doesn't invoke effect changing because sleep state is initialized with false
-        }
+        if (doc[csSleepEnabled].is<bool>())
+            fxRegistry.enableSleep(doc[csSleepEnabled].as<bool>());
+        else
+            fxRegistry.enableSleep(false);      //this doesn't invoke effect changing because sleep state is initialized with false
         //we need the sleep mode flag setup first to properly advance to next effect
-        {
-            CoreMutex lock(&fxRegistryMutex);
-            const uint16_t sleepFxIndex = fxRegistry.findEffectIndex(FX_SLEEPLIGHT_ID);
-            //set the desired effect directly, the fxSetup (caller of this method) will invoke transitionEffect after more setup is done
-            fxRegistry.desiredEffectIndex = fxRegistry.isAsleep() ? sleepFxIndex : fx == sleepFxIndex ? random16(fxRegistry.effectsCount) : fx;
-        }
+        //set the desired effect directly, the fxSetup (caller of this method) will invoke transitionEffect after more setup is done
+        fxRegistry.restoreDesiredEffectFromState(fx);
         if (doc[csBroadcast].is<bool>())
             fxBroadcastEnabled = doc[csBroadcast].as<bool>();
 
-        bool sleepEnabled = false;
-        {
-            CoreMutex lock(&fxRegistryMutex);
-            sleepEnabled = fxRegistry.isSleepEnabled();
-        }
         log_info(F("System state restored from %s [%zu bytes]: autoFx=%s, randomSeed=%d, nextEffect=%hu, brightness=%hu (auto adjust), holiday=%s (auto=%s), sleepEnabled=%s, broadcast=%s"),
-            stateFileName, stateSize, StringUtils::asString(autoAdvance), seed, fx, stripBrightness, holidayToString(paletteFactory.getHoliday()),
-            StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(sleepEnabled), StringUtils::asString(fxBroadcastEnabled));
+            stateFileName, stateSize, StringUtils::asString(autoAdvance), seed, fx, stripBrightness.load(), holidayToString(paletteFactory.getHoliday()),
+            StringUtils::asString(paletteFactory.isAuto()), StringUtils::asString(fxRegistry.isSleepEnabled()), StringUtils::asString(fxBroadcastEnabled));
         doc.clear();
     }
     delete json;
@@ -122,18 +106,12 @@ void readFxState() {
 void saveFxState() {
     JsonDocument doc;
     doc[csRandomSeed] = random16_get_seed();
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
-        doc[csCurFx] = fxRegistry.curEffectPos();
-    }
+    doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
+    doc[csCurFx] = fxRegistry.curEffectPos();
     doc[csStripBrightness] = stripBrightness.load();
     doc[csColorTheme] = holidayToString(paletteFactory.getHoliday());
     doc[csAutoColorAdjust] = paletteFactory.isAuto();
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
-    }
+    doc[csSleepEnabled] = fxRegistry.isSleepEnabled();
     doc[csBroadcast] = fxBroadcastEnabled.load();
     const auto str = new String();
     str->reserve(measureJson(doc));
@@ -191,18 +169,12 @@ void fx_setup() {
 
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     //ensure the current effect is instantiated and moved to the setup state
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        fxRegistry.transitionEffect();
-    }
+    fxRegistry.transitionEffect();
     
     // With the new design, we need to manually trigger the first effect creation since loop hasn't run yet
     // The first call to loop() will detect activeEffect is nullptr and create it
     // For now during setup, we need to ensure activeEffect is created
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        fxRegistry.loop();
-    }
+    fxRegistry.loop();
 
     //generate and cache the FX config data
     JsonDocument doc;
@@ -210,22 +182,17 @@ void fx_setup() {
     for (uint8_t hi = None; hi <= NewYear; hi++)
         hldList.add(holidayToString(static_cast<Holiday>(hi)));
     const auto fxArray = doc["fx"].to<JsonArray>();
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        fxRegistry.describeConfig(fxArray);
-    }
+    fxRegistry.describeConfig(fxArray);
     auto *str = new String();
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
     if (!SyncFsImpl.writeFile(fxCfgFileName, str))
         log_error(F("Cannot save FxConfig JSON file %s"), fxCfgFileName);
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        if (const LedEffect *curFx = fxRegistry.getCurrentEffect(); curFx != nullptr)
-            log_info(F("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)"), curFx->name(), curFx->getRegistryIndex(), Setup);
-        else
-            log_warn(F("Fx Setup done - current effect is null after setup"));
-    }
+    const uint16_t curFxPos = fxRegistry.curEffectPos();
+    if (const EffectInfo *curFxInfo = fxRegistry.getEffectInfo(curFxPos); curFxInfo != nullptr)
+        log_info(F("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)"), curFxInfo->desc.id, curFxPos, Setup);
+    else
+        log_warn(F("Fx Setup done - current effect is null after setup"));
     delete str;
     doc.clear();
 }
@@ -257,16 +224,13 @@ void updateBrightness() {
     const uint8_t oldBrightness = stripBrightness;
     stripBrightness = adjustStripBrightness();
     if (oldBrightness != stripBrightness) {
-        log_info(F("Strip brightness updated from %d to %d"), oldBrightness, stripBrightness);
+        log_info(F("Strip brightness updated from %d to %d"), oldBrightness, stripBrightness.load());
     }
 }
 
 void switchToRandomEffect() {
     log_info(F("Attempting switching effect to a new random one"));
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        fxRegistry.nextRandomEffectPos();
-    }
+    fxRegistry.nextRandomEffectPos();
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
     saveFxState();
 }
@@ -280,23 +244,19 @@ void fx_run() {
     if (pdTRUE == xQueueReceive(fxQueue, &msg, 0)) {
         switch (msg.action) {
             case AUTO_FX: {
-                CoreMutex lock(&fxRegistryMutex);
                 fxRegistry.autoRoll(static_cast<bool>(msg.data));
                 break;
             }
             case MANUAL_FX: {
-                CoreMutex lock(&fxRegistryMutex);
                 fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data));
                 break;
             }
             case COLOR_THEME: paletteFactory.setHoliday(static_cast<Holiday>(msg.data)); break;
             case SLEEP_ENABLED: {
-                CoreMutex lock(&fxRegistryMutex);
                 fxRegistry.enableSleep(static_cast<bool>(msg.data));
                 break;
             }
             case SLEEP_STATE: {
-                CoreMutex lock(&fxRegistryMutex);
                 fxRegistry.setSleepState(static_cast<bool>(msg.data));
                 break;
             }
@@ -336,10 +296,7 @@ void fx_run() {
     }
 
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageBeforeLoop;
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        fxRegistry.loop();
-    }
+    fxRegistry.loop();
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterLoop;
     HealthMonitor::checkIn(HEALTH_FX);
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
@@ -353,11 +310,7 @@ void wakeup() {
 }
 
 void bedtime() {
-    bool sleepEnabled = false;
-    {
-        CoreMutex lock(&fxRegistryMutex);
-        sleepEnabled = fxRegistry.isSleepEnabled();
-    }
+    const bool sleepEnabled = fxRegistry.isSleepEnabled();
     if (!sleepEnabled) {
         log_warn(F("Bedtime alarm triggered, sleep mode is disabled - no changes"));
         return;
