@@ -81,10 +81,11 @@ bool handleNTPSuccess() {
     timeSyncs.push(tSync);
 
     //update places where time has been captured before NTP sync - watchdog reboots
-    for (auto &wdTime : sysInfo->watchdogReboots()) {
+    sysInfo->transformWatchdogReboots([](const time_t wdTime) {
         if (wdTime < TWENTY_TWENTY)
-            wdTime = timeService.utcFromRtcMillis(wdTime*1000)/1000;   //watchdog time is in seconds local; we're calling utc flavor as the time is already adjusted for local
-    }
+            return static_cast<time_t>(timeService.utcFromRtcMillis(wdTime * 1000) / 1000);   //watchdog time is in seconds local; we're calling utc flavor as the time is already adjusted for local
+        return wdTime;
+    });
     //update the timestamps of temp calibration structures - those time values, if captured (through now()) are already adjusted for local timezone, hence converting them
     //to proper times is done using utcXYZ API to avoid double timezone offset adjustments
     if (calibCpuTemp.time > 0 && calibCpuTemp.time < TWENTY_TWENTY)

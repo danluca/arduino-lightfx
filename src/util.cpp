@@ -130,7 +130,7 @@ void watchdogSetup() {
     if (watchdog_caused_reboot()) {
         const time_t rebootTime = now();
         log_warn(F("A watchdog caused reboot has occurred at %s"), TimeFormat::asString(rebootTime).c_str());
-        sysInfo->watchdogReboots().push(rebootTime);
+        sysInfo->addWatchdogReboot(rebootTime);
         sysInfo->markDirtyBoot();
     }
     //if no ping in 8 seconds, reboot

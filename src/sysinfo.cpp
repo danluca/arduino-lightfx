@@ -390,11 +390,48 @@ SysStatus SysInfo::resetSysStatus(const SysStatus bitMask) {
 }
 
 bool SysInfo::isSysStatus(const SysStatus bitMask) const {
+    CoreMutex coreMutex(&mutex);
     return (status & bitMask) == bitMask;
 }
 
 SysStatus SysInfo::getSysStatus() const {
+    CoreMutex coreMutex(&mutex);
     return status;
+}
+
+void SysInfo::addWatchdogReboot(const time_t t) {
+    CoreMutex coreMutex(&mutex);
+    wdReboots.push(t);
+}
+
+size_t SysInfo::watchdogRebootsCount() const {
+    CoreMutex coreMutex(&mutex);
+    return wdReboots.size();
+}
+
+bool SysInfo::hasWatchdogReboots() const {
+    CoreMutex coreMutex(&mutex);
+    return !wdReboots.empty();
+}
+
+time_t SysInfo::lastWatchdogReboot() const {
+    CoreMutex coreMutex(&mutex);
+    return wdReboots.empty() ? 0 : wdReboots.back();
+}
+
+std::vector<time_t> SysInfo::watchdogRebootsSnapshot() const {
+    CoreMutex coreMutex(&mutex);
+    std::vector<time_t> snapshot;
+    snapshot.reserve(wdReboots.size());
+    for (const auto &t : wdReboots)
+        snapshot.push_back(t);
+    return snapshot;
+}
+
+void SysInfo::transformWatchdogReboots(const std::function<time_t(time_t)>& transform) {
+    CoreMutex coreMutex(&mutex);
+    for (auto &t : wdReboots)
+        t = transform(t);
 }
 
 /**
@@ -460,7 +497,7 @@ void SysInfo::sysConfig(JsonDocument &doc) {
     doc[csStackSize] = sysInfo->stackSize;
     doc[csFreeStack] = sysInfo->freeStack;
     const auto reboots = doc[csWdReboots].to<JsonArray>();
-    for (auto & t : sysInfo->wdReboots)
+    for (const auto &t : sysInfo->watchdogRebootsSnapshot())
         (void)reboots.add(t);
 }
 
@@ -576,7 +613,7 @@ void readSysInfo() {
         if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {
             const auto wdReboots = doc[csWdReboots].as<JsonArray>();
             for (JsonVariant i: wdReboots)
-                sysInfo->wdReboots.push(i.as<time_t>());
+                sysInfo->addWatchdogReboot(i.as<time_t>());
         } else
             log_warn(F("Build version change detected - previous watchdog reboot timestamps %s have been discarded"), doc[csWdReboots].as<String>().c_str());
         sysInfo->boardId = doc[csBoardId].as<String>();

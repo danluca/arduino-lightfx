@@ -7,6 +7,8 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 #include <task.h>
+#include <functional>
+#include <vector>
 #include "../lib/Utils/src/fixed_queue.h"
 #include "util.h"
 
@@ -55,7 +57,7 @@ class SysInfo {
     SysStatus status {SysStatus::None};
     bool cleanBoot {true};
     WatchdogQueue wdReboots{};   // keep only the last 10 watchdog reboots
-    mutex_t mutex{};
+    mutable mutex_t mutex{};
 
 protected:
     static void updateBoardLED(uint32_t colorCode);
@@ -81,7 +83,12 @@ public:
     [[nodiscard]] const String& getWiFiFwVersion() const { return wifiFwVersion; }
     [[nodiscard]] const String& getSSID() const { return ssid; }
     [[nodiscard]] int getCPUFrequency() const { return cpuFrequency; }
-    WatchdogQueue& watchdogReboots() { return wdReboots; }
+    void addWatchdogReboot(time_t t);
+    [[nodiscard]] size_t watchdogRebootsCount() const;
+    [[nodiscard]] bool hasWatchdogReboots() const;
+    [[nodiscard]] time_t lastWatchdogReboot() const;
+    [[nodiscard]] std::vector<time_t> watchdogRebootsSnapshot() const;
+    void transformWatchdogReboots(const std::function<time_t(time_t)>& transform);
     void markDirtyBoot() { cleanBoot = false; }
     [[nodiscard]] bool isCleanBoot() const { return cleanBoot; }
     IPAddress& refIpAddress() { return ipAddress; }

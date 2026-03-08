@@ -124,12 +124,12 @@ void web::handleGetStatus(WebClient &client) {
     // response body
     JsonDocument doc;
     // System
-    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
+    doc["watchdogRebootsCount"] = sysInfo->watchdogRebootsCount();
     doc["cleanBoot"] = sysInfo->isCleanBoot();
-    if (!sysInfo->watchdogReboots().empty())
-        doc["lastWatchdogReboot"] = TimeFormat::asString(sysInfo->watchdogReboots().back());
+    if (sysInfo->hasWatchdogReboots())
+        doc["lastWatchdogReboot"] = TimeFormat::asString(sysInfo->lastWatchdogReboot());
     const auto wdReboots = doc["watchdogReboots"].to<JsonArray>();
-    for (const auto &wd: sysInfo->watchdogReboots())
+    for (const auto &wd: sysInfo->watchdogRebootsSnapshot())
         wdReboots.add<String>(TimeFormat::asString(wd));
 
     // WiFi
