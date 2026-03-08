@@ -9,12 +9,12 @@ using namespace FxC;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxc1Desc = {EFFECT_FACTORY(FxC1), "FXC1", "blend between two concurrent animations", 35};
-static const EffectInfo fxc2Desc = {EFFECT_FACTORY(FxC2), "FXC2", "blur function", 5};
-static const EffectInfo fxc3Desc = {EFFECT_FACTORY(FxC3), "FXC3", "Perlin Noise for moving up and down the strand", 4};
-static const EffectInfo fxc4Desc = {EFFECT_FACTORY(FxC4), "FxC4", "lightnings", 9};
-static const EffectInfo fxc5Desc = {EFFECT_FACTORY(FxC5), "FXC5", "matrix", 20};
-static const EffectInfo fxc6Desc = {EFFECT_FACTORY(FxC6), "FXC6", "one sine", 20};
+static const EffectInfo fxc1Desc = {EFFECT_FACTORY(FxC1), {"FXC1", "blend between two concurrent animations"}, 35};
+static const EffectInfo fxc2Desc = {EFFECT_FACTORY(FxC2), {"FXC2", "blur function"}, 5};
+static const EffectInfo fxc3Desc = {EFFECT_FACTORY(FxC3), {"FXC3", "Perlin Noise for moving up and down the strand"}, 4};
+static const EffectInfo fxc4Desc = {EFFECT_FACTORY(FxC4), {"FxC4", "lightnings"}, 9};
+static const EffectInfo fxc5Desc = {EFFECT_FACTORY(FxC5), {"FXC5", "matrix"}, 20};
+static const EffectInfo fxc6Desc = {EFFECT_FACTORY(FxC6), {"FXC6", "one sine"}, 20};
 
 void FxC::fxRegister() {
     fxRegistry.registerEffect(&fxc1Desc);
@@ -44,20 +44,20 @@ void FxC1::setup() {
 void FxC1::run() {
     animationA();
     animationB();
-    CRGBSet others(leds, setB.size(), NUM_PIXELS-1);
+    CRGBSet fxOthers(leds, setB.size(), NUM_PIXELS-1);
 
     //combine all into setB (it is backed by the strip)
     const uint8_t ratio = beatsin8(2);
-    for (uint16_t x = 0; x < setB.size(); x++) {
+    for (int x = 0; x < setB.size(); x++) {
         setB[x] = blend(setA[x], setB[x], ratio);
     }
-    replicateSet(setB, others);
+    replicateSet(setB, fxOthers);
 
     FastLED.show(stripBrightness);
 }
 
 void FxC1::animationA() {
-    for (uint16_t x = 0; x<setA.size(); x++) {
+    for (int x = 0; x<setA.size(); x++) {
         uint8_t clrIndex = (millis() / 10) + (x * 12);    // speed, length
         if (clrIndex > 128) clrIndex = 0;
         setA[x] = ColorFromPalette(palette, clrIndex, dim8_raw(clrIndex << 1), LINEARBLEND);
@@ -65,7 +65,7 @@ void FxC1::animationA() {
 }
 
 void FxC1::animationB() {
-    for (uint16_t x = 0; x<setB.size(); x++) {
+    for (int x = 0; x<setB.size(); x++) {
         uint8_t clrIndex = (millis() / 5) - (x * 12);    // speed, length
         if (clrIndex > 128) clrIndex = 0;
         setB[x] = ColorFromPalette(palette, 255-clrIndex, dim8_raw(clrIndex << 1), LINEARBLEND);
@@ -323,16 +323,17 @@ void FxC6::run() {
     }
 }
 
-void FxC6::one_sine_pal(uint8_t colorIndex) {
+void FxC6::one_sine_pal(const uint8_t clrIndex) {
     // This is the heart of this program. Sure is short.
     phase = dirFwd ? phase - speed : phase + speed;
+    uint8_t xColor = clrIndex;
 
-    for (uint16_t k=0; k<tpl.size(); k++) {
+    for (int k=0; k<tpl.size(); k++) {
         // For each of the LED's in the strand, set a brightness based on a wave as follows:
         const uint8_t thisBright = qsubd(cubicwave8((k * allfreq) + phase), cutoff);         // qsub sets a minimum value called thiscutoff. If < thiscutoff, then bright = 0. Otherwise, bright = 128 (as defined in qsub)..
         tpl[k] = paletteFactory.isHolidayLimitedHue() ? ColorFromPalette(palette, bgclr, bgbright) : CHSV(bgclr, 255, bgbright);                                     // First set a background colour, but fully saturated.
-        tpl[k] += ColorFromPalette(palette, colorIndex, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
-        colorIndex +=3;
+        tpl[k] += ColorFromPalette(palette, xColor, thisBright, LINEARBLEND);    // Let's now add the foreground colour.
+        xColor +=3;
     }
     replicateSet(tpl, others);
     bgclr++;

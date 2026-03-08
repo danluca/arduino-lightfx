@@ -2,6 +2,7 @@
 // Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "efx_setup.h"
+#include "HealthMonitor.h"
 #include "sysinfo.h"
 #include "filesystem.h"
 #include "FxSchedule.h"
@@ -266,7 +267,7 @@ void fx_run() {
     if (isFirmwareUpgrading) {
         watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageFirmwareUpgrade;
         displayFirmwareUpgradePattern();
-        watchdogPing();
+        HealthMonitor::checkIn(HEALTH_FX);
         watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
         return;
     }
@@ -282,7 +283,7 @@ void fx_run() {
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageBeforeLoop;
     fxRegistry.loop();
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterLoop;
-    watchdogPing();
+    HealthMonitor::checkIn(HEALTH_FX);
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
 }
 

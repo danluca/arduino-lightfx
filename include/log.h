@@ -1,13 +1,12 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_LOG_H
 #define LIGHTFX_LOG_H
 
-// *************************************************************************
-//  Comment line below to disable logging (or set it to 0)
-// ************************************************************************
-// #define LOGGING_ENABLED     1
+#ifndef LOGGING_ENABLED
+#define LOGGING_ENABLED     0
+#endif
 
 #include <LogProxy.h>
 

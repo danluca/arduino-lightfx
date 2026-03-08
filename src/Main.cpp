@@ -18,6 +18,7 @@
 #include "task_msg.h"
 #include "web_server.h"
 #include "ota_upgrade.h"
+#include "HealthMonitor.h"
 #include "hardware/watchdog.h"
 #include "constants.hpp"
 
@@ -167,6 +168,8 @@ void setup() {
     commSetup();
     web::server_setup();
 
+    HealthMonitor::init();
+
     // notifies Core1 to start processing tasks that need WiFi
     const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
 
@@ -192,20 +195,17 @@ void setup() {
  * Core 0 Main loop - runs the web actions
  */
 void loop() {
+    HealthMonitor::checkIn(HEALTH_CORE0);
     web_run();
     handle_fw_upgrade();
     taskDelay(5);   //this is important to allow other tasks to execute on core 0
-#if DIAG_CORE_HEARTBEATS
-    watchdog_hw->scratch[kCore0HeartbeatScratchIndex] = millis();
-#endif
-#if DIAG_WDT_PING_CORE0
+
     static uint32_t lastCore0WdtPingMs = 0;
     const uint32_t nowMsPing = millis();
     if (nowMsPing - lastCore0WdtPingMs >= 1000u) {
         lastCore0WdtPingMs = nowMsPing;
-        watchdog_update();
+        HealthMonitor::update(4000);
     }
-#endif
 
     static uint32_t lastCheckMs = 0;
     static uint32_t lastHeartbeatMs = 0;
@@ -278,10 +278,8 @@ void setup1() {
  * Core 1 Main loop - runs the communication tasks
  */
 void loop1() {
+    HealthMonitor::checkIn(HEALTH_CORE1);
     diagExecute();
-#if DIAG_CORE_HEARTBEATS
-    watchdog_hw->scratch[kCore1HeartbeatScratchIndex] = millis();
-#endif
 }
 
 /**
