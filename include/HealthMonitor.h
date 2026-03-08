@@ -5,6 +5,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <atomic>
 
 /**
  * Health bits for different tasks/cores
@@ -38,6 +39,6 @@ public:
     static void init();
 
 private:
-    static uint32_t lastCheckInMs[3]; // For CORE0, CORE1, FX
+    static std::atomic<uint32_t> lastCheckInMs[3]; // For CORE0, CORE1, FX
     static uint32_t healthStatus;
 };

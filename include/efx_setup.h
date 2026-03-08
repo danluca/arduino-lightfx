@@ -24,7 +24,7 @@ using namespace fx;
 typedef void (*setupFunc)();
 
 extern volatile uint8_t brightness;
-extern volatile uint8_t stripBrightness;
+extern std::atomic<uint8_t> stripBrightness;
 extern std::atomic<bool> stripBrightnessLocked;
 extern volatile uint8_t colorIndex;
 extern volatile uint8_t lastColorIndex;
@@ -37,6 +37,7 @@ extern volatile uint16_t hueDiff;
 extern std::atomic<bool> fxBroadcastEnabled;
 extern std::atomic<uint16_t> speed;
 extern std::atomic<uint16_t> curPos;
+extern mutex_t fxRegistryMutex;
 extern String masterBoardName;
 
 namespace fx {

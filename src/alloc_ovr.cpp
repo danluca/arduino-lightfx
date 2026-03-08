@@ -36,6 +36,7 @@ __weak void __wrap_free(void* ptr) {
 
 // calloc wrapper - mark as weak so it doesn't collide with the USB/Arduino internal wrapper
 __weak void* __wrap_calloc(size_t nmemb, size_t size) {
+    if (size != 0 && nmemb > SIZE_MAX / size) return nullptr;
     size_t total = nmemb * size;
     void* p = pvPortMalloc(total);
     if (p) memset(p, 0, total);

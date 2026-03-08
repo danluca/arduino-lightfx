@@ -14,7 +14,7 @@
 
 #define FILE_BUF_SIZE   512
 #define MAX_DIR_LEVELS  10          // maximum number of directory levels to list (limits the recursion in the list function)
-#define FILE_OPERATIONS_TIMEOUT pdMS_TO_TICKS(1000)     //1 second file operations timeout (plenty time)
+#define FILE_OPERATIONS_TIMEOUT_TICKS portMAX_DELAY
 
 #define OTA_COMMAND_FILE "/otacommand.bin"     // must match the _OTA_COMMAND_FILE name in the ../include/rp2040/pico_base/pico/ota_command.h
 #define FW_BIN_FILE "/fw.bin"                  // must match the csFWImageFilename name in the app include/constants.hpp
@@ -330,7 +330,7 @@ size_t SynchronizedFS::readFile(const char *fname, String *s) const {
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
-        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        sz = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending READ_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
@@ -353,7 +353,7 @@ size_t SynchronizedFS::writeFile(const char *fname, String *s) const {
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
-        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        sz = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
@@ -396,7 +396,7 @@ size_t SynchronizedFS::appendFile(const char *fname, String *s) const {
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
-        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        sz = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending APPEND_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
@@ -413,7 +413,7 @@ size_t SynchronizedFS::appendFile(const char *fname, uint8_t *buffer, const size
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
-        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        sz = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending APPEND_FILE_BIN message to filesystem task for file name %s - error %d"), fname, qResult);
 
@@ -434,7 +434,7 @@ bool SynchronizedFS::remove(const char *path) {
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
     if (qResult == pdTRUE) {
-        success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        success = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), path, qResult);
 
@@ -457,7 +457,7 @@ bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
     if (qResult == pdTRUE) {
-        success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        success = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending RENAME message to filesystem task for file name %s - error %d"), pathFrom, qResult);
 
@@ -478,7 +478,7 @@ bool SynchronizedFS::exists(const char *fname) {
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool exists = false;
     if (qResult == pdTRUE) {
-        exists = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        exists = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending FILE_EXISTS message to filesystem task for file name %s - error %d"), fname, qResult);
 
@@ -498,7 +498,7 @@ bool SynchronizedFS::format() {
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool formatted = false;
     if (qResult == pdTRUE) {
-        formatted = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        formatted = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending FORMAT message to filesystem task - error %d"), qResult);
 
@@ -520,7 +520,7 @@ bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool completed = false;
     if (qResult == pdTRUE) {
-        completed = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        completed = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending LIST_FIlES message to filesystem task for path %s - error %d"), path, qResult);
 
@@ -542,7 +542,7 @@ bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
     if (qResult == pdTRUE)
-        successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        successful = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     else
         log_error(F("Error sending INFO message to filesystem task for path %s - error %d"), path, qResult);
     if (!successful)
@@ -559,7 +559,7 @@ bool SynchronizedFS::stat(const char *path, FSStat *st) {
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
     if (qResult == pdTRUE)
-        successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        successful = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     else
         log_error(F("Error sending STAT message to filesystem task for path %s - error %d"), path, qResult);
     if (!successful)
@@ -578,7 +578,7 @@ String SynchronizedFS::sha256(const char *path) const {
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
     if (qResult == pdTRUE)
-        successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        successful = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     else
         log_error(F("Error sending SHA256 message to filesystem task for path %s - error %d"), path, qResult);
     if (!successful)
@@ -607,7 +607,7 @@ bool SynchronizedFS::mkdir(const char *path) {
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
     if (qResult == pdTRUE) {
-        success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+        success = ulTaskNotifyTake(pdTRUE, FILE_OPERATIONS_TIMEOUT_TICKS);
     } else
         log_error(F("Error sending MAKE_DIR message to filesystem task for path name %s - error %d"), path, qResult);
 
