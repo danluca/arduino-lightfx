@@ -134,7 +134,6 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     buf[sz] = '\n'; //new line ending - no null terminator as we control exactly the number of characters written into the m_queue or output stream
 
 #if LOG_BYPASS_BUFFER
-    CoreMutex mtx(&m_mutex);
     if (isStreamingEnabled())
         m_stream->write(buf, sz + 1);
 #else

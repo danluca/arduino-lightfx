@@ -16,7 +16,7 @@
 #define FILE_BUF_SIZE   512
 #define MAX_DIR_LEVELS  10          // maximum number of directory levels to list (limits the recursion in the list function)
 #define FILE_BLOCK_DETECT_TICKS pdMS_TO_TICKS(1000)
-#define FILE_BLOCK_WARN_EVERY_INTERVALS 10
+#define FILE_BLOCK_WARN_EVERY_INTERVALS 2
 static constexpr uint8_t kFsBlockedScratchIndex = 2u;
 static constexpr uint32_t kFsBlockedMagic = 0xFB000000u;
 

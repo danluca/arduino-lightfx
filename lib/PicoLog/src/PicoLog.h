@@ -80,11 +80,6 @@ private:
     size_t print(LogLevel level, const __FlashStringHelper *format, va_list args);
     static size_t printThread(char *msg) ;
     static size_t printLevel(LogLevel level, char *msg) ;
-#if LOG_BYPASS_BUFFER
-    mutex_t m_mutex{};
-#endif
-
-
     friend void flushData();
 };
 
