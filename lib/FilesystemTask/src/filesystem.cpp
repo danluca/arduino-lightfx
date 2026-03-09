@@ -100,8 +100,8 @@ static uint32_t waitForFsCompletion(const fsTaskMessage::Action action, const ch
 
     uint32_t intervals = 0;
     for (;;) {
-        const uint32_t result = ulTaskNotifyTake(pdTRUE, detectTicks);
-        if (result > 0) {
+        uint32_t result = 0;
+        if (xTaskNotifyWait(0u, 0xFFFFFFFFu, &result, detectTicks) == pdTRUE) {
             watchdog_hw->scratch[kFsBlockedScratchIndex] = 0u;
             if (intervals > 0) {
                 log_error(F("FS operation %s for %s resumed after %lu ms. caller=%s"),

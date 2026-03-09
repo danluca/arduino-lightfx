@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef PICOLOG_H
@@ -14,7 +14,9 @@
 #define CR "\n"
 #define PICO_LOG_VERSION_STR "1.0.0"
 #define LOG_BUFFER_SIZE 10240
+#ifndef LOG_BYPASS_BUFFER
 #define LOG_BYPASS_BUFFER false
+#endif
 
 enum LogLevel:uint8_t {SILENT, FATAL, ERROR, WARNING, INFO, DEBUG, TRACE};
 

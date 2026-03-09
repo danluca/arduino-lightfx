@@ -327,8 +327,8 @@ void logSystemInfo() {
     extern char __StackBottom;
     extern char __StackOneTop;
     extern char __StackOneBottom;
-    extern uint32_t __scratch_x_start__;
-    extern uint32_t __scratch_y_start__;
+    extern uint32_t __scratch_x_source__;
+    extern uint32_t __scratch_y_source__;
     log_info(F("Memory map pointers:"));
     log_info(F("  .text end:            __etext       = %#X"), (uint32_t)&__etext);
     log_info(F("  .data start/end:      __data_start__/__data_end__ = %#X/%#X"), (uint32_t)&__data_start__, (uint32_t)&__data_end__);
@@ -341,7 +341,7 @@ void logSystemInfo() {
     log_info(F("  Heap limits:          __HeapLimit   = %#X"), (uint32_t)&__HeapLimit);
     log_info(F("  Stack limits CORE0:         __StackLimit  = %#X; __StackTop = %#X; __StackBottom = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop, (uint32_t)&__StackBottom);
     log_info(F("  Stack limits CORE1:         __StackLimit  = %#X; __StackTop = %#X; __StackBottom = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackOneTop, (uint32_t)&__StackOneBottom);
-    log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_start__, __scratch_y_start__);
+    log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_source__, __scratch_y_source__);
 #endif
 }
 
