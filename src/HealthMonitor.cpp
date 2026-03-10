@@ -16,7 +16,7 @@ void HealthMonitor::init() {
     healthStatus = 0;
 }
 
-void HealthMonitor::checkIn(HealthBit bit) {
+void HealthMonitor::checkIn(const HealthBit bit) {
     const uint32_t nowMs = millis();
     switch (bit) {
         case HEALTH_CORE0: lastCheckInMs[0].store(nowMs, std::memory_order_relaxed); watchdog_hw->scratch[kCore0HeartbeatScratchIndex] = nowMs; break;
@@ -24,9 +24,23 @@ void HealthMonitor::checkIn(HealthBit bit) {
         case HEALTH_FX:    lastCheckInMs[2].store(nowMs, std::memory_order_relaxed); watchdog_hw->scratch[kFxHeartbeatScratchIndex] = nowMs; break;
         default: break;
     }
+    uint32_t diffs[3];
+
+    for (int i = 0; i < 3; i++) {
+        diffs[i] = nowMs - lastCheckInMs[i].load(std::memory_order_relaxed);
+    }
+
+    if (watchdog_get_time_remaining_ms() < 2000) {
+        static uint32_t lastWarnMs = 0;
+        if (nowMs - lastWarnMs > 1000) {
+            log_warn(F("HealthMonitor: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
+                diffs[0], diffs[1], diffs[2], nowMs);
+            lastWarnMs = nowMs;
+        }
+    }
 }
 
-void HealthMonitor::update(uint32_t timeoutMs, uint32_t warnMs) {
+void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
     const uint32_t nowMs = millis();
     bool allHealthy = true;
     uint32_t diffs[3];

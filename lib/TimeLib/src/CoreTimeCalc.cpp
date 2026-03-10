@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "CoreTimeCalc.h"
@@ -212,7 +212,8 @@ time_t CoreTimeCalc::makeTimeCore(const tmElements_t &tmItems) {
         else
             seconds += SECS_PER_DAY * monthDays[i];
     }
-    seconds += tmItems.tm_mday * SECS_PER_DAY;
+    // tm_mday is 1-based (1..31), so convert to zero-based day offset in month
+    seconds += (tmItems.tm_mday - 1) * SECS_PER_DAY;
     seconds += tmItems.tm_hour * SECS_PER_HOUR;
     seconds += tmItems.tm_min * SECS_PER_MIN;
     seconds += tmItems.tm_sec;

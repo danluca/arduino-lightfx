@@ -238,28 +238,17 @@ void switchToRandomEffect() {
 //FX Run -------
 void fx_run() {
     static bool isFirmwareUpgrading = false;
+    HealthMonitor::checkIn(HEALTH_FX);
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageEnter;
 
     FxActionMessage msg{};
     if (pdTRUE == xQueueReceive(fxQueue, &msg, 0)) {
         switch (msg.action) {
-            case AUTO_FX: {
-                fxRegistry.autoRoll(static_cast<bool>(msg.data));
-                break;
-            }
-            case MANUAL_FX: {
-                fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data));
-                break;
-            }
+            case AUTO_FX: fxRegistry.autoRoll(static_cast<bool>(msg.data)); break;
+            case MANUAL_FX: fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data)); break;
             case COLOR_THEME: paletteFactory.setHoliday(static_cast<Holiday>(msg.data)); break;
-            case SLEEP_ENABLED: {
-                fxRegistry.enableSleep(static_cast<bool>(msg.data));
-                break;
-            }
-            case SLEEP_STATE: {
-                fxRegistry.setSleepState(static_cast<bool>(msg.data));
-                break;
-            }
+            case SLEEP_ENABLED: fxRegistry.enableSleep(static_cast<bool>(msg.data)); break;
+            case SLEEP_STATE: fxRegistry.setSleepState(static_cast<bool>(msg.data)); break;
             case SAVE_STATE: saveFxState(); break;
             case STRIP_BRIGHTNESS: {
                 const auto br = static_cast<uint8_t>(msg.data);
@@ -282,7 +271,7 @@ void fx_run() {
     if (isFirmwareUpgrading) {
         watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageFirmwareUpgrade;
         displayFirmwareUpgradePattern();
-        HealthMonitor::checkIn(HEALTH_FX);
+        HealthMonitor::update(7000, 3000);
         watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
         return;
     }
@@ -298,7 +287,7 @@ void fx_run() {
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageBeforeLoop;
     fxRegistry.loop();
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterLoop;
-    HealthMonitor::checkIn(HEALTH_FX);
+    HealthMonitor::update(7000, 3000);
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
 }
 

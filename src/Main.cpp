@@ -200,12 +200,12 @@ void loop() {
     handle_fw_upgrade();
     taskDelay(5);   //this is important to allow other tasks to execute on core 0
 
-    static uint32_t lastCore0WdtPingMs = 0;
-    const uint32_t nowMsPing = millis();
-    if (nowMsPing - lastCore0WdtPingMs >= 1000u) {
-        lastCore0WdtPingMs = nowMsPing;
-        HealthMonitor::update(7000, 3000);
-    }
+    // static uint32_t lastCore0WdtPingMs = 0;
+    // const uint32_t nowMsPing = millis();
+    // if (nowMsPing - lastCore0WdtPingMs >= 1000u) {
+        // lastCore0WdtPingMs = nowMsPing;
+        //HealthMonitor::update(7000, 3000);
+    // }
 }
 
 
