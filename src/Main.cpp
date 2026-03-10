@@ -48,9 +48,10 @@
 void web_run();
 void alarm_misc_begin();
 void alarm_misc_run();
+static void logTaskProbe();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
-constexpr TaskDef fxTasks {fx_setup, fx_run, 1024, csFxTask, 7, CORE_1};
-constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1024, "ALM", 5, CORE_0};
+constexpr TaskDef fxTasks {fx_setup, fx_run, 1536, csFxTask, 7, CORE_1};
+constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1536, "ALM", 5, CORE_0};
 bool core1_separate_stack = true;
 
 /**
@@ -135,6 +136,36 @@ void filesystem_setup() {
     sysInfo->setSysStatus(SysStatus::Filesystem);
 }
 
+static void logTaskProbeForHandle(const char *label, const TaskHandle_t handle) {
+    if (handle == nullptr) {
+        log_warn(F("Task probe %s: handle not found"), label);
+        return;
+    }
+
+    TaskStatus_t status {};
+    vTaskGetInfo(handle, &status, pdTRUE, eInvalid);
+    log_info(F("Task probe %s: state=%s(%d) prio=%lu/%lu stackHwm=%u taskNum=%u coreMask=0x%02lx"),
+        label,
+        taskStatusToString(status.eCurrentState),
+        static_cast<int>(status.eCurrentState),
+        status.uxCurrentPriority,
+        status.uxBasePriority,
+        static_cast<unsigned>(status.usStackHighWaterMark),
+        static_cast<unsigned>(status.xTaskNumber),
+        static_cast<unsigned long>(status.uxCoreAffinityMask));
+}
+
+static void logTaskProbe() {
+    static uint32_t lastLogMs = 0;
+    const uint32_t nowMs = millis();
+    if (nowMs - lastLogMs < 1000u)
+        return;
+    lastLogMs = nowMs;
+
+    logTaskProbeForHandle(csFxTask, xTaskGetHandle(csFxTask));
+    logTaskProbeForHandle(csCORE1, xTaskGetHandle(csCORE1));
+}
+
 //===First core tasks===
 /**
  * Core 0 Setup LED strip and global data structures
@@ -196,6 +227,7 @@ void setup() {
  */
 void loop() {
     HealthMonitor::checkIn(HEALTH_CORE0);
+    logTaskProbe();
     web_run();
     handle_fw_upgrade();
     taskDelay(5);   //this is important to allow other tasks to execute on core 0
