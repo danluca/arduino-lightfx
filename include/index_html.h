@@ -60,6 +60,7 @@ inline constexpr auto index_html PROGMEM = R"~~~(
                     <input type="checkbox" id="broadcastEnabled" onchange="updateBroadcast()"/>
                     <label for="broadcastEnabled" id="broadcastEnabledLabel">Effect change broadcast enabled</label>
                     <div id="ignoreWebFxState"></div>
+                    <div id="masterSlaveInfo"></div>
                 </div>
             </div>
             <div id="curEffectArea">

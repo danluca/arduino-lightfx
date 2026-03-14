@@ -41,7 +41,7 @@ function getConfig() {
             $.each(data.fx, function (i, fxi) {
                 let fx_id = fxi.registryIndex;
                 //let fx_name = fxi.name;
-                let fx_description = overflowString(`${fxi.name}:: ${fxi.description}`, 60);
+                let fx_description = overflowString(`${fxi.name} - ${fxi.description}`, 60);
                 // Add to list
                 fxlst.append(`<option class="opt-select" value="${fx_id}">${fx_description}</option>`);
             });
@@ -137,6 +137,20 @@ function getStatus() {
                 $('#ignoreWebFxState').html('&nbsp;<i>(not listening for web effect changes from other boards)</i>');
             } else {
                 $('#ignoreWebFxState').html('');
+            }
+            // Display master/slave information
+            if (data.master && data.master.active) {
+                // Master mode is active - show controlled boards
+                if (data.master.activeClients && data.master.activeClients.length > 0) {
+                    $('#masterSlaveInfo').html(`&nbsp;<i>(controlling ${data.master.activeClients.length} board(s): ${data.master.activeClients.join(', ')})</i>`);
+                } else {
+                    $('#masterSlaveInfo').html('&nbsp;<i>(no active boards being controlled)</i>');
+                }
+            } else if (data.master && data.master.masterBoard) {
+                // Slave mode - show the master board name
+                $('#masterSlaveInfo').html(`&nbsp;<i>(controlled by: ${data.master.masterBoard})</i>`);
+            } else {
+                $('#masterSlaveInfo').html('');
             }
             let fxlst = $('#fxlist');
             fxlst.val(data.fx.index);

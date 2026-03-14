@@ -2,18 +2,17 @@
 //
 #include <FreeRTOS.h>
 #include <LittleFS.h>
-#include <PicoLog.h>
 #include <TimeLib.h>
 #include <StreamUtils.h>
 #include "filesystem.h"
 #include "web_server.h"
+#include "comms.h"
 #include "constants.hpp"
 #include "diag.h"
 #include "efx_setup.h"
 #include "FxSchedule.h"
 #include "mic.h"
 #include "net_setup.h"
-#include "stringutils.h"
 #include "sysinfo.h"
 #include "util.h"
 #include "task_msg.h"
@@ -30,23 +29,26 @@
 
 using namespace web;
 // using namespace colTheme;
-static constexpr auto hdCacheControl PROGMEM = "Cache-Control";
-static constexpr auto hdCacheStatic PROGMEM = "public, max-age=2592000, immutable";
-static constexpr auto hdCacheJson PROGMEM = "no-cache, no-store";
-static constexpr auto serverAgent PROGMEM = "rp2040-luca/1.0.0";
-static constexpr auto hdFmtDate PROGMEM = "%4d-%02d-%02d %02d:%02d:%02d CST";
-static constexpr auto hdFmtContentDisposition PROGMEM = "inline; filename=\"%s\"";
-static constexpr auto msgRequestNotMapped PROGMEM = "URI not mapped to a handler on this server";
-// static constexpr auto configJsonFilename PROGMEM = "config.json";
-static constexpr auto statusJsonFilename PROGMEM = "status.json";
-static constexpr auto tasksJsonFilename PROGMEM = "tasks.json";
-static constexpr auto filesJsonFilename PROGMEM = "files.json";
-static constexpr auto authToken PROGMEM = "KlFpc1dAdFd0eDRXdkVSZg";
-static constexpr uint16_t serverPort PROGMEM = 80;
+static constexpr auto hdCacheControl = "Cache-Control";
+static constexpr auto hdCacheStatic = "public, max-age=2592000, immutable";
+static constexpr auto hdCacheJson = "no-cache, no-store";
+static constexpr auto serverAgent = "rp2040-luca/1.0.0";
+static constexpr auto hdFmtDate = "%4d-%02d-%02d %02d:%02d:%02d CST";
+static constexpr auto hdFmtContentDisposition = "inline; filename=\"%s\"";
+static constexpr auto msgRequestNotMapped = "URI not mapped to a handler on this server";
+// static constexpr auto configJsonFilename = "config.json";
+static constexpr auto statusJsonFilename = "status.json";
+static constexpr auto tasksJsonFilename = "tasks.json";
+static constexpr auto filesJsonFilename = "files.json";
+static constexpr auto authToken = "KlFpc1dAdFd0eDRXdkVSZg";
+static constexpr uint16_t serverPort = 80;
 #if MDNS_ENABLED==1
 static auto mdnsStatus = MDNS::Status::TryLater;
 #endif
 
+#define WL_STREAM_BUFFER_SIZE   (1024u)
+
+String masterBoardName;
 WebServer web::server;
 bool web::server_handlers_configured = false;
 
@@ -100,13 +102,12 @@ void contentDispositionHeader(WebClient &client, const char *fname) {
  * @param client web server to use for sending JSON out
  * @return number of bytes written in response
  */
-size_t web::marshalJson(JsonDocument &doc, WebClient &client) {
+size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
     //send it out
     const size_t docLength = measureJson(doc);
     size_t sz = client.sendHeaders(200, mime::mimeTable[mime::json].mimeType, docLength);
     WriteBufferingStream wbs(client.rawClient(), WL_STREAM_BUFFER_SIZE);
     sz += serializeJson(doc, wbs);
-    doc.clear();
     return sz;
 }
 
@@ -121,12 +122,12 @@ void web::handleGetStatus(WebClient &client) {
     // response body
     JsonDocument doc;
     // System
-    doc["watchdogRebootsCount"] = sysInfo->watchdogReboots().size();
+    doc["watchdogRebootsCount"] = sysInfo->watchdogRebootsCount();
     doc["cleanBoot"] = sysInfo->isCleanBoot();
-    if (!sysInfo->watchdogReboots().empty())
-        doc["lastWatchdogReboot"] = TimeFormat::asString(sysInfo->watchdogReboots().back());
+    if (sysInfo->hasWatchdogReboots())
+        doc["lastWatchdogReboot"] = TimeFormat::asString(sysInfo->lastWatchdogReboot());
     const auto wdReboots = doc["watchdogReboots"].to<JsonArray>();
-    for (const auto &wd: sysInfo->watchdogReboots())
+    for (const auto &wd: sysInfo->watchdogRebootsSnapshot())
         wdReboots.add<String>(TimeFormat::asString(wd));
 
     // WiFi
@@ -138,37 +139,48 @@ void web::handleGetStatus(WebClient &client) {
     wifi["ssid"] = WiFi.SSID();
     // Fx
     const auto fx = doc["fx"].to<JsonObject>();
+    uint16_t curFxIndex = 0;
+    const char *curFxName = strNR;
     fx[csAuto] = fxRegistry.isAutoRoll();
     fx[csSleepEnabled] = fxRegistry.isSleepEnabled();
     fx["asleep"] = fxRegistry.isAsleep();
+    curFxIndex = fxRegistry.curEffectPos();
+    if (const EffectInfo *info = fxRegistry.getEffectInfo(curFxIndex); info != nullptr)
+        curFxName = info->desc.id;
     fx["autoTheme"] = paletteFactory.isAuto();
     fx["theme"] = holidayToString(paletteFactory.getHoliday()); //could be forced to a fixed value
-    const LedEffect *curFx = fxRegistry.getCurrentEffect();
-    fx["index"] = curFx->getRegistryIndex();
-    fx["name"] = curFx->name();
+    fx["index"] = curFxIndex;
+    fx["name"] = curFxName;
     fx[csBroadcast] = fxBroadcastEnabled.load();
     fx[csIgnoreWebFx] = (IGNORE_WEB_EFFECT_CHANGES == 1);   // Reflect compile-time ability to ignore web effect changes
     auto lastFx = fx["pastEffects"].to<JsonArray>();
     fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
-    fx[csBrightness] = stripBrightness;
+    fx[csBrightness] = stripBrightness.load();
     fx[csBrightnessLocked] = stripBrightnessLocked.load();
-    {
-        CoreMutex lock(&audioStatsMutex);
-        const auto audioHist = fx["audioHist"].to<JsonArray>();
-        for (uint16_t x: maxAudio)
-            audioHist.add<uint16_t>(x);
+    // Master/Slave status
+    const auto master = doc["master"].to<JsonObject>();
+    master["active"] = fxBroadcastEnabled.load();
+    if (fxBroadcastEnabled) {
+        const auto activeClients = master["activeClients"].to<JsonArray>();
+        forEachActiveClientIP([&activeClients](const IPAddress &ip) {
+            (void)activeClients.add(ip.toString());
+        });
+    } else if (masterBoardName.length() > 0) {
+        master["masterBoard"] = masterBoardName;
     }
-    fx[csAudioThreshold] = audioBumpThreshold.load(); //current audio level threshold
-    fx["totalAudioBumps"] = totalAudioBumps.load(); //how many times (in total) have we bumped the effect due to audio level
+    const auto knownClients = master["knownClients"].to<JsonArray>();
+    forEachKnownClientIP([&knownClients](const IPAddress &ip) {
+        (void)knownClients.add(ip.toString());
+    });
     // Time
     const auto time = doc["time"].to<JsonObject>();
-    time["ntpSync"] = sysInfo->isSysStatus(SYS_STATUS_NTP);
+    time["ntpSync"] = sysInfo->isSysStatus(SysStatus::Ntp);
     time["millis"] = millis(); //current time in ms
     const time_t curTime = now();
     time["sdate"] = TimeFormat::dateAsString(curTime);  //string date
     time["stime"] = TimeFormat::timeAsString(curTime);  //string time
     time["time"] = curTime; //numeric time
-    const bool bDST = sysInfo->isSysStatus(SYS_STATUS_DST);
+    const bool bDST = sysInfo->isSysStatus(SysStatus::Dst);
     time["dst"] = bDST;
     time["zoneDST"] = timeService.timezone()->isDST(curTime);
     time["offset"] = timeService.timezone()->getOffset(curTime);
@@ -202,8 +214,10 @@ void web::handleGetStatus(WebClient &client) {
     boardTemp["current"] = imuTempRange.current.value;
     boardTemp["max"] = imuTempRange.max.value;
     boardTemp["min"] = imuTempRange.min.value;
-    cpuTemp["current"] = cpuTempRange.current.value;
+    cpuTemp["current"] = cpuTempRange.ref.value;
     cpuTemp["max"] = cpuTempRange.max.value;
+    cpuTemp["max_adc"] = cpuTempRange.max.adcRaw;
+    cpuTemp["min_adc"] = cpuTempRange.min.adcRaw;
     cpuTemp["min"] = cpuTempRange.min.value;
     wifiTemp["current"] = wifiTempRange.current.value;
     wifiTemp["max"] = wifiTempRange.max.value;
@@ -212,7 +226,7 @@ void web::handleGetStatus(WebClient &client) {
     vcc["current"] = lineVoltage.current.value;
     vcc["max"] = lineVoltage.max.value;
     vcc["min"] = lineVoltage.min.value;
-    doc["overallStatus"] = sysInfo->getSysStatus();
+    doc["overallStatus"] = static_cast<uint16_t>(sysInfo->getSysStatus());
 #if MDNS_ENABLED==1
     doc["mdnsEnabled"] = mdns->isEnabled();
 #endif
@@ -243,6 +257,7 @@ void web::handleGetStatus(WebClient &client) {
 
     //send it out - the size returned is http headers and response body (does not include the HTTP protocol header)
     const size_t sz = marshalJson(doc, client);
+    doc.clear();
     (void) sz;
     log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
@@ -292,6 +307,7 @@ void web::handlePutConfig(WebClient &client) {
 #if IGNORE_WEB_EFFECT_CHANGES == 1
         if (!isUi) {
             log_warn(F("Ignoring MANUAL_FX change from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
+            resp["talkToHand"] = true;
         } else
 #endif
         {
@@ -300,6 +316,10 @@ void web::handlePutConfig(WebClient &client) {
             if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
                 log_error(F("Error sending MANUAL_FX message to FX queue with value %d - error %ld"), nextFx, qResult);
             upd[strEffect] = nextFx;
+            if (doc["source"].is<String>()) {
+                const auto source = doc["source"].as<String>();
+                masterBoardName = source;
+            }
         }
     }
     if (doc[csHoliday].is<String>()) {
@@ -320,10 +340,9 @@ void web::handlePutConfig(WebClient &client) {
     }
     if (doc[csAudioThreshold].is<uint16_t>()) {
         const uint16_t audioThreshold = doc[csAudioThreshold].as<uint16_t>();
-        auto *msg = new AudioActionMessage{AUDIO_THRESHOLD_UPDATE, audioThreshold};
+        AudioActionMessage msg{AUDIO_THRESHOLD_UPDATE, audioThreshold};
         if ((qResult = xQueueSend(micQueue, &msg, 0)) != pdTRUE) {
             log_error(F("Error sending AUDIO_THRESHOLD_UPDATE message to MIC queue with value %u - error %ld"), audioThreshold, qResult);
-            delete msg;
         }
         upd[csAudioThreshold] = audioThreshold;
     }
@@ -350,17 +369,24 @@ void web::handlePutConfig(WebClient &client) {
 #endif
         {
             const bool syncMode = doc[csBroadcast].as<bool>();
-            auto *msg = new bcTaskMessage{ENABLE_BROADCAST, static_cast<uint16_t>(syncMode)};
+            auto msg = bcTaskMessage{ENABLE_BROADCAST, static_cast<uint16_t>(syncMode)};
             if ((qResult = xQueueSend(bcQueue, &msg, 0)) != pdTRUE) {
                 log_error(F("Error sending ENABLE_BROADCAST message to COMM queue with value %d - error %ld"), syncMode, qResult);
-                delete msg;
             } else
                 upd[csBroadcast] = syncMode;
         }
     }
+    uint16_t curFxPos = 0;
+    bool autoRoll = false;
+    bool sleepEnabled = false;
+    curFxPos = fxRegistry.curEffectPos();
+    autoRoll = fxRegistry.isAutoRoll();
+    sleepEnabled = fxRegistry.isSleepEnabled();
+    const Holiday holiday = paletteFactory.getHoliday();
+
     log_info(F("FX: Current config updated effect %hu, autoswitch %s, sleep %s, holiday %s, brightness %hu, brightness adjustment %s"),
-        fxRegistry.curEffectPos(), StringUtils::asString(fxRegistry.isAutoRoll()), StringUtils::asString(fxRegistry.isSleepEnabled()),
-        holidayToString(paletteFactory.getHoliday()), stripBrightness, stripBrightnessLocked?"fixed":"automatic");
+        curFxPos, StringUtils::asString(autoRoll), StringUtils::asString(sleepEnabled),
+        holidayToString(holiday), stripBrightness.load(), stripBrightnessLocked?"fixed":"automatic");
 
     //main status and headers
     resp["status"] = qResult == pdTRUE;
@@ -368,6 +394,7 @@ void web::handlePutConfig(WebClient &client) {
     contentDispositionHeader(client, statusJsonFilename);
     //send it out
     const size_t sz = marshalJson(resp, client);
+    resp.clear();
     doc.clear();
     (void) sz;
     log_info(F("Handler handlePutConfig invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
@@ -393,7 +420,7 @@ void web::handleGetTasks(WebClient &client) {
     SysInfo::heapStats(heap);
     auto tasks = doc["tasks"].to<JsonObject>();
     SysInfo::taskStats(tasks);
-    doc["boardName"] = sysInfo->getBoardName();
+    doc["boardName"] = sysInfo->getDeviceName();
     doc["boardUid"] = sysInfo->getBoardId();
     doc["fwVersion"] = sysInfo->getBuildVersion();
     doc["fwBranch"] = sysInfo->getScmBranch();
@@ -401,6 +428,7 @@ void web::handleGetTasks(WebClient &client) {
 
     //send it out
     const size_t sz = marshalJson(doc, client);
+    doc.clear();
     (void) sz;
     log_info(F("Handler handleGetStatus invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
@@ -524,8 +552,8 @@ static bool ensureParentDirs(const String &filePath) {
     const String dir = filePath.substring(0, lastSlash);
     // build progressively
     String cur;
-    int start = 0;
-    while (static_cast<unsigned int>(start) < dir.length()) {
+    unsigned int start = 0;
+    while (start < dir.length()) {
         int slash = dir.indexOf('/', start);
         if (slash < 0) slash = dir.length();
         if (String part = dir.substring(start, slash); part.length() > 0) {
@@ -703,6 +731,7 @@ void handleGetFiles(WebClient &client) {
     entries.clear();
 
     const size_t sz = marshalJson(doc, client);
+    doc.clear();
     (void)sz;
     log_info(F("Handler handleGetFiles invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
@@ -746,9 +775,7 @@ void web::server_setup() {
 void web::webserver() {
     server.handleClient();
 #if MDNS_ENABLED==1
-    EVERY_N_SECONDS(3) {
-        if (server.state() == HTTPServer::IDLE)
-            mdnsStatus = mdns->process();
-    }
+    if (server.state() == HTTPServer::IDLE)
+        mdnsStatus = mdns->process();
 #endif
 }

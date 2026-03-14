@@ -9,12 +9,12 @@ using namespace FxA;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxa1Desc PROGMEM = {EFFECT_FACTORY(FxA1), "FXA1", "Multiple Tetris segments", 3};
-static const EffectInfo fxa2Desc PROGMEM = {EFFECT_FACTORY(FxA2), "FXA2", "Randomly sized and spaced segments moving on entire strip", 10};
-static const EffectInfo fxa3Desc PROGMEM = {EFFECT_FACTORY(FxA3), "FXA3", "Moving variable dot size back and forth", 20 };
-static const EffectInfo fxa4Desc PROGMEM = {EFFECT_FACTORY(FxA4), "FXA4", "Moving variable dot size back and forth with gradient background", 20 };
-static const EffectInfo fxa5Desc PROGMEM = {EFFECT_FACTORY(FxA5), "FXA5", "Moving color swath on top of another", 20 };
-static const EffectInfo fxa6Desc PROGMEM = {EFFECT_FACTORY(SleepLight), "FXA6", "Sleep Light", 0};
+static const EffectInfo fxa1Desc = {EFFECT_FACTORY(FxA1), "FXA1", "Multiple Tetris segments", 3};
+static const EffectInfo fxa2Desc = {EFFECT_FACTORY(FxA2), "FXA2", "Randomly sized and spaced segments moving on entire strip", 10};
+static const EffectInfo fxa3Desc = {EFFECT_FACTORY(FxA3), "FXA3", "Moving variable dot size back and forth", 20 };
+static const EffectInfo fxa4Desc = {EFFECT_FACTORY(FxA4), "FXA4", "Moving variable dot size back and forth with gradient background", 20 };
+static const EffectInfo fxa5Desc = {EFFECT_FACTORY(FxA5), "FXA5", "Moving color swath on top of another", 20 };
+static const EffectInfo fxa6Desc = {EFFECT_FACTORY(SleepLight), "FXA6", "Sleep Light", 0};
 
 uint16_t FxA::szStack = 0;
 
@@ -411,8 +411,8 @@ SleepLight::SleepLight() : LedEffect(fxa6Desc), state(Fade), refPixel(&ledSet[0]
 }
 
 uint8_t excludeActiveColors(const uint8_t hue) {
-    constexpr uint8_t min = HUE_ORANGE-8;     //24       (~33°)
-    constexpr uint8_t max = HUE_AQUA;         //128      (180°)
+    static constexpr uint8_t min = HUE_ORANGE-8;     //24       (~33°)
+    static constexpr uint8_t max = HUE_AQUA;         //128      (180°)
     return scale8(sin8(hue), (max-min)) + min;
 }
 

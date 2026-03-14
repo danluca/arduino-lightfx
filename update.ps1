@@ -64,6 +64,11 @@ function updateFirmwareOTA() {
 #######################################
 Push-Location $PSScriptRoot
 
+if (test-path -path logs/build-$board.log -type Leaf) {
+    remove-item -force -path logs/build-$board.log
+}
+start-transcript -path logs/build-$board.log -force
 updateFirmwareOTA
+stop-transcript
 
 Pop-Location

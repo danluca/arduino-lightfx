@@ -19,4 +19,9 @@ if ($clean) {
 }
 
 # Call the build function with the appropriate environment name based on debug flag
+if (test-path -path $PSScriptRoot/logs/build-$board.log -type Leaf) {
+    remove-item -force -path $PSScriptRoot/logs/build-$board.log
+}
+start-transcript -path $PSScriptRoot/logs/build-$board.log -force
 Build-Application $board $log $ignoreBroadcast $dbg
+stop-transcript

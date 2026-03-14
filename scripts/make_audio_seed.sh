@@ -7,6 +7,23 @@ len=$4
 
 out_file=fsi4_seed$variant.txt
 
+if [ -z "$VIRTUAL_ENV" ]; then
+  echo "Python virtualenv not active. Attempting to activate local venv (.venv, venv, penv, lfxpy)..."
+  for d in .venv venv penv lfxpy; do
+    if [ -f "$d/bin/activate" ]; then
+      echo "Activating $d/bin/activate"
+      # shellcheck disable=SC1091
+      . "$d/bin/activate"
+      break
+    fi
+  done
+
+  if [ -z "$VIRTUAL_ENV" ]; then
+    echo "ERROR: Python virtualenv is not active. Please activate a venv (e.g. 'source venv/bin/activate') and retry." >&2
+    exit 2
+  fi
+fi
+
 
 python create_audio_seed.py $file $out_file 4 30 --stretch_p 1 99 --contrast 1.8 --transient 0.4 --max_minutes $len --offset_minutes $ofs
 

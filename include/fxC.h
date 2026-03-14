@@ -103,7 +103,7 @@ namespace FxC {
 
         bool windDown() override;
 
-        void one_sine_pal(uint8_t colorIndex);
+        void one_sine_pal(uint8_t clrIndex);
 
         [[nodiscard]] uint8_t selectionWeight() const override;
 

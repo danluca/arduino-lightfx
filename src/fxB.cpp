@@ -9,15 +9,15 @@ using namespace FxB;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxb1Desc PROGMEM = {EFFECT_FACTORY(FxB1), "FXB1", "rainbow", 15};
-static const EffectInfo fxb2Desc PROGMEM = {EFFECT_FACTORY(FxB2), "FXB2", "rainbow with glitter", 40};
-static const EffectInfo fxb3Desc PROGMEM = {EFFECT_FACTORY(FxB3), "FXB3", "confetti B", 24};
-static const EffectInfo fxb4Desc PROGMEM = {EFFECT_FACTORY(FxB4), "FXB4", "sinelon", 20};
-static const EffectInfo fxb5Desc PROGMEM = {EFFECT_FACTORY(FxB5), "FXB5", "juggle short segments", 30};
-static const EffectInfo fxb6Desc PROGMEM = {EFFECT_FACTORY(FxB6), "FXB6", "bpm", 20};
-static const EffectInfo fxb7Desc PROGMEM = {EFFECT_FACTORY(FxB7), "FXB7", "ease", 10};
-static const EffectInfo fxb8Desc PROGMEM = {EFFECT_FACTORY(FxB8), "FXB8", "fadein", 15};
-static const EffectInfo fxb9Desc PROGMEM = {EFFECT_FACTORY(FxB9), "FXB9", "juggle long segments", 14};
+static const EffectInfo fxb1Desc = {EFFECT_FACTORY(FxB1), "FXB1", "rainbow", 15};
+static const EffectInfo fxb2Desc = {EFFECT_FACTORY(FxB2), "FXB2", "rainbow with glitter", 40};
+static const EffectInfo fxb3Desc = {EFFECT_FACTORY(FxB3), "FXB3", "confetti B", 24};
+static const EffectInfo fxb4Desc = {EFFECT_FACTORY(FxB4), "FXB4", "sinelon", 20};
+static const EffectInfo fxb5Desc = {EFFECT_FACTORY(FxB5), "FXB5", "juggle short segments", 30};
+static const EffectInfo fxb6Desc = {EFFECT_FACTORY(FxB6), "FXB6", "bpm", 20};
+static const EffectInfo fxb7Desc = {EFFECT_FACTORY(FxB7), "FXB7", "ease", 10};
+static const EffectInfo fxb8Desc = {EFFECT_FACTORY(FxB8), "FXB8", "fadein", 15};
+static const EffectInfo fxb9Desc = {EFFECT_FACTORY(FxB9), "FXB9", "juggle long segments", 14};
 
 uint16_t FxB::szStack = 0;
 
@@ -219,7 +219,7 @@ void FxB5::run() {
  * Eight colored dots, weaving in and out of sync with each other.
  */
 void FxB::juggle_short() {
-    constexpr uint16_t segSize = 8;
+    static constexpr uint16_t segSize = 8;
     tpl.fadeToBlackBy(20);
 
     for (uint16_t i = 0; i < segSize; i++) {

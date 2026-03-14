@@ -197,7 +197,6 @@ void LedEffect::handleSetup() {
     setup();
     restartPerformance();
 
-    logHeapStats();
     log_info(F("Effect %s [%d] completed setup, moving to running state"), name(), getRegistryIndex());
     nextState();
 }
@@ -237,7 +236,6 @@ void LedEffect::handleWindDown() {
 void LedEffect::handleCleanup() {
     cleanup();
 
-    logHeapStats();
     log_info(F("Effect %s [%d] completed cleanup"), name(), getRegistryIndex());
     nextState();
 }
@@ -253,3 +251,4 @@ void LedEffect::handleIdle() {
     }
     // No-op
 }
+

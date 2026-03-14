@@ -62,7 +62,7 @@ void mic_setup() {
         // while (true) taskYIELD();
     }
     taskDelay(1000);
-    sysInfo->setSysStatus(SYS_STATUS_MIC);
+    sysInfo->setSysStatus(SysStatus::Mic);
     log_info(F("PDM - microphone - setup ok"));
 }
 
@@ -113,19 +113,18 @@ void mic_run() {
         }
     }
 
-    AudioActionMessage *msg;
+    AudioActionMessage msg{};
     if (pdTRUE == xQueueReceive(micQueue, &msg, 0)) {
-        switch (msg->action) {
+        switch (msg.action) {
             case AUDIO_THRESHOLD_UPDATE: {
                 // Protect threshold update
                 CoreMutex lock(&audioStatsMutex);
-                audioBumpThreshold = msg->data;
+                audioBumpThreshold = msg.data;
                 clearLevelHistory();
                 break;
             }
-            default: log_error(F("Mic Action %hu not supported"), msg->action);
+            default: log_error(F("Mic Action %hu not supported"), msg.action);
         }
-        delete msg;
     }
 
 }

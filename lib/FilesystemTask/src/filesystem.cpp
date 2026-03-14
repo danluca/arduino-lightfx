@@ -6,15 +6,19 @@
 #include <queue.h>
 #include <functional>
 #include <TimeLib.h>
+#include "hardware/watchdog.h"
 #include "SchedulerExt.h"
 #include "filesystem.h"
-#include <LogProxy.h>
+#include <PicoLog.h>
 #include "stringutils.h"
 #include "TimeFormat.h"
 
 #define FILE_BUF_SIZE   512
 #define MAX_DIR_LEVELS  10          // maximum number of directory levels to list (limits the recursion in the list function)
-#define FILE_OPERATIONS_TIMEOUT pdMS_TO_TICKS(1000)     //1 second file operations timeout (plenty time)
+#define FILE_BLOCK_DETECT_TICKS pdMS_TO_TICKS(1000)
+#define FILE_BLOCK_WARN_EVERY_INTERVALS 2
+static constexpr uint8_t kFsBlockedScratchIndex = 2u;
+static constexpr uint32_t kFsBlockedMagic = 0xFB000000u;
 
 #define OTA_COMMAND_FILE "/otacommand.bin"     // must match the _OTA_COMMAND_FILE name in the ../include/rp2040/pico_base/pico/ota_command.h
 #define FW_BIN_FILE "/fw.bin"                  // must match the csFWImageFilename name in the app include/constants.hpp
@@ -40,6 +44,7 @@ struct fsOperationData {
     String* const content{};
     void* const data{};
     size_t size=0;
+    bool ownsContent=false;
 };
 
 /**
@@ -50,6 +55,78 @@ struct fsTaskMessage {
     TaskHandle_t task;
     fsOperationData* data;
 };
+
+[[maybe_unused]] static const char* fsActionToString(const fsTaskMessage::Action action) {
+    switch (action) {
+        case fsTaskMessage::READ_FILE:
+            return "READ_FILE";
+        case fsTaskMessage::WRITE_FILE:
+            return "WRITE_FILE";
+        case fsTaskMessage::WRITE_FILE_ASYNC:
+            return "WRITE_FILE_ASYNC";
+        case fsTaskMessage::APPEND_FILE:
+            return "APPEND_FILE";
+        case fsTaskMessage::APPEND_FILE_BIN:
+            return "APPEND_FILE_BIN";
+        case fsTaskMessage::RENAME:
+            return "RENAME";
+        case fsTaskMessage::DELETE:
+            return "DELETE";
+        case fsTaskMessage::EXISTS:
+            return "EXISTS";
+        case fsTaskMessage::FORMAT:
+            return "FORMAT";
+        case fsTaskMessage::LIST_FIlES:
+            return "LIST_FILES";
+        case fsTaskMessage::INFO:
+            return "INFO";
+        case fsTaskMessage::STAT:
+            return "STAT";
+        case fsTaskMessage::MAKE_DIR:
+            return "MAKE_DIR";
+        case fsTaskMessage::SHA256:
+            return "SHA256";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+/**
+ * Waits for FS task completion without a hard timeout. It emits periodic warnings if an operation appears blocked.
+ */
+static uint32_t waitForFsCompletion(const fsTaskMessage::Action action, const char *path, const QueueHandle_t queue) {
+    constexpr TickType_t minTicks = 1;
+    const TickType_t detectTicks = FILE_BLOCK_DETECT_TICKS > 0 ? FILE_BLOCK_DETECT_TICKS : minTicks;
+
+    uint32_t intervals = 0;
+    for (;;) {
+        uint32_t result = 0;
+        if (xTaskNotifyWait(0u, 0xFFFFFFFFu, &result, detectTicks) == pdTRUE) {
+            watchdog_hw->scratch[kFsBlockedScratchIndex] = 0u;
+            if (intervals > 0) {
+                log_error(F("FS operation %s for %s resumed after %lu ms. caller=%s"),
+                          fsActionToString(action),
+                          (path && *path) ? path : "<none>",
+                          intervals * detectTicks * portTICK_PERIOD_MS,
+                          pcTaskGetName(nullptr));
+            }
+            return result;
+        }
+
+        ++intervals;
+        const uint32_t waitedSeconds = (intervals * detectTicks * portTICK_PERIOD_MS) / 1000u;
+        watchdog_hw->scratch[kFsBlockedScratchIndex] =
+            kFsBlockedMagic | (static_cast<uint32_t>(action) << 16) | (waitedSeconds & 0xFFFFu);
+        if (intervals == 1 || (intervals % FILE_BLOCK_WARN_EVERY_INTERVALS) == 0) {
+            log_error(F("FS operation %s for %s blocked for %lu ms. caller=%s queueDepth=%u"),
+                      fsActionToString(action),
+                      (path && *path) ? path : "<none>",
+                      intervals * detectTicks * portTICK_PERIOD_MS,
+                      pcTaskGetName(nullptr),
+                      static_cast<unsigned>(uxQueueMessagesWaiting(queue)));
+        }
+    }
+}
 
 /**
  * Lists all the files - recursively - from the directory provided for logging purposes
@@ -209,9 +286,6 @@ void fsExecute() {
             sz = SyncFsImpl.prvWriteFileAndFreeMem(msg->data->name, msg->data->content);
             if (!sz)
                 log_error(F("Failed to write file %s asynchronously. Data is still available, may lead to memory leaks."), msg->data->name);
-            //dispose the messaging data
-            delete msg->data;
-            delete msg;
             break;
         case fsTaskMessage::APPEND_FILE:
             sz = SyncFsImpl.prvAppendFile(msg->data->name, msg->data->content);
@@ -261,6 +335,13 @@ void fsExecute() {
             log_error(F("Event type %hd not supported"), msg->event);
             break;
     }
+    if (msg->data != nullptr) {
+        if (msg->data->ownsContent && msg->data->content != nullptr) {
+            delete msg->data->content;
+        }
+        delete msg->data;
+    }
+    delete msg;
 }
 
 SynchronizedFS::SynchronizedFS() = default;
@@ -301,7 +382,7 @@ bool SynchronizedFS::begin() {
  */
 bool SynchronizedFS::begin(FS &fs) {
     fsPtr = &fs;
-    queue = xQueueCreate(10, sizeof(fsTaskMessage*));
+    queue = xQueueCreate(32, sizeof(fsTaskMessage*));
     //mirror the priority of the calling task - the filesystem task is intended to have the same priority
     fsDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle())+1;
     fsTask = Scheduler.startTask(&fsDef);
@@ -313,6 +394,11 @@ bool SynchronizedFS::begin(FS &fs) {
 
 /**
  * Blocking function that reads a text file leveraging the filesystem task. Can be called from any task.
+ * NOTE: ownership protocol:
+ * - the caller allocates args/msg and transfers ownership to filesystem task when queue send succeeds
+ * - filesystem task frees args/msg after processing
+ * - caller frees args/msg only when queue send fails
+ *
  * @param fname file name to read
  * @param s content recipient
  * @return number of bytes read - 0 if file does not exist or cannot be read for some reason (e.g. timeout)
@@ -321,16 +407,17 @@ size_t SynchronizedFS::readFile(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::READ_FILE, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
-        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        sz = waitForFsCompletion(fsTaskMessage::READ_FILE, fname, queue);
+    } else {
         log_error(F("Error sending READ_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return sz;
 }
 
@@ -344,16 +431,17 @@ size_t SynchronizedFS::writeFile(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
-        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        sz = waitForFsCompletion(fsTaskMessage::WRITE_FILE, fname, queue);
+    } else {
         log_error(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return sz;
 }
 
@@ -367,7 +455,7 @@ bool SynchronizedFS::writeFileAsync(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE_ASYNC, nullptr, args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     if (qResult != pdTRUE) {
         log_error(F("Error sending WRITE_FILE_ASYNC message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
@@ -387,16 +475,17 @@ size_t SynchronizedFS::appendFile(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::APPEND_FILE, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
-        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        sz = waitForFsCompletion(fsTaskMessage::APPEND_FILE, fname, queue);
+    } else {
         log_error(F("Error sending APPEND_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return sz;
 }
 
@@ -404,16 +493,17 @@ size_t SynchronizedFS::appendFile(const char *fname, uint8_t *buffer, const size
     auto *args = new fsOperationData {fname, nullptr, buffer, size};
     auto *msg = new fsTaskMessage {fsTaskMessage::APPEND_FILE_BIN, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
-        sz = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        sz = waitForFsCompletion(fsTaskMessage::APPEND_FILE_BIN, fname, queue);
+    } else {
         log_error(F("Error sending APPEND_FILE_BIN message to filesystem task for file name %s - error %d"), fname, qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return sz;
 }
 
@@ -426,15 +516,16 @@ bool SynchronizedFS::remove(const char *path) {
     auto *args = new fsOperationData {path, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::DELETE, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
     if (qResult == pdTRUE) {
-        success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        success = waitForFsCompletion(fsTaskMessage::DELETE, path, queue);
+    } else {
         log_error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), path, qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return success;
 }
 
@@ -445,19 +536,20 @@ bool SynchronizedFS::remove(const char *path) {
  * @return true if rename was successful (old path exists, rename succeeded); false otherwise
  */
 bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
-    String pathToStr(pathTo);
-    auto *args = new fsOperationData {pathFrom, &pathToStr, nullptr};
+    auto *pathToStr = new String(pathTo);
+    auto *args = new fsOperationData {pathFrom, pathToStr, nullptr, 0, true};
     auto *msg = new fsTaskMessage{fsTaskMessage::RENAME, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
     if (qResult == pdTRUE) {
-        success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        success = waitForFsCompletion(fsTaskMessage::RENAME, pathFrom, queue);
+    } else {
         log_error(F("Error sending RENAME message to filesystem task for file name %s - error %d"), pathFrom, qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return success;
 }
 
@@ -470,15 +562,16 @@ bool SynchronizedFS::exists(const char *fname) {
     auto *args = new fsOperationData {fname, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::EXISTS, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool exists = false;
     if (qResult == pdTRUE) {
-        exists = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        exists = waitForFsCompletion(fsTaskMessage::EXISTS, fname, queue);
+    } else {
         log_error(F("Error sending FILE_EXISTS message to filesystem task for file name %s - error %d"), fname, qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return exists;
 }
 
@@ -490,15 +583,16 @@ bool SynchronizedFS::format() {
     auto *args = new fsOperationData {nullptr, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::FORMAT, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool formatted = false;
     if (qResult == pdTRUE) {
-        formatted = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        formatted = waitForFsCompletion(fsTaskMessage::FORMAT, nullptr, queue);
+    } else {
         log_error(F("Error sending FORMAT message to filesystem task - error %d"), qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return formatted;
 }
 
@@ -512,15 +606,16 @@ bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
     auto *args = new fsOperationData {path, nullptr, list};
     auto *msg = new fsTaskMessage{fsTaskMessage::LIST_FIlES, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool completed = false;
     if (qResult == pdTRUE) {
-        completed = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        completed = waitForFsCompletion(fsTaskMessage::LIST_FIlES, path, queue);
+    } else {
         log_error(F("Error sending LIST_FIlES message to filesystem task for path %s - error %d"), path, qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return completed;
 }
 
@@ -534,16 +629,17 @@ bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
     auto *args = new fsOperationData {path, nullptr, info};
     auto *msg = new fsTaskMessage{fsTaskMessage::INFO, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
     if (qResult == pdTRUE)
-        successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    else
+        successful = waitForFsCompletion(fsTaskMessage::INFO, path, queue);
+    else {
         log_error(F("Error sending INFO message to filesystem task for path %s - error %d"), path, qResult);
-    if (!successful)
-        log_error(F("Failed to retrieve file info for path %s"), path);
-    delete msg;
-    delete args;
+        if (!successful)
+            log_error(F("Failed to retrieve file info for path %s"), path);
+        delete msg;
+        delete args;
+    }
     return successful;
 }
 
@@ -551,16 +647,18 @@ bool SynchronizedFS::stat(const char *path, FSStat *st) {
     auto *args = new fsOperationData {path, nullptr, st};
     auto *msg = new fsTaskMessage{fsTaskMessage::STAT, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
     if (qResult == pdTRUE)
-        successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    else
+        successful = waitForFsCompletion(fsTaskMessage::STAT, path, queue);
+    else {
         log_error(F("Error sending STAT message to filesystem task for path %s - error %d"), path, qResult);
+        delete msg;
+        delete args;
+    }
     if (!successful)
         log_error(F("Failed to retrieve file info for path %s"), path);
-    delete msg;
-    delete args;
+
     return successful;
 }
 
@@ -570,16 +668,17 @@ String SynchronizedFS::sha256(const char *path) const {
     auto *args = new fsOperationData {path, &strSha2, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::SHA256, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
     if (qResult == pdTRUE)
-        successful = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    else
+        successful = waitForFsCompletion(fsTaskMessage::SHA256, path, queue);
+    else {
         log_error(F("Error sending SHA256 message to filesystem task for path %s - error %d"), path, qResult);
+        delete msg;
+        delete args;
+    }
     if (!successful)
         log_error(F("Failed to calculate SHA-256 hash for path %s (does not exist or not a file)"), path);
-    delete msg;
-    delete args;
     return strSha2;
 }
 
@@ -599,15 +698,16 @@ bool SynchronizedFS::mkdir(const char *path) {
     auto *args = new fsOperationData {path, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::MAKE_DIR, xTaskGetCurrentTaskHandle(), args};
 
-    const BaseType_t qResult = xQueueSend(queue, &msg, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
+    const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
     if (qResult == pdTRUE) {
-        success = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(FILE_OPERATIONS_TIMEOUT));
-    } else
+        success = waitForFsCompletion(fsTaskMessage::MAKE_DIR, path, queue);
+    } else {
         log_error(F("Error sending MAKE_DIR message to filesystem task for path name %s - error %d"), path, qResult);
 
-    delete msg;
-    delete args;
+        delete msg;
+        delete args;
+    }
     return success;
 }
 

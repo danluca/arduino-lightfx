@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 
 #ifndef WEBREQUEST_H
@@ -7,7 +7,7 @@
 #include <Arduino.h>
 #include <deque>
 #include <vector>
-#include "WiFiNINA.h"
+#include "WiFi.h"
 #include "HTTP_Method.h"
 
 class WebClient;
@@ -16,11 +16,11 @@ enum HTTPUploadStatus { UPLOAD_FILE_START, UPLOAD_FILE_WRITE, UPLOAD_FILE_END, U
 enum HTTPRawStatus { RAW_START, RAW_WRITE, RAW_END, RAW_ABORTED };
 
 #ifndef HTTP_UPLOAD_BUFLEN
-#define HTTP_UPLOAD_BUFLEN (1436*2)
+#define HTTP_UPLOAD_BUFLEN (1436*6)
 #endif
 
 #ifndef HTTP_RAW_BUFLEN
-#define HTTP_RAW_BUFLEN (1436*2)
+#define HTTP_RAW_BUFLEN (1436*6)
 #endif
 
 #ifndef HTTP_MAX_POST_DATA_LENGTH

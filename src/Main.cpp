@@ -19,6 +19,9 @@
 #include "task_msg.h"
 #include "web_server.h"
 #include "ota_upgrade.h"
+#include "HealthMonitor.h"
+#include "hardware/watchdog.h"
+#include "constants.hpp"
 
 /**
  * TASK ALLOCATIONS
@@ -26,13 +29,14 @@
  *   - CORE0 (default task - setup, loop) - Web and communications, lowered priority (5)
  *   - ALM - alarm processing and some misc actions (inherited priority - 5)
  *   - FS - filesystem interaction (raised priority from calling task - 7)
- *   - IdleCore0, USB - default kernel tasks
+ *   - IdleCore0 - default kernel tasks (high priority - 11), used to stop temporarily first core
+ * NOTE: The USB task is bound to first core (high priority - 10), however, the task is disabled in release mode.
  *
  * Second Core
- *   - CORE1 (default task - setup1, loop1) - Diag - diagnostic tasks, interaction with I2C devices, elevated priority (7)
+ *   - CORE1 (default task - setup1, loop1) - Diag - diagnostic tasks, interaction with I2C devices, regular priority (6)
  *   - FX - light effects (regular priority - 6)
  *   - Mic - microphone processing (regular priority - 6)
- *   - IdleCore1 - default kernel task
+ *   - IdleCore1 - default kernel task (high priority - 11), used to stop temporarily second core
  *
  * Following kernel tasks are set to run on either core (core affinity 0xFFFFFFFF):
  *   - SRL - serial logging, enabled for either core, started from a Core0 task (regular priority - 6)
@@ -46,10 +50,11 @@
 void web_run();
 void alarm_misc_begin();
 void alarm_misc_run();
+static void logTaskProbe();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
-constexpr TaskDef fxTasks {fx_setup, fx_run, 1024, csFxTask, 255, CORE_1};
+constexpr TaskDef fxTasks {fx_setup, fx_run, 1536, csFxTask, 7, CORE_1};
 constexpr TaskDef micTasks {mic_setup, mic_run, 1024, "Mic", 5, CORE_1};
-constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1024, "ALM", 5, CORE_0};
+constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1536, "ALM", 5, CORE_0};
 bool core1_separate_stack = true;
 
 /**
@@ -65,7 +70,7 @@ bool core1_separate_stack = true;
  * - Logs an error if the message could not be enqueued.
  */
 void enqueueAlarmSetup() {
-    constexpr AlmAction msgSetup = ALARM_SETUP;
+    static constexpr AlmAction msgSetup = ALARM_SETUP;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msgSetup, 0); qResult != pdTRUE)
         log_error(F("Error sending ALARM_SETUP message to ALM queue - error %ld"), qResult);
 }
@@ -118,6 +123,10 @@ void alarm_misc_run() {
 /**
  * Executes the primary web-related tasks - runs the web server and communication functions
  * This function is intended to be invoked regularly to handle web communication and actions efficiently.
+ * NOTE: It is by design that both web-server and comms activities are sequenced and run in the same task.
+ * Without this feature, the web server and communication functions would run concurrently requiring all data structures to be thread-safe,
+ * engage locks; which would increase code complexity. In particular \code fxBroadcastRecipients \endcode is at risk of data corruption.
+ *
  */
 void web_run() {
     web::webserver();
@@ -127,19 +136,49 @@ void web_run() {
 void filesystem_setup() {
     SyncFsImpl.begin(LittleFS);
     log_info(F("Filesystem setup completed"));
-    sysInfo->setSysStatus(SYS_STATUS_FILESYSTEM);
+    sysInfo->setSysStatus(SysStatus::Filesystem);
+}
+
+static void logTaskProbeForHandle(const char *label, const TaskHandle_t handle) {
+    if (handle == nullptr) {
+        log_warn(F("Task probe %s: handle not found"), label);
+        return;
+    }
+
+    TaskStatus_t status {};
+    vTaskGetInfo(handle, &status, pdTRUE, eInvalid);
+    log_info(F("Task probe %s: state=%s(%d) prio=%lu/%lu stackHwm=%u taskNum=%u coreMask=0x%02lx"),
+        label,
+        taskStatusToString(status.eCurrentState),
+        static_cast<int>(status.eCurrentState),
+        status.uxCurrentPriority,
+        status.uxBasePriority,
+        static_cast<unsigned>(status.usStackHighWaterMark),
+        static_cast<unsigned>(status.xTaskNumber),
+        static_cast<unsigned long>(status.uxCoreAffinityMask));
+}
+
+static void logTaskProbe() {
+    static uint32_t lastLogMs = 0;
+    const uint32_t nowMs = millis();
+    if (nowMs - lastLogMs < 1000u)
+        return;
+    lastLogMs = nowMs;
+
+    logTaskProbeForHandle(csFxTask, xTaskGetHandle(csFxTask));
+    logTaskProbeForHandle(csCORE1, xTaskGetHandle(csCORE1));
 }
 
 //===First core tasks===
 /**
  * Core 0 Setup LED strip and global data structures
- * NOTE: Core 0 task (setup and loop) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico\libraries\FreeRTOS\src\variantHooks.cpp#startFreeRTOS)
+ * NOTE: Core 0 task (setup and loop) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico/cores/rp2040/freertos/freertos-main.cpp#startFreeRTOS)
+ * NOTE: Manual updates to the pico framework code changed the stack size to 2048 bytes; this is how the code is compiled
  */
 void setup() {
     taskDelay(2000);    //safety delay
     SysInfo::setupStateLED();
     log_setup();
-    logHeapStats();
 
     RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
 
@@ -168,11 +207,12 @@ void setup() {
     const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
 
     watchdogSetup();
+    HealthMonitor::init();
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
     taskDelay(250);         // leave reasonable time to the alarm task to set up
     //enqueues the alarm setup event if time is ok
-    if (sysInfo->isSysStatus(SYS_STATUS_NTP))
+    if (sysInfo->isSysStatus(SysStatus::Ntp))
         enqueueAlarmSetup();
     else
         log_warn(F("System time not yet synchronized with NTP, skipping alarm setup; retrying later"));
@@ -180,33 +220,45 @@ void setup() {
     //wait for the other core to finish all initializations before allowing web server to respond to requests
     // ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    sysInfo->setSysStatus(SYS_STATUS_SETUP0);
+    sysInfo->setSysStatus(SysStatus::Setup0);
     log_info(F("Main CORE0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
     logSystemInfo();
-    logHeapStats();
 }
 
 /**
  * Core 0 Main loop - runs the web actions
  */
 void loop() {
+    HealthMonitor::checkIn(HEALTH_CORE0);
+    // logTaskProbe();
     web_run();
     handle_fw_upgrade();
+    vTaskDelay(5);   //this is important to allow other tasks to execute on core 0
+
+    // static uint32_t lastCore0WdtPingMs = 0;
+    // const uint32_t nowMsPing = millis();
+    // if (nowMsPing - lastCore0WdtPingMs >= 1000u) {
+        // lastCore0WdtPingMs = nowMsPing;
+        //HealthMonitor::update(7000, 3000);
+    // }
 }
 
 
 //===Second core tasks===
 /**
  * Core 1 Setup communication and diagnostic tasks
- * NOTE: Core 1 task (setup1 and loop1) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico\libraries\FreeRTOS\src\variantHooks.cpp#startFreeRTOS)
+ * NOTE: Core 1 task (setup1 and loop1) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico/cores/rp2040/freertos/freertos-main.cpp#__core0 function - CORE1 task is launched by CORE0)
+ * NOTE: Manual updates to the pico framework code changed the stack size to 2048 bytes; this is how the code is compiled
+ * NOTE: Keeping this task priority to default (same as FX task) allows both of these to round-robin. RPi RP2350 boards don't have devices attached to I2C bus.
+ * Since FX task owns the watchdog, round-robin is much desirable as to avoid tasks starving each other.
+ * Priority inversion risk: If FX task held a resource CORE1 needed, CORE1 would block waiting for a lower-priority task
  */
 void setup1() {
     //wait for the main core to notify us that the core components are ready (filesystem, logging, secure element), not interested in the notification value
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    logHeapStats();
     Scheduler.startTask(&fxTasks);
-    // taskDelay(250);         // leave reasonable time to FX task to set-up
+    taskDelay(250);         // leave reasonable time to FX task to set-up
 
     //wait for the main core to notify us that WiFi is ready, not interested in the notification value
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -214,20 +266,19 @@ void setup1() {
     Scheduler.startTask(&micTasks);
     diagSetup();
 
-    vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)+1);    //raise the priority of the diag task to allow uninterrupted I2C interactions
-    taskDelay(250);    // safety delay after priority bump
     // const TaskHandle_t core0 = xTaskGetHandle(csCORE0);    //retrieve a task handle for the first core
     // const BaseType_t c0NtfStatus = xTaskNotify(core0, 1, eSetValueWithOverwrite);    //notify the first core that it can start running the web server
-    sysInfo->setSysStatus(SYS_STATUS_SETUP1);
+    sysInfo->setSysStatus(SysStatus::Setup1);
     log_info(F("Main CORE1 Setup completed. System status: %#hX"), sysInfo->getSysStatus());
-    logHeapStats();
 }
 
 /**
  * Core 1 Main loop - runs the communication tasks
  */
 void loop1() {
+    HealthMonitor::checkIn(HEALTH_CORE1);
     diagExecute();
+    vTaskDelay(7);
 }
 
 /**
@@ -236,8 +287,26 @@ void loop1() {
  * @param pcTaskName name of the task that exceeded stack
  */
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerStackOverflow;
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
         Serial.printf("Stack overflow in task %s [%p]\n", pcTaskName, xTask);
 #endif
+    watchdog_reboot(0, 0, 10);
+    while (true)
+        tight_loop_contents();
+}
+
+/**
+ * Log an event to the console when malloc fails
+ */
+void vApplicationMallocFailedHook() {
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerMalloc;
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+    if (Serial)
+        Serial.println("Malloc failed");
+#endif
+    watchdog_reboot(0, 0, 10);
+    while (true)
+        tight_loop_contents();
 }

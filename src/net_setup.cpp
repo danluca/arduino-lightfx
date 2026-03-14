@@ -2,24 +2,31 @@
 // Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
 //
 #include "net_setup.h"
+#include <algorithm>
 #include <WiFiNINA.h>
 #include "config.h"
 #include "sysinfo.h"
 #include "timeutil.h"
 #include "comms.h"
+#include "constants.hpp"
 #include "util.h"
 #include "log.h"
+#include "stringutils.h"
 #include "web_server.h"
-
-// using namespace colTheme;
-constexpr auto ssid PROGMEM = WF_SSID;
-constexpr auto pass PROGMEM = WF_PSW;
-constexpr auto hostname PROGMEM = "lightfx-" DEVICE_NAME;
-
 #if MDNS_ENABLED==1
+#include <LightMDNS.hpp>
 WiFiUDP* mUdp = nullptr;  // mDNS UDP instance
 MDNS* mdns = nullptr;
 #endif
+
+#define DEVICE_NAME_PREFIX "lightfx-"
+
+// using namespace colTheme;
+constexpr auto ssid = WF_SSID;
+constexpr auto pass = WF_PSW;
+constexpr auto hostname = DEVICE_NAME_PREFIX DEVICE_NAME;
+constexpr auto service_type = "lucasfx";
+constexpr auto service_protocol = "tcp";
 
 /**
  * Convenience to translate into number of bars the WiFi signal strength received from \code WiFi.RSSI() \endcode
@@ -35,10 +42,16 @@ uint8_t barSignalLevel(const int32_t rssi) {
         return 0;
     if (rssi >= maxRSSI)
         return numLevels - 1;
-    constexpr float inRange = maxRSSI - minRSSI;
-    constexpr float outRange = numLevels - 1;
+    static constexpr float inRange = maxRSSI - minRSSI;
+    static constexpr float outRange = numLevels - 1;
     return static_cast<uint8_t>(static_cast<float>(rssi - minRSSI) * outRange / inRange);
 }
+
+#if MDNS_ENABLED==1
+static mutex_t discBoardsMutex;
+// Storage for discovered boards - by itself is not thread-safe
+static std::vector<DiscoveredBoard> discoveredBoards;
+#endif
 
 bool wifi_connect() {
     //static IP address - such that we can have a known location for config page
@@ -46,6 +59,7 @@ bool wifi_connect() {
     WiFi.setHostname(hostname);
     log_info(F("Connecting to WiFI '%s'"), ssid);  // print the network name (SSID);
     // attempt to connect to WiFi network:
+    WiFi.setTimeout(7500);     // default timeout is 15 seconds - see WiFiClass.h
     uint attCount = 0;
     uint8_t wifiStatus = WiFi.status();
     while (wifiStatus != WL_CONNECTED) {
@@ -59,7 +73,7 @@ bool wifi_connect() {
     }
     const bool result = wifiStatus == WL_CONNECTED;
     if (result) {
-        sysInfo->setSysStatus(SYS_STATUS_WIFI);
+        sysInfo->setSysStatus(SysStatus::Wifi);
         if (const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress()); resPing >= 0)
             log_info(F("Connected to WiFi after %d tries. Gateway ping successful: %d ms"), attCount, resPing);
         else
@@ -123,7 +137,7 @@ bool wifi_setup() {
  */
 bool wifi_check() {
     if (WiFi.status() != WL_CONNECTED) {
-        sysInfo->resetSysStatus(SYS_STATUS_WIFI);
+        sysInfo->resetSysStatus(SysStatus::Wifi);
         log_warn(F("WiFi Connection lost"));
         return false;
     }
@@ -131,12 +145,12 @@ bool wifi_check() {
     const int32_t rssi = WiFi.RSSI();
     const uint8_t wifiBars = barSignalLevel(rssi);
     if ((gwPingTime < 0) || (rssi < -73)) {
-        sysInfo->resetSysStatus(SYS_STATUS_WIFI);
+        sysInfo->resetSysStatus(SysStatus::Wifi);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
         log_warn(F("Ping test failed (%d) or signal strength low (%d dbM, %hhu bars), WiFi Connection unusable"), gwPingTime, rssi, wifiBars);
         return false;
     }
-    sysInfo->setSysStatus(SYS_STATUS_WIFI);
+    sysInfo->setSysStatus(SysStatus::Wifi);
     log_info(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%hhu bars)"), gwPingTime, rssi, wifiBars);
     return true;
 }
@@ -147,7 +161,7 @@ bool wifi_check() {
  * Should we invoke a board reset instead? (NVIC_SystemReset)
  */
 void wifi_reconnect() {
-    sysInfo->resetSysStatus(SYS_STATUS_WIFI);
+    sysInfo->resetSysStatus(SysStatus::Wifi);
     web::server.stop();
     timeService.end();
     delete ntpUDP;
@@ -162,7 +176,6 @@ void wifi_reconnect() {
     log_info(F("Web services stopped, UDP clients terminated, WiFi disconnected"));
     taskDelay(2000);    //let disconnect state settle
     wifi_connect();
-    //NVIC_SystemReset();
 }
 
 void wifi_ensure() {
@@ -171,7 +184,7 @@ void wifi_ensure() {
         wifi_reconnect();
         web::server_setup();
     }
-    if (sysInfo->isSysStatus(SYS_STATUS_WIFI))
+    if (sysInfo->isSysStatus(SysStatus::Wifi))
         postTimeSetupCheck();
     log_info(F("System status: %#hX"), sysInfo->getSysStatus());
 }
@@ -202,3 +215,4 @@ void checkFirmwareVersion() {
         log_warn(F("Please upgrade the WiFi firmware to %s"), WIFI_FIRMWARE_LATEST_VERSION);
     }
 }
+

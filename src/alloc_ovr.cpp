@@ -7,14 +7,15 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "pico/stdlib.h"
-#include "pico/sync.h"
 #include "hardware/watchdog.h"
+#include "constants.hpp"
 
  /**
   *  @brief Warm-reboots the chip in normal mode
   *  See RP2040Support.h (cores/rp2040/RP2040Support.h)
   */
 [[noreturn]] void reboot() {
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerReboot;
     watchdog_reboot(0, 0, 10);
     while (true)
         tight_loop_contents();
@@ -35,8 +36,9 @@ __weak void __wrap_free(void* ptr) {
 
 // calloc wrapper - mark as weak so it doesn't collide with the USB/Arduino internal wrapper
 __weak void* __wrap_calloc(size_t nmemb, size_t size) {
+    if (size != 0 && nmemb > SIZE_MAX / size) return nullptr;
     size_t total = nmemb * size;
-    void* p = __wrap_malloc(total);
+    void* p = pvPortMalloc(total);
     if (p) memset(p, 0, total);
     return p;
 }

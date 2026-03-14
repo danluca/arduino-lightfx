@@ -9,7 +9,7 @@
 #include <array>
 #include <algorithm>
 #include <vector>
-#include <LogProxy.h>
+#include <PicoLog.h>
 
 typedef enum {
     PacketTypeCompleteRecord,     // All record provide

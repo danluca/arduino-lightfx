@@ -21,7 +21,8 @@
 #define IP_DNS 192,168,0,1              // Local DNS
 #define IP_GW 192,168,0,1           // default gateway (router)
 #define IP_SUBNET 255,255,255,0     // usual subnet mask
-#define BROADCAST_CLIENTS     10, 11, 12        //this is a CSV of last byte of board static IP addresses
+#define STATIC_BROADCAST_CLIENTS     10, 11, 12              //this is a CSV of *last byte* of the boards having static IP addresses
+#define MDNS_CACHING_TIMEOUT_MS (60*60*1000)          // 60 minutes for discovered boards to persist in cache
 
 // in some networks, reaching the default NTP server pool may be challenging due to the simple UDP client we use and stricter control imposed on the network traffic
 // in those cases the best option is to define a local NTP server as proxy

@@ -52,13 +52,17 @@ public:
     iterator end() { return this->c.end(); }
     const_iterator begin() const { return this->c.begin(); }
     const_iterator end() const { return this->c.end(); }
+    iterator erase(iterator it) {
+        if constexpr (std::is_pointer_v<T>)
+            delete *it;
+        return this->c.erase(it);
+    }
 
 private:
     void preparePush() {
         if (this->size() >= MaxSize) {
-            if constexpr (std::is_pointer_v<T>) {
+            if constexpr (std::is_pointer_v<T>)
                 delete this->c.front();
-            }
             this->c.pop_front();
         }
     }

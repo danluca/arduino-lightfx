@@ -8,11 +8,11 @@ using namespace FxD;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxd1Desc PROGMEM = {EFFECT_FACTORY(FxD1), "FXD1", "Confetti D", 21};
-static const EffectInfo fxd2Desc PROGMEM = {EFFECT_FACTORY(FxD2), "FXD2", "dot beat", 20};
-static const EffectInfo fxd3Desc PROGMEM = {EFFECT_FACTORY(FxD3), "FXD3", "plasma", 24};
-static const EffectInfo fxd4Desc PROGMEM = {EFFECT_FACTORY(FxD4), "FXD4", "rainbow marching", 18};
-static const EffectInfo fxd5Desc PROGMEM = {EFFECT_FACTORY(FxD5), "FXD5", "ripples", 42};
+static const EffectInfo fxd1Desc = {EFFECT_FACTORY(FxD1), "FXD1", "Confetti D", 21};
+static const EffectInfo fxd2Desc = {EFFECT_FACTORY(FxD2), "FXD2", "dot beat", 20};
+static const EffectInfo fxd3Desc = {EFFECT_FACTORY(FxD3), "FXD3", "plasma", 24};
+static const EffectInfo fxd4Desc = {EFFECT_FACTORY(FxD4), "FXD4", "rainbow marching", 18};
+static const EffectInfo fxd5Desc = {EFFECT_FACTORY(FxD5), "FXD5", "ripples", 42};
 
 int8_t FxD::rot = 1;
 

@@ -6,7 +6,11 @@
 
 #include <WiFiNINA.h>
 #include <ArduinoJson.h>
+#include <task.h>
+#include <functional>
+#include <vector>
 #include "../lib/Utils/src/fixed_queue.h"
+#include "util.h"
 
 #define MAX_WATCHDOG_REBOOT_TIMESTAMPS  10      // max number of watchdog reboots to keep in the list
 typedef FixedQueue<time_t, MAX_WATCHDOG_REBOOT_TIMESTAMPS> WatchdogQueue;
@@ -17,12 +21,14 @@ extern unsigned long prevIdleTime;
 void state_led_update();
 void state_led_begin();
 void logTaskStats();
+void logTaskSummary();
 void logHeapStats();
 size_t getUsedHeapBytes();
 void logSystemInfo();
 void logSystemState();
 void readSysInfo();
 void saveSysInfo();
+const char *taskStatusToString(eTaskState state);
 
 struct CRGB;
 
@@ -49,10 +55,10 @@ class SysInfo {
     String ssid;
     IPAddress ipAddress;
     IPAddress ipGateway;
-    uint16_t status {0};
+    SysStatus status {SysStatus::None};
     bool cleanBoot {true};
     WatchdogQueue wdReboots{};   // keep only the last 10 watchdog reboots
-    mutex_t mutex{};
+    mutable mutex_t mutex{};
 
 protected:
     static void updateBoardLED(uint32_t colorCode);
@@ -65,7 +71,8 @@ public:
     uint32_t threadCount {0};
 
     SysInfo();
-    [[nodiscard]] const String& getBoardName() const { return deviceName; }
+    [[nodiscard]] const String& getDeviceName() const { return deviceName; }
+    [[nodiscard]] const String& getBoardType() const { return boardName; }
     [[nodiscard]] const String& getBuildVersion() const { return buildVersion; }
     [[nodiscard]] const String& getBuildTime() const { return buildTime; }
     [[nodiscard]] const String& getScmBranch() const { return scmBranch; }
@@ -76,7 +83,13 @@ public:
     [[nodiscard]] const String& getGatewayIpAddress() const { return strGatewayIpAddress; }
     [[nodiscard]] const String& getWiFiFwVersion() const { return wifiFwVersion; }
     [[nodiscard]] const String& getSSID() const { return ssid; }
-    WatchdogQueue& watchdogReboots() { return wdReboots; }
+    [[nodiscard]] int getCPUFrequency() const { return cpuFrequency; }
+    void addWatchdogReboot(time_t t);
+    [[nodiscard]] size_t watchdogRebootsCount() const;
+    [[nodiscard]] bool hasWatchdogReboots() const;
+    [[nodiscard]] time_t lastWatchdogReboot() const;
+    [[nodiscard]] std::vector<time_t> watchdogRebootsSnapshot() const;
+    void transformWatchdogReboots(const std::function<time_t(time_t)>& transform);
     void markDirtyBoot() { cleanBoot = false; }
     [[nodiscard]] bool isCleanBoot() const { return cleanBoot; }
     IPAddress& refIpAddress() { return ipAddress; }
@@ -84,10 +97,10 @@ public:
 
     void fillBoardId();
     [[nodiscard]] uint get_flash_capacity() const;
-    uint16_t setSysStatus(uint16_t bitMask);
-    uint16_t resetSysStatus(uint16_t bitMask);
-    [[nodiscard]] bool isSysStatus(uint16_t bitMask) const;
-    [[nodiscard]] uint16_t getSysStatus() const;
+    SysStatus setSysStatus(SysStatus bitMask);
+    SysStatus resetSysStatus(SysStatus bitMask);
+    [[nodiscard]] bool isSysStatus(SysStatus bitMask) const;
+    [[nodiscard]] SysStatus getSysStatus() const;
     void setWiFiInfo(nina::WiFiClass & wifi);
     void setSecureElementId(const String & secId);
     void begin();

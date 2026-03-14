@@ -1,11 +1,10 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include "FxSchedule.h"
 #include "FastLED.h"
 #include <FreeRTOS.h>
 #include <queue.h>
-#include <timers.h>
 #include <TimeLib.h>
 #include "constants.hpp"
 #include "stringutils.h"
@@ -88,7 +87,9 @@ uint countTodayAlarms(const AlarmType alType, const time_t refTime) {
 void scheduleDay(const time_t time) {
     const time_t startDay = previousMidnight(time);
 
+#if LOGGING_ENABLED == 1
     const uint8_t curAlarmCount = scheduledAlarms.size();
+#endif
     uint alarmCount = countUpcomingAlarms(WAKEUP, time);
     if (alarmCount < 1) {
         //add wake-up alarm for today (if we have not passed it) or tomorrow (if we did)
@@ -112,15 +113,17 @@ void scheduleDay(const time_t time) {
  * Logs the alarms to the console - info level
  */
 void logAlarms() {
+#if LOGGING_ENABLED == 1
     for (const auto &al : scheduledAlarms)
         log_info(F("Alarm %p type %d scheduled for %s; handler %p"), al, al->type, TimeFormat::asString(al->value).c_str(), al->onEventHandler);
+#endif
 }
 
 /**
  * Setup the default sleep/wake-up schedule
  */
 void setupAlarmSchedule() {
-    if (!sysInfo->isSysStatus(SYS_STATUS_WIFI)) {
+    if (!sysInfo->isSysStatus(SysStatus::Wifi)) {
         log_warn(F("Cannot setup alarms without WiFi, likely time is not set"));
         return;
     }
@@ -148,9 +151,9 @@ bool isAwakeTime(const time_t time) {
  * @param xTimer the timer that triggered the alarm check
  */
 void enqueueAlarmCheck(TimerHandle_t xTimer) {
-    constexpr AlmAction action = ALARM_CHECK;
+    static constexpr AlmAction action = ALARM_CHECK;
     if (const BaseType_t qResult = xQueueSend(almQueue, &action, 0); qResult != pdTRUE)
-        log_error(F("Error sending ALARM_CHECK message to ALM queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending ALARM_CHECK message to ALM queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
 }
 
 void alarm_setup() {
@@ -185,7 +188,10 @@ void alarm_check() {
         if (const auto al = *it; al->value <= time) {
             log_info(F("Alarm %p type %d triggered at %s for scheduled time %s; handler %p"), al, al->type, TimeFormat::asString(time).c_str(),
                 TimeFormat::asString(al->value).c_str(), al->onEventHandler);
-             al->onEventHandler();
+            if (al->onEventHandler)
+                al->onEventHandler();
+            else
+                log_error(F("Alarm %p type %d has no handler"), al, al->type);
             it = scheduledAlarms.erase(it);
             delete al;
         } else
@@ -222,9 +228,9 @@ void alarm_check() {
  * @param xTimer the holidayUpdate timer that fired the callback; nullptr when called on-demand (from main)
  */
 void enqueueHoliday(TimerHandle_t xTimer) {
-    constexpr AlmAction msg = HOLIDAY_UPDATE;
+    static constexpr AlmAction msg = HOLIDAY_UPDATE;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult == pdFALSE)
-        log_error(F("Error sending HOLIDAY_UPDATE message to ALM queue for timer %d [%s] - error %ld"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer), qResult);
+        log_error(F("Error sending HOLIDAY_UPDATE message to ALM queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
     // else
-    //     log_infoln(F("Sent HOLIDAY_UPDATE event successfully to broadcast task for timer %d [%s]"), *static_cast<uint16_t *>(pvTimerGetTimerID(xTimer)), pcTimerGetName(xTimer));
+    //     log_infoln(F("Sent HOLIDAY_UPDATE event successfully to broadcast task for timer %hu [%s]"), getTimerId(xTimer), getTimerName(xTimer));
 }

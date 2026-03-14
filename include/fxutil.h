@@ -1,4 +1,4 @@
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef FXUTIL_H
@@ -38,9 +38,9 @@ namespace fx {
     uint16_t easeOutBounce(uint16_t x, uint16_t lim);
     uint16_t easeOutQuad(uint16_t x, uint16_t lim);
 
-    void copyArray(const CRGB *src, CRGB *dest, uint16_t length);
+    void copySet(const CRGBSet *src, CRGBSet *dest, uint16_t length);
 
-    void copyArray(const CRGB *src, uint16_t srcOfs, CRGB *dest, uint16_t destOfs, uint16_t length);
+    void copySubSet(const CRGBSet *src, uint16_t srcOfs, CRGBSet *dest, uint16_t destOfs, uint16_t length);
 
     uint16_t countPixelsBrighter(const CRGBSet *set, CRGB backg = BKG);
 
@@ -48,7 +48,7 @@ namespace fx {
 
     bool isAnyLedOn(const CRGB *arr, uint16_t szArray, CRGB backg = BKG);
 
-    void fillArray(const CRGB *src, uint16_t srcLength, CRGB *array, uint16_t arrLength, uint16_t arrOfs = 0);
+    void fillSet(const CRGBSet *src, CRGBSet *dest, uint16_t destOfs = 0);
 
     void replicateSet(const CRGBSet& src, CRGBSet& dest);
 

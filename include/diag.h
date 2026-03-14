@@ -114,7 +114,7 @@ void saveCalibrationInfo();
 // end self-calibration support
 
 extern MeasurementRange imuTempRange;
-extern MeasurementRange cpuTempRange;
+extern CalibrationMeasurement cpuTempRange;
 extern MeasurementRange wifiTempRange;
 extern MeasurementRange lineVoltage;
 

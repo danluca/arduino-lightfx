@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #include <ArduinoECCX08.h>
 #include "utility/ECCX08DefaultTLSConfig.h"
@@ -12,6 +12,7 @@
 #include "util.h"
 #include "stringutils.h"
 #include "log.h"
+#include "constants.hpp"
 
 
 FixedQueue<TimeSync, 8> timeSyncs;
@@ -119,7 +120,8 @@ uint16_t secRandom16(const uint16_t minLim, const uint16_t maxLim) {
 uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
     const long low = static_cast<long>(minLim);
     const long high = maxLim > 0 ? static_cast<long>(maxLim) : INT32_MAX;
-    return sysInfo->isSysStatus(SYS_STATUS_ECC) ? ECCX08.random(low, high) : random(low, high);
+    //also see rp2040.hwrand32()
+    return sysInfo->isSysStatus(SysStatus::Ecc) ? ECCX08.random(low, high) : random(low, high);
 }
 
 bool secElement_setup() {
@@ -142,7 +144,7 @@ bool secElement_setup() {
         log_info(F("ECCX08 secure element s/n %s has been locked successfully!"), eccSerial);
     }
     log_info(F("ECCX08 secure element OK! (s/n %s)"), eccSerial);
-    sysInfo->setSysStatus(SYS_STATUS_ECC);
+    sysInfo->setSysStatus(SysStatus::Ecc);
     //update entropy - the timing of this call allows us to interact with I2C without other contenders
     const uint16_t rnd = secRandom16();
     random16_add_entropy(rnd);
@@ -158,11 +160,11 @@ void watchdogSetup() {
     if (watchdog_caused_reboot()) {
         const time_t rebootTime = now();
         log_warn(F("A watchdog caused reboot has occurred at %s"), TimeFormat::asString(rebootTime).c_str());
-        sysInfo->watchdogReboots().push(rebootTime);
+        sysInfo->addWatchdogReboot(rebootTime);
         sysInfo->markDirtyBoot();
     }
-    //if no ping in 4 seconds, reboot
-    watchdog_enable(4096, true);
+    //if no ping in 8 seconds, reboot
+    watchdog_enable(8192, true);
     //rp2040.wdt_begin(3000);
 }
 
@@ -171,6 +173,7 @@ void watchdogSetup() {
  */
 void watchdogPing() {
     watchdog_update();
+    watchdog_hw->scratch[kFxHeartbeatScratchIndex] = millis();
     //rp2040.wdt_reset();
 }
 

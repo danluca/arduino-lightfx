@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <SchedulerExt.h>
 #include <FastLED.h>
+#include "hardware/watchdog.h"
 #include "filesystem.h"
 #include "util.h"
 #include "sysinfo.h"
@@ -12,23 +13,22 @@
 #include "version.h"
 #include "constants.hpp"
 #include "log.h"
-#include "stringutils.h"
 #if LOGGING_ENABLED == 1
 #include <stringutils.h>
 #endif
 
 #define BUF_ID_SIZE  20
 
-static constexpr auto unknown PROGMEM = "N/A";
 #if LOGGING_ENABLED == 1
-// static constexpr char threadInfoFmt[] PROGMEM = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
-static constexpr auto heapStackInfoFmt PROGMEM = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
-static constexpr auto heapPSRAMInfoFmt PROGMEM = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
-static constexpr auto sysInfoFmt PROGMEM = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
-static constexpr auto fmtTaskInfo PROGMEM = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f%%\n";
-static constexpr auto fmtTotalCPULoad PROGMEM = "\nTotal CPU Load (average):    %.2f%%\n";
+// static constexpr char threadInfoFmt[] = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
+static constexpr auto heapStackInfoFmt = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
+static constexpr auto heapPSRAMInfoFmt = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
+static constexpr auto sysInfoFmt = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
+static constexpr auto fmtTaskInfo = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f %%\n";
+static constexpr auto fmtTotalCPULoad = "\nTotal CPU Load:    %.2f %% / %.2f s\n";
 #endif
-static constexpr auto idleTaskMarker PROGMEM = "idle";
+static constexpr auto unknown = "N/A";
+static constexpr auto idleTaskMarker = "idle";
 constexpr CRGB CLR_ALL_OK = CRGB::Indigo;
 constexpr CRGB CLR_SETUP_IN_PROGRESS = CRGB::Green;
 constexpr CRGB CLR_UPGRADE_PROGRESS = CRGB::Blue;
@@ -37,6 +37,12 @@ constexpr CRGB CLR_SETUP_ERROR = CRGB::Red;
 unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
+static TaskStatus_t *prevLogTaskStatusArray = nullptr;
+static TaskStatus_t *curLogTaskStatusArray = nullptr;
+static UBaseType_t prevLogTaskStatusArraySize = 0;
+static TaskStatus_t *prevJsonTaskStatusArray = nullptr;
+static TaskStatus_t *curJsonTaskStatusArray = nullptr;
+static UBaseType_t prevJsonTaskStatusArraySize = 0;
 
 // constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
 
@@ -50,6 +56,27 @@ const char *taskStatusToString(const eTaskState state) {
         case eInvalid: return csInvalid;
         default: return unknown;
     }
+}
+
+TaskStatus_t* findTaskStatus(TaskStatus_t* taskStatusArray, const UBaseType_t arraySize, const UBaseType_t taskNumber) {
+    for (UBaseType_t i = 0; i < arraySize; i++) {
+        if (taskStatusArray[i].xTaskNumber == taskNumber) {
+            return &taskStatusArray[i];
+        }
+    }
+    return nullptr;
+}
+
+static int compareTasksByNumber(const void* a, const void* b) {
+    const auto* taskA = static_cast<const TaskStatus_t*>(a);
+    const auto* taskB = static_cast<const TaskStatus_t*>(b);
+    return static_cast<int>(taskA->xTaskNumber) - static_cast<int>(taskB->xTaskNumber);
+}
+
+static bool isIdleTaskName(const char *taskName) {
+    if (taskName == nullptr)
+        return false;
+    return strstr(taskName, "Idle") != nullptr || strstr(taskName, "IDLE") != nullptr;
 }
 
 /**
@@ -89,54 +116,61 @@ void logTaskStats() {
 #if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
-    // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
-    configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
+    static uint64_t prevTaskStatsTime = 0ul;
+    static unsigned long prevSysTime = 0ul;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
     UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
     /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time. */
-    if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
-        String strTaskInfo;
-        strTaskInfo.reserve(1024);  //ensure enough space to avoid reallocations for each thread - 64 bytes per task * 15 tasks = 960
-
-        /* Generate raw status information about each task. */
-        uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
-        // ulTotalRunTime = (ulTotalRunTime >> 8) / (configRUN_TIME_COUNTER_TYPE)100U;    // For percentage calculations
-        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, current time %lu, %s]\n"), ulTotalRunTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
-        StringUtils::append(strTaskInfo, F("Timings: cycles 32bit %lu, cycles 64bit %llu, CPU frequency %u Hz\n"), rp2040.getCycleCount(), rp2040.getCycleCount64(), RP2040::f_cpu());
-        strTaskInfo.concat(F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
-
+    if(curLogTaskStatusArray = new TaskStatus_t[uxArraySize]; curLogTaskStatusArray != nullptr ) {
+        // Generate raw status information about each task. Refs:
+        // https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
+        configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
+        uxArraySize = uxTaskGetSystemState( curLogTaskStatusArray, uxArraySize, &ulTotalRunTime );
+        qsort(curLogTaskStatusArray, uxArraySize, sizeof(TaskStatus_t), compareTasksByNumber);
         uint64_t uxTotalRunTime = 0ul;  // Summing up times spent by ALL tasks (as reported by each task) should account for NUM_CORES - this value should be NUM_CORES*ulTotalRunTime
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            uxTotalRunTime += (pxTaskStatusArray[x].ulRunTimeCounter);
+            uxTotalRunTime += (curLogTaskStatusArray[x].ulRunTimeCounter);
         }
-        uxTotalRunTime /= ((configRUN_TIME_COUNTER_TYPE)100U);    // For percentage calculations
+        uint64_t uxDeltaTime = uxTotalRunTime - prevTaskStatsTime;    //this accounts for number of cores
+
+        String strTaskInfo;
+        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu, current time %lu ms, %s\n  total CPU cycles 32/64bit %lu / %llu, total task cycles cur/prev %llu / %llu, CPU frequency %d Hz]\n"),
+            ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str(), rp2040.getCycleCount(), rp2040.getCycleCount64(), uxTotalRunTime, prevTaskStatsTime, sysInfo->getCPUFrequency());
+        log_info(F("%s"), strTaskInfo.c_str());
+        log_write(INFO, F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
+        uxDeltaTime /= 100; //prepares for percentage calculation
         double fTotalCPULoadPercentage = 0.0;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            // configRUN_TIME_COUNTER_TYPE ulStatPercentage = (pxTaskStatusArray[x].ulRunTimeCounter >> 8)/ulTotalRunTime;
-            // strTaskInfo.concat(pxTaskStatusArray[x].pcTaskName);
-            const double fStatsAsPercentage = uxTotalRunTime > 0 ? (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime : 0.0;
+            const TaskStatus_t *prevTaskStatus = prevLogTaskStatusArray != nullptr ? findTaskStatus(prevLogTaskStatusArray, prevLogTaskStatusArraySize, curLogTaskStatusArray[x].xTaskNumber) : nullptr;
+            const uint64_t taskDeltaTime = prevTaskStatus != nullptr ? (curLogTaskStatusArray[x].ulRunTimeCounter - prevTaskStatus->ulRunTimeCounter) : curLogTaskStatusArray[x].ulRunTimeCounter;
+            const double fStatsAsPercentage = uxDeltaTime > 0 ? static_cast<double>(taskDeltaTime) / static_cast<double>(uxDeltaTime) : 0.0;
             //only add non-IDLE task percentages to total CPU load
-            String taskName(pxTaskStatusArray[x].pcTaskName);
+            String taskName(curLogTaskStatusArray[x].pcTaskName);
             taskName.toLowerCase();
             if (taskName.indexOf(idleTaskMarker) < 0)
                 fTotalCPULoadPercentage += fStatsAsPercentage;
-            const char prElevated = pxTaskStatusArray[x].uxCurrentPriority > pxTaskStatusArray[x].uxBasePriority ? '+' : pxTaskStatusArray[x].uxCurrentPriority < pxTaskStatusArray[x].uxBasePriority ? '-' : ' ';
-            const uint coreAffinity = pxTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : pxTaskStatusArray[x].uxCoreAffinityMask;
+            const char prElevated = curLogTaskStatusArray[x].uxCurrentPriority > curLogTaskStatusArray[x].uxBasePriority ? '+' : curLogTaskStatusArray[x].uxCurrentPriority < curLogTaskStatusArray[x].uxBasePriority ? '-' : ' ';
+            const uint coreAffinity = curLogTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : curLogTaskStatusArray[x].uxCoreAffinityMask;
             char buf[80];
-            snprintf(buf, 80, fmtTaskInfo, pxTaskStatusArray[x].pcTaskName, taskStatusToString(pxTaskStatusArray[x].eCurrentState),
-                (uint)pxTaskStatusArray[ x ].uxCurrentPriority, prElevated, (uint)pxTaskStatusArray[ x ].usStackHighWaterMark,
-                (uint)pxTaskStatusArray[ x ].xTaskNumber, coreAffinity, pxTaskStatusArray[ x ].ulRunTimeCounter, fStatsAsPercentage);
-            strTaskInfo.concat(buf);
+            snprintf(buf, 80, fmtTaskInfo, curLogTaskStatusArray[x].pcTaskName, taskStatusToString(curLogTaskStatusArray[x].eCurrentState),
+                (uint)curLogTaskStatusArray[ x ].uxCurrentPriority, prElevated, (uint)curLogTaskStatusArray[ x ].usStackHighWaterMark,
+                (uint)curLogTaskStatusArray[ x ].xTaskNumber, coreAffinity, taskDeltaTime, fStatsAsPercentage);
+            log_write(INFO, buf);
         }
         /* The array is no longer needed, free the memory it consumes. */
-        vPortFree( pxTaskStatusArray );
+        delete[] prevLogTaskStatusArray;
+        prevLogTaskStatusArray = curLogTaskStatusArray;
+        prevLogTaskStatusArraySize = uxArraySize;
+        prevTaskStatsTime = uxTotalRunTime;
         //add the total CPU load
+        unsigned long curSysTime = millis();
+        float fTimeWindow = (curSysTime - prevSysTime) / 1000.0f;
+        prevSysTime = curSysTime;
         char buf[80];
-        snprintf(buf, 80, fmtTotalCPULoad, fTotalCPULoadPercentage);
-        strTaskInfo.concat(buf);
-        log_info(strTaskInfo.c_str());
-        delay(12);
+        snprintf(buf, 80, fmtTotalCPULoad, fTotalCPULoadPercentage, fTimeWindow);
+        log_write(INFO, buf);
     }
+    // Simple heap stats
     logHeapStats();
     struct mallinfo mf = mallinfo();
     log_info(F("Malloc memory stats: allocated=%u, used=%u, free=%u"), mf.arena, mf.uordblks, mf.fordblks);
@@ -147,6 +181,63 @@ void logTaskStats() {
 #endif
 }
 
+void logTaskSummary() {
+#if LOGGING_ENABLED == 1
+    if (!Log.isEnabled(INFO))
+        return;
+
+    static uint64_t prevTotalRunTime = 0;
+    static uint64_t prevIdleRunTime = 0;
+    static unsigned long prevSysTime = 0;
+
+    UBaseType_t taskCount = uxTaskGetNumberOfTasks();
+    if (taskCount == 0)
+        return;
+
+    auto *taskStatusArray = new TaskStatus_t[taskCount];
+    if (taskStatusArray == nullptr)
+        return;
+
+    configRUN_TIME_COUNTER_TYPE totalRunTimeRaw = 0;
+    taskCount = uxTaskGetSystemState(taskStatusArray, taskCount, &totalRunTimeRaw);
+
+    uint64_t totalRunTime = 0;
+    uint64_t idleRunTime = 0;
+    for (UBaseType_t i = 0; i < taskCount; i++) {
+        totalRunTime += taskStatusArray[i].ulRunTimeCounter;
+        if (isIdleTaskName(taskStatusArray[i].pcTaskName))
+            idleRunTime += taskStatusArray[i].ulRunTimeCounter;
+    }
+    delete[] taskStatusArray;
+
+    HeapStats_t heapStats;
+    vPortGetHeapStats(&heapStats);
+
+    const unsigned long nowMs = millis();
+    const float timeWindowSec = prevSysTime > 0 ? static_cast<float>(nowMs - prevSysTime) / 1000.0f : 0.0f;
+    const uint64_t totalDelta = prevTotalRunTime > 0 ? totalRunTime - prevTotalRunTime : 0;
+    const uint64_t idleDelta = prevIdleRunTime > 0 ? idleRunTime - prevIdleRunTime : 0;
+    const float cpuLoadPct = totalDelta > 0 ? static_cast<float>(totalDelta > idleDelta ? totalDelta - idleDelta : 0) * 100.0f / static_cast<float>(totalDelta) : 0.0f;
+
+    prevTotalRunTime = totalRunTime;
+    prevIdleRunTime = idleRunTime;
+    prevSysTime = nowMs;
+
+    log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% window=%.2f s heapUsed=%zu heapFree=%zu heapLow=%zu freeBlocks=%zu largestFree=%zu"),
+        static_cast<unsigned>(taskCount),
+        cpuLoadPct,
+        timeWindowSec,
+        configTOTAL_HEAP_SIZE - heapStats.xAvailableHeapSpaceInBytes,
+        heapStats.xAvailableHeapSpaceInBytes,
+        heapStats.xMinimumEverFreeBytesRemaining,
+        heapStats.xNumberOfFreeBlocks,
+        heapStats.xSizeOfLargestFreeBlockInBytes);
+#endif
+}
+
+/**
+ * Log Heap memory allocation stats
+ */
 void logHeapStats() {
 #if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
@@ -160,7 +251,7 @@ void logHeapStats() {
 #ifdef PICO_RP2350
     StringUtils::append(strHeapInfo, heapPSRAMInfoFmt, rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap(), rp2040.getUsedPSRAMHeap());
 #endif
-    log_info(strHeapInfo.c_str());
+    log_info(F("%s"), strHeapInfo.c_str());
 #endif
 }
 
@@ -183,6 +274,56 @@ const char *resetReasonToString(const RP2040::resetReason_t reason) {
     }
 }
 
+const char *resetMarkerToString(const uint32_t marker) {
+    switch (marker) {
+        case kResetMarkerNone: return "none";
+        case kResetMarkerPanic: return "panic";
+        case kResetMarkerAssert: return "assert";
+        case kResetMarkerHardFault: return "hardfault";
+        case kResetMarkerMalloc: return "malloc_failed";
+        case kResetMarkerStackOverflow: return "stack_overflow";
+        case kResetMarkerFxStall: return "fx_stall";
+        case kResetMarkerOta: return "ota";
+        case kResetMarkerReboot: return "reboot";
+        case kResetMarkerUnknown: return "unknown";
+        default: return "other";
+    }
+}
+
+const char *fxStageToString(const uint32_t stage) {
+    switch (stage) {
+        case kFxStageNone: return "none";
+        case kFxStageEnter: return "enter";
+        case kFxStageAfterQueue: return "after_queue";
+        case kFxStageAfterOtaCheck: return "after_ota_check";
+        case kFxStageFirmwareUpgrade: return "fw_upgrade";
+        case kFxStageBeforeLoop: return "before_loop";
+        case kFxStageAfterLoop: return "after_loop";
+        case kFxStageAfterPing: return "after_ping";
+        default: return "unknown";
+    }
+}
+
+[[maybe_unused]] static const char *fsBlockedActionToString(const uint8_t action) {
+    switch (action) {
+        case 0: return "READ_FILE";
+        case 1: return "WRITE_FILE";
+        case 2: return "WRITE_FILE_ASYNC";
+        case 3: return "APPEND_FILE";
+        case 4: return "APPEND_FILE_BIN";
+        case 5: return "RENAME";
+        case 6: return "DELETE";
+        case 7: return "EXISTS";
+        case 8: return "FORMAT";
+        case 9: return "LIST_FILES";
+        case 10: return "INFO";
+        case 11: return "STAT";
+        case 12: return "MAKE_DIR";
+        case 13: return "SHA256";
+        default: return "UNKNOWN";
+    }
+}
+
 /**
  * Logs detailed system information for debugging and diagnostic purposes.
  * This function outputs various system-level details, including:
@@ -200,6 +341,32 @@ void logSystemInfo() {
                sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->getBuildVersion().c_str(), sysInfo->getBuildTime().c_str(),
                sysInfo->get_flash_capacity());
     log_info(F("System reset reason %s"), resetReasonToString(rp2040.getResetReason()));
+    const uint32_t resetMarker = watchdog_hw->scratch[kResetMarkerScratchIndex];
+    log_info(F("System reset marker %s (0x%08lX)"), resetMarkerToString(resetMarker), resetMarker);
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerNone;
+    const uint32_t fxHeartbeat = watchdog_hw->scratch[kFxHeartbeatScratchIndex];
+    log_info(F("FX heartbeat marker 0x%08lX"), fxHeartbeat);
+    watchdog_hw->scratch[kFxHeartbeatScratchIndex] = 0u;
+    const uint32_t fxStage = watchdog_hw->scratch[kFxStageScratchIndex];
+    log_info(F("FX stage marker %s (0x%08lX)"), fxStageToString(fxStage), fxStage);
+    watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageNone;
+#if DIAG_CORE_HEARTBEATS
+    const uint32_t core0Heartbeat = watchdog_hw->scratch[kCore0HeartbeatScratchIndex];
+    log_info(F("CORE0 heartbeat marker 0x%08lX"), core0Heartbeat);
+    watchdog_hw->scratch[kCore0HeartbeatScratchIndex] = 0u;
+    const uint32_t core1Heartbeat = watchdog_hw->scratch[kCore1HeartbeatScratchIndex];
+    log_info(F("CORE1 heartbeat marker 0x%08lX"), core1Heartbeat);
+    watchdog_hw->scratch[kCore1HeartbeatScratchIndex] = 0u;
+#endif
+    const uint32_t fsBlocked = watchdog_hw->scratch[kFsBlockedScratchIndex];
+    if ((fsBlocked & 0xFF000000u) == kFsBlockedMagic) {
+        const uint8_t op = static_cast<uint8_t>((fsBlocked >> 16) & 0xFFu);
+        const uint16_t waitedSeconds = static_cast<uint16_t>(fsBlocked & 0xFFFFu);
+        log_info(F("FS blocked marker op=%s (%u) waited=%u sec"), fsBlockedActionToString(op), op, waitedSeconds);
+    } else if (fsBlocked != 0u) {
+        log_info(F("FS blocked marker raw 0x%08lX"), fsBlocked);
+    }
+    watchdog_hw->scratch[kFsBlockedScratchIndex] = 0u;
 
     //interesting memory pointers from pico-sdk/src/rp2_common/pico_crt0/rp2040/memmap_default.ld
     extern char __exidx_start;
@@ -219,9 +386,11 @@ void logSystemInfo() {
     extern char __HeapLimit;
     extern char __StackLimit;
     extern char __StackTop;
-    extern uint32_t __scratch_x_start__;
-    extern uint32_t __scratch_y_start__;
-    extern uint32_t* core1_separate_stack_address;
+    extern char __StackBottom;
+    extern char __StackOneTop;
+    extern char __StackOneBottom;
+    extern uint32_t __scratch_x_source__;
+    extern uint32_t __scratch_y_source__;
     log_info(F("Memory map pointers:"));
     log_info(F("  .text end:            __etext       = %#X"), (uint32_t)&__etext);
     log_info(F("  .data start/end:      __data_start__/__data_end__ = %#X/%#X"), (uint32_t)&__data_start__, (uint32_t)&__data_end__);
@@ -232,9 +401,9 @@ void logSystemInfo() {
     log_info(F("  .fini_array start/end:    __fini_array_start__/__fini_array_end__     = %#X/%#X"), (uint32_t)&__fini_array_start, (uint32_t)&__fini_array_end);
     log_info(F("  Program end markers:  __end__       = %#X"), (uint32_t)&__end__);
     log_info(F("  Heap limits:          __HeapLimit   = %#X"), (uint32_t)&__HeapLimit);
-    log_info(F("  Stack limits:         __StackLimit  = %#X; __StackTop = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop);
-    log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_start__, __scratch_y_start__);
-    log_info(F("  Core 1 separate stack address = %#X"), (uint32_t)*core1_separate_stack_address);
+    log_info(F("  Stack limits CORE0:         __StackLimit  = %#X; __StackTop = %#X; __StackBottom = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop, (uint32_t)&__StackBottom);
+    log_info(F("  Stack limits CORE1:         __StackLimit  = %#X; __StackTop = %#X; __StackBottom = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackOneTop, (uint32_t)&__StackOneBottom);
+    log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_source__, __scratch_y_source__);
 #endif
 }
 
@@ -265,7 +434,7 @@ SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(DEVICE_NAME), buildVersio
     cpuVersion = 0;
     cpuModel.reserve(BUF_ID_SIZE);
     psramSize = 0;
-    status = 0;
+    status = SysStatus::None;
     cleanBoot = true;
 }
 
@@ -275,11 +444,11 @@ SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(DEVICE_NAME), buildVersio
 void SysInfo::fillBoardId() {
     boardId = rp2040.getChipID();
     cpuFrequency = RP2040::f_cpu();
-#ifdef PICO_RP2350
+#if defined(PICO_RP2350)
     cpuModel = "RP2350";
     cpuVersion = rp2350_chip_version();
     psramSize = rp2040.getPSRAMSize();
-#elifdef ARDUINO_ARCH_RP2040
+#elif defined(ARDUINO_ARCH_RP2040)
     cpuModel = "RP2040";
     cpuVersion = rp2040_rom_version();
 #endif
@@ -301,26 +470,61 @@ uint SysInfo::get_flash_capacity() const {
     return PICO_FLASH_SIZE_BYTES;
 }
 
-uint16_t SysInfo::setSysStatus(const uint16_t bitMask) {
+SysStatus SysInfo::setSysStatus(const SysStatus bitMask) {
     CoreMutex coreMutex(&mutex);
     status |= bitMask;
-    // updateStatusLED();
     return status;
 }
 
-uint16_t SysInfo::resetSysStatus(const uint16_t bitMask) {
+SysStatus SysInfo::resetSysStatus(const SysStatus bitMask) {
     CoreMutex coreMutex(&mutex);
     status &= (~bitMask);
-    // updateStatusLED();
     return status;
 }
 
-bool SysInfo::isSysStatus(const uint16_t bitMask) const {
+bool SysInfo::isSysStatus(const SysStatus bitMask) const {
+    CoreMutex coreMutex(&mutex);
     return (status & bitMask) == bitMask;
 }
 
-uint16_t SysInfo::getSysStatus() const {
+SysStatus SysInfo::getSysStatus() const {
+    CoreMutex coreMutex(&mutex);
     return status;
+}
+
+void SysInfo::addWatchdogReboot(const time_t t) {
+    CoreMutex coreMutex(&mutex);
+    wdReboots.push(t);
+}
+
+size_t SysInfo::watchdogRebootsCount() const {
+    CoreMutex coreMutex(&mutex);
+    return wdReboots.size();
+}
+
+bool SysInfo::hasWatchdogReboots() const {
+    CoreMutex coreMutex(&mutex);
+    return !wdReboots.empty();
+}
+
+time_t SysInfo::lastWatchdogReboot() const {
+    CoreMutex coreMutex(&mutex);
+    return wdReboots.empty() ? 0 : wdReboots.back();
+}
+
+std::vector<time_t> SysInfo::watchdogRebootsSnapshot() const {
+    CoreMutex coreMutex(&mutex);
+    std::vector<time_t> snapshot;
+    snapshot.reserve(wdReboots.size());
+    for (const auto &t : wdReboots)
+        snapshot.push_back(t);
+    return snapshot;
+}
+
+void SysInfo::transformWatchdogReboots(const std::function<time_t(time_t)>& transform) {
+    CoreMutex coreMutex(&mutex);
+    for (auto &t : wdReboots)
+        t = transform(t);
 }
 
 /**
@@ -340,9 +544,9 @@ void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     strIpAddress = ipAddress.toString();
     strGatewayIpAddress = ipGateway.toString();
 
-    // IPAddress dns1;
-    // IPAddress dns2;
-    // wifi.dnsIP(dns1, dns2);  //needs WiFi version > 1.5.0
+    const IPAddress dns1 = wifi.dnsIP(0);
+    const IPAddress dns2 = wifi.dnsIP(1);
+    log_info(F("WiFi DNS servers: %s, %s"), dns1.toString().c_str(), dns2.toString().c_str());
 
     //MAC address - Formats the MAC address into the character buffer provided; space for 20 chars is needed (includes nul terminator)
     uint8_t mac[WL_MAC_ADDR_LENGTH];
@@ -380,13 +584,13 @@ void SysInfo::sysConfig(JsonDocument &doc) {
     doc[csMacAddress] = sysInfo->macAddress;
     doc[csIpAddress] = sysInfo->strIpAddress;
     doc[csGatewayAddress] = sysInfo->strGatewayIpAddress;
-    doc[csStatus] = sysInfo->status;
+    doc[csStatus] = static_cast<uint16_t>(sysInfo->status);
     doc[csHeapSize] = sysInfo->heapSize;
     doc[csFreeHeap] = sysInfo->freeHeap;
     doc[csStackSize] = sysInfo->stackSize;
     doc[csFreeStack] = sysInfo->freeStack;
     const auto reboots = doc[csWdReboots].to<JsonArray>();
-    for (auto & t : sysInfo->wdReboots)
+    for (const auto &t : sysInfo->watchdogRebootsSnapshot())
         (void)reboots.add(t);
 }
 
@@ -414,6 +618,7 @@ void SysInfo::heapStats(JsonObject &doc) {
     doc["psramHeapFree"] = rp2040.getFreePSRAMHeap();
     doc["psramHeapUsed"] = rp2040.getUsedPSRAMHeap();
 #endif
+
 #if LOGGING_ENABLED == 1
     doc["logMinBufferSpace"] = Log.getMinBufferSpace();
 #endif
@@ -425,47 +630,55 @@ void SysInfo::heapStats(JsonObject &doc) {
  * @param doc JSON array to populate
  */
 void SysInfo::taskStats(JsonObject &doc) {
-        // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
-    configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
+    static uint64_t prevTaskStatsTime = 0ul;
     /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
     UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
-    /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time. */
-    if(auto *pxTaskStatusArray = static_cast<TaskStatus_t *>(pvPortMalloc(uxArraySize * sizeof(TaskStatus_t))); pxTaskStatusArray != nullptr ) {
+    /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time.
+     * Note the use of new operator that is overridden to engage pvPortMalloc */
+    if(curJsonTaskStatusArray = new TaskStatus_t[uxArraySize]; curJsonTaskStatusArray != nullptr ) {
         // General counts
         doc["count"] = uxArraySize;
         const auto jsArray = doc["items"].to<JsonArray>();
+        // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
+        configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
         /* Generate raw status information about each task. */
-        uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
+        uxArraySize = uxTaskGetSystemState( curJsonTaskStatusArray, uxArraySize, &ulTotalRunTime );
         doc["sysTotalRunTime"] = ulTotalRunTime;
         uint64_t uxTotalRunTime = 0ul;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            uxTotalRunTime += (pxTaskStatusArray[x].ulRunTimeCounter);
+            uxTotalRunTime += (curJsonTaskStatusArray[x].ulRunTimeCounter);
         }
+        const uint64_t uxDeltaTime = (uxTotalRunTime - prevTaskStatsTime)/100;    //this accounts for number of cores
         doc["tasksTotalRunTime"] = uxTotalRunTime;
-        uxTotalRunTime /= ((configRUN_TIME_COUNTER_TYPE)100U);    // For percentage calculations
         double fTotalCPULoadPercentage = 0.0;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
+            const TaskStatus_t *prevTaskStatus = prevJsonTaskStatusArray != nullptr ? findTaskStatus(prevJsonTaskStatusArray, prevJsonTaskStatusArraySize, curJsonTaskStatusArray[x].xTaskNumber) : nullptr;
             JsonObject task = jsArray.add<JsonObject>();
-            const double fStatsAsPercentage = (pxTaskStatusArray[x].ulRunTimeCounter) / (double) uxTotalRunTime;
-            String taskName = pxTaskStatusArray[x].pcTaskName;
+            const uint64_t taskDeltaTime = prevTaskStatus != nullptr ? (curJsonTaskStatusArray[x].ulRunTimeCounter - prevTaskStatus->ulRunTimeCounter) : curJsonTaskStatusArray[x].ulRunTimeCounter;
+            const double fStatsAsPercentage = uxDeltaTime > 0 ? static_cast<double>(taskDeltaTime) / static_cast<double>(uxDeltaTime) : 0.0;
+            String taskName = curJsonTaskStatusArray[x].pcTaskName;
             taskName.toLowerCase();
             if (taskName.indexOf(idleTaskMarker) < 0)
                 fTotalCPULoadPercentage += fStatsAsPercentage;  //only add the non-idle tasks
-            const uint coreAffinity = pxTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : pxTaskStatusArray[x].uxCoreAffinityMask;
+            const uint coreAffinity = curJsonTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : curJsonTaskStatusArray[x].uxCoreAffinityMask;
 
-            task["name"] = pxTaskStatusArray[x].pcTaskName;
-            task["state"] = taskStatusToString(pxTaskStatusArray[x].eCurrentState);
-            task["curPriority"] = pxTaskStatusArray[ x ].uxCurrentPriority;
-            task["basePriority"] = pxTaskStatusArray[ x ].uxBasePriority;
-            task["stackHighWaterMark"] = pxTaskStatusArray[ x ].usStackHighWaterMark;
-            task["taskNumber"] = pxTaskStatusArray[ x ].xTaskNumber;
+            task["name"] = curJsonTaskStatusArray[x].pcTaskName;
+            task["state"] = taskStatusToString(curJsonTaskStatusArray[x].eCurrentState);
+            task["curPriority"] = curJsonTaskStatusArray[ x ].uxCurrentPriority;
+            task["basePriority"] = curJsonTaskStatusArray[ x ].uxBasePriority;
+            task["stackHighWaterMark"] = curJsonTaskStatusArray[ x ].usStackHighWaterMark;
+            task["taskNumber"] = curJsonTaskStatusArray[ x ].xTaskNumber;
             task["coreAffinity"] = coreAffinity;
-            task["runTime"] = pxTaskStatusArray[ x ].ulRunTimeCounter;
+            task["runTime"] = taskDeltaTime;
+            task["runTimeLife"] = curJsonTaskStatusArray[ x ].ulRunTimeCounter;
             task["runTimePct"] = fStatsAsPercentage;
         }
         doc["totalCPULoadPct"] = fTotalCPULoadPercentage;
         /* The array is no longer needed, free the memory it consumes. */
-        vPortFree( pxTaskStatusArray );
+        delete[] prevJsonTaskStatusArray;
+        prevJsonTaskStatusArray = curJsonTaskStatusArray;
+        prevJsonTaskStatusArraySize = uxArraySize;
+        prevTaskStatsTime = uxTotalRunTime;
     }
 }
 
@@ -477,6 +690,7 @@ void readSysInfo() {
     const auto json = new String();
     json->reserve(512);  // approximation
     if (const size_t sysSize = SyncFsImpl.readFile(sysFileName, json); sysSize > 0) {
+        log_info(F("System information [%s]:\n%s"), sysFileName, json->c_str());
         JsonDocument doc;
         if (const DeserializationError error = deserializeJson(doc, *json)) {
             log_error(F("Error reading the system information JSON file %s [%zu bytes]: %s - system information state NOT restored. Content read:\n%s"), sysFileName, sysSize, error.c_str(), json->c_str());
@@ -493,7 +707,7 @@ void readSysInfo() {
         if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {
             const auto wdReboots = doc[csWdReboots].as<JsonArray>();
             for (JsonVariant i: wdReboots)
-                sysInfo->wdReboots.push(i.as<time_t>());
+                sysInfo->addWatchdogReboot(i.as<time_t>());
         } else
             log_warn(F("Build version change detected - previous watchdog reboot timestamps %s have been discarded"), doc[csWdReboots].as<String>().c_str());
         sysInfo->boardId = doc[csBoardId].as<String>();
@@ -507,7 +721,7 @@ void readSysInfo() {
         sysInfo->stackSize = doc[csStackSize];
         sysInfo->freeStack = doc[csFreeStack];
         //do not override the current status (in progress of populating) with the last run status
-        const uint8_t lastStatus = doc[csStatus];
+        const auto lastStatus = doc[csStatus].as<uint16_t>();
         log_info(F("System Information restored from %s [%d bytes]: boardName=%s, deviceName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), devName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status,
                    lastStatus, sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());
@@ -586,8 +800,8 @@ void SysInfo::updateBoardLED(const CRGB rgb) {
  * Adjusts the LED state (color, illumination style) in response to the overall system's state
  */
 void SysInfo::updateStatusLED() const {
-    const bool isOk = isSysStatus(SYS_STATUS_WIFI + SYS_STATUS_ECC + SYS_STATUS_NTP + SYS_STATUS_FILESYSTEM + SYS_STATUS_MIC + SYS_STATUS_DIAG);
-    const CRGB colorCode = isOk ? CLR_ALL_OK : !isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1) ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
+    const bool isOk = isSysStatus(SysStatus::Wifi | SysStatus::Ntp | SysStatus::Filesystem | SysStatus::Diag);
+    const CRGB colorCode = isOk ? CLR_ALL_OK : !isSysStatus(SysStatus::Setup0 | SysStatus::Setup1) ? CLR_SETUP_IN_PROGRESS : CLR_SETUP_ERROR;
     updateBoardLED(colorCode);
 }
 
@@ -595,7 +809,7 @@ void SysInfo::updateStatusLED() const {
  * Flash status LED for as long as both cores are in setup mode
  */
 void state_led_begin() {
-    while (!sysInfo->isSysStatus(SYS_STATUS_SETUP0 + SYS_STATUS_SETUP1)) {
+    while (!sysInfo->isSysStatus(SysStatus::Setup0 | SysStatus::Setup1)) {
         SysInfo::updateBoardLED(CRGB::Black);
         taskDelay(640);
         SysInfo::updateBoardLED(CLR_SETUP_IN_PROGRESS);

@@ -13,12 +13,12 @@ using namespace FxI;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxi1Desc PROGMEM = {EFFECT_FACTORY(FxI1), "FXI1", "Ping Pong", 7};
-static const EffectInfo fxi2Desc PROGMEM = {EFFECT_FACTORY(FxI2), "FXI2", "Pacifica - gentle ocean waves", 9};
-static const EffectInfo fxi3Desc PROGMEM = {EFFECT_FACTORY(FxI3), "FXI3", "Bouncy Ball", 10};
-static const EffectInfo fxi4Desc PROGMEM = {EFFECT_FACTORY(FxI4), "FXI4", "Audio-seeded VU meter", 12};
-static const EffectInfo fxi5Desc PROGMEM = {EFFECT_FACTORY(FxI5), "FXI5", "Shore waves with backwash", 10};
-static const EffectInfo fxi6Desc PROGMEM = {EFFECT_FACTORY(FxI6), "FXI6", "Bowling alley", 9};
+static const EffectInfo fxi1Desc = {EFFECT_FACTORY(FxI1), "FXI1", "Ping Pong", 7};
+static const EffectInfo fxi2Desc = {EFFECT_FACTORY(FxI2), "FXI2", "Pacifica - gentle ocean waves", 9};
+static const EffectInfo fxi3Desc = {EFFECT_FACTORY(FxI3), "FXI3", "Bouncy Ball", 10};
+static const EffectInfo fxi4Desc = {EFFECT_FACTORY(FxI4), "FXI4", "Audio-seeded VU meter", 12};
+static const EffectInfo fxi5Desc = {EFFECT_FACTORY(FxI5), "FXI5", "Shore waves with backwash", 10};
+static const EffectInfo fxi6Desc = {EFFECT_FACTORY(FxI6), "FXI6", "Bowling alley", 9};
 
 /**
  * Register FxI effects
@@ -82,9 +82,9 @@ void FxI1::reWall() {
 }
 
 static void updateWall(uint16_t &prevWall, const uint16_t wallLimit, const CRGB color, const CRGB bg) {
-    if (prevWall >= tpl.size() || wallLimit >= tpl.size()) {
+    if (const bool pwExceeds = prevWall >= tpl.size(); pwExceeds || wallLimit >= tpl.size()) {
         log_warn(F("UpdateWall parameters out of bounds for tpl size %d: prevWall=%d, wallLimit=%d. No changes made."), tpl.size(), prevWall, wallLimit);
-        if (prevWall >= tpl.size())
+        if (pwExceeds)
             prevWall--;
         return;
     }
@@ -99,7 +99,7 @@ static void updateWall(uint16_t &prevWall, const uint16_t wallLimit, const CRGB 
 static void blendWall(const uint16_t start, const uint16_t end, const CRGB color) {
     if (start >= tpl.size() || end >= tpl.size()) return;
     if (tpl[end] != color)
-        tpl(start, end).nblend(color, 80);
+        tpl(start, end).nblend(color, 64);
 }
 
 void FxI1::run() {
@@ -107,13 +107,15 @@ void FxI1::run() {
         //update the wall sizes and color
         const CRGB wallColor = ColorFromPalette(targetPalette, bgColor, 7, LINEARBLEND);
         if (forward) {
-            updateWall(prevWallEnd, wallEnd, wallColor, BKG);
             if (prevWallEnd == wallEnd)
                 blendWall(wallEnd, FRAME_SIZE - 1, wallColor);
+            else
+                updateWall(prevWallEnd, wallEnd, wallColor, BKG);
         } else {
-            updateWall(prevWallStart, wallStart, BKG, wallColor);
             if (prevWallStart == wallStart)
                 blendWall(0, wallStart - 1, wallColor);
+            else
+                updateWall(prevWallStart, wallStart, BKG, wallColor);
         }
 
         // Fade the LED trail with a small dimming effect

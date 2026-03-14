@@ -1,3 +1,6 @@
+## Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+##
+## Serial log capture script for RP2350-based boards
 [CmdletBinding()]
 param ([string]$port='auto')
 

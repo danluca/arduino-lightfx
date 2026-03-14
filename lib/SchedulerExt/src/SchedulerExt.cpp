@@ -180,8 +180,10 @@ void TaskWrapper::run() {
         return;
     //with each loop, check if we have been notified to stop - it is important to block for at least 1 tick
     //such that the task scheduler can give other threads a chance to run
-    while (ulTaskNotifyTake(pdTRUE, 1) != TASK_NOTIFY_TERMINATE)
+    while (ulTaskNotifyTake(pdTRUE, 0) != TASK_NOTIFY_TERMINATE) {
         fnLoop();
+        vTaskDelay(1);
+    }
 }
 
 /**

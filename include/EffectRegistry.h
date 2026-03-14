@@ -12,6 +12,7 @@
 class EffectRegistry {
     std::deque<const EffectInfo*> effectInfos{};
     FixedQueue<uint16_t, MAX_EFFECTS_HISTORY> lastEffects{};
+    mutable mutex_t mutex{};
     LedEffect* activeEffect = nullptr;         // The effect currently being looped/managed
     uint16_t nextEffectIndex = 0;              // Index of the effect waiting to be created after activeEffect is done
     uint16_t desiredEffectIndex = 0;           // Currently requested effect index
@@ -24,10 +25,8 @@ class EffectRegistry {
     bool sleepModeEnabled = false;
 
 public:
-    EffectRegistry() = default;
+    EffectRegistry();
     ~EffectRegistry();
-
-    [[nodiscard]] LedEffect *getCurrentEffect() const;
 
     [[nodiscard]] const EffectInfo* getEffectInfo(uint16_t index) const;
 
@@ -66,8 +65,15 @@ public:
     [[nodiscard]] bool isAsleep() const;
 
     void setSleepState(bool sleepFlag);
-    friend void readFxState();
-    friend void saveFxState();
+    void restoreDesiredEffectFromState(uint16_t fx);
+
+private:
+    uint16_t nextEffectPosUnlocked(uint16_t efx);
+    uint16_t nextEffectPosUnlocked(const char *id);
+    uint16_t nextEffectPosUnlocked();
+    uint16_t nextRandomEffectPosUnlocked();
+    void transitionEffectUnlocked();
+    void setSleepStateUnlocked(bool sleepFlag);
 };
 
 extern EffectRegistry fxRegistry;
