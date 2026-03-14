@@ -32,7 +32,7 @@
 #include "TimeService.h"
 #include "Timezone.h"
 #include "TimeLib.h"
-#include "LogProxy.h"
+#include "PicoLog.h"
 #include <WiFi.h>
 #ifdef PICO_RP2040
 #include <hardware/rtc.h>

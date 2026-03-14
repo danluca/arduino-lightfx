@@ -11,3 +11,15 @@ timing of the log source.
 It works great as long as the push volume doesn't exceed the ability of the buffer to stream out at Serial port speeds. 
 The buffer is of circular type - meaning that if volume of data to push is more than available space of the buffer, 
 the older characters will be overwritten to make room for incoming log data.  
+
+## Raw buffered output
+
+For multi-line dumps or tabular output, `PicoLog` also exposes a raw write path that bypasses the timestamp/thread/level preamble while still using the same buffering/streaming mechanism:
+
+```cpp
+Log.write("Task            Prio  Stack  State\n");
+Log.write("workerA         4     512    Running\n");
+Log.write(F("footer from flash\n"));
+```
+
+Use `Log.write()` when the output is already formatted and should be emitted exactly as provided.

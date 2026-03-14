@@ -8,7 +8,7 @@
 #define LOGGING_ENABLED     0
 #endif
 
-#include <LogProxy.h>
+#include <PicoLog.h>
 
 void log_setup();
 

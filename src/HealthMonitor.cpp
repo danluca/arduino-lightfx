@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2026 ,2026 by Dan Luca. All rights reserved.
+// Copyright (c) 2026 by Dan Luca. All rights reserved.
 //
 #include "HealthMonitor.h"
 #include <hardware/watchdog.h>

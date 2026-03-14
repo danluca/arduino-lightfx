@@ -1,6 +1,6 @@
 /**
  * The MIT License (MIT)
- * Copyright (c) 2015,2025 by Fabrice Weinberg
+ * Copyright (c) 2015,2025 ,2026 by Fabrice Weinberg
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
 
 #include "NTPClient.h"
 #include "TimeFormat.h"
-#include <LogProxy.h>
+#include <PicoLog.h>
 
 #include "../../Utils/src/stringutils.h"
 

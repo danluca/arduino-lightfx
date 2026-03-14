@@ -4,7 +4,7 @@
 #include <string>
 #include "mimetable.h"
 #include "../WebClient.h"
-#include "LogProxy.h"
+#include "PicoLog.h"
 
 /**
  * Set of functions targeted at handling a request

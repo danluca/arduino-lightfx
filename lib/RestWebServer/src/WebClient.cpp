@@ -4,7 +4,7 @@
 #include "WebClient.h"
 
 #include <HTTPServer.h>
-#include <LogProxy.h>
+#include <PicoLog.h>
 
 #include <memory>
 

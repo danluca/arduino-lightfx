@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 ,2026 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef ARDUINO_LIGHTFX_SYSINFO_H

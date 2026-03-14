@@ -1,18 +1,14 @@
-// Copyright (c) 2024,2025,2026 ,2026 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
-#include "PicoLog.h"
+#include "logPico.h"
 #include "SchedulerExt.h"
 
 #define SECS_PER_MIN  ((time_t)(60UL))
 #define SECS_PER_HOUR ((time_t)(3600UL))
 #define SECS_PER_DAY  ((time_t)(SECS_PER_HOUR * 24UL))
 
-#if LOGGING_ENABLED == 1
 PicoLog Log;
-#else
-DummyLog Log;
-#endif
 TaskWrapper *twStream;
 
 #define SERIAL_BUFFER_SIZE 256
@@ -21,8 +17,8 @@ static constexpr char fmtTaskPriorityChanged[] PROGMEM = " [C%u-%s-%lu/%lu]";
 static constexpr char fmtTaskPriorityRegular[] PROGMEM = " [C%u-%s-%lu]";
 static constexpr char logLevelTags[] PROGMEM = "SFEWIDT";    //NOTE this string must be as long as LogLevel enum!
 static constexpr char fmtLevel[] PROGMEM = " %c: ";
+static constexpr size_t RAW_WRITE_CHUNK_SIZE = 512;
 
-#if LOGGING_ENABLED == 1
 /**
  * Flushes the log data queue by processing and outputting all queued log messages.
  * If the log queue is empty, delays execution briefly to allow for log gathering.
@@ -45,10 +41,6 @@ void flushData() {
 }
 
 TaskDef tdStream {nullptr, flushData, 1024, "SRL", 255, CORE_ALL};
-#else
-void noop() {}
-TaskDef tdStream {nullptr, noop, 512, "NOP", 255, CORE_ALL};
-#endif
 
 
 /**
@@ -67,6 +59,44 @@ void PicoLog::begin(SerialUSB *serial, const LogLevel level) {
         twStream = Scheduler.startTask(&tdStream);
         log(INFO, F("Serial logging thread [%s] - priority %u - has been setup id %u."), twStream->getName(), uxTaskPriorityGet(twStream->getTaskHandle()), twStream->getUID());
     }
+}
+
+size_t PicoLog::write(const LogLevel level, const char *data) {
+    if (!isEnabled(level) || data == nullptr)
+        return 0;
+    return write(level, data, strlen(data));
+}
+
+size_t PicoLog::write(const LogLevel level, const char *data, const size_t len) {
+    if (!isEnabled(level) || data == nullptr || len == 0)
+        return 0;
+    return writeRaw(level, data, len);
+}
+
+size_t PicoLog::write(const LogLevel level, const __FlashStringHelper *data) {
+    if (!isEnabled(level) || data == nullptr)
+        return 0;
+    const String raw(data);
+    return writeRaw(level, raw.c_str(), raw.length());
+}
+
+size_t PicoLog::writeRaw(const LogLevel level, const char *data, const size_t len) {
+    if (!isEnabled(level) || data == nullptr || len == 0)
+        return 0;
+
+#if LOG_BYPASS_BUFFER
+    if (!isStreamingEnabled()) return 0;
+    m_stream->write(reinterpret_cast<const uint8_t *>(data), len);
+    return len;
+#else
+    size_t written = 0;
+    while (written < len) {
+        const size_t chunk = min(len - written, RAW_WRITE_CHUNK_SIZE);
+        m_queue.push_back(data + written, chunk);
+        written += chunk;
+    }
+    return written;
+#endif
 }
 
 /**
@@ -140,7 +170,7 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     m_queue.push_back(buf, sz + 1);
 #endif
 
-    if (heapUsed) vPortFree(buf);
+    if (heapUsed) delete[] buf;
 
     return sz;
 }

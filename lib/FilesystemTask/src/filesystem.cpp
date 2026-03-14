@@ -9,7 +9,7 @@
 #include "hardware/watchdog.h"
 #include "SchedulerExt.h"
 #include "filesystem.h"
-#include <LogProxy.h>
+#include <PicoLog.h>
 #include "stringutils.h"
 #include "TimeFormat.h"
 

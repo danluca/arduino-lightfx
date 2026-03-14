@@ -2,7 +2,7 @@
  * Arduino Timezone Library                                             *
  * Jack Christensen Mar 2012                                            *
  *                                                                      *
- * Arduino Timezone Library Copyright (C) 2018,2025,2026 by Jack Christensen and  *
+ * Arduino Timezone Library Copyright (C) 2018,2026 by Jack Christensen and  *
  * licensed under GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html   *
  *----------------------------------------------------------------------*/
 //
@@ -10,7 +10,7 @@
 //
 
 #include "Timezone.h"
-#include "LogProxy.h"
+#include "PicoLog.h"
 #include "TimeService.h"
 
 

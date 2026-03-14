@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 ,2026 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -122,9 +122,6 @@ void logTaskStats() {
     UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
     /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time. */
     if(curLogTaskStatusArray = new TaskStatus_t[uxArraySize]; curLogTaskStatusArray != nullptr ) {
-        String strTaskInfo;
-        strTaskInfo.reserve(1024);  //ensure enough space to avoid reallocations for each thread - 64 bytes per task * 15 tasks = 960
-
         // Generate raw status information about each task. Refs:
         // https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
         configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
@@ -136,10 +133,11 @@ void logTaskStats() {
         }
         uint64_t uxDeltaTime = uxTotalRunTime - prevTaskStatsTime;    //this accounts for number of cores
 
-        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu, current time %lu ms, %s\n"), ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str());
-        StringUtils::append(strTaskInfo, F("total CPU cycles 32/64bit %lu / %llu, total task cycles cur/prev %llu / %llu, CPU frequency %d Hz]\n"),
-            rp2040.getCycleCount(), rp2040.getCycleCount64(), uxTotalRunTime, prevTaskStatsTime, sysInfo->getCPUFrequency());
-        strTaskInfo.concat(F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
+        String strTaskInfo;
+        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu, current time %lu ms, %s\n  total CPU cycles 32/64bit %lu / %llu, total task cycles cur/prev %llu / %llu, CPU frequency %d Hz]\n"),
+            ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str(), rp2040.getCycleCount(), rp2040.getCycleCount64(), uxTotalRunTime, prevTaskStatsTime, sysInfo->getCPUFrequency());
+        log_info(F("%s"), strTaskInfo.c_str());
+        log_write(INFO, F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
         uxDeltaTime /= 100; //prepares for percentage calculation
         double fTotalCPULoadPercentage = 0.0;
         for (UBaseType_t x = 0; x < uxArraySize; x++) {
@@ -157,7 +155,7 @@ void logTaskStats() {
             snprintf(buf, 80, fmtTaskInfo, curLogTaskStatusArray[x].pcTaskName, taskStatusToString(curLogTaskStatusArray[x].eCurrentState),
                 (uint)curLogTaskStatusArray[ x ].uxCurrentPriority, prElevated, (uint)curLogTaskStatusArray[ x ].usStackHighWaterMark,
                 (uint)curLogTaskStatusArray[ x ].xTaskNumber, coreAffinity, taskDeltaTime, fStatsAsPercentage);
-            strTaskInfo.concat(buf);
+            log_write(INFO, buf);
         }
         /* The array is no longer needed, free the memory it consumes. */
         delete[] prevLogTaskStatusArray;
@@ -170,8 +168,7 @@ void logTaskStats() {
         prevSysTime = curSysTime;
         char buf[80];
         snprintf(buf, 80, fmtTotalCPULoad, fTotalCPULoadPercentage, fTimeWindow);
-        strTaskInfo.concat(buf);
-        log_info(F("%s"), strTaskInfo.c_str());
+        log_write(INFO, buf);
     }
     // Simple heap stats
     logHeapStats();

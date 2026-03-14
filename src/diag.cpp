@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 ,2026 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -110,12 +110,16 @@ void diagSetup() {
         log_error(F("Cannot create sysVoltage timer - Ignored."));
     else if (xTimerStart(thSysVoltage, 0) != pdPASS)
         log_error(F("Cannot start the sysVoltage timer - Ignored."));
+
+#if LOGGING_ENABLED == 1
     //log the thread, memory and diagnostic measurements info event - no-op if logging is disabled - repeated each 30.25 seconds
     const TimerHandle_t thDiagInfo = xTimerCreate("diagInfo", pdMS_TO_TICKS(30 * 1000 + 250), pdTRUE, &tmrDiagInfoId, enqueueDiagInfo);
     if (thDiagInfo == nullptr)
         log_error(F("Cannot create diagInfo timer - Ignored."));
     else if (xTimerStart(thDiagInfo, 0) != pdPASS)
         log_error(F("Cannot start the diagInfo timer - Ignored."));
+#endif
+
     //monitor FX heartbeat for stalls - repeated each 1 second
     const TimerHandle_t thFxHeartbeat = xTimerCreate("fxHeartbeat", pdMS_TO_TICKS(1000), pdTRUE, &tmrFxHeartbeatId, enqueueFxHeartbeat);
     if (thFxHeartbeat == nullptr)
@@ -233,9 +237,7 @@ void diagExecute() {
             break;
         }
         case FX_HEARTBEAT: checkFxHeartbeat(); break;
-#if LOGGING_ENABLED == 1
         case DIAG_INFO: logDiagInfo(); break;
-#endif
         default:
             log_error(F("Event type %hd not supported"), msg);
             break;
@@ -559,10 +561,12 @@ void updateSecEntropy() {
  * Logs the diagnostic information of current tasks and memory
  */
 void logDiagInfo() {
+#if LOGGING_ENABLED == 1
     //log task and RAM metrics
     // logTaskStats();
     // logSystemInfo();
     logTaskSummary();
+#endif
 }
 
 void checkFxHeartbeat() {
@@ -581,6 +585,7 @@ void checkFxHeartbeat() {
     if (!fxStallReported && (nowMs - heartbeatMs) > fxStallWarnMs) {
         fxStallReported = true;
         watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerFxStall;
+#if LOGGING_ENABLED == 1
         log_warn(F("FX heartbeat stalled for %lu ms - capturing task stats"), static_cast<unsigned long>(nowMs - heartbeatMs));
         log_warn(F("Watchdog remaining %u ms"), watchdog_get_time_remaining_ms());
         if (const TaskHandle_t fxHandle = xTaskGetHandle(csFxTask); fxHandle != nullptr) {
@@ -596,6 +601,8 @@ void checkFxHeartbeat() {
             log_warn(F("CORE1 task handle not found at stall"));
         }
         logTaskStats();
+#endif
+
     }
 }
 
