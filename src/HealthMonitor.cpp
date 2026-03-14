@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2026 by Dan Luca. All rights reserved.
+// Copyright (c) 2026 ,2026 by Dan Luca. All rights reserved.
 //
 #include "HealthMonitor.h"
 #include <hardware/watchdog.h>
@@ -12,11 +12,13 @@ uint32_t HealthMonitor::healthStatus = 0;
 
 void HealthMonitor::init() {
     const uint32_t nowMs = millis();
-    for (uint i = 0; i < 3; i++) lastCheckInMs[i].store(nowMs, std::memory_order_relaxed);
-    healthStatus = 0;
+    for (auto & lastCheckIn : lastCheckInMs) lastCheckIn.store(nowMs, std::memory_order_relaxed);
+    healthStatus = 0xFF;
 }
 
 void HealthMonitor::checkIn(const HealthBit bit) {
+    if (healthStatus == 0)
+        return;
     const uint32_t nowMs = millis();
     switch (bit) {
         case HEALTH_CORE0: lastCheckInMs[0].store(nowMs, std::memory_order_relaxed); watchdog_hw->scratch[kCore0HeartbeatScratchIndex] = nowMs; break;
@@ -41,13 +43,17 @@ void HealthMonitor::checkIn(const HealthBit bit) {
 }
 
 void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
+    if (healthStatus == 0)
+        return;
     const uint32_t nowMs = millis();
     bool allHealthy = true;
     uint32_t diffs[3];
     
     for (int i = 0; i < 3; i++) {
         diffs[i] = nowMs - lastCheckInMs[i].load(std::memory_order_relaxed);
-        if (diffs[i] > timeoutMs) {
+        // ignore CORE1 checkin, its normal operation is to be blocked until a queue message arrives
+        // ignore CORE0 checkin, it can block for long times during wifi reconnect, ping, etc.
+        if (diffs[i] > timeoutMs && i == 2) {
             allHealthy = false;
         }
     }

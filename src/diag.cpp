@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 ,2026 by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -110,8 +110,8 @@ void diagSetup() {
         log_error(F("Cannot create sysVoltage timer - Ignored."));
     else if (xTimerStart(thSysVoltage, 0) != pdPASS)
         log_error(F("Cannot start the sysVoltage timer - Ignored."));
-    //log the thread, memory and diagnostic measurements info event - no-op if logging is disabled - repeated each 27 seconds
-    const TimerHandle_t thDiagInfo = xTimerCreate("diagInfo", pdMS_TO_TICKS(27 * 1000), pdTRUE, &tmrDiagInfoId, enqueueDiagInfo);
+    //log the thread, memory and diagnostic measurements info event - no-op if logging is disabled - repeated each 30.25 seconds
+    const TimerHandle_t thDiagInfo = xTimerCreate("diagInfo", pdMS_TO_TICKS(30 * 1000 + 250), pdTRUE, &tmrDiagInfoId, enqueueDiagInfo);
     if (thDiagInfo == nullptr)
         log_error(F("Cannot create diagInfo timer - Ignored."));
     else if (xTimerStart(thDiagInfo, 0) != pdPASS)
@@ -215,8 +215,8 @@ void enqueueFxHeartbeat(TimerHandle_t xTimer) {
 void diagExecute() {
     DiagAction msg;
     //block indefinitely for a message to be received
-    if (pdFALSE == xQueueReceive(diagQueue, &msg, portMAX_DELAY))
     // if (pdFALSE == xQueueReceive(diagQueue, &msg, 0))
+    if (pdFALSE == xQueueReceive(diagQueue, &msg, portMAX_DELAY))
         return;
     //the reception was successful, hence the msg is not null anymore
     switch (msg) {
@@ -560,8 +560,9 @@ void updateSecEntropy() {
  */
 void logDiagInfo() {
     //log task and RAM metrics
-    logTaskStats();
-    //logSystemInfo();
+    // logTaskStats();
+    // logSystemInfo();
+    logTaskSummary();
 }
 
 void checkFxHeartbeat() {

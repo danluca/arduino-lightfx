@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 ,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef PICOLOG_H
@@ -75,11 +75,11 @@ private:
     size_t m_maxBufferSize{0};
 
     [[nodiscard]] bool isStreamingEnabled() const { return m_stream != nullptr; };
-    size_t printTimestamp(char *msg) const;
+    size_t printTimestamp(char *msg, size_t capacity, time_t millisValue) const;
     size_t print(LogLevel level, const char* format, va_list args);
     size_t print(LogLevel level, const __FlashStringHelper *format, va_list args);
-    static size_t printThread(char *msg) ;
-    static size_t printLevel(LogLevel level, char *msg) ;
+    static size_t printThread(char *msg, size_t capacity, const TaskStatus_t &taskStatus);
+    static size_t printLevel(LogLevel level, char *msg, size_t capacity);
     friend void flushData();
 };
 

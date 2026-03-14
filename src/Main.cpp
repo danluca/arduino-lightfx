@@ -199,12 +199,11 @@ void setup() {
     commSetup();
     web::server_setup();
 
-    HealthMonitor::init();
-
     // notifies Core1 to start processing tasks that need WiFi
     const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
 
     watchdogSetup();
+    HealthMonitor::init();
 
     vTaskPrioritySet(nullptr, uxTaskPriorityGet(nullptr)-1);    //lower the priority of the main task to allow for other tasks to run
     taskDelay(250);         // leave reasonable time to the alarm task to set up
@@ -227,10 +226,10 @@ void setup() {
  */
 void loop() {
     HealthMonitor::checkIn(HEALTH_CORE0);
-    logTaskProbe();
+    // logTaskProbe();
     web_run();
     handle_fw_upgrade();
-    taskDelay(5);   //this is important to allow other tasks to execute on core 0
+    vTaskDelay(5);   //this is important to allow other tasks to execute on core 0
 
     // static uint32_t lastCore0WdtPingMs = 0;
     // const uint32_t nowMsPing = millis();
@@ -274,6 +273,7 @@ void setup1() {
 void loop1() {
     HealthMonitor::checkIn(HEALTH_CORE1);
     diagExecute();
+    vTaskDelay(7);
 }
 
 /**

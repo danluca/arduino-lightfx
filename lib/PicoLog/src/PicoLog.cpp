@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 ,2026 by Dan Luca. All rights reserved.
 //
 
 #include "PicoLog.h"
@@ -92,35 +92,35 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     // Compute size using a copy of args to avoid consuming the original list
     va_list argsCopy;
     va_copy(argsCopy, args);
-    const size_t szMsg = vsnprintf(nullptr, 0, format, argsCopy);
+    const int payloadLen = vsnprintf(nullptr, 0, format, argsCopy);
     va_end(argsCopy);
+    if (payloadLen < 0)
+        return 0;
+    const auto szMsg = static_cast<size_t>(payloadLen);
+
+    TaskStatus_t taskStatus;
+    vTaskGetInfo(nullptr, &taskStatus, pdFALSE, eRunning);
+    const time_t msecs = millis() + m_timebase;
+    const size_t szTimestamp = printTimestamp(nullptr, 0, msecs);
+    const size_t szThread = printThread(nullptr, 0, taskStatus);
+    const size_t szLevel = printLevel(level, nullptr, 0);
 
     // Prepare buffer: small messages on stack, large on heap to avoid large stack frames
-    constexpr size_t HEADER_EXTRA = 48; // timestamp + thread + level + spacing
     constexpr size_t STACK_CAP = 256;   // conservative stack allocation limit
-    const size_t needed = szMsg + HEADER_EXTRA + 1; // +1 for the '\0' we append
+    const size_t headerSize = szTimestamp + szThread + szLevel;
+    const size_t needed = headerSize + szMsg + 1; // payload + newline
 
     char stackBuf[STACK_CAP];
-    char *buf = nullptr;
-    bool heapUsed = false;
+    const bool heapUsed = needed > STACK_CAP;
+    char *buf = heapUsed ? new char[needed] : stackBuf;
 
-    if (needed <= STACK_CAP)
-        buf = stackBuf;
-    else {
-        buf = static_cast<char *>(pvPortMalloc(needed));    //use new instead?
-        if (!buf) {
-            // Allocation failed; fall back to truncation into stack buffer to keep the system alive
-            buf = stackBuf;
-        } else
-            heapUsed = true;
-    }
-
-    size_t sz = printTimestamp(buf);
-    sz += printThread(buf + sz);
-    sz += printLevel(level, buf + sz);
+    const size_t capacity = heapUsed ? needed : STACK_CAP;
+    size_t sz = printTimestamp(buf, capacity, msecs);
+    sz += printThread(buf + sz, capacity - sz, taskStatus);
+    sz += printLevel(level, buf + sz, capacity - sz);
 
     // Format the payload; if the buffer is smaller than needed, truncate safely
-    const size_t payloadCap = (heapUsed ? needed : STACK_CAP) - sz;
+    const size_t payloadCap = capacity - sz;
     // Use a fresh copy of args for formatting to be safe
     va_list argsFormat;
     va_copy(argsFormat, args);
@@ -154,23 +154,28 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
  * @param msg char array to append timestamp to
  * @return size of the data appended
  */
-size_t PicoLog::printTimestamp(char *msg) const {
+size_t PicoLog::printTimestamp(char *msg, const size_t capacity, const time_t millisValue) const {
     // Division constants
     constexpr unsigned long MSECS_PER_SEC = 1000;
 
     // Total time
-    const time_t msecs = millis() + m_timebase;
-    const unsigned long secs = msecs / MSECS_PER_SEC;
+    const unsigned long secs = millisValue / MSECS_PER_SEC;
 
     // Time in components
-    const unsigned long MilliSeconds = msecs % MSECS_PER_SEC;
+    const unsigned long MilliSeconds = millisValue % MSECS_PER_SEC;
     const unsigned long Seconds = secs % SECS_PER_MIN;
     const unsigned long Minutes = (secs / SECS_PER_MIN) % SECS_PER_MIN;
     const unsigned long Hours = (secs % SECS_PER_DAY) / SECS_PER_HOUR;
 
-    // Time as a string
-    const int sz = snprintf(msg, 20, fmtTimestamp, Hours, Minutes, Seconds, MilliSeconds);
-    return  sz < 0 ? 0 : sz >= 20 ? 19 : sz;
+    if (msg == nullptr) {
+        const int sz = snprintf(nullptr, 0, fmtTimestamp, Hours, Minutes, Seconds, MilliSeconds);
+        return sz < 0 ? 0 : static_cast<size_t>(sz);
+    }
+    if (capacity == 0)
+        return 0;
+
+    const int sz = snprintf(msg, capacity, fmtTimestamp, Hours, Minutes, Seconds, MilliSeconds);
+    return sz < 0 ? 0 : static_cast<size_t>(sz) >= capacity ? capacity - 1 : static_cast<size_t>(sz);
 }
 
 /**
@@ -180,22 +185,25 @@ size_t PicoLog::printTimestamp(char *msg) const {
  * This is acceptable as this is a private method, solely invoked from another private method \code print\endcode. While not ideal,
  * keeps the code simpler by avoiding checks and passing size arguments.
  * @param msg string to append thread info to
+ * @param taskStatus the task status already populated
  * @return size of data appended
  */
-size_t PicoLog::printThread(char *msg) {
-    TaskStatus_t taskStatus;
-    vTaskGetInfo(nullptr, &taskStatus, pdFALSE, eRunning);
+size_t PicoLog::printThread(char *msg, const size_t capacity, const TaskStatus_t &taskStatus) {
     const uint coreNumber = get_core_num();
-    if (taskStatus.uxCurrentPriority == taskStatus.uxBasePriority) {
-        const int sz = snprintf(nullptr, 0, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
-        if (sz < 0) return 0;
-        const int wr = snprintf(msg, sz + 1, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
-        return wr < 0 ? 0 : wr >= sz ? sz : wr;
+    if (msg == nullptr) {
+        const int sz = taskStatus.uxCurrentPriority == taskStatus.uxBasePriority
+            ? snprintf(nullptr, 0, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority)
+            : snprintf(nullptr, 0, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+        return sz < 0 ? 0 : static_cast<size_t>(sz);
     }
-    const int sz = snprintf(nullptr, 0, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
-    if (sz < 0) return 0;
-    const int wr = snprintf(msg, sz + 1, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
-    return wr < 0 ? 0 : wr >= sz ? sz : wr;
+    if (capacity == 0)
+        return 0;
+    if (taskStatus.uxCurrentPriority == taskStatus.uxBasePriority) {
+        const int wr = snprintf(msg, capacity, fmtTaskPriorityRegular, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority);
+        return wr < 0 ? 0 : static_cast<size_t>(wr) >= capacity ? capacity - 1 : static_cast<size_t>(wr);
+    }
+    const int wr = snprintf(msg, capacity, fmtTaskPriorityChanged, coreNumber, taskStatus.pcTaskName, taskStatus.uxCurrentPriority, taskStatus.uxBasePriority);
+    return wr < 0 ? 0 : static_cast<size_t>(wr) >= capacity ? capacity - 1 : static_cast<size_t>(wr);
 }
 
 /**
@@ -208,11 +216,17 @@ size_t PicoLog::printThread(char *msg) {
  * @param msg string to append level information to
  * @return size of data appended
  */
-size_t PicoLog::printLevel(const LogLevel level, char *msg) {
+size_t PicoLog::printLevel(const LogLevel level, char *msg, const size_t capacity) {
     // Show log description based on log level
     const char *cLevel = logLevelTags + level;
-    const int sz = snprintf(msg, 5, fmtLevel, *cLevel);
-    return sz < 0 ? 0 : sz >= 5 ? 4 : sz;
+    if (msg == nullptr) {
+        const int sz = snprintf(nullptr, 0, fmtLevel, *cLevel);
+        return sz < 0 ? 0 : static_cast<size_t>(sz);
+    }
+    if (capacity == 0)
+        return 0;
+    const int sz = snprintf(msg, capacity, fmtLevel, *cLevel);
+    return sz < 0 ? 0 : static_cast<size_t>(sz) >= capacity ? capacity - 1 : static_cast<size_t>(sz);
 }
 
 /**
