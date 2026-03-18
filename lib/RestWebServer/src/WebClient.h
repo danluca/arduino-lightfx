@@ -27,6 +27,7 @@
 #define HTTP_MAX_POST_WAIT 5000         //ms to wait for POST data to arrive
 #define HTTP_MAX_SEND_WAIT 5000         //ms to wait for data chunk to be ACKed
 #define HTTP_MAX_CLOSE_WAIT 5000        //ms to wait for the client to close the connection
+#define HTTP_MAX_CLIENT_LIFETIME 30000  //ms maximum time a client can exist (watchdog for stuck clients)
 
 #define CONTENT_LENGTH_UNKNOWN ((size_t) -1)
 #define CONTENT_LENGTH_NOT_SET ((size_t) -2)
@@ -50,6 +51,8 @@ class WebClient {
     [[nodiscard]] HTTPClientStatus status() const { return _status; }
     // this client's (unique) identifier - usually leveraging underlying WiFiClient socket number
     [[nodiscard]] uint8_t clientID() const { return _clientID; }
+    // time when client handling started - for metrics
+    [[nodiscard]] time_t startHandlingTime() const { return _startHandlingTime; }
     HTTPClientStatus handleRequest();
 
     // send response to the client
@@ -125,6 +128,7 @@ protected:
     virtual size_t _currentClientWrite(Stream& s) { const size_t written = _rawWifiClient.write(s); _contentWritten += written; return written; }
     void _finalizeResponse();
     bool _handleRawData();
+    bool _earlyValidateRequest();
     bool _parseRequest();
     void _processRequest();
     void _parseHttpHeaders();

@@ -23,7 +23,7 @@
 #include <cstdint>
 
 #include "Arduino.h"
-#include <spi_drv.h>
+#include "utility/spi_drv.h"
 #include "utility/wifi_drv.h"
 
 // #define _DEBUG_
@@ -109,6 +109,7 @@ void WiFiDrv::wifiDriverInit() {
 }
 
 void WiFiDrv::wifiDriverDeinit() {
+    SpiDrv::end();
 }
 
 int8_t WiFiDrv::wifiSetNetwork(const char* ssid, const uint8_t ssid_len) {
@@ -1302,7 +1303,7 @@ int8_t WiFiDrv::fileOperation(const uint8_t operation, const char *filename, con
     }
 
     // pad to multiple of 4
-    int commandSize = 6 + numParams + sizeof(offset) + sizeof(len) + filename_len;
+    int commandSize = 4 + numParams + sizeof(offset) + sizeof(len) + filename_len;
     while (commandSize % 4) {
         SpiDrv::readChar();
         commandSize++;

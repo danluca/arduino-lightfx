@@ -22,6 +22,7 @@
 #include "WiFi.h"
 
 extern "C" {
+#include "utility/debug.h"
 }
 
 namespace nina {
@@ -171,10 +172,10 @@ namespace nina {
     }
 
     void WiFiClass::config(IPAddress local_ip) {
-        // Assume the DNS server will be the machine on the same network as the local IP but with last octet being '1'
-        IPAddress dns = local_ip;
-        dns[3] = 1;
-        WiFiDrv::config(1, (uint32_t) dns, 0, 0);
+        // Assume the gateway will be the machine on the same network as the local IP but with last octet being '1'
+        IPAddress gateway = local_ip;
+        gateway[3] = 1;
+        WiFiDrv::config(1, (uint32_t) local_ip, gateway, 0);
     }
 
     void WiFiClass::config(IPAddress local_ip, IPAddress dns_server) {

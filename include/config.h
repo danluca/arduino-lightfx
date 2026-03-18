@@ -17,8 +17,8 @@
 #define BRIGHTNESS 255
 
 // These are lists and need to be commas instead of dots e.g., for IP address 192.168.0.1 use 192,168,0,1 instead
-// #define IP_DNS 8,8,8,8               // Google DNS
-#define IP_DNS 192,168,0,1              // Local DNS
+#define IP_DNS 8,8,8,8               // Google DNS
+// #define IP_DNS 192,168,0,1              // Local DNS
 #define IP_GW 192,168,0,1           // default gateway (router)
 #define IP_SUBNET 255,255,255,0     // usual subnet mask
 #define STATIC_BROADCAST_CLIENTS     10, 11, 12              //this is a CSV of *last byte* of the boards having static IP addresses

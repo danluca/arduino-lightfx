@@ -474,6 +474,24 @@ bool WebClient::_handleRawData() {
 }
 
 /**
+ * Validates that a string contains only valid ASCII characters for HTTP requests
+ * @param str string to validate
+ * @return true if string contains only printable ASCII (0x20-0x7E) plus CR/LF/TAB, false otherwise
+ */
+static bool isValidHttpString(const String &str) {
+    if (str.length() == 0)
+        return false;
+    for (unsigned int i = 0; i < str.length(); i++) {
+        const char c = str.charAt(i);
+        // Allow printable ASCII (space to ~), plus CR, LF, and TAB
+        if (!((c >= 0x20 && c <= 0x7E) || c == '\r' || c == '\n' || c == '\t')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
  * Parses the HTTP request into elements to aid in processing the request. Note that traditional web form parsing is not supported;
  * for a platform limited in resources it makes more sense to engage in REST-ful calls using JSON formatted data for any form-like data updates
  * @param client WiFi client
@@ -483,6 +501,18 @@ bool WebClient::_parseRequest() {
     // Read the first line of HTTP request
     String req = _rawWifiClient.readStringUntil('\n');
     req.trim();
+
+    // Validate request line contains only valid ASCII characters
+    if (!isValidHttpString(req)) {
+        log_error("Invalid HTTP request with non-ASCII characters - aborting: %s", req.c_str());
+        return false;
+    }
+
+    // Additional check for empty or suspiciously short request
+    if (req.length() < 14) { // Minimum: "GET / HTTP/1.1" = 14 chars
+        log_error("Invalid HTTP request too short or empty: %s", req.c_str());
+        return false;
+    }
 
     // First line of HTTP request looks like "GET /path HTTP/1.1"
     // Retrieve the "/path" part by finding the spaces
@@ -495,6 +525,20 @@ bool WebClient::_parseRequest() {
     }
 
     const String methodStr = req.substring(0, addr_start);
+
+    // Validate HTTP method string (should be all uppercase ASCII letters, reasonable length)
+    if (methodStr.length() == 0 || methodStr.length() > 10) {
+        log_error("Invalid HTTP method length: %d", methodStr.length());
+        return false;
+    }
+    for (unsigned int i = 0; i < methodStr.length(); i++) {
+        const char c = methodStr.charAt(i);
+        if (c < 'A' || c > 'Z') {
+            log_error("Invalid HTTP method with non-uppercase character at position %d: %s", i, methodStr.c_str());
+            return false;
+        }
+    }
+
     request()._reqUrl = req.substring(addr_start + 1, addr_end);
     request()._httpVersion = req.substring(addr_end + 6);
     if (request()._httpVersion.length() == 0) {
@@ -729,69 +773,142 @@ size_t WebClient::_uploadReadBytes(uint8_t *buf, const size_t len) {
 }
 
 /**
- * Handles the incoming request and possible outcomes of underlying WiFi client connection. It does not return until the request is fully handled,
- * successfully or not. The intent is for server to only call this once.
- * There are wait timeouts for data availability and connection closing that are sliced in 25 and 50ms intervals, respectively - without leaving the function.
+ * Performs early validation by peeking at available data to detect garbage/non-HTTP traffic
+ * @return true if data appears to be valid HTTP request, false if clearly invalid
+ */
+bool WebClient::_earlyValidateRequest() {
+    if (!_rawWifiClient.available())
+        return true; // no data yet, wait for it
+
+    // Peek at first few bytes to detect obvious garbage
+    const int firstByte = _rawWifiClient.peek();
+    if (firstByte < 0)
+        return true; // no data available yet
+
+    // HTTP methods start with uppercase ASCII letters (G, P, D, H, O, C, T)
+    // Valid first bytes: GET, POST, PUT, DELETE, HEAD, OPTIONS, CONNECT, TRACE, PATCH
+    const char c = static_cast<char>(firstByte);
+    if (c < 'A' || c > 'Z') {
+        log_error("Invalid first byte 0x%02X ('%c') - not an HTTP method start", firstByte, (c >= 0x20 && c <= 0x7E) ? c : '?');
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Handles the incoming request and possible outcomes of underlying WiFi client connection.
+ * This method is designed to be non-blocking and returns control to the server after each state transition or timeout check.
+ * The server should call this repeatedly until HC_CLOSED is returned.
  * @return current client status - informs the server whether to keep invoking this client or dispose it
  * @see HTTPServer::handleClient
  */
 HTTPClientStatus WebClient::handleRequest() {
     // disconnected is an unrecoverable state
-    if (!_rawWifiClient.connected())
+    if (!_rawWifiClient.connected()) {
         _status = HC_DISCONNECTED;
-    ulong startClosing = 0;
-    while (_status != HC_DISCONNECTED) {
-        switch (_status) {
-            case HC_READING:
-                if (!_rawWifiClient.available()) {
-                    if (millis() - _startHandlingTime <= HTTP_MAX_DATA_WAIT)
-                        Util::delay(25);
-                    else {
-                        send(408, mime::mimeTable[mime::txt].mimeType, Util::responseCodeToString(408));
-                        _status = HC_CLOSING;
-                        startClosing = millis();
-                        break;
-                    }
-                }
-                // Parse the request
-                if (_parseRequest())
-                    _status = HC_PROCESSING;
-                else {
-                    //this is in response to bad inbound request - either from parsing it or handling its raw data
-                    send(400, mime::mimeTable[mime::txt].mimeType, Util::responseCodeToString(400));
-                    _status = HC_CLOSING;
-                    startClosing = millis();
-                }
-                break;
-
-            case HC_PROCESSING:
-                // Process the request and send a response to the client
-                _processRequest();
-
-                // Determine next step based on connection status
-                if (_rawWifiClient.connected()) {
-                    _status = HC_CLOSING;
-                    startClosing = millis();
-                } else
-                    _status = HC_DISCONNECTED;
-                break;
-
-            case HC_CLOSING:
-                // Give the client a chance to close the connection (the client has initiated it) - we always send the connection: close header
-                if (startClosing > 0 && millis() - startClosing <= HTTP_MAX_CLOSE_WAIT) {
-                    Util::delay(50);
-                    _status = _rawWifiClient.connected() ? HC_CLOSING : HC_DISCONNECTED;
-                } else
-                    _status = HC_DISCONNECTED;
-                break;
-
-            default:
-                // Handle unexpected or unsupported states
-                _status = HC_DISCONNECTED; // Safely terminate the connection
-                break;
-        }
+        close();
+        return _status;
     }
 
-    close(); // Clean up the client connection; transition to HC_CLOSED status
-    return _status; // Return the current HTTP client status, i.e. HC_CLOSED
+    // Watchdog: check if client has been alive too long (prevents stuck clients)
+    const time_t clientLifetime = millis() - _startHandlingTime;
+    if (clientLifetime > HTTP_MAX_CLIENT_LIFETIME) {
+        log_error("Client ID %d exceeded maximum lifetime (%lld ms), forcing disconnect", _clientID, clientLifetime);
+        _status = HC_ERROR;
+        close();
+        return _status;
+    }
+
+    switch (_status) {
+        case HC_READING:
+            if (!_rawWifiClient.available()) {
+                if (millis() - _startWaitTime > HTTP_MAX_DATA_WAIT) {
+                    log_error("Client ID %d timed out waiting for data after %lld ms", _clientID, millis() - _startWaitTime);
+                    send(408, mime::mimeTable[mime::txt].mimeType, Util::responseCodeToString(408));
+                    _status = HC_CLOSING;
+                    _startWaitTime = millis();  // Reset for closing timeout
+                }
+                // Return early - don't block, let server handle other clients
+                return _status;
+            }
+
+            // Early validation: check if incoming data looks like HTTP
+            if (!_earlyValidateRequest()) {
+                log_error("Early validation failed - rejecting connection without response");
+                _status = HC_ERROR;
+                return _status;
+            }
+
+            // Parse the request
+            if (_parseRequest()) {
+                _status = HC_PROCESSING;
+                _startWaitTime = millis();  // Reset for processing watchdog
+            } else {
+                //this is in response to bad inbound request - either from parsing it or handling its raw data
+                send(400, mime::mimeTable[mime::txt].mimeType, Util::responseCodeToString(400));
+                _status = HC_CLOSING;
+                _startWaitTime = millis();  // Reset for closing timeout
+            }
+            break;
+
+        case HC_PROCESSING:
+            // Connection health check before processing
+            if (!_rawWifiClient.connected()) {
+                log_warn("Client ID %d disconnected during processing", _clientID);
+                _status = HC_DISCONNECTED;
+                break;
+            }
+
+            // Process the request and send a response to the client
+            _processRequest();
+
+            // Determine next step based on connection status
+            if (_rawWifiClient.connected()) {
+                _status = HC_CLOSING;
+                _startWaitTime = millis();  // Reset for closing timeout
+            } else {
+                _status = HC_DISCONNECTED;
+            }
+            break;
+
+        case HC_CLOSING:
+            // Connection health check during closing
+            if (!_rawWifiClient.connected()) {
+                _status = HC_DISCONNECTED;
+                break;
+            }
+
+            // Give the client a chance to close the connection gracefully
+            if (millis() - _startWaitTime > HTTP_MAX_CLOSE_WAIT) {
+                log_debug("Client ID %d closing timeout reached, forcing disconnect", _clientID);
+                _status = HC_DISCONNECTED;
+            }
+            // Return early - don't block waiting, let server handle other clients
+            return _status;
+
+        case HC_ERROR:
+            // Error state - immediate disconnect without response
+            log_error("Client ID %d in error state, disconnecting", _clientID);
+            _status = HC_DISCONNECTED;
+            break;
+
+        case HC_DISCONNECTED:
+        case HC_CLOSED:
+            // Already in terminal state
+            break;
+
+        default:
+            // Handle unexpected states
+            log_error("Client ID %d in unexpected state %d, forcing disconnect", _clientID, _status);
+            _status = HC_ERROR;
+            break;
+    }
+
+    // If we reached a terminal state, clean up
+    if (_status == HC_DISCONNECTED || _status == HC_ERROR) {
+        close();
+    }
+
+    return _status;
 }

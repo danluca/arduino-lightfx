@@ -166,8 +166,11 @@ void HTTPServer::serveStatic(const char *uri, FS &fs, const char *path, const st
 void HTTPServer::httpClose() {
     _state = CLOSED;
     _headersOfInterest.clear();
-    for (const auto& client : _clients)
+    for (const auto &client: _clients) {
         client->close();
+        delete client;
+    }
+    _clients.clear();
 }
 
 void HTTPServer::enableDelay(const bool value) {
@@ -196,8 +199,20 @@ void HTTPServer::handleClient() {
         case HANDLING_CLIENT:
             for (auto it = _clients.begin(); it != _clients.end();) {
                 if (WebClient *client = *it; client->handleRequest() == HC_CLOSED) {
+                    // Update metrics when client completes
+                    const time_t requestTime = millis() - client->startHandlingTime();
+                    _metrics.totalRequests++;
+                    _metrics.totalRequestTimeMs += requestTime;
+                    if (requestTime > _metrics.longestRequestMs)
+                        _metrics.longestRequestMs = requestTime;
+
+                    // Track errors based on final status
+                    if (client->status() == HC_ERROR)
+                        _metrics.errors++;
+
                     it = _clients.erase(it);
                     delete client;
+                    _metrics.activeClients = _clients.size();
                 } else
                     ++it;
             }
@@ -220,8 +235,12 @@ void HTTPServer::handleClient() {
                             wifiClient.remoteIP().toString().c_str(), wifiClient.socket());
                         wifiClient.write(Canned503Response, strlen(Canned503Response));
                         wifiClient.stop();
+                        _metrics.rejectedClients++;
                     } else {
                         _clients.push_back(new WebClient(this, wifiClient));
+                        _metrics.activeClients = _clients.size();
+                        if (_metrics.activeClients > _metrics.peakClients)
+                            _metrics.peakClients = _metrics.activeClients;
                         log_debug("HTTPServer::handleClient() - from IP %s through socket %d. WiFiServer state %d, total %zu clients",
                             wifiClient.remoteIP().toString().c_str(), wifiClient.socket(), _server.status(), _clients.size());
                     }

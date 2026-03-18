@@ -615,9 +615,9 @@ void updateSecEntropy() {
 void logDiagInfo() {
 #if LOGGING_ENABLED == 1
     //log task and RAM metrics
-    // logTaskStats();
+    logTaskStats();
     //logSystemInfo();
-    logTaskSummary();
+    // logTaskSummary();
 #endif
 }
 
