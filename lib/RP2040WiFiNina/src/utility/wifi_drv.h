@@ -21,8 +21,9 @@
 #ifndef WiFi_Drv_h
 #define WiFi_Drv_h
 
-#include "utility/wifi_spi.h"
+#include "wifi_spi.h"
 #include "WiFiClient.h"
+#include "WiFiPreferences.h"
 #include <FreeRTOS.h>
 // #include <task.h>
 
@@ -276,8 +277,10 @@ public:
      * result: version as string with this format a.b.c
      */
     static const char* getFwVersion();
+	static uint32_t getFwVersionU32();
 
     static uint32_t getTime();
+	static int setTime(uint32_t epochTime);
 
     static void setPowerMode(uint8_t mode);
 
@@ -317,6 +320,23 @@ public:
         *len = length;
         return length >= 0;
     };
+
+	static bool prefBegin(const char * name, bool readOnly=false, const char* partition_label=NULL);
+	static void prefEnd();
+	static bool prefClear();
+	static bool prefRemove(const char * key);
+	static size_t prefLen(const char * key);
+	static size_t prefStat();
+	static size_t prefPut(const char * key, PreferenceType type, const uint8_t value[], size_t len);
+	static size_t prefGet(const char * key, PreferenceType type, uint8_t value[], size_t len);
+	static PreferenceType prefGetType(const char * key);
+
+	static int bleBegin();
+	static void bleEnd();
+	static int bleAvailable();
+	static int bleRead(uint8_t data[], size_t length);
+	static int blePeek(uint8_t data[], size_t length);
+	static size_t bleWrite(const uint8_t* data, size_t length);
 
     static void applyOTA();
 

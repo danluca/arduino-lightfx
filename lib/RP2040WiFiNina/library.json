@@ -19,5 +19,8 @@
   "build": {
     "srcDir": "src",
     "includeDir": "src"
+  },
+  "dependencies": {
+    "arduino-libraries/Arduino_SpiNINA": "0.0.1"
   }
 }

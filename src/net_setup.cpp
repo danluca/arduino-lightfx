@@ -115,6 +115,7 @@ bool wifi_connect() {
 
 bool wifi_setup() {
     // check for the WiFi module:
+    WiFiDrv::wifiDriverInit();
     if (WiFi.status() == WL_NO_MODULE) {
         log_warn(F("Communication with WiFi module failed!"));
         // don't continue - terminate thread?
@@ -136,23 +137,37 @@ bool wifi_setup() {
  * @return true if all is ok, false if connection unusable
  */
 bool wifi_check() {
-    if (WiFi.status() != WL_CONNECTED) {
+    uint8_t wifiStatus = WiFi.status();
+    bool secondTry = false;
+    if (wifiStatus != WL_CONNECTED) {
+        secondTry = true;
+        taskDelay(100);    //wait a bit before checking again to avoid transient states
+        wifiStatus = WiFi.status();    // check again to avoid transient states
+    }
+    if (wifiStatus != WL_CONNECTED) {
         sysInfo->resetSysStatus(SysStatus::Wifi);
-        log_warn(F("WiFi Connection lost"));
+        log_warn(F("WiFi Connection lost - status %hhu, %u tries"), wifiStatus, secondTry ? 2 : 1);
         return false;
     }
-    const int gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 64);
+    log_info(F("WiFi Connection ok - status %hhu, %u tries"), wifiStatus, secondTry ? 2 : 1);
+    int gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 255);
+    secondTry = false;
+    if (gwPingTime < 0) {
+        secondTry = true;
+        gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 255);    // check again to avoid transient states
+    }
     const int32_t rssi = WiFi.RSSI();
     const uint8_t wifiBars = barSignalLevel(rssi);
-    if ((gwPingTime < 0) || (rssi < -73)) {
+    if ((gwPingTime < 0) || (rssi < -77)) {
         sysInfo->resetSysStatus(SysStatus::Wifi);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
-        log_warn(F("Ping test failed (%d) or signal strength low (%d dbM, %hhu bars), WiFi Connection unusable"), gwPingTime, rssi, wifiBars);
+        log_warn(F("Ping test failed (%d) or signal strength low (%ld dbM, %hhu bars, %u tries), WiFi Connection unusable"), gwPingTime, rssi, wifiBars, secondTry ? 2 : 1);
         return false;
     }
     sysInfo->setSysStatus(SysStatus::Wifi);
-    log_info(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%hhu bars)"), gwPingTime, rssi, wifiBars);
+    log_info(F("WiFi Ok - Gateway ping %d ms, RSSI %ld (%hhu bars, %u tries)"), gwPingTime, rssi, wifiBars, secondTry ? 2 : 1);
     return true;
+
 }
 
 /**
@@ -165,16 +180,20 @@ void wifi_reconnect() {
     web::server.stop();
     timeService.end();
     delete ntpUDP;
+    ntpUDP = nullptr;
 #if MDNS_ENABLED==1
     mdns->stop();
     delete mdns;
+    mdns = nullptr;
     delete mUdp;
+    mUdp = nullptr;
 #endif
 
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     log_info(F("Web services stopped, UDP clients terminated, WiFi disconnected"));
     taskDelay(2000);    //let disconnect state settle
+    WiFiDrv::wifiDriverInit();
     wifi_connect();
 }
 

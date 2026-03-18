@@ -22,7 +22,6 @@
 #include "WiFi.h"
 
 extern "C" {
-#include "utility/debug.h"
 }
 
 namespace nina {
@@ -35,6 +34,11 @@ namespace nina {
 
     const char *WiFiClass::firmwareVersion() {
         return WiFiDrv::getFwVersion();
+    }
+
+    uint32_t WiFiClass::firmwareVersionU32()
+    {
+        return WiFiDrv::getFwVersionU32();
     }
 
     int WiFiClass::begin(const char *ssid) const {
@@ -167,11 +171,17 @@ namespace nina {
     }
 
     void WiFiClass::config(IPAddress local_ip) {
-        WiFiDrv::config(1, (uint32_t) local_ip, 0, 0);
+        // Assume the DNS server will be the machine on the same network as the local IP but with last octet being '1'
+        IPAddress dns = local_ip;
+        dns[3] = 1;
+        WiFiDrv::config(1, (uint32_t) dns, 0, 0);
     }
 
     void WiFiClass::config(IPAddress local_ip, IPAddress dns_server) {
-        WiFiDrv::config(1, (uint32_t) local_ip, 0, 0);
+        // Assume the gateway will be the machine on the same network as the local IP but with last octet being '1'
+        IPAddress gateway = local_ip;
+        gateway[3] = 1;
+        WiFiDrv::config(1, (uint32_t) local_ip, gateway, 0);
         WiFiDrv::setDNS(1, (uint32_t) dns_server, 0);
     }
 
@@ -304,6 +314,11 @@ namespace nina {
 
     unsigned long WiFiClass::getTime() {
         return WiFiDrv::getTime();
+    }
+
+    int WiFiClass::setTime(unsigned long unixTime)
+    {
+        return WiFiDrv::setTime(unixTime);
     }
 
     void WiFiClass::lowPowerMode() {

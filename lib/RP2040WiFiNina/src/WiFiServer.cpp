@@ -22,7 +22,6 @@
 #include "utility/server_drv.h"
 
 extern "C" {
-#include "utility/debug.h"
 }
 
 #include "WiFi.h"

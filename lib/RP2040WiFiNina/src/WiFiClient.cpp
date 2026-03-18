@@ -22,7 +22,6 @@ extern "C" {
 #include "utility/wl_definitions.h"
 #include "utility/wl_types.h"
 #include "string.h"
-#include "utility/debug.h"
 }
 
 
@@ -146,6 +145,17 @@ int WiFiClient::connectBearSSL(const char *host, const uint16_t port) {
         return 0;
     }
     return 1;
+}
+
+
+int WiFiClient::setECTrustAnchorBearSSL(const uint8_t *dName, uint32_t dNameSize, uint16_t flags, uint16_t curve, const uint8_t *key, uint32_t keySize)
+{
+    return ServerDrv::setECTrustAnchorBearSSL(dName, dNameSize, flags, curve, key, keySize);
+}
+
+int WiFiClient::errorCodeBearSSL()
+{
+    return ServerDrv::errorCodeBearSSL();
 }
 
 size_t WiFiClient::write(const uint8_t b) {

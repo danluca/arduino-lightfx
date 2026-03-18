@@ -40,6 +40,8 @@ public:
 
 	int connect(IPAddress ip, uint16_t port) override;
 	int connect(const char* host, uint16_t port) override;
+	virtual int setECTrustAnchor(const uint8_t *dName, uint32_t dNameSize, uint16_t flags, uint16_t curve, const uint8_t *key, uint32_t keySize);
+	virtual int errorCode();
 };
 
 #endif /* WIFISSLCLIENT_H */
