@@ -96,6 +96,27 @@ public:
     }
     enum ServerState {IDLE, HANDLING_CLIENT, CLOSED};
     [[nodiscard]] ServerState state() const { return _state; }
+    // Metrics structure for monitoring server health
+    struct ServerMetrics {
+        uint32_t totalRequests = 0;
+        uint32_t activeClients = 0;
+        uint32_t peakClients = 0;
+        uint32_t rejectedClients = 0;  // 503 responses
+        uint32_t timeouts = 0;
+        uint32_t errors = 0;
+        time_t longestRequestMs = 0;
+        time_t totalRequestTimeMs = 0;
+
+        [[nodiscard]] uint32_t avgRequestTimeMs() const {
+            return totalRequests > 0 ? totalRequestTimeMs / totalRequests : 0;
+        }
+    };
+
+    [[nodiscard]] const ServerMetrics& metrics() const { return _metrics; }
+    void resetMetrics() {
+        _metrics = ServerMetrics();
+        _metrics.activeClients = _clients.size();
+    }
 
 protected:
     void _addRequestHandler(RequestHandler* handler);
@@ -115,6 +136,7 @@ protected:
     WiFiServer _server;
     ServerState _state = IDLE;
     uint16_t _port;
+    ServerMetrics _metrics{};
 
     friend class WebClient;
 };

@@ -239,7 +239,7 @@ void diagExecute() {
         case FX_HEARTBEAT: checkFxHeartbeat(); break;
         case DIAG_INFO: logDiagInfo(); break;
         default:
-            log_error(F("Event type %hd not supported"), msg);
+            log_error(F("Diag Event type %hd not supported"), msg);
             break;
     }
 }

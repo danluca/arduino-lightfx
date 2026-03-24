@@ -26,6 +26,7 @@ void HealthMonitor::checkIn(const HealthBit bit) {
         case HEALTH_FX:    lastCheckInMs[2].store(nowMs, std::memory_order_relaxed); watchdog_hw->scratch[kFxHeartbeatScratchIndex] = nowMs; break;
         default: break;
     }
+#if LOGGING_ENABLED == 1
     uint32_t diffs[3];
 
     for (int i = 0; i < 3; i++) {
@@ -40,6 +41,8 @@ void HealthMonitor::checkIn(const HealthBit bit) {
             lastWarnMs = nowMs;
         }
     }
+#endif
+
 }
 
 void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
@@ -60,6 +63,7 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
 
     if (allHealthy) {
         watchdog_update();
+#if LOGGING_ENABLED == 1
         if (diffs[0] > warnMs || diffs[1] > warnMs || diffs[2] > warnMs) {
             static uint32_t lastWarnMs = 0;
             if (nowMs - lastWarnMs > 1000) {
@@ -71,9 +75,12 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
     } else {
         static uint32_t lastLogMs = 0;
         if (nowMs - lastLogMs > 1000) {
-            log_error(F("HealthMonitor: Task(s) STALLED! STOPS PINGING WATCHDOG. [C0:%lu, C1:%lu, FX:%lu] now:%lu"), 
+            log_error(F("HealthMonitor: Task(s) STALLED! STOPS PINGING WATCHDOG. [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                 diffs[0], diffs[1], diffs[2], nowMs);
             lastLogMs = nowMs;
         }
     }
+#else
+    }
+#endif
 }

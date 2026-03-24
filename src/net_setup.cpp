@@ -36,7 +36,7 @@ uint8_t barSignalLevel(const int32_t rssi) {
     static constexpr uint8_t numLevels = 5;
     static constexpr int16_t minRSSI = -100;
     static constexpr int16_t maxRSSI = -55;
-    if (rssi <= minRSSI)
+    if (rssi <= minRSSI || rssi >= 0)
         return 0;
     if (rssi >= maxRSSI)
         return numLevels - 1;
@@ -140,7 +140,7 @@ bool wifi_connect() {
     uint attCount = 0;
     uint8_t wifiStatus = WiFi.begin(ssid, pass);
     while (wifiStatus != WL_CONNECTED) {
-        log_info(F("Attempting to connect Wi-Fi..."));
+        log_info(F("Attempting to connect Wi-Fi %s (status %hhd)..."), ssid, wifiStatus);
 
         // Connect to WPA/WPA2 network
         // wait 2 seconds for connection to succeed:
@@ -215,17 +215,27 @@ bool wifi_check() {
         log_warn(F("WiFi Connection lost"));
         return false;
     }
-    const int gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 64);
+    int gwPingTime = -1;
+    uint8_t pingAttempts = 0;
+    for (int i = 0; i < 4; i++) {
+        gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 128);
+        pingAttempts++;
+        if (gwPingTime >= 0)
+            break;  // Gateway responsive, bail out
+        taskDelay(100);  // Brief delay between attempts to avoid transient states
+    }
     const int32_t rssi = WiFi.RSSI();
     const uint8_t wifiBars = barSignalLevel(rssi);
-    if ((gwPingTime < 0) || (rssi < -73)) {
+    if ((gwPingTime < 0) || (rssi < -75)) {
         sysInfo->resetSysStatus(SysStatus::Wifi);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
-        log_warn(F("Ping test failed (%d) or signal strength low (%d dbM, %hhu bars), WiFi Connection unusable"), gwPingTime, rssi, wifiBars);
+        log_warn(F("Ping test to %s failed (%d) or signal strength low (%ld dbM, %hhu bars, %u tries), WiFi Connection unusable"),
+            sysInfo->refGatewayIpAddress().toString().c_str(), gwPingTime, rssi, wifiBars, pingAttempts);
         return false;
     }
     sysInfo->setSysStatus(SysStatus::Wifi);
-    log_info(F("WiFi Ok - Gateway ping %d ms, RSSI %d (%hhu bars)"), gwPingTime, rssi, wifiBars);
+    log_info(F("WiFi Ok - Gateway %s ping %d ms, RSSI %ld (%hhu bars, %u tries)"), sysInfo->refGatewayIpAddress().toString().c_str(),
+        gwPingTime, rssi, wifiBars, pingAttempts);
     return true;
 }
 
@@ -235,10 +245,14 @@ bool wifi_check() {
  * Should we invoke a board reset instead? (NVIC_SystemReset)
  */
 void wifi_reconnect() {
+    log_debug(F("wifi_reconnect: start"));
     sysInfo->resetSysStatus(SysStatus::Wifi);
+    log_debug(F("wifi_reconnect: stopping web server"));
     web::server.stop();
+    log_debug(F("wifi_reconnect: stopping time service"));
     timeService.end();
     delete ntpUDP;
+    ntpUDP = nullptr;
 #if MDNS_ENABLED==1
     for (const auto& query : serviceQueries)
         MDNS.removeServiceQuery(query);
@@ -248,6 +262,7 @@ void wifi_reconnect() {
     MDNS.close();
 #endif
 
+    log_debug(F("wifi_reconnect: disconnecting WiFi"));
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     log_info(F("Web services stopped, UDP clients terminated, WiFi disconnected"));

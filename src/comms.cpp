@@ -115,7 +115,7 @@ void commRun() {
         }
         case SCAN_CLIENTS: scanClients(); break;
         default:
-            log_error(F("Event type %hd not supported"), msg.event);
+            log_error(F("Comm Event type %hd not supported"), msg.event);
             break;
     }
 }
