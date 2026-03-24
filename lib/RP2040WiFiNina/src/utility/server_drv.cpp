@@ -145,7 +145,7 @@ void ServerDrv::startClient(const char* host, const uint8_t host_len, uint32_t i
     SpiDrv::sendParam(timeout, LAST_PARAM);
 
     // pad to multiple of 4
-    int commandSize = 17 + host_len;
+    int commandSize = 20 + host_len;
     while (commandSize % 4) {
         SpiDrv::readChar();
         commandSize++;

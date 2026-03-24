@@ -109,6 +109,8 @@ void WiFiDrv::wifiDriverInit() {
 }
 
 void WiFiDrv::wifiDriverDeinit() {
+    //note this statement was removed in version 2.0.1 of the library with comment "Offload spi transport to be shared with ArduinoBLE"
+    //this is also the version where the SPI driver became a shared library - arduino-libraries/Arduino_SpiNINA
     SpiDrv::end();
 }
 
@@ -1303,7 +1305,7 @@ int8_t WiFiDrv::fileOperation(const uint8_t operation, const char *filename, con
     }
 
     // pad to multiple of 4
-    int commandSize = 4 + numParams + sizeof(offset) + sizeof(len) + filename_len;
+    int commandSize = 6 + numParams + sizeof(offset) + sizeof(len) + filename_len;
     while (commandSize % 4) {
         SpiDrv::readChar();
         commandSize++;

@@ -51,6 +51,7 @@ class WebClient {
     [[nodiscard]] HTTPClientStatus status() const { return _status; }
     // this client's (unique) identifier - usually leveraging underlying WiFiClient socket number
     [[nodiscard]] uint8_t clientID() const { return _clientID; }
+    [[nodiscard]] IPAddress remoteIP() const { return _remoteIP; }
     // time when client handling started - for metrics
     [[nodiscard]] time_t startHandlingTime() const { return _startHandlingTime; }
     HTTPClientStatus handleRequest();
@@ -142,6 +143,7 @@ protected:
 
     HTTPServer* _server;
     WiFiClient  _rawWifiClient;
+    IPAddress   _remoteIP;
     HTTPClientStatus _status;
     time_t      _startHandlingTime, _stopHandlingTime;
     time_t      _startWaitTime;

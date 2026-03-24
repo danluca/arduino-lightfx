@@ -38,7 +38,7 @@ uint8_t barSignalLevel(const int32_t rssi) {
     static constexpr uint8_t numLevels = 5;
     static constexpr int16_t minRSSI = -100;
     static constexpr int16_t maxRSSI = -55;
-    if (rssi <= minRSSI)
+    if (rssi <= minRSSI || rssi >= 0)
         return 0;
     if (rssi >= maxRSSI)
         return numLevels - 1;
@@ -67,8 +67,8 @@ bool wifi_connect() {
 
         // Connect to WPA/WPA2 network
         wifiStatus = WiFi.begin(ssid, pass);
-        // wait 10 seconds for connection to succeed:
-        taskDelay(10000);
+        // wait 5 seconds for connection to succeed:
+        taskDelay(5000);
         attCount++;
     }
     const bool result = wifiStatus == WL_CONNECTED;
@@ -160,7 +160,7 @@ bool wifi_check() {
     }
     const int32_t rssi = WiFi.RSSI();
     const uint8_t wifiBars = barSignalLevel(rssi);
-    if ((gwPingTime < 0) || (rssi < -73)) {
+    if ((gwPingTime < 0) || (rssi < -75)) {
         sysInfo->resetSysStatus(SysStatus::Wifi);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
         log_warn(F("Ping test to %s failed (%d) or signal strength low (%ld dbM, %hhu bars, %u tries), WiFi Connection unusable"), sysInfo->refGatewayIpAddress().toString().c_str(), gwPingTime, rssi, wifiBars, pingAttempts);
@@ -177,20 +177,34 @@ bool wifi_check() {
  * Should we invoke a board reset instead? (NVIC_SystemReset)
  */
 void wifi_reconnect() {
+    log_debug(F("wifi_reconnect: start"));
     sysInfo->resetSysStatus(SysStatus::Wifi);
+    log_debug(F("wifi_reconnect: stopping web server"));
     web::server.stop();
+    log_debug(F("wifi_reconnect: stopping time service"));
     timeService.end();
+    log_debug(F("wifi_reconnect: deleting ntpUDP"));
     delete ntpUDP;
+    ntpUDP = nullptr;
 #if MDNS_ENABLED==1
-    mdns->stop();
-    delete mdns;
-    delete mUdp;
+    log_debug(F("wifi_reconnect: stopping mdns"));
+    if (mdns) {
+        mdns->stop();
+        delete mdns;
+        mdns = nullptr;
+    }
+    if (mUdp) {
+        delete mUdp;
+        mUdp = nullptr;
+    }
 #endif
 
+    log_debug(F("wifi_reconnect: disconnecting WiFi"));
     WiFi.disconnect();
     WiFi.end();     //without this, the re-connected wifi has closed socket clients
     log_info(F("Web services stopped, UDP clients terminated, WiFi disconnected"));
     taskDelay(2000);    //let disconnect state settle
+    log_debug(F("wifi_reconnect: calling wifi_connect"));
     wifi_connect();
 }
 

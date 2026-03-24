@@ -615,9 +615,9 @@ void updateSecEntropy() {
 void logDiagInfo() {
 #if LOGGING_ENABLED == 1
     //log task and RAM metrics
-    logTaskStats();
+    // logTaskStats();
     //logSystemInfo();
-    // logTaskSummary();
+    logTaskSummary();
 #endif
 }
 
@@ -658,13 +658,6 @@ void checkFxHeartbeat() {
     const uint32_t heartbeatMs = watchdog_hw->scratch[kFxHeartbeatScratchIndex];
     if (heartbeatMs == 0u)
         return;
-    //read the ESP32 WiFi chip's temperature
-    const Measurement wifiTemp {WiFi.getTemperature(), now(), Deg_C};
-    //add the measurement if the jump from previous measurement is reasonable
-    const float fTemp = toFahrenheit(wifiTemp.value);
-    //I've noticed a suspect Fahrenheit value of 0x80 (128) that is not real (by feeling the chip) - this seems to be some sort of error/NA value
-    //if not first reading or current value is within 4 degrees 'C of 53.33'C (128'F) (53.33 'C +/- 4) then consider the 128'F value of the reading, otherwise ignore these (erroneous) readings
-    const bool bInvalid = fabs(fTemp - 128.0) < TEMP_NA_COMPARE_EPSILON && (wifiTempRange.current.time == 0 || fabs(wifiTempRange.current.value - 53.33) > 4.0);
     if (heartbeatMs != lastHeartbeatMs) {
         lastHeartbeatMs = heartbeatMs;
         fxStallReported = false;
@@ -675,28 +668,22 @@ void checkFxHeartbeat() {
         fxStallReported = true;
         watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerFxStall;
 #if LOGGING_ENABLED == 1
-        if (bInvalid) {
-            if (wifiTempRange.current.time == 0)
-                log_warn( F("Discarding WiFi temperature measurement of %.2f 'C - 128 'F error value detected"), wifiTemp.value);
-            else
-                log_warn(F("Discarding WiFi temperature measurement %.2f 'C (%.2f 'F) - not within allowed range for inclusion [49.33 - 57.33] 'C"), wifiTemp.value, fTemp);
-            log_warn(F("FX heartbeat stalled for %lu ms - capturing task stats"), static_cast<unsigned long>(nowMs - heartbeatMs));
-            log_warn(F("Watchdog remaining %u ms"), watchdog_get_time_remaining_ms());
-            if (const TaskHandle_t fxHandle = xTaskGetHandle(csFxTask); fxHandle != nullptr) {
-                const eTaskState fxState = eTaskGetState(fxHandle);
-                log_warn(F("FX task state at stall: %s (%d)"), taskStatusToString(fxState), static_cast<int>(fxState));
-            } else {
-                log_warn(F("FX task handle not found at stall"));
-            }
-            if (const TaskHandle_t core1Handle = xTaskGetHandle(csCORE1); core1Handle != nullptr) {
-                const eTaskState core1State = eTaskGetState(core1Handle);
-                log_warn(F("CORE1 task state at stall: %s (%d)"), taskStatusToString(core1State), static_cast<int>(core1State));
-            } else {
-                log_warn(F("CORE1 task handle not found at stall"));
-            }
-            logTaskStats();
+        log_warn(F("FX heartbeat stalled for %lu ms - capturing task stats"), static_cast<unsigned long>(nowMs - heartbeatMs));
+        log_warn(F("Watchdog remaining %u ms"), watchdog_get_time_remaining_ms());
+        if (const TaskHandle_t fxHandle = xTaskGetHandle(csFxTask); fxHandle != nullptr) {
+            const eTaskState fxState = eTaskGetState(fxHandle);
+            log_warn(F("FX task state at stall: %s (%d)"), taskStatusToString(fxState), static_cast<int>(fxState));
+        } else {
+            log_warn(F("FX task handle not found at stall"));
         }
+        if (const TaskHandle_t core1Handle = xTaskGetHandle(csCORE1); core1Handle != nullptr) {
+            const eTaskState core1State = eTaskGetState(core1Handle);
+            log_warn(F("CORE1 task state at stall: %s (%d)"), taskStatusToString(core1State), static_cast<int>(core1State));
+        } else {
+            log_warn(F("CORE1 task handle not found at stall"));
+        }
+        logTaskStats();
 #endif
+
     }
 }
-

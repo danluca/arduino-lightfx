@@ -318,17 +318,17 @@ void fxBroadcast(const uint16_t index) {
             index, sysInfo->getSysStatus());
         return;
     }
-    const EffectInfo *fxInfo = fxRegistry.getEffectInfo(index);
-    if (!fxInfo) {
+    const String fxId = fxRegistry.getEffectId(index);
+    if (fxId == "unknown") {
         log_error(F("Effect at index %d not found"), index);
         return;
     }
     if (!fxBroadcastEnabled) {
-        log_warn(F("This board is not a master (FX Broadcast disabled) - will not push effect %s [%hu] to others"), fxInfo->desc.id, index);
+        log_warn(F("This board is not a master (FX Broadcast disabled) - will not push effect %s [%hu] to others"), fxId.c_str(), index);
         return;
     }
     broadcastState = Broadcasting;
-    log_info(F("Fx change event - start broadcasting %s [%hu] to %u recipients"), fxInfo->desc.id, index, static_cast<unsigned>(fxBroadcastRecipients.size()));
+    log_info(F("Fx change event - start broadcasting %s [%hu] to %u recipients"), fxId.c_str(), index, static_cast<unsigned>(fxBroadcastRecipients.size()));
     for (const auto &client : fxBroadcastRecipients)
         clientUpdate(client.get(), index);
     log_info(F("Finished broadcasting to %u recipients - check individual log statements for status of each recipient"), static_cast<unsigned>(fxBroadcastRecipients.size()));

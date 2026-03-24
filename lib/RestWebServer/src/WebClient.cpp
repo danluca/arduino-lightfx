@@ -70,6 +70,7 @@ WebClient::WebClient(HTTPServer *server, const WiFiClient &client): _server(serv
     _rawWifiClient.setTimeout(HTTP_MAX_SEND_WAIT);
     // the ID is relying on the WiFiClient's internal socket used; the ID is used in discriminating new clients from existing ones that the WiFiServer may report
     _clientID = _rawWifiClient.socket();
+    _remoteIP = _rawWifiClient.remoteIP();
     _responseHeaders.reserve(INITIAL_HEADERS_BUFFER_SIZE);
 }
 
@@ -93,8 +94,12 @@ void WebClient::close() {
     _uploadBody.reset();
     _rawBody.reset();
     _stopHandlingTime = millis();
-    log_info(F("=== Web Client ID (socket#) %d closed. Processed request %s %s in %lld ms, written %zu bytes total"), _clientID, httpMethodToString(_request->method()),
-        _request->uri().c_str(), _stopHandlingTime - _startHandlingTime, _contentWritten);
+    if (_request) {
+        log_info(F("=== Web Client ID (socket#) %d closed. Processed request %s %s from %s in %lld ms, written %zu bytes total"), _clientID, httpMethodToString(_request->method()),
+            _request->uri().c_str(), _remoteIP.toString().c_str(), _stopHandlingTime - _startHandlingTime, _contentWritten);
+    } else {
+        log_info(F("=== Web Client ID (socket#) %d closed (no request processed from %s) in %lld ms"), _clientID, _remoteIP.toString().c_str(), _stopHandlingTime - _startHandlingTime);
+    }
 }
 
 // /**
@@ -520,7 +525,7 @@ bool WebClient::_parseRequest() {
     const int addr_end = req.indexOf(' ', addr_start + 1);
     if (addr_start == -1 || addr_end == -1) {
         addResponseHeader("x-error", "Can't parse URI from request line: " + req);
-        log_error("Invalid HTTP request: %s", req.c_str());
+        log_error("Invalid HTTP request from %s: %s", _remoteIP.toString().c_str(), req.c_str());
         return false;
     }
 
@@ -789,7 +794,7 @@ bool WebClient::_earlyValidateRequest() {
     // Valid first bytes: GET, POST, PUT, DELETE, HEAD, OPTIONS, CONNECT, TRACE, PATCH
     const char c = static_cast<char>(firstByte);
     if (c < 'A' || c > 'Z') {
-        log_error("Invalid first byte 0x%02X ('%c') - not an HTTP method start", firstByte, (c >= 0x20 && c <= 0x7E) ? c : '?');
+        log_error("Invalid first byte 0x%02X ('%c') - not an HTTP method start: %s", firstByte, (c >= 0x20 && c <= 0x7E) ? c : '?', _rawWifiClient.readString().c_str());
         return false;
     }
 
@@ -806,6 +811,7 @@ bool WebClient::_earlyValidateRequest() {
 HTTPClientStatus WebClient::handleRequest() {
     // disconnected is an unrecoverable state
     if (!_rawWifiClient.connected()) {
+        log_warn(F("Client ID %d disconnected from %s, closing WebClient; request: %s"), _clientID, _remoteIP.toString().c_str(), _rawWifiClient.readString().c_str());
         _status = HC_DISCONNECTED;
         close();
         return _status;
@@ -835,7 +841,7 @@ HTTPClientStatus WebClient::handleRequest() {
 
             // Early validation: check if incoming data looks like HTTP
             if (!_earlyValidateRequest()) {
-                log_error("Early validation failed - rejecting connection without response");
+                log_error("Early validation failed - rejecting connection from %s without response: %s", _remoteIP.toString().c_str(), _rawWifiClient.peek() >= 0 ? _rawWifiClient.readString().c_str() : "no data");
                 _status = HC_ERROR;
                 return _status;
             }
@@ -907,6 +913,7 @@ HTTPClientStatus WebClient::handleRequest() {
 
     // If we reached a terminal state, clean up
     if (_status == HC_DISCONNECTED || _status == HC_ERROR) {
+        log_info("Client ID %d in terminal state %d, closing connection", _clientID, _status);
         close();
     }
 

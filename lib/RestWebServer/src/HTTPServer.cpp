@@ -44,7 +44,12 @@ HTTPServer::~HTTPServer() {
     _requestHandlers.clear();
     //delete any clients left in the queue
     for (const auto& client : _clients) {
-        delete client;
+        if (client) {
+            client->close();
+            delete client;
+        } else {
+            log_warn("HTTPServer::destructor() - client is null");
+        }
     }
     _clients.clear();
     _server.close();
@@ -166,9 +171,14 @@ void HTTPServer::serveStatic(const char *uri, FS &fs, const char *path, const st
 void HTTPServer::httpClose() {
     _state = CLOSED;
     _headersOfInterest.clear();
+    // Safely close and delete all clients with null checks
     for (const auto &client: _clients) {
-        client->close();
-        delete client;
+        if (client) {
+            client->close();
+            delete client;
+        } else {
+            log_warn("HTTPServer::httpClose() - client is null");
+        }
     }
     _clients.clear();
 }

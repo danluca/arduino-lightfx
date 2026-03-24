@@ -7,32 +7,28 @@
 
 
 // EffectRegistry
-EffectRegistry::EffectRegistry() {
-    mutex_init(&mutex);
-}
 
 EffectRegistry::~EffectRegistry() {
-    CoreMutex lock(&mutex);
     delete activeEffect;
 }
 
 const EffectInfo* EffectRegistry::getEffectInfo(const uint16_t index) const {
-    CoreMutex lock(&mutex);
     if (effectsCount == 0)
         return nullptr;
     return effectInfos[index % effectsCount];
 }
 
-uint16_t EffectRegistry::nextEffectPos(const char *id) {
-    CoreMutex lock(&mutex);
-    return nextEffectPosUnlocked(id);
+String EffectRegistry::getEffectId(const uint16_t index) const {
+    if (effectsCount == 0 || index >= effectsCount)
+        return String("unknown");
+    return String(effectInfos[index]->desc.id);
 }
 
-uint16_t EffectRegistry::nextEffectPosUnlocked(const char *id) {
+uint16_t EffectRegistry::nextEffectPos(const char *id) {
     for (size_t x = 0; x < effectInfos.size(); x++) {
         if (strcmp(id, effectInfos[x]->desc.id) == 0) {
             desiredEffectIndex = x;
-            transitionEffectUnlocked();
+            transitionEffect();
             return lastEffectIndex;
         }
     }
@@ -40,43 +36,27 @@ uint16_t EffectRegistry::nextEffectPosUnlocked(const char *id) {
 }
 
 uint16_t EffectRegistry::nextEffectPos(const uint16_t efx) {
-    CoreMutex lock(&mutex);
-    return nextEffectPosUnlocked(efx);
-}
-
-uint16_t EffectRegistry::nextEffectPosUnlocked(const uint16_t efx) {
     desiredEffectIndex = capu(efx, effectsCount-1);
-    transitionEffectUnlocked();
+    transitionEffect();
     return lastEffectIndex;
 }
 
 uint16_t EffectRegistry::nextEffectPos() {
-    CoreMutex lock(&mutex);
-    return nextEffectPosUnlocked();
-}
-
-uint16_t EffectRegistry::nextEffectPosUnlocked() {
     if (!autoSwitch || sleepState)
         return desiredEffectIndex;
     desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
     //increment past the sleep effect, if landed on it
     if (desiredEffectIndex == sleepEffectIndex)
         desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
-    transitionEffectUnlocked();
+    transitionEffect();
     return lastEffectIndex;
 }
 
 uint16_t EffectRegistry::curEffectPos() const {
-    CoreMutex lock(&mutex);
     return desiredEffectIndex;
 }
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
-    CoreMutex lock(&mutex);
-    return nextRandomEffectPosUnlocked();
-}
-
-uint16_t EffectRegistry::nextRandomEffectPosUnlocked() {
     if (autoSwitch && !sleepState) {
         //weighted randomization of the next effect index
         uint16_t totalSelectionWeight = 0;
@@ -91,7 +71,7 @@ uint16_t EffectRegistry::nextRandomEffectPosUnlocked() {
             }
         }
         log_info(F("Random effect selection: index %d [%s]"), desiredEffectIndex, effectInfos[desiredEffectIndex]->desc.id);
-        transitionEffectUnlocked();
+        transitionEffect();
     } else {
         log_info(F("Random effect selection skipped - auto switch %s, sleep state %s"), StringUtils::asString(autoSwitch), StringUtils::asString(sleepState));
     }
@@ -109,15 +89,10 @@ uint16_t EffectRegistry::nextRandomEffectPosUnlocked() {
  * This function is invoked whenever the active effect is updated within the registry.
  */
 void EffectRegistry::transitionEffect() {
-    CoreMutex lock(&mutex);
-    transitionEffectUnlocked();
-}
-
-void EffectRegistry::transitionEffectUnlocked() {
     if (desiredEffectIndex != lastEffectIndex) {
         // Store the index of the effect to create after the current one finishes
         nextEffectIndex = desiredEffectIndex;
-        
+
         // Wind down the currently active effect
         if (activeEffect)
             activeEffect->desiredState(Idle);
@@ -146,7 +121,6 @@ void EffectRegistry::transitionEffectUnlocked() {
  * @return The index of the registered effect in the EffectRegistry.
  */
 uint16_t EffectRegistry::registerEffect(const EffectInfo* info) {
-    CoreMutex lock(&mutex);
     effectInfos.push_back(info);
     effectsCount = effectInfos.size();
     const uint16_t fxIndex = effectsCount - 1;
@@ -157,7 +131,6 @@ uint16_t EffectRegistry::registerEffect(const EffectInfo* info) {
 }
 
 uint16_t EffectRegistry::findEffectIndex(const char *id) const {
-    CoreMutex lock(&mutex);
     for (size_t x = 0; x < effectInfos.size(); x++) {
         if (strcmp(id, effectInfos[x]->desc.id) == 0)
             return x;
@@ -166,28 +139,22 @@ uint16_t EffectRegistry::findEffectIndex(const char *id) const {
 }
 
 void EffectRegistry::setSleepState(const bool sleepFlag) {
-    CoreMutex lock(&mutex);
-    setSleepStateUnlocked(sleepFlag);
-}
-
-void EffectRegistry::setSleepStateUnlocked(const bool sleepFlag) {
     if (sleepState != sleepFlag) {
         sleepState = sleepFlag;
         log_info(F("Switching to sleep state %s (sleep mode enabled %s)"), StringUtils::asString(sleepState), StringUtils::asString(sleepModeEnabled));
         if (sleepState)
-            beforeSleepEffectIndex = nextEffectPosUnlocked(FX_SLEEPLIGHT_ID);
+            beforeSleepEffectIndex = nextEffectPos(FX_SLEEPLIGHT_ID);
         else
-            nextEffectPosUnlocked(beforeSleepEffectIndex);
+            nextEffectPos(beforeSleepEffectIndex);
     } else
         log_info(F("Sleep state is already %s - no changes"), StringUtils::asString(sleepState));
 }
 
 void EffectRegistry::enableSleep(const bool bSleep) {
-    CoreMutex lock(&mutex);
     sleepModeEnabled = bSleep;
     log_info(F("Sleep mode enabled is now %s"), StringUtils::asString(sleepModeEnabled));
     //determine the proper sleep status based on time
-    setSleepStateUnlocked(sleepModeEnabled && !isAwakeTime(now()));
+    setSleepState(sleepModeEnabled && !isAwakeTime(now()));
 }
 
 /**
@@ -205,17 +172,9 @@ void EffectRegistry::enableSleep(const bool bSleep) {
  * - A notification is posted when the effect change is complete
  */
 void EffectRegistry::loop() {
-    LedEffect *effectToRun = nullptr;
-    {
-        CoreMutex lock(&mutex);
-        effectToRun = activeEffect;
-    }
-
     // Always process the active effect (running or transitioning)
-    if (effectToRun)
-        effectToRun->loop();
-
-    CoreMutex lock(&mutex);
+    if (activeEffect)
+        activeEffect->loop();
 
     // Check if active effect has completed its transition to Idle
     if (activeEffect && activeEffect->getState() == Idle) {
@@ -224,7 +183,7 @@ void EffectRegistry::loop() {
             log_info(F("Effect change: from index %d [%s] to %d [%s]"), lastEffectIndex, effectInfos[lastEffectIndex]->desc.id,
                 nextEffectIndex, effectInfos[nextEffectIndex]->desc.id);
         }
-        
+
         // Delete the old effect to free memory
         delete activeEffect;
         activeEffect = nullptr;
@@ -232,7 +191,7 @@ void EffectRegistry::loop() {
         lastEffects.push(lastEffectIndex);
         // postFxChangeEvent(lastEffectIndex);
     }
-    
+
     // Create the new effect if we don't have an active effect but have a pending one (startup or after transition)
     if (!activeEffect && nextEffectIndex < effectsCount) {
         activeEffect = effectInfos[nextEffectIndex]->factory();
@@ -242,7 +201,6 @@ void EffectRegistry::loop() {
 }
 
 void EffectRegistry::describeConfig(const JsonArray &json) const {
-    CoreMutex lock(&mutex);
     int index = 0;
     for (const auto & info : effectInfos) {
         auto fxJson = json.add<JsonObject>();
@@ -253,32 +211,26 @@ void EffectRegistry::describeConfig(const JsonArray &json) const {
 }
 
 void EffectRegistry::autoRoll(const bool switchType) {
-    CoreMutex lock(&mutex);
     autoSwitch = switchType;
 }
 
 bool EffectRegistry::isAutoRoll() const {
-    CoreMutex lock(&mutex);
     return autoSwitch;
 }
 
 bool EffectRegistry::isSleepEnabled() const {
-    CoreMutex lock(&mutex);
     return sleepModeEnabled;
 }
 
 bool EffectRegistry::isAsleep() const {
-    CoreMutex lock(&mutex);
     return sleepState;
 }
 
 uint16_t EffectRegistry::size() const {
-    CoreMutex lock(&mutex);
     return effectsCount;
 }
 
-void EffectRegistry::pastEffectsRun(const JsonArray &json) {
-    CoreMutex lock(&mutex);
+void EffectRegistry::pastEffectsRun(const JsonArray &json) const {
     for (const auto &fxIndex: lastEffects) {
         if (fxIndex < effectsCount)
             (void)json.add(effectInfos[fxIndex]->desc.id);
@@ -286,7 +238,6 @@ void EffectRegistry::pastEffectsRun(const JsonArray &json) {
 }
 
 void EffectRegistry::restoreDesiredEffectFromState(const uint16_t fx) {
-    CoreMutex lock(&mutex);
     uint16_t sleepFxIndex = 0;
     for (size_t x = 0; x < effectInfos.size(); x++) {
         if (strcmp(FX_SLEEPLIGHT_ID, effectInfos[x]->desc.id) == 0) {
