@@ -38,10 +38,42 @@ function ensureHeap4Strategy() {
     }
 }
 
+# Function to update the stack size for the CORE 0 and CORE 1 tasks in the freertos-main.cpp file. This is necessary to increase the stack size for the CORE tasks, 
+# which can be necessary for more complex applications. The default stack size is 1024 bytes, but we can set it to 2048 bytes or more as needed.
+function prepCoreStackSize([int]$size) {
+    $freertosMainFile = Join-Path -Path $coreFreeRTOSPath -ChildPath "freertos-main.cpp"
+
+    if (Test-Path $freertosMainFile) {
+        $content = Get-Content $freertosMainFile
+        $updated = $false
+        
+        for ($i = 0; $i -lt $content.Length; $i++) {
+            if ($content[$i] -match 'xTaskCreate\([^,]+,\s*("[^"]*"),\s*(\d+)') {
+                $task = $Matches[1]
+                $currentSize = [int]$Matches[2]
+                if (($task -match '^"CORE\d') -and ($currentSize -ne $size)) {
+                    $content[$i] = $content[$i] -replace '(xTaskCreate\([^,]+,\s*"[^"]*",\s*)\d+', "`${1}$size"
+                    $updated = $true
+                }
+            }
+        }
+        
+        if ($updated) {
+            Set-Content -Path $freertosMainFile -Value $content
+            Write-Host "Updated CORE 0, 1 stack sizes to $size bytes" -ForegroundColor Green
+        } else {
+            Write-Host "CORE stack sizes are already set to $size bytes" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "Could not find freertos-main.cpp to update CORE stack sizes - using defaults" -ForegroundColor Red
+    }
+}
+
 # Function to prepare the build environment with appropriate flags
 function prepEnvironment([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg) {
 
     ensureHeap4Strategy
+    prepCoreStackSize(2048) # set core stack size to 2KB to increase stack sizes for CORE tasks, default is 1024 bytes
 
     $boardId = (Get-BoardByName $board).Id
     $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"
@@ -69,10 +101,11 @@ function Clean([bool]$dbg) {
 function Build-Application([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg) {
     $envName = Get-BoardEnvName $dbg
 
-    Write-Host "PlatformIO building for board '$board' with environment '$envName'" -ForegroundColor Cyan
+    Write-Host "`nPlatformIO building for board '$board' with environment '$envName'" -ForegroundColor Cyan
     
     prepEnvironment $board $log $ignoreBroadcast $dbg
 
+    Write-Host "Building application firmware...`n" -ForegroundColor Green
     # Add your build commands here
     # Example:
     # & "path\to\build\tool" --env $envName
@@ -81,8 +114,10 @@ function Build-Application([string]$board, [bool]$log, [bool]$ignoreBroadcast, [
 
 # Function to (build and) upload application firmware via USB connection
 function Update-FirmwareSerial([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg, [string]$port='auto') {
-    prepEnvironment $board $log $ignoreBroadcast $dbg
     $brdEnv = Get-BoardEnvName $dbg
+    Write-Host "`nPlatformIO building & updating for board '$board' with environment '$brdEnv' on port $port" -ForegroundColor Cyan
+    prepEnvironment $board $log $ignoreBroadcast $dbg
+    Write-Host "Building & updating application firmware...`n" -ForegroundColor Green
     if ($port -eq 'auto') {
         pio run -t upload -e $brdEnv
     } else {

@@ -215,6 +215,8 @@ void fsInit() {
     SyncFsImpl.fsPtr->setTimeCallback(now);
     if (SyncFsImpl.fsPtr->begin())
         log_info(F("Filesystem OK"));
+    else
+        log_error(F("Filesystem initialization FAILED!"));
 
     if (FSInfo fsInfo{}; SyncFsImpl.fsPtr->info(fsInfo)) {
         log_info(F("Filesystem information (size in bytes): totalSize %llu, used %llu, maxOpenFiles %zu, maxPathLength %zu, pageSize %zu, blockSize %zu"),
@@ -413,6 +415,10 @@ size_t SynchronizedFS::readFile(const char *fname, String *s) const {
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
         sz = waitForFsCompletion(fsTaskMessage::READ_FILE, fname, queue);
+        if (sz == 0)
+            log_error(F("Error reading file %s - error waiting for completion; size %d"), fname, sz);
+        else
+            log_info(F("File %s read successfully - size %d"), fname, sz);
     } else {
         log_error(F("Error sending READ_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
@@ -437,6 +443,10 @@ size_t SynchronizedFS::writeFile(const char *fname, String *s) const {
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
         sz = waitForFsCompletion(fsTaskMessage::WRITE_FILE, fname, queue);
+        if (sz == 0)
+            log_error(F("Error writing file %s - error waiting for completion; size %d"), fname, sz);
+        else
+            log_info(F("File %s written successfully - size %d"), fname, sz);
     } else {
         log_error(F("Error sending WRITE_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
@@ -482,6 +492,10 @@ size_t SynchronizedFS::appendFile(const char *fname, String *s) const {
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
         sz = waitForFsCompletion(fsTaskMessage::APPEND_FILE, fname, queue);
+        if (sz == 0)
+            log_error(F("Error appending file %s - error waiting for completion; size %d"), fname, sz);
+        else
+            log_info(F("File %s appended successfully - size %d"), fname, sz);
     } else {
         log_error(F("Error sending APPEND_FILE message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
@@ -500,6 +514,10 @@ size_t SynchronizedFS::appendFile(const char *fname, uint8_t *buffer, const size
     if (qResult == pdTRUE) {
         //wait for the filesystem task to finish and notify us
         sz = waitForFsCompletion(fsTaskMessage::APPEND_FILE_BIN, fname, queue);
+        if (sz == 0)
+            log_error(F("Error appending file %s - error waiting for completion; size %d"), fname, sz);
+        else
+            log_info(F("File %s appended successfully - size %d"), fname, sz);
     } else {
         log_error(F("Error sending APPEND_FILE_BIN message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
@@ -522,6 +540,10 @@ bool SynchronizedFS::remove(const char *path) {
     bool success = false;
     if (qResult == pdTRUE) {
         success = waitForFsCompletion(fsTaskMessage::DELETE, path, queue);
+        if (!success)
+            log_error(F("Error deleting file %s - error waiting for completion"), path);
+        else
+            log_info(F("File %s deleted successfully"), path);
     } else {
         log_error(F("Error sending DELETE_FILE message to filesystem task for file name %s - error %d"), path, qResult);
         delete msg;
@@ -546,6 +568,10 @@ bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
     bool success = false;
     if (qResult == pdTRUE) {
         success = waitForFsCompletion(fsTaskMessage::RENAME, pathFrom, queue);
+        if (!success)
+            log_error(F("Error renaming file %s - error waiting for completion"), pathFrom);
+        else
+            log_info(F("File %s renamed successfully to %s"), pathFrom, pathToStr->c_str());
     } else {
         log_error(F("Error sending RENAME message to filesystem task for file name %s - error %d"), pathFrom, qResult);
         delete msg;
@@ -569,6 +595,10 @@ bool SynchronizedFS::exists(const char *fname) {
     bool exists = false;
     if (qResult == pdTRUE) {
         exists = waitForFsCompletion(fsTaskMessage::EXISTS, fname, queue);
+        if (!exists)
+            log_error(F("Error checking existence of file %s - error waiting for completion"), fname);
+        else
+            log_info(F("File %s exists"), fname);
     } else {
         log_error(F("Error sending FILE_EXISTS message to filesystem task for file name %s - error %d"), fname, qResult);
         delete msg;
@@ -590,6 +620,10 @@ bool SynchronizedFS::format() {
     bool formatted = false;
     if (qResult == pdTRUE) {
         formatted = waitForFsCompletion(fsTaskMessage::FORMAT, nullptr, queue);
+        if (!formatted)
+            log_error(F("Error formatting file system - error waiting for completion"));
+        else
+            log_info(F("File system formatted successfully"));
     } else {
         log_error(F("Error sending FORMAT message to filesystem task - error %d"), qResult);
         delete msg;
@@ -613,6 +647,10 @@ bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
     bool completed = false;
     if (qResult == pdTRUE) {
         completed = waitForFsCompletion(fsTaskMessage::LIST_FIlES, path, queue);
+        if (!completed)
+            log_error(F("Error listing files from path %s - error waiting for completion"), path);
+        else
+            log_info(F("Listing files from path %s completed successfully"), path);
     } else {
         log_error(F("Error sending LIST_FIlES message to filesystem task for path %s - error %d"), path, qResult);
         delete msg;
@@ -634,9 +672,13 @@ bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
-    if (qResult == pdTRUE)
+    if (qResult == pdTRUE) {
         successful = waitForFsCompletion(fsTaskMessage::INFO, path, queue);
-    else {
+        if (!successful)
+            log_error(F("Error retrieving file info for path %s - error waiting for completion"), path);
+        else
+            log_info(F("File info retrieved successfully for path %s"), path);
+    } else {
         log_error(F("Error sending INFO message to filesystem task for path %s - error %d"), path, qResult);
         delete msg;
         delete args;
@@ -653,9 +695,13 @@ bool SynchronizedFS::stat(const char *path, FSStat *st) {
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
-    if (qResult == pdTRUE)
+    if (qResult == pdTRUE) {
         successful = waitForFsCompletion(fsTaskMessage::STAT, path, queue);
-    else {
+        if (!successful)
+            log_error(F("Error retrieving file info for path %s - error waiting for completion"), path);
+        else
+            log_info(F("File info retrieved successfully for path %s"), path);
+    } else {
         log_error(F("Error sending STAT message to filesystem task for path %s - error %d"), path, qResult);
         delete msg;
         delete args;
@@ -674,9 +720,13 @@ String SynchronizedFS::sha256(const char *path) const {
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
-    if (qResult == pdTRUE)
+    if (qResult == pdTRUE) {
         successful = waitForFsCompletion(fsTaskMessage::SHA256, path, queue);
-    else {
+        if (!successful)
+            log_error(F("Error calculating SHA-256 hash for path %s - error waiting for completion"), path);
+        else
+            log_info(F("SHA-256 hash calculated successfully for path %s"), path);
+    } else {
         log_error(F("Error sending SHA256 message to filesystem task for path %s - error %d"), path, qResult);
         delete msg;
         delete args;
@@ -706,6 +756,10 @@ bool SynchronizedFS::mkdir(const char *path) {
     bool success = false;
     if (qResult == pdTRUE) {
         success = waitForFsCompletion(fsTaskMessage::MAKE_DIR, path, queue);
+        if (!success)
+            log_error(F("Error creating directory %s - error waiting for completion"), path);
+        else
+            log_info(F("Directory %s created successfully"), path);
     } else {
         log_error(F("Error sending MAKE_DIR message to filesystem task for path name %s - error %d"), path, qResult);
         delete msg;
@@ -725,11 +779,19 @@ bool SynchronizedFS::rmdir(const char *path) {
  * @return number of characters in the file; 0 if file is empty or doesn't exist
  */
 size_t SynchronizedFS::prvReadFile(const char *fname, String *s) const {
+    if (!fname || !s) {
+        log_error(F("Invalid parameters for file read: fname=%p, s=%p"), fname, s);
+        return 0;
+    }
     if (!fsPtr->exists(fname)) {
         log_error(F("Text file %s was not found/could not read"), fname);
         return 0;
     }
     File f = fsPtr->open(fname, "r");
+    if (!f) {
+        log_error(F("Failed to open file %s for reading - invalid file handle, possible FS corruption"), fname);
+        return 0;
+    }
     s->reserve(f.size());
     size_t fSize = 0;
     char buf[FILE_BUF_SIZE]{};
@@ -750,31 +812,52 @@ size_t SynchronizedFS::prvReadFile(const char *fname, String *s) const {
  * @return number of bytes written
  */
 size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
+    if (!fname || !s) {
+        log_error(F("Invalid parameters for file write: fname=%p, s=%p"), fname, s);
+        return 0;
+    }
     size_t fSize = 0;
     File f = fsPtr->open(fname, "w");
+    if (!f) {  // Integrity check: Ensure file handle is valid after open
+        log_error(F("Failed to open file %s for writing - invalid file handle, possible FS corruption"), fname);
+        return 0;
+    }
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
-    f.close();
-    //get the current last write timestamp - note that stat function does not make the distinction between creation and last access time in LittleFS; we'll use file API
-    // FSStat fstat{};
-    // fsPtr->stat(fname, &fstat);
-    f = fsPtr->open(fname, "r");
     const time_t lastWrite = f.getLastWrite();
     f.close();
-
+    // Integrity check: Verify write completed fully (size matches expected)
+    if (fSize != s->length()) {
+        log_error(F("Write size mismatch for %s: expected %zu bytes, wrote %zu bytes - possible FS corruption or write failure"), fname, s->length(), fSize);
+        return 0;  // Early return on mismatch to avoid logging invalid data
+    }
     log_info(F("File %s - %zu bytes - has been saved at %s"), fname, fSize, TimeFormat::asString(lastWrite).c_str());
     log_debug(F("Saved file %s content [%zu]: %s"), fname, fSize, s->c_str());
+
     return fSize;
 }
 
 size_t SynchronizedFS::prvAppendFile(const char *fname, const String *s) const {
+    if (!fname || !s) {
+        log_error(F("Invalid parameters for file append: fname=%p, s=%p"), fname, s);
+        return 0;
+    }
     size_t fSize = 0;
     File f = fsPtr->open(fname, "a");
+    if (!f) {
+        log_error(F("Failed to open file %s for appending - invalid file handle, possible FS corruption"), fname);
+        return 0;
+    }
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
     const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
     const size_t totalSize = f.size();
     f.close();
+    // Integrity check: Verify write completed fully (size matches expected)
+    if (fSize != s->length()) {
+        log_error(F("Write size mismatch for appending %s: expected %zu bytes, wrote %zu bytes - possible FS corruption or write failure"), fname, s->length(), fSize);
+        return 0;  // Early return on mismatch to avoid logging invalid data
+    }
 
     log_info(F("File %s - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, TimeFormat::asString(lastWrite).c_str());
     log_debug(F("Appended file %s content [%zu]: %s"), fname, fSize, s->c_str());
@@ -782,13 +865,26 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const String *s) const {
 }
 
 size_t SynchronizedFS::prvAppendFile(const char *fname, const uint8_t *buffer, const size_t size) const {
+    if (!fname || !buffer || size == 0) {
+        log_error(F("Invalid parameters for file append: fname=%p, buffer=%p, size=%zu"), fname, buffer, size);
+        return 0;
+    }
     size_t fSize = 0;
     File f = fsPtr->open(fname, "a");
+    if (!f) {
+        log_error(F("Failed to open file %s for appending - invalid file handle, possible FS corruption"), fname);
+        return 0;
+    }
     f.setTimeCallback(now);
     fSize = f.write(buffer, size);
     const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
     const size_t totalSize = f.size();
     f.close();
+    // Integrity check: Verify write completed fully (size matches expected)
+    if (fSize != size) {
+        log_error(F("Write size mismatch for appending %s: expected %zu bytes, wrote %zu bytes - possible FS corruption or write failure"), fname, size, fSize);
+        return 0;  // Early return on mismatch to avoid logging invalid data
+    }
 
     log_info(F("File %s (binary) - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, TimeFormat::asString(lastWrite).c_str());
     log_debug(F("Appended file %s binary content %zu bytes"), fname, fSize);    //this is superfluous, perhaps logging binary content in hex would be helpful but quite a bit of overhead on flip side
@@ -823,6 +919,10 @@ bool SynchronizedFS::prvRemove(const char *path) const {
 }
 
 bool SynchronizedFS::prvRename(const char *fromName, const String *toName) const {
+    if (!fromName || !toName || toName->length() == 0) {
+        log_error(F("Invalid parameters for file rename: fromName=%p, toName=%p, toName length=%zu"), fromName, toName, toName->length());
+        return false;
+    }
     if (!fsPtr->exists(fromName)) {
         log_error(F("File %s does not exist, no need to rename"), fromName);
         return false;
@@ -847,6 +947,10 @@ bool SynchronizedFS::prvFormat() const {
 }
 
 bool SynchronizedFS::prvList(const char *path, std::deque<FileInfo> *fiList) const {
+    if (!fiList || !path) {
+        log_error(F("Invalid parameters for file list: fiList=%p, path=%p"), fiList, path);
+        return false;
+    }
     if (!fsPtr->exists(path)) {
         log_error(F("Path %s does not exist, no files listed"), path);
         return false;
@@ -886,14 +990,23 @@ bool SynchronizedFS::prvMakeDir(const char *path) const {
 }
 
 bool SynchronizedFS::prvSha256(const char *path, String *sha256) const {
+    if (!path || !sha256) {
+        log_error(F("Invalid parameters for file SHA256: path=%p, sha256=%p"), path, sha256);
+        return false;
+    }
     if (!fsPtr->exists(path)) {
         log_error(F("File %s does not exist, no SHA256 hash calculated"), path);
         return false;
     }
     const ulong start = millis();
     File f = fsPtr->open(path, "r");
+    if (!f) {
+        log_error(F("Failed to open file %s for reading - invalid file handle, possible FS corruption"), path);
+        return false;
+    }
     if (f.isDirectory()) {
-        log_error(F("File %s is a directory, no SHA-256 hash calculated"), path);
+        log_error(F("File %s is or a directory, no SHA-256 hash calculated"), path);
+        f.close();
         return false;
     }
     pico_sha256_state_t* ctx = sha256_init();
