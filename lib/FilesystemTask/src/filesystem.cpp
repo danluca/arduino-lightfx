@@ -406,6 +406,7 @@ bool SynchronizedFS::begin(FS &fs) {
 size_t SynchronizedFS::readFile(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::READ_FILE, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending READ_FILE message to filesystem task for file name %s"), fname);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
@@ -429,6 +430,7 @@ size_t SynchronizedFS::readFile(const char *fname, String *s) const {
 size_t SynchronizedFS::writeFile(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending WRITE_FILE message to filesystem task for file name %s"), fname);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
@@ -452,6 +454,7 @@ size_t SynchronizedFS::writeFile(const char *fname, String *s) const {
 bool SynchronizedFS::writeFileAsync(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::WRITE_FILE_ASYNC, nullptr, args};
+    log_info(F("Sending WRITE_FILE_ASYNC message to filesystem task for file name %s"), fname);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     if (qResult != pdTRUE) {
@@ -472,6 +475,7 @@ bool SynchronizedFS::writeFileAsync(const char *fname, String *s) const {
 size_t SynchronizedFS::appendFile(const char *fname, String *s) const {
     auto *args = new fsOperationData {fname, s, nullptr};
     auto *msg = new fsTaskMessage {fsTaskMessage::APPEND_FILE, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending APPEND_FILE message to filesystem task for file name %s"), fname);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
@@ -489,6 +493,7 @@ size_t SynchronizedFS::appendFile(const char *fname, String *s) const {
 size_t SynchronizedFS::appendFile(const char *fname, uint8_t *buffer, const size_t size) const {
     auto *args = new fsOperationData {fname, nullptr, buffer, size};
     auto *msg = new fsTaskMessage {fsTaskMessage::APPEND_FILE_BIN, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending APPEND_FILE_BIN message to filesystem task for file name %s"), fname);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     size_t sz = 0;
@@ -511,6 +516,7 @@ size_t SynchronizedFS::appendFile(const char *fname, uint8_t *buffer, const size
 bool SynchronizedFS::remove(const char *path) {
     auto *args = new fsOperationData {path, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::DELETE, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending DELETE_FILE message to filesystem task for file name %s"), path);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
@@ -534,6 +540,7 @@ bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
     auto *pathToStr = new String(pathTo);
     auto *args = new fsOperationData {pathFrom, pathToStr, nullptr, 0, true};
     auto *msg = new fsTaskMessage{fsTaskMessage::RENAME, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending RENAME message to filesystem task for file name %s"), pathFrom);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool success = false;
@@ -556,6 +563,7 @@ bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
 bool SynchronizedFS::exists(const char *fname) {
     auto *args = new fsOperationData {fname, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::EXISTS, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending FILE_EXISTS message to filesystem task for file name %s"), fname);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool exists = false;
@@ -576,6 +584,7 @@ bool SynchronizedFS::exists(const char *fname) {
 bool SynchronizedFS::format() {
     auto *args = new fsOperationData {nullptr, nullptr, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::FORMAT, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending FORMAT message to filesystem task"));
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool formatted = false;
@@ -598,6 +607,7 @@ bool SynchronizedFS::format() {
 bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
     auto *args = new fsOperationData {path, nullptr, list};
     auto *msg = new fsTaskMessage{fsTaskMessage::LIST_FIlES, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending LIST_FIlES message to filesystem task for path %s"), path);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool completed = false;
@@ -620,6 +630,7 @@ bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
 bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
     auto *args = new fsOperationData {path, nullptr, info};
     auto *msg = new fsTaskMessage{fsTaskMessage::INFO, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending INFO message to filesystem task for path %s"), path);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
@@ -638,6 +649,7 @@ bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
 bool SynchronizedFS::stat(const char *path, FSStat *st) {
     auto *args = new fsOperationData {path, nullptr, st};
     auto *msg = new fsTaskMessage{fsTaskMessage::STAT, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending STAT message to filesystem task for path %s"), path);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
@@ -658,6 +670,7 @@ String SynchronizedFS::sha256(const char *path) const {
     strSha2.reserve(65);
     auto *args = new fsOperationData {path, &strSha2, nullptr};
     auto *msg = new fsTaskMessage{fsTaskMessage::SHA256, xTaskGetCurrentTaskHandle(), args};
+    log_info(F("Sending SHA256 message to filesystem task for path %s"), path);
 
     const BaseType_t qResult = xQueueSend(queue, &msg, 0);
     bool successful = false;
