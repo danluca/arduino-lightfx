@@ -51,6 +51,36 @@ constexpr unsigned long kTaskSnapshotIntervalMs = 5000ul;
 constexpr unsigned long kTaskSnapshotMaxAgeMs = kTaskSnapshotIntervalMs * 2;
 constexpr unsigned long kTaskSnapshotForceMinIntervalMs = 10000ul;
 
+/**
+ * Represents a snapshot of task runtime statistics and system resource usage at a specific point in time.
+ *
+ * This structure encapsulates detailed information about FreeRTOS tasks, system run time, CPU usage,
+ * heap statistics, and the timestamp of when the snapshot was captured. It is primarily used for
+ * diagnostics, performance analysis, and system monitoring.
+ *
+ * Key fields include:
+ * - `tasks`: A collection of task status data retrieved using FreeRTOS API functions. Each entry provides
+ *   task-specific details such as runtime metrics, priority, and stack usage.
+ * - `sysTotalRunTimeRaw`: Raw runtime counter value provided by FreeRTOS, representing the total execution
+ *   cycles since boot.
+ * - `totalRunTime`: Aggregated runtime for all tasks in microseconds, representing workload distribution.
+ * - `idleRunTime`: Recorded runtime for the idle task, which can be used to calculate CPU usage.
+ * - `heapStats`: Comprehensive statistics about heap memory usage, obtained using `vPortGetHeapStats`.
+ * - `capturedAtMs`: Timestamp in milliseconds (using `millis()` function) when the snapshot was taken.
+ * - `valid`: Boolean flag indicating whether the snapshot contains valid data. Useful for error handling
+ *   in diagnostic routines.
+ *
+ * Usage:
+ * TaskRuntimeSnapshot is passed between diagnostic functions to compute metrics such as CPU load percentage,
+ * snapshot window duration, and per-task runtime summaries.
+ *
+ * Notes:
+ * - Memory held by the `tasks` vector may be dynamically allocated/cleared, depending on the FreeRTOS task
+ *   count at the time of snapshot.
+ * - The `sysTotalRunTimeRaw` and `totalRunTime` fields facilitate calculation of CPU usage percentages and
+ *   activity breakdowns.
+ * - The structure is critical for functions like `logTaskStats` and `taskStats` to log or serialize the data.
+ */
 struct TaskRuntimeSnapshot {
     std::vector<TaskStatus_t> tasks{};
     configRUN_TIME_COUNTER_TYPE sysTotalRunTimeRaw{0};
@@ -61,6 +91,41 @@ struct TaskRuntimeSnapshot {
     bool valid{false};
 };
 
+/**
+ * Maintains a historical record of task runtime snapshots for diagnostics and analysis.
+ *
+ * This structure is designed to encapsulate and manage records of task runtime data captured
+ * at various points in time. It provides mechanisms for thread-safe access and capturing
+ * of snapshots to facilitate performance monitoring, workload analysis, and system diagnostics.
+ *
+ * Key fields include:
+ * - `stateMutex`: A mutex to synchronize access to the state of the runtime history, ensuring that
+ *   concurrent operations on the data do not conflict.
+ * - `captureMutex`: A mutex to guard the actual snapshot-capturing process, avoiding conflicts
+ *   during collection of runtime statistics.
+ * - `current`: A TaskRuntimeSnapshot structure representing the most recent snapshot of task runtime
+ *   statistics and system resource usage.
+ * - `previous`: A TaskRuntimeSnapshot structure representing the preceding snapshot of task runtime
+ *   statistics. Provides historical context for comparisons.
+ * - `lastForcedCaptureMs`: The timestamp, in milliseconds, of the last explicitly forced snapshot capture.
+ *   Useful for enforcing snapshot capture intervals.
+ *
+ * Usage:
+ * TaskRuntimeHistory is utilized by system functions that require both current and historical
+ * runtime data to compute metrics such as task activity trends, system load variations, and task
+ * behavior over time. It ensures safe updates and access to runtime history in a multithreaded
+ * environment.
+ *
+ * Notes:
+ * - Both `stateMutex` and `captureMutex` employ mutual exclusion to protect data consistency
+ *   in concurrent environments. They handle access to the `current` and `previous` snapshots
+ *   separately for independent operations.
+ * - The `lastForcedCaptureMs` field is particularly important in scenarios where forced captures
+ *   (bypassing regular capture intervals) need to be logged and enforced for periodic monitoring.
+ * - This structure is vital for functions like `captureTaskRuntimeSnapshot` and
+ *   `copyTaskRuntimeHistory`, which depend on time-series data to perform effective diagnostics
+ *   and runtime analysis.
+ */
 struct TaskRuntimeHistory {
     mutable mutex_t stateMutex{};
     mutable mutex_t captureMutex{};
@@ -87,18 +152,36 @@ const char *taskStatusToString(const eTaskState state) {
     }
 }
 
+/**
+ * Generic comparator of tasks by number - works with TaskStatus_t pointers
+ * @param a TaskStatus_t pointer A to compare
+ * @param b TaskStatus_t pointer B to compare
+ * @return result of comparing task A number to task B number
+ */
 static int compareTasksByNumber(const void* a, const void* b) {
     const auto* taskA = static_cast<const TaskStatus_t*>(a);
     const auto* taskB = static_cast<const TaskStatus_t*>(b);
     return static_cast<int>(taskA->xTaskNumber) - static_cast<int>(taskB->xTaskNumber);
 }
 
+/**
+ * Checks if task name is an idle task name - i.e. named IDLE0 or IDLE1
+ * @param taskName task name to check
+ * @return true if task name is an idle task name, false otherwise
+ */
 static bool isIdleTaskName(const char *taskName) {
     if (taskName == nullptr)
         return false;
-    return strstr(taskName, "Idle") != nullptr || strstr(taskName, "IDLE") != nullptr;
+    // idle tasks are named IDLE0 and IDLE1; the other IdleCore0 and IdleCore1 are not considered idle tasks - their purpose is to put the other core on idle
+    return strstr(taskName, "IDLE") != nullptr;
 }
 
+/**
+ * Finds task with matching number in task status collection
+ * @param taskStatusArray task status collection
+ * @param taskNumber the task number to find
+ * @return task with matching number or nullptr
+ */
 static const TaskStatus_t *findTaskStatus(const std::vector<TaskStatus_t> &taskStatusArray, const UBaseType_t taskNumber) {
     for (const auto &taskStatus : taskStatusArray) {
         if (taskStatus.xTaskNumber == taskNumber)
@@ -107,30 +190,65 @@ static const TaskStatus_t *findTaskStatus(const std::vector<TaskStatus_t> &taskS
     return nullptr;
 }
 
+/**
+ * Calculates the difference between two runtime values, handling wraparound
+ * @param currentValue current runtime value
+ * @param previousValue previous runtime value
+ * @return runtime delta
+ */
 static uint64_t runtimeDelta(const uint64_t currentValue, const uint64_t previousValue) {
     return currentValue >= previousValue ? currentValue - previousValue : 0;
 }
 
+/**
+ * Calculates the percentage of runtime value relative to total runtime
+ * @param runtimeValue runtime value
+ * @param totalRuntime total runtime
+ * @return runtime percentage
+ */
 static float runtimePct(const uint64_t runtimeValue, const uint64_t totalRuntime) {
     return totalRuntime > 0 ? static_cast<float>(runtimeValue) * 100.0f / static_cast<float>(totalRuntime) : 0.0f;
 }
 
+/**
+ * Calculates the CPU load percentage based on task runtime snapshots
+ * @param current current task snapshot
+ * @param previous previous task snapshot
+ * @return CPU load percentage
+ */
 static float cpuLoadPct(const TaskRuntimeSnapshot &current, const TaskRuntimeSnapshot &previous) {
     const uint64_t totalDelta = runtimeDelta(current.totalRunTime, previous.totalRunTime);
     const uint64_t idleDelta = runtimeDelta(current.idleRunTime, previous.idleRunTime);
     return runtimePct(totalDelta > idleDelta ? totalDelta - idleDelta : 0, totalDelta);
 }
 
+/**
+ * Calculates the time window in seconds between two task snapshots
+ * @param current current task snapshot
+ * @param previous previous task snapshot
+ * @return time window in seconds
+ */
 static float snapshotWindowSec(const TaskRuntimeSnapshot &current, const TaskRuntimeSnapshot &previous) {
     return previous.valid
         ? static_cast<float>(current.capturedAtMs - previous.capturedAtMs) / 1000.0f
         : 0.0f;
 }
 
+/**
+ * Checks if task runtime snapshot is fresh based on age - threshold configured by kTaskSnapshotMaxAgeMs
+ * @param snapshot task runtime snapshot
+ * @param nowMs current time in milliseconds
+ * @return true if the snapshot is fresh, false otherwise
+ */
 static bool isSnapshotFresh(const TaskRuntimeSnapshot &snapshot, const unsigned long nowMs) {
     return snapshot.valid && (nowMs - snapshot.capturedAtMs) <= kTaskSnapshotMaxAgeMs;
 }
 
+/**
+ * Populates task runtime snapshot by capturing task status and system total runtime
+ * @param snapshot task runtime snapshot to populate
+ * @return true if snapshot was successfully populated, false otherwise
+ */
 static bool populateTaskRuntimeSnapshot(TaskRuntimeSnapshot &snapshot) {
     snapshot = TaskRuntimeSnapshot{};
 
@@ -171,6 +289,12 @@ static bool populateTaskRuntimeSnapshot(TaskRuntimeSnapshot &snapshot) {
     return false;
 }
 
+/**
+ * Copies task runtime history from current to previous snapshot
+ * @param current current task runtime snapshot
+ * @param previous previous task runtime snapshot
+ * @return true if copy was successful, false otherwise
+ */
 static bool copyTaskRuntimeHistory(TaskRuntimeSnapshot &current, TaskRuntimeSnapshot &previous) {
     CoreMutex lock(&g_taskRuntimeHistory.stateMutex);
     if (!g_taskRuntimeHistory.current.valid)
@@ -181,6 +305,11 @@ static bool copyTaskRuntimeHistory(TaskRuntimeSnapshot &current, TaskRuntimeSnap
     return true;
 }
 
+/**
+ * Captures task runtime snapshot, updating current and previous snapshots
+ * @param force whether to force capture regardless of freshness
+ * @return true if capture was successful, false otherwise
+ */
 bool captureTaskRuntimeSnapshot(const bool force) {
     const unsigned long nowMs = millis();
     if (force) {
@@ -214,6 +343,12 @@ bool captureTaskRuntimeSnapshot(const bool force) {
     return true;
 }
 
+/**
+ * Loads task runtime history by copying current to previous snapshot and capturing if necessary
+ * @param current current task runtime snapshot
+ * @param previous previous task runtime snapshot
+ * @return true if load was successful, false otherwise
+ */
 static bool loadTaskRuntimeHistory(TaskRuntimeSnapshot &current, TaskRuntimeSnapshot &previous) {
     if (copyTaskRuntimeHistory(current, previous) && isSnapshotFresh(current, millis()))
         return true;
