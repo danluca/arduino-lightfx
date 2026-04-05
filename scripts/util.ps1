@@ -88,6 +88,20 @@ function prepEnvironment([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bo
     }
 }
 
+function Get-FrameworkArduinoPicoShortCommit() {
+    $frameworkPath = Join-Path -Path $HOME/.platformio/packages -ChildPath "framework-arduinopico"
+    if (-not (Test-Path $frameworkPath)) {
+        return $null
+    }
+
+    $commit = git -C $frameworkPath rev-parse --short HEAD 2>$null
+    if ($LASTEXITCODE -eq 0 -and $commit) {
+        return $commit.Trim()
+    }
+
+    return $null
+}
+
 function Get-BoardEnvName([bool]$dbg) {
     return $dbg ? $dbgEnv : $relEnv
 }
@@ -100,24 +114,28 @@ function Clean([bool]$dbg) {
 # Function to build the application
 function Build-Application([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg) {
     $envName = Get-BoardEnvName $dbg
-
-    Write-Host "`nPlatformIO building for board '$board' with environment '$envName'" -ForegroundColor Cyan
     
-    prepEnvironment $board $log $ignoreBroadcast $dbg
+    Write-Host "`nPlatformIO building for board '$board' with environment '$envName'" -ForegroundColor Cyan
 
-    Write-Host "Building application firmware...`n" -ForegroundColor Green
+    prepEnvironment $board $log $ignoreBroadcast $dbg
+    $frameworkCommit = Get-FrameworkArduinoPicoShortCommit
+
+    Write-Host "Building application firmware..." -ForegroundColor Green
+    Write-Host "  > framework-arduinopico at commit: $frameworkCommit `n" -ForegroundColor Green
     # Add your build commands here
     # Example:
     # & "path\to\build\tool" --env $envName
     pio run -e $envName
-}    
+}
 
 # Function to (build and) upload application firmware via USB connection
 function Update-FirmwareSerial([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg, [string]$port='auto') {
     $brdEnv = Get-BoardEnvName $dbg
     Write-Host "`nPlatformIO building & updating for board '$board' with environment '$brdEnv' on port $port" -ForegroundColor Cyan
     prepEnvironment $board $log $ignoreBroadcast $dbg
-    Write-Host "Building & updating application firmware...`n" -ForegroundColor Green
+    $frameworkCommit = Get-FrameworkArduinoPicoShortCommit
+    Write-Host "Building & updating application firmware..." -ForegroundColor Green
+    Write-Host "  > framework-arduinopico at commit: $frameworkCommit `n" -ForegroundColor Green
     if ($port -eq 'auto') {
         pio run -t upload -e $brdEnv
     } else {

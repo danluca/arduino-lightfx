@@ -6,6 +6,7 @@
 #include <hardware/watchdog.h>
 #include "constants.hpp"
 #include "log.h"
+#include "sysinfo.h"
 
 std::atomic<uint32_t> HealthMonitor::lastCheckInMs[3] = {0, 0, 0};
 uint32_t HealthMonitor::healthStatus = 0;
@@ -41,6 +42,7 @@ void HealthMonitor::checkIn(const HealthBit bit) {
             log_warn(F("HealthMonitor-C: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                 diffs[0], diffs[1], diffs[2], nowMs);
             lastWarnMs = nowMs;
+            logTaskStats();
         }
     }
 #endif
@@ -72,6 +74,7 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
                 log_warn(F("HealthMonitor-U: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                     diffs[0], diffs[1], diffs[2], nowMs);
                 lastWarnMs = nowMs;
+                logTaskStats();
             }
         }
     } else {
@@ -80,6 +83,7 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
             log_error(F("HealthMonitor-U: Task(s) STALLED! STOPS PINGING WATCHDOG. [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                 diffs[0], diffs[1], diffs[2], nowMs);
             lastLogMs = nowMs;
+            logTaskStats();
         }
     }
 #else

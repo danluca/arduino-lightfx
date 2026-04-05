@@ -33,7 +33,7 @@ struct bcTaskMessage {
     uint16_t data;
 };
 
-enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO, RESET_CALIBRATION, FX_HEARTBEAT};
+enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO, RESET_CALIBRATION, FX_HEARTBEAT, TASK_SNAPSHOT};
 
 enum MikeAction:uint8_t {AUDIO_THRESHOLD_UPDATE};
 struct AudioActionMessage {

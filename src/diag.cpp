@@ -37,6 +37,7 @@ static uint16_t tmrSysVoltageId = 12;
 static uint16_t tmrSaveSysInfoId = 13;
 static uint16_t tmrDiagInfoId = 14;
 static uint16_t tmrFxHeartbeatId = 15;
+static uint16_t tmrTaskSnapshotId = 16;
 
 // declarations ahead
 void deviceSetup();
@@ -50,6 +51,7 @@ void enqueueSysVoltage(TimerHandle_t xTimer);
 void enqueueSaveSysInfo(TimerHandle_t xTimer);
 void enqueueDiagInfo(TimerHandle_t xTimer);
 void enqueueFxHeartbeat(TimerHandle_t xTimer);
+void enqueueTaskSnapshot(TimerHandle_t xTimer);
 void checkFxHeartbeat();
 
 // diag task definition - priority is overwritten during setup, see diagSetup
@@ -112,6 +114,12 @@ void diagSetup() {
         log_error(F("Cannot start the sysVoltage timer - Ignored."));
 
 #if LOGGING_ENABLED == 1
+    const TimerHandle_t thTaskSnapshot = xTimerCreate("taskSnapshot", pdMS_TO_TICKS(5 * 1000), pdTRUE, &tmrTaskSnapshotId, enqueueTaskSnapshot);
+    if (thTaskSnapshot == nullptr)
+        log_error(F("Cannot create taskSnapshot timer - Ignored."));
+    else if (xTimerStart(thTaskSnapshot, 0) != pdPASS)
+        log_error(F("Cannot start the taskSnapshot timer - Ignored."));
+
     //log the thread, memory and diagnostic measurements info event - no-op if logging is disabled - repeated each 30.25 seconds
     const TimerHandle_t thDiagInfo = xTimerCreate("diagInfo", pdMS_TO_TICKS(30 * 1000 + 250), pdTRUE, &tmrDiagInfoId, enqueueDiagInfo);
     if (thDiagInfo == nullptr)
@@ -126,8 +134,8 @@ void diagSetup() {
         log_error(F("Cannot create fxHeartbeat timer - Ignored."));
     else if (xTimerStart(thFxHeartbeat, 0) != pdPASS)
         log_error(F("Cannot start the fxHeartbeat timer - Ignored."));
-    //save the current system info event to filesystem - repeated each 90 seconds
-    const TimerHandle_t thSaveSysInfo = xTimerCreate("saveSysInfo", pdMS_TO_TICKS(90 * 1000), pdTRUE, &tmrSaveSysInfoId, enqueueSaveSysInfo);
+    //save the current system info event to filesystem - repeated each 300 seconds (5 minutes)
+    const TimerHandle_t thSaveSysInfo = xTimerCreate("saveSysInfo", pdMS_TO_TICKS(300 * 1000), pdTRUE, &tmrSaveSysInfoId, enqueueSaveSysInfo);
     if (thSaveSysInfo == nullptr)
         log_error(F("Cannot create saveSysInfo timer - Ignored."));
     else if (xTimerStart(thSaveSysInfo, 0) != pdPASS)
@@ -213,6 +221,16 @@ void enqueueFxHeartbeat(TimerHandle_t xTimer) {
 }
 
 /**
+ * Callback for taskSnapshot timer - this is called from Timer task. Enqueues a TASK_SNAPSHOT message for the diagnostic task.
+ * @param xTimer the taskSnapshot timer that fired the callback
+ */
+void enqueueTaskSnapshot(TimerHandle_t xTimer) {
+    static constexpr DiagAction msg = TASK_SNAPSHOT;
+    if (const BaseType_t qResult = xQueueSend(diagQueue, &msg, 0); qResult != pdTRUE)
+        log_error(F("Error sending TASK_SNAPSHOT message to DIAG queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
+}
+
+/**
  * The ScheduleExt task scheduler executes this in a continuous loop - this is the main dispatching method of the diagnostic task
  * Receives events from the diagnostic queue and executes appropriate handlers.
  */
@@ -238,6 +256,7 @@ void diagExecute() {
         }
         case FX_HEARTBEAT: checkFxHeartbeat(); break;
         case DIAG_INFO: logDiagInfo(); break;
+        case TASK_SNAPSHOT: captureTaskRuntimeSnapshot(); break;
         default:
             log_error(F("Diag Event type %hd not supported"), msg);
             break;
@@ -559,6 +578,7 @@ void updateSecEntropy() {
 
 /**
  * Logs the diagnostic information of current tasks and memory
+ * Called from CORE1 task (on Core 1) that runs diagnostics.
  */
 void logDiagInfo() {
 #if LOGGING_ENABLED == 1
@@ -569,6 +589,24 @@ void logDiagInfo() {
 #endif
 }
 
+/**
+ * Monitors the FX heartbeat signal to detect stalls in the FX task.
+ * Called from CORE1 task (on Core 1) that runs diagnostics.
+ *
+ * This function checks the FX heartbeat timestamp stored in the hardware
+ * scratch register. If the timestamp has not changed for a specified duration,
+ * it assumes that the FX task has stalled. Upon detecting a stall, it sets a
+ * reset marker in the hardware scratch register and optionally logs diagnostic
+ * information if logging is enabled. Task states and system conditions are also
+ * recorded to aid debugging.
+ *
+ * Behavior:
+ * - If the FX heartbeat timestamp is zero, the function exits early.
+ * - If the timestamp changes, the function clears the stall-reported status.
+ * - If the timestamp remains unchanged for longer than the defined stall warning
+ *   duration, the stall is reported, and diagnostic actions are triggered.
+ *
+ */
 void checkFxHeartbeat() {
     static uint32_t lastHeartbeatMs = 0;
     static bool fxStallReported = false;

@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <SchedulerExt.h>
 #include <FastLED.h>
+#include <atomic>
 #include "hardware/watchdog.h"
 #include "filesystem.h"
 #include "util.h"
@@ -37,12 +38,40 @@ constexpr CRGB CLR_SETUP_ERROR = CRGB::Red;
 unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
-static TaskStatus_t *prevLogTaskStatusArray = nullptr;
-static TaskStatus_t *curLogTaskStatusArray = nullptr;
-static UBaseType_t prevLogTaskStatusArraySize = 0;
-static TaskStatus_t *prevJsonTaskStatusArray = nullptr;
-static TaskStatus_t *curJsonTaskStatusArray = nullptr;
-static UBaseType_t prevJsonTaskStatusArraySize = 0;
+
+static bool sysInfoDirty = true;                       // mark dirty at startup so first flush happens
+static uint32_t sysInfoLastSaveMs = 0;
+static constexpr uint32_t sysInfoSaveIntervalMs = 300u * 1000u; // 300 seconds
+static std::atomic<bool> sysInfoSaveInProgress(false);
+
+namespace {
+
+constexpr UBaseType_t kTaskSnapshotSlack = 2;
+constexpr unsigned long kTaskSnapshotIntervalMs = 5000ul;
+constexpr unsigned long kTaskSnapshotMaxAgeMs = kTaskSnapshotIntervalMs * 2;
+constexpr unsigned long kTaskSnapshotForceMinIntervalMs = 10000ul;
+
+struct TaskRuntimeSnapshot {
+    std::vector<TaskStatus_t> tasks{};
+    configRUN_TIME_COUNTER_TYPE sysTotalRunTimeRaw{0};
+    uint64_t totalRunTime{0};
+    uint64_t idleRunTime{0};
+    HeapStats_t heapStats{};
+    unsigned long capturedAtMs{0};
+    bool valid{false};
+};
+
+struct TaskRuntimeHistory {
+    mutable mutex_t stateMutex{};
+    mutable mutex_t captureMutex{};
+    TaskRuntimeSnapshot current{};
+    TaskRuntimeSnapshot previous{};
+    unsigned long lastForcedCaptureMs{0};
+};
+
+TaskRuntimeHistory g_taskRuntimeHistory{};
+
+} // namespace
 
 // constexpr TaskDef stLedTasks {nullptr, state_led_run, 384, "LED", 3, CORE_0};
 
@@ -58,15 +87,6 @@ const char *taskStatusToString(const eTaskState state) {
     }
 }
 
-TaskStatus_t* findTaskStatus(TaskStatus_t* taskStatusArray, const UBaseType_t arraySize, const UBaseType_t taskNumber) {
-    for (UBaseType_t i = 0; i < arraySize; i++) {
-        if (taskStatusArray[i].xTaskNumber == taskNumber) {
-            return &taskStatusArray[i];
-        }
-    }
-    return nullptr;
-}
-
 static int compareTasksByNumber(const void* a, const void* b) {
     const auto* taskA = static_cast<const TaskStatus_t*>(a);
     const auto* taskB = static_cast<const TaskStatus_t*>(b);
@@ -77,6 +97,129 @@ static bool isIdleTaskName(const char *taskName) {
     if (taskName == nullptr)
         return false;
     return strstr(taskName, "Idle") != nullptr || strstr(taskName, "IDLE") != nullptr;
+}
+
+static const TaskStatus_t *findTaskStatus(const std::vector<TaskStatus_t> &taskStatusArray, const UBaseType_t taskNumber) {
+    for (const auto &taskStatus : taskStatusArray) {
+        if (taskStatus.xTaskNumber == taskNumber)
+            return &taskStatus;
+    }
+    return nullptr;
+}
+
+static uint64_t runtimeDelta(const uint64_t currentValue, const uint64_t previousValue) {
+    return currentValue >= previousValue ? currentValue - previousValue : 0;
+}
+
+static float runtimePct(const uint64_t runtimeValue, const uint64_t totalRuntime) {
+    return totalRuntime > 0 ? static_cast<float>(runtimeValue) * 100.0f / static_cast<float>(totalRuntime) : 0.0f;
+}
+
+static float cpuLoadPct(const TaskRuntimeSnapshot &current, const TaskRuntimeSnapshot &previous) {
+    const uint64_t totalDelta = runtimeDelta(current.totalRunTime, previous.totalRunTime);
+    const uint64_t idleDelta = runtimeDelta(current.idleRunTime, previous.idleRunTime);
+    return runtimePct(totalDelta > idleDelta ? totalDelta - idleDelta : 0, totalDelta);
+}
+
+static float snapshotWindowSec(const TaskRuntimeSnapshot &current, const TaskRuntimeSnapshot &previous) {
+    return previous.valid
+        ? static_cast<float>(current.capturedAtMs - previous.capturedAtMs) / 1000.0f
+        : 0.0f;
+}
+
+static bool isSnapshotFresh(const TaskRuntimeSnapshot &snapshot, const unsigned long nowMs) {
+    return snapshot.valid && (nowMs - snapshot.capturedAtMs) <= kTaskSnapshotMaxAgeMs;
+}
+
+static bool populateTaskRuntimeSnapshot(TaskRuntimeSnapshot &snapshot) {
+    snapshot = TaskRuntimeSnapshot{};
+
+    for (uint8_t attempt = 0; attempt < 2; attempt++) {
+        const UBaseType_t taskCount = uxTaskGetNumberOfTasks();
+        if (taskCount == 0)
+            return false;
+
+        const UBaseType_t capacity = taskCount + kTaskSnapshotSlack;
+        snapshot.tasks.assign(capacity, TaskStatus_t{});
+        snapshot.sysTotalRunTimeRaw = 0;
+
+        const UBaseType_t actualCount = uxTaskGetSystemState(snapshot.tasks.data(), capacity, &snapshot.sysTotalRunTimeRaw);
+        if (actualCount == 0) {
+            snapshot.tasks.clear();
+            return false;
+        }
+        if (actualCount >= capacity && uxTaskGetNumberOfTasks() > capacity && attempt == 0)
+            continue;
+
+        snapshot.tasks.resize(actualCount);
+        if (!snapshot.tasks.empty())
+            qsort(snapshot.tasks.data(), actualCount, sizeof(TaskStatus_t), compareTasksByNumber);
+
+        for (const auto &taskStatus : snapshot.tasks) {
+            snapshot.totalRunTime += taskStatus.ulRunTimeCounter;
+            if (isIdleTaskName(taskStatus.pcTaskName))
+                snapshot.idleRunTime += taskStatus.ulRunTimeCounter;
+        }
+
+        vPortGetHeapStats(&snapshot.heapStats);
+        snapshot.capturedAtMs = millis();
+        snapshot.valid = true;
+        return true;
+    }
+
+    snapshot.tasks.clear();
+    return false;
+}
+
+static bool copyTaskRuntimeHistory(TaskRuntimeSnapshot &current, TaskRuntimeSnapshot &previous) {
+    CoreMutex lock(&g_taskRuntimeHistory.stateMutex);
+    if (!g_taskRuntimeHistory.current.valid)
+        return false;
+
+    current = g_taskRuntimeHistory.current;
+    previous = g_taskRuntimeHistory.previous;
+    return true;
+}
+
+bool captureTaskRuntimeSnapshot(const bool force) {
+    const unsigned long nowMs = millis();
+    if (force) {
+        CoreMutex stateLock(&g_taskRuntimeHistory.stateMutex);
+        if (isSnapshotFresh(g_taskRuntimeHistory.current, nowMs))
+            return true;
+        if (g_taskRuntimeHistory.current.valid &&
+            g_taskRuntimeHistory.lastForcedCaptureMs != 0 &&
+            (nowMs - g_taskRuntimeHistory.lastForcedCaptureMs) < kTaskSnapshotForceMinIntervalMs)
+            return g_taskRuntimeHistory.current.valid;
+        g_taskRuntimeHistory.lastForcedCaptureMs = nowMs;
+    }
+
+    CoreMutex captureLock(&g_taskRuntimeHistory.captureMutex);
+    if (force) {
+        TaskRuntimeSnapshot current;
+        TaskRuntimeSnapshot previous;
+        if (copyTaskRuntimeHistory(current, previous) && isSnapshotFresh(current, millis()))
+            return true;
+    }
+
+    TaskRuntimeSnapshot snapshot;
+    if (!populateTaskRuntimeSnapshot(snapshot))
+        return false;
+
+    CoreMutex stateLock(&g_taskRuntimeHistory.stateMutex);
+    g_taskRuntimeHistory.previous = g_taskRuntimeHistory.current;
+    g_taskRuntimeHistory.current = std::move(snapshot);
+    if (force)
+        g_taskRuntimeHistory.lastForcedCaptureMs = g_taskRuntimeHistory.current.capturedAtMs;
+    return true;
+}
+
+static bool loadTaskRuntimeHistory(TaskRuntimeSnapshot &current, TaskRuntimeSnapshot &previous) {
+    if (copyTaskRuntimeHistory(current, previous) && isSnapshotFresh(current, millis()))
+        return true;
+    if (!captureTaskRuntimeSnapshot(true))
+        return copyTaskRuntimeHistory(current, previous);
+    return copyTaskRuntimeHistory(current, previous);
 }
 
 /**
@@ -106,9 +249,6 @@ static bool isIdleTaskName(const char *taskName) {
  * - Scheduler tasks: Uses `Scheduler.getTask` to get additional task-related metadata.
  * - Utility formatting: Employs utility functions like `StringUtils::append` for creating compact logs.
  *
- * Hardware Dependencies:
- * - RP2040 chip-specific functions like `rp2040.getFreeStack`, `rp2040.getTotalHeap`, etc.
- *
  * This method is resource-intensive and should only be run in contexts where such
  * overhead does not impact the system performance significantly.
  */
@@ -116,60 +256,39 @@ void logTaskStats() {
 #if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
-    static uint64_t prevTaskStatsTime = 0ul;
-    static unsigned long prevSysTime = 0ul;
-    /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
-    UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
-    /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time. */
-    if(curLogTaskStatusArray = new TaskStatus_t[uxArraySize]; curLogTaskStatusArray != nullptr ) {
-        // Generate raw status information about each task. Refs:
-        // https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
-        configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
-        uxArraySize = uxTaskGetSystemState( curLogTaskStatusArray, uxArraySize, &ulTotalRunTime );
-        qsort(curLogTaskStatusArray, uxArraySize, sizeof(TaskStatus_t), compareTasksByNumber);
-        uint64_t uxTotalRunTime = 0ul;  // Summing up times spent by ALL tasks (as reported by each task) should account for NUM_CORES - this value should be NUM_CORES*ulTotalRunTime
-        for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            uxTotalRunTime += (curLogTaskStatusArray[x].ulRunTimeCounter);
-        }
-        uint64_t uxDeltaTime = uxTotalRunTime - prevTaskStatsTime;    //this accounts for number of cores
+    TaskRuntimeSnapshot current;
+    TaskRuntimeSnapshot previous;
+    if (!loadTaskRuntimeHistory(current, previous))
+        return;
 
-        String strTaskInfo;
-        StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu, current time %lu ms, %s\n  total CPU cycles 32/64bit %lu / %llu, total task cycles cur/prev %llu / %llu, CPU frequency %d Hz]\n"),
-            ulTotalRunTime, uxDeltaTime, millis(), TimeFormat::asStringMs(nowMillis()).c_str(), rp2040.getCycleCount(), rp2040.getCycleCount64(), uxTotalRunTime, prevTaskStatsTime, sysInfo->getCPUFrequency());
-        log_info(F("%s"), strTaskInfo.c_str());
-        log_write(INFO, F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
-        uxDeltaTime /= 100; //prepares for percentage calculation
-        double fTotalCPULoadPercentage = 0.0;
-        for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            const TaskStatus_t *prevTaskStatus = prevLogTaskStatusArray != nullptr ? findTaskStatus(prevLogTaskStatusArray, prevLogTaskStatusArraySize, curLogTaskStatusArray[x].xTaskNumber) : nullptr;
-            const uint64_t taskDeltaTime = prevTaskStatus != nullptr ? (curLogTaskStatusArray[x].ulRunTimeCounter - prevTaskStatus->ulRunTimeCounter) : curLogTaskStatusArray[x].ulRunTimeCounter;
-            const double fStatsAsPercentage = uxDeltaTime > 0 ? static_cast<double>(taskDeltaTime) / static_cast<double>(uxDeltaTime) : 0.0;
-            //only add non-IDLE task percentages to total CPU load
-            String taskName(curLogTaskStatusArray[x].pcTaskName);
-            taskName.toLowerCase();
-            if (taskName.indexOf(idleTaskMarker) < 0)
-                fTotalCPULoadPercentage += fStatsAsPercentage;
-            const char prElevated = curLogTaskStatusArray[x].uxCurrentPriority > curLogTaskStatusArray[x].uxBasePriority ? '+' : curLogTaskStatusArray[x].uxCurrentPriority < curLogTaskStatusArray[x].uxBasePriority ? '-' : ' ';
-            const uint coreAffinity = curLogTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : curLogTaskStatusArray[x].uxCoreAffinityMask;
-            char buf[80];
-            snprintf(buf, 80, fmtTaskInfo, curLogTaskStatusArray[x].pcTaskName, taskStatusToString(curLogTaskStatusArray[x].eCurrentState),
-                (uint)curLogTaskStatusArray[ x ].uxCurrentPriority, prElevated, (uint)curLogTaskStatusArray[ x ].usStackHighWaterMark,
-                (uint)curLogTaskStatusArray[ x ].xTaskNumber, coreAffinity, taskDeltaTime, fStatsAsPercentage);
-            log_write(INFO, buf);
-        }
-        /* The array is no longer needed, free the memory it consumes. */
-        delete[] prevLogTaskStatusArray;
-        prevLogTaskStatusArray = curLogTaskStatusArray;
-        prevLogTaskStatusArraySize = uxArraySize;
-        prevTaskStatsTime = uxTotalRunTime;
-        //add the total CPU load
-        unsigned long curSysTime = millis();
-        float fTimeWindow = (curSysTime - prevSysTime) / 1000.0f;
-        prevSysTime = curSysTime;
-        char buf[80];
-        snprintf(buf, 80, fmtTotalCPULoad, fTotalCPULoadPercentage, fTimeWindow);
+    const uint64_t totalDelta = runtimeDelta(current.totalRunTime, previous.totalRunTime);
+    String strTaskInfo;
+    StringUtils::append(strTaskInfo, F("TASK STATS [sys total run time %llu, delta cycles %llu, current time %lu ms, %s\n  total CPU cycles 32/64bit %lu / %llu, total task cycles cur/prev %llu / %llu, CPU frequency %d Hz]\n"),
+        current.sysTotalRunTimeRaw, totalDelta, current.capturedAtMs, TimeFormat::asStringMs(nowMillis()).c_str(),
+        rp2040.getCycleCount(), rp2040.getCycleCount64(), current.totalRunTime, previous.totalRunTime, sysInfo->getCPUFrequency());
+    log_info(F("%s"), strTaskInfo.c_str());
+    log_write(INFO, F("Name      \tSt \tPr \tStk     Num \tCore  RunTime       RunPct\n"));
+
+    for (const auto &taskStatus : current.tasks) {
+        const TaskStatus_t *prevTaskStatus = findTaskStatus(previous.tasks, taskStatus.xTaskNumber);
+        const uint64_t taskDeltaTime = prevTaskStatus != nullptr
+            ? runtimeDelta(taskStatus.ulRunTimeCounter, prevTaskStatus->ulRunTimeCounter)
+            : taskStatus.ulRunTimeCounter;
+        const float taskPct = runtimePct(taskDeltaTime, totalDelta);
+        const char prElevated = taskStatus.uxCurrentPriority > taskStatus.uxBasePriority
+            ? '+'
+            : taskStatus.uxCurrentPriority < taskStatus.uxBasePriority ? '-' : ' ';
+        const uint coreAffinity = taskStatus.uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : taskStatus.uxCoreAffinityMask;
+        char buf[96];
+        snprintf(buf, sizeof(buf), fmtTaskInfo, taskStatus.pcTaskName, taskStatusToString(taskStatus.eCurrentState),
+            static_cast<uint>(taskStatus.uxCurrentPriority), prElevated, static_cast<uint>(taskStatus.usStackHighWaterMark),
+            static_cast<uint>(taskStatus.xTaskNumber), coreAffinity, taskDeltaTime, taskPct);
         log_write(INFO, buf);
     }
+
+    char buf[80];
+    snprintf(buf, sizeof(buf), fmtTotalCPULoad, cpuLoadPct(current, previous), snapshotWindowSec(current, previous));
+    log_write(INFO, buf);
     // Simple heap stats
     logHeapStats();
     struct mallinfo mf = mallinfo();
@@ -181,57 +300,60 @@ void logTaskStats() {
 #endif
 }
 
+/**
+ * Logs a system-wide summary of FreeRTOS task metrics, CPU usage, and heap statistics.
+ * Called from CORE1 task (on Core 1) that runs diagnostics.
+ *
+ * This function calculates and logs key performance metrics, offering insights into
+ * task execution and memory usage for real-time diagnostics and optimization. It is intended
+ * to provide a compact summary of system activity and resource utilization over a defined
+ * time window.
+ *
+ * Key features:
+ * 1. Retrieves the total number of active FreeRTOS tasks.
+ * 2. Allocates and processes task state and runtime data using `uxTaskGetSystemState`.
+ * 3. Computes total runtime and idle runtime, identifying idle tasks by name.
+ * 4. Calculates CPU load percentage based on changes in runtime metrics over time.
+ * 5. Retrieves heap statistics such as total usage, free memory, minimum recorded free memory,
+ *    number of free blocks, and size of the largest free block.
+ * 6. Logs data in a concise format, including task count, CPU load percentage, heap usage, and
+ *    key memory metrics.
+ *
+ * Implementation notes:
+ * - Uses a static state for maintaining previous values of runtime counters and system time
+ *   to compute time-windowed metrics.
+ * - Allocates dynamic memory for capturing FreeRTOS task information, which is released
+ *   after processing.
+ * - Makes use of utility functions like `millis()` for timing and `log_info()` for message output.
+ *
+ * This method depends on:
+ * - FreeRTOS APIs: `uxTaskGetSystemState`, `uxTaskGetNumberOfTasks`, `vPortGetHeapStats`.
+ * - Task naming conventions: `isIdleTaskName` for detecting idle tasks.
+ * - Logging framework: `Log` methods for conditional logging and message generation.
+ *
+ * Logging impact:
+ * - Can be resource-intensive when run frequently, as it processes runtime information
+ *   for all tasks and dynamically allocates memory. Should be used judiciously in performance-
+ *   critical scenarios.
+ */
 void logTaskSummary() {
 #if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
-
-    static uint64_t prevTotalRunTime = 0;
-    static uint64_t prevIdleRunTime = 0;
-    static unsigned long prevSysTime = 0;
-
-    UBaseType_t taskCount = uxTaskGetNumberOfTasks();
-    if (taskCount == 0)
+    TaskRuntimeSnapshot current;
+    TaskRuntimeSnapshot previous;
+    if (!loadTaskRuntimeHistory(current, previous))
         return;
-
-    auto *taskStatusArray = new TaskStatus_t[taskCount];
-    if (taskStatusArray == nullptr)
-        return;
-
-    configRUN_TIME_COUNTER_TYPE totalRunTimeRaw = 0;
-    taskCount = uxTaskGetSystemState(taskStatusArray, taskCount, &totalRunTimeRaw);
-
-    uint64_t totalRunTime = 0;
-    uint64_t idleRunTime = 0;
-    for (UBaseType_t i = 0; i < taskCount; i++) {
-        totalRunTime += taskStatusArray[i].ulRunTimeCounter;
-        if (isIdleTaskName(taskStatusArray[i].pcTaskName))
-            idleRunTime += taskStatusArray[i].ulRunTimeCounter;
-    }
-    delete[] taskStatusArray;
-
-    HeapStats_t heapStats;
-    vPortGetHeapStats(&heapStats);
-
-    const unsigned long nowMs = millis();
-    const float timeWindowSec = prevSysTime > 0 ? static_cast<float>(nowMs - prevSysTime) / 1000.0f : 0.0f;
-    const uint64_t totalDelta = prevTotalRunTime > 0 ? totalRunTime - prevTotalRunTime : 0;
-    const uint64_t idleDelta = prevIdleRunTime > 0 ? idleRunTime - prevIdleRunTime : 0;
-    const float cpuLoadPct = totalDelta > 0 ? static_cast<float>(totalDelta > idleDelta ? totalDelta - idleDelta : 0) * 100.0f / static_cast<float>(totalDelta) : 0.0f;
-
-    prevTotalRunTime = totalRunTime;
-    prevIdleRunTime = idleRunTime;
-    prevSysTime = nowMs;
 
     log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% window=%.2f s heapUsed=%zu heapFree=%zu heapLow=%zu freeBlocks=%zu largestFree=%zu"),
-        static_cast<unsigned>(taskCount),
-        cpuLoadPct,
-        timeWindowSec,
-        configTOTAL_HEAP_SIZE - heapStats.xAvailableHeapSpaceInBytes,
-        heapStats.xAvailableHeapSpaceInBytes,
-        heapStats.xMinimumEverFreeBytesRemaining,
-        heapStats.xNumberOfFreeBlocks,
-        heapStats.xSizeOfLargestFreeBlockInBytes);
+        static_cast<unsigned>(current.tasks.size()),
+        cpuLoadPct(current, previous),
+        snapshotWindowSec(current, previous),
+        configTOTAL_HEAP_SIZE - current.heapStats.xAvailableHeapSpaceInBytes,
+        current.heapStats.xAvailableHeapSpaceInBytes,
+        current.heapStats.xMinimumEverFreeBytesRemaining,
+        current.heapStats.xNumberOfFreeBlocks,
+        current.heapStats.xSizeOfLargestFreeBlockInBytes);
 #endif
 }
 
@@ -326,6 +448,7 @@ const char *fxStageToString(const uint32_t stage) {
 
 /**
  * Logs detailed system information for debugging and diagnostic purposes.
+ * Called from CORE0 task.
  * This function outputs various system-level details, including:
  * - CPU ROM version and core speed
  * - FreeRTOS, Arduino PICO, and SDK version details
@@ -472,13 +595,21 @@ uint SysInfo::get_flash_capacity() const {
 
 SysStatus SysInfo::setSysStatus(const SysStatus bitMask) {
     CoreMutex coreMutex(&mutex);
+    const SysStatus oldStatus = status;
     status |= bitMask;
+    if (status != oldStatus) {
+        sysInfoDirty = true;
+    }
     return status;
 }
 
 SysStatus SysInfo::resetSysStatus(const SysStatus bitMask) {
     CoreMutex coreMutex(&mutex);
+    const SysStatus oldStatus = status;
     status &= (~bitMask);
+    if (status != oldStatus) {
+        sysInfoDirty = true;
+    }
     return status;
 }
 
@@ -495,6 +626,7 @@ SysStatus SysInfo::getSysStatus() const {
 void SysInfo::addWatchdogReboot(const time_t t) {
     CoreMutex coreMutex(&mutex);
     wdReboots.push(t);
+    sysInfoDirty = true;
 }
 
 size_t SysInfo::watchdogRebootsCount() const {
@@ -537,12 +669,20 @@ void SysInfo::transformWatchdogReboots(const std::function<time_t(time_t)>& tran
  * @param wifi the Wi-Fi (global) object
  */
 void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
+    const String oldSsid = ssid;
+    const String oldIp = strIpAddress;
+    const String oldGw = strGatewayIpAddress;
+
     ssid = wifi.SSID();
     wifiFwVersion = ::WiFiClass::firmwareVersion();
     strIpAddress = wifi.localIP().toString();
     strGatewayIpAddress = wifi.gatewayIP().toString();
     // strIpAddress = ipAddress.toString();
     // strGatewayIpAddress = ipGateway.toString();
+
+    if (ssid != oldSsid || strIpAddress != oldIp || strGatewayIpAddress != oldGw) {
+        sysInfoDirty = true;
+    }
 
     const IPAddress dns1 = wifi.dnsIP(0);
     const IPAddress dns2 = wifi.dnsIP(1);
@@ -558,10 +698,14 @@ void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
     //the last character - at index x-1 is a ':', make it null to trim the last colon character
     buf[x-1] = 0;
     macAddress = buf;
+    sysInfoDirty = true;
 }
 
 void SysInfo::setSecureElementId(const String &secId) {
-    secElemId = secId;
+    if (secElemId != secId) {
+        secElemId = secId;
+        sysInfoDirty = true;
+    }
 }
 
 void SysInfo::sysConfig(JsonDocument &doc) {
@@ -630,55 +774,38 @@ void SysInfo::heapStats(JsonObject &doc) {
  * @param doc JSON array to populate
  */
 void SysInfo::taskStats(JsonObject &doc) {
-    static uint64_t prevTaskStatsTime = 0ul;
-    /* Take a snapshot of the number of tasks in case it changes while this function is executing. */
-    UBaseType_t uxArraySize = uxTaskGetNumberOfTasks();
-    /* Allocate a TaskStatus_t structure for each task. An array could be allocated statically at compile time.
-     * Note the use of new operator that is overridden to engage pvPortMalloc */
-    if(curJsonTaskStatusArray = new TaskStatus_t[uxArraySize]; curJsonTaskStatusArray != nullptr ) {
-        // General counts
-        doc["count"] = uxArraySize;
-        const auto jsArray = doc["items"].to<JsonArray>();
-        // Refs: https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
-        configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0;
-        /* Generate raw status information about each task. */
-        uxArraySize = uxTaskGetSystemState( curJsonTaskStatusArray, uxArraySize, &ulTotalRunTime );
-        doc["sysTotalRunTime"] = ulTotalRunTime;
-        uint64_t uxTotalRunTime = 0ul;
-        for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            uxTotalRunTime += (curJsonTaskStatusArray[x].ulRunTimeCounter);
-        }
-        const uint64_t uxDeltaTime = (uxTotalRunTime - prevTaskStatsTime)/100;    //this accounts for number of cores
-        doc["tasksTotalRunTime"] = uxTotalRunTime;
-        double fTotalCPULoadPercentage = 0.0;
-        for (UBaseType_t x = 0; x < uxArraySize; x++) {
-            const TaskStatus_t *prevTaskStatus = prevJsonTaskStatusArray != nullptr ? findTaskStatus(prevJsonTaskStatusArray, prevJsonTaskStatusArraySize, curJsonTaskStatusArray[x].xTaskNumber) : nullptr;
-            JsonObject task = jsArray.add<JsonObject>();
-            const uint64_t taskDeltaTime = prevTaskStatus != nullptr ? (curJsonTaskStatusArray[x].ulRunTimeCounter - prevTaskStatus->ulRunTimeCounter) : curJsonTaskStatusArray[x].ulRunTimeCounter;
-            const double fStatsAsPercentage = uxDeltaTime > 0 ? static_cast<double>(taskDeltaTime) / static_cast<double>(uxDeltaTime) : 0.0;
-            String taskName = curJsonTaskStatusArray[x].pcTaskName;
-            taskName.toLowerCase();
-            if (taskName.indexOf(idleTaskMarker) < 0)
-                fTotalCPULoadPercentage += fStatsAsPercentage;  //only add the non-idle tasks
-            const uint coreAffinity = curJsonTaskStatusArray[x].uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : curJsonTaskStatusArray[x].uxCoreAffinityMask;
+    TaskRuntimeSnapshot current;
+    TaskRuntimeSnapshot previous;
+    if (!loadTaskRuntimeHistory(current, previous))
+        return;
 
-            task["name"] = curJsonTaskStatusArray[x].pcTaskName;
-            task["state"] = taskStatusToString(curJsonTaskStatusArray[x].eCurrentState);
-            task["curPriority"] = curJsonTaskStatusArray[ x ].uxCurrentPriority;
-            task["basePriority"] = curJsonTaskStatusArray[ x ].uxBasePriority;
-            task["stackHighWaterMark"] = curJsonTaskStatusArray[ x ].usStackHighWaterMark;
-            task["taskNumber"] = curJsonTaskStatusArray[ x ].xTaskNumber;
-            task["coreAffinity"] = coreAffinity;
-            task["runTime"] = taskDeltaTime;
-            task["runTimeLife"] = curJsonTaskStatusArray[ x ].ulRunTimeCounter;
-            task["runTimePct"] = fStatsAsPercentage;
-        }
-        doc["totalCPULoadPct"] = fTotalCPULoadPercentage;
-        /* The array is no longer needed, free the memory it consumes. */
-        delete[] prevJsonTaskStatusArray;
-        prevJsonTaskStatusArray = curJsonTaskStatusArray;
-        prevJsonTaskStatusArraySize = uxArraySize;
-        prevTaskStatsTime = uxTotalRunTime;
+    doc["count"] = current.tasks.size();
+    doc["capturedAtMs"] = current.capturedAtMs;
+    doc["windowSec"] = snapshotWindowSec(current, previous);
+    doc["sysTotalRunTime"] = current.sysTotalRunTimeRaw;
+    doc["tasksTotalRunTime"] = current.totalRunTime;
+    doc["totalCPULoadPct"] = cpuLoadPct(current, previous);
+
+    const uint64_t totalDelta = runtimeDelta(current.totalRunTime, previous.totalRunTime);
+    const auto jsArray = doc["items"].to<JsonArray>();
+    for (const auto &taskStatus : current.tasks) {
+        const TaskStatus_t *prevTaskStatus = findTaskStatus(previous.tasks, taskStatus.xTaskNumber);
+        JsonObject task = jsArray.add<JsonObject>();
+        const uint64_t taskDeltaTime = prevTaskStatus != nullptr
+            ? runtimeDelta(taskStatus.ulRunTimeCounter, prevTaskStatus->ulRunTimeCounter)
+            : taskStatus.ulRunTimeCounter;
+        const uint coreAffinity = taskStatus.uxCoreAffinityMask >= CORE_ALL ? CORE_ALL : taskStatus.uxCoreAffinityMask;
+
+        task["name"] = taskStatus.pcTaskName;
+        task["state"] = taskStatusToString(taskStatus.eCurrentState);
+        task["curPriority"] = taskStatus.uxCurrentPriority;
+        task["basePriority"] = taskStatus.uxBasePriority;
+        task["stackHighWaterMark"] = taskStatus.usStackHighWaterMark;
+        task["taskNumber"] = taskStatus.xTaskNumber;
+        task["coreAffinity"] = coreAffinity;
+        task["runTime"] = taskDeltaTime;
+        task["runTimeLife"] = taskStatus.ulRunTimeCounter;
+        task["runTimePct"] = runtimePct(taskDeltaTime, totalDelta);
     }
 }
 
@@ -735,35 +862,40 @@ void readSysInfo() {
  * Saves the sys info to the file
  */
 void saveSysInfo() {
+    const uint32_t nowMs = millis();
+    if (sysInfoSaveInProgress.load(std::memory_order_acquire)) {
+        return;
+    }
+
+    if (!sysInfoDirty && sysInfoLastSaveMs != 0 && (nowMs - sysInfoLastSaveMs) < sysInfoSaveIntervalMs) {
+        return;
+    }
+
+    bool expected = false;
+    if (!sysInfoSaveInProgress.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+        return;
+    }
+
     JsonDocument doc;
     SysInfo::sysConfig(doc);
-    auto str = new String();    //larger temporary string, put it on the heap
+    auto str = new String();    // larger temporary string, put it on the heap
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
-    if (!SyncFsImpl.writeFile(sysFileName, str))
-        log_error(F("Failed to create/write the system information file %s"), sysFileName);
-    delete str;
-    doc.clear();
-    //read the fx file and merge it with the sys one into a new sysconfig file - by this time the FX task has created the fx config
-    //for merging JsonDocuments see https://arduinojson.org/v7/how-to/merge-json-objects/
-    str = new String();
-    str->reserve(6144);  // approximation
-    SyncFsImpl.readFile(fxCfgFileName, str);
-    if (const DeserializationError error = deserializeJson(doc, *str)) {
-        log_error(F("Failed to deserialize the FX configuration file %s: %s"), fxCfgFileName, error.c_str());
-        delete str;
-        doc.clear();
+
+    if (SyncFsImpl.writeFileAsync(sysFileName, str)) {
+        sysInfoDirty = false;
+        sysInfoLastSaveMs = nowMs;
     } else {
+        log_error(F("Failed to enqueue async system information file write %s"), sysFileName);
         delete str;
-        SysInfo::sysConfig(doc);
-        str = new String();
-        str->reserve(measureJson(doc));
-        serializeJson(doc, *str);
-        if (!SyncFsImpl.writeFile(sysCfgFileName, str))
-            log_error(F("Failed to create/write the system configuration file %s"), sysCfgFileName);
-        delete str;
-        doc.clear();
     }
+
+    doc.clear();
+
+    // NOTE: sysconfig merge is intentionally skipped now to avoid extra blocking flash write activity
+    // at each sysinfo tick, because this has correlated with watchdog-triggering delay spikes.
+
+    sysInfoSaveInProgress.store(false, std::memory_order_release);
 }
 
 /**

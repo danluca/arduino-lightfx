@@ -596,7 +596,7 @@ bool SynchronizedFS::exists(const char *fname) {
     if (qResult == pdTRUE) {
         exists = waitForFsCompletion(fsTaskMessage::EXISTS, fname, queue);
         if (!exists)
-            log_error(F("Error checking existence of file %s - error waiting for completion"), fname);
+            log_info(F("File %s does not exist"), fname);
         else
             log_info(F("File %s exists"), fname);
     } else {

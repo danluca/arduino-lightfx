@@ -20,6 +20,7 @@ extern unsigned long prevIdleTime;
 
 void state_led_update();
 void state_led_begin();
+bool captureTaskRuntimeSnapshot(bool force = false);
 void logTaskStats();
 void logTaskSummary();
 void logHeapStats();

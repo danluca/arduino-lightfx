@@ -94,6 +94,7 @@ void commRun() {
         return;
 
     //the reception was successful, process the message
+    log_debug(F("Comm task received message of type %hd"), msg.event);
     switch (msg.event) {
         case TIME_SETUP: timeSetupCheck(); break;
         case TIME_UPDATE: timeUpdate(); break;
@@ -195,6 +196,7 @@ void scanClients() {
     mdns_trim_boards();     //ensure to remove stale boards
     const std::vector<DiscoveredBoard> discoveredBoards = mdns_get_discovered_boards();
     const auto selfAddr = sysInfo->refIpAddress();
+    log_info(F("Scanning for FX Broadcast recipients - %zu mdns discovered, %zu static..."), discoveredBoards.size(), fxBroadcastRecipients.size());
 
     // 1. Update/Add clients from mDNS discovery
     for (const auto &board: discoveredBoards) {

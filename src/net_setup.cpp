@@ -130,33 +130,42 @@ void hostServiceCallback(const char *p_pcServiceName, const MDNSResponder::hMDNS
 
 #endif
 
+/**
+ * Blocking function until Wi-Fi connection succeeds.
+ * @return true when connection succeeds; otherwise blocks
+ */
 bool wifi_connect() {
+    uint8_t wifiStatus = WiFi.status();
+    if (wifiStatus == WL_CONNECTED) return true;
     //static IP address - such that we can have a known location for config page
     // WiFi.config({IP_ADDR});
     WiFi.setHostname(hostname);
-    log_info(F("Connecting to WiFI '%s'"), ssid);  // print the network name (SSID);
+    log_info(F("Connecting to WiFI '%s' starting from status %hhu..."), ssid, wifiStatus);  // print the network name (SSID);
     // attempt to connect to WiFi network:
     WiFi.setTimeout(7500);     // default timeout is 15 seconds - see WiFiClass.h
-    uint attCount = 0;
-    uint8_t wifiStatus = WiFi.begin(ssid, pass);
-    while (wifiStatus != WL_CONNECTED) {
-        log_info(F("Attempting to connect Wi-Fi %s (status %hhd)..."), ssid, wifiStatus);
 
-        // Connect to WPA/WPA2 network
-        // wait 2 seconds for connection to succeed:
-        taskDelay(2500);
+    uint attCount = 1;
+    while (wifiStatus != WL_CONNECTED) {
+        const unsigned long startAttemptTime = millis();
         wifiStatus = WiFi.begin(ssid, pass);
-        attCount++;
+        // Wait for connection with a 30-second timeout
+        while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 30000) {
+            taskDelay(500);
+        }
+        if (wifiStatus = WiFi.status(); wifiStatus != WL_CONNECTED) {
+            log_warn(F("WiFi connection attempt failed after %lu ms. Disconnecting and trying again"), millis() - startAttemptTime);
+            WiFi.disconnect(); // Clear failed state
+            attCount++;
+        } else
+            log_info(F("WiFi connected after %lu ms!"), millis() - startAttemptTime);
     }
-    const bool result = wifiStatus == WL_CONNECTED;
-    if (result) {
-        sysInfo->setSysStatus(SysStatus::Wifi);
-        if (const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress()); resPing >= 0)
-            log_info(F("Connected to WiFi after %d tries. Gateway ping successful: %d ms"), attCount, resPing);
-        else
-            log_warn(F("Connected to WiFi after %d tries. Failed pinging the gateway (ping result %d) - will retry later"), attCount, resPing);
-        printSuccessfulWifiStatus();  // you're connected now, so print out the status
-    }
+
+    sysInfo->setSysStatus(SysStatus::Wifi);
+    if (const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress()); resPing >= 0)
+        log_info(F("Connected to WiFi after %d tries. Gateway ping successful: %d ms"), attCount, resPing);
+    else
+        log_warn(F("Connected to WiFi after %d tries. Failed pinging the gateway (ping result %d) - will retry later"), attCount, resPing);
+    printSuccessfulWifiStatus();  // we're connected now, so print out the status
 #if MDNS_ENABLED==1
     // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
     String dnsHostname(hostname);
@@ -185,7 +194,7 @@ bool wifi_connect() {
     }
 #endif
 
-    return result;
+    return true;
 }
 
 bool wifi_setup() {
@@ -199,6 +208,7 @@ bool wifi_setup() {
     checkFirmwareVersion();
     //enable low-power mode - web server is not the primary function of this module
     WiFi.defaultLowPowerMode();
+    WiFi.mode(WIFI_STA);   //station mode - we're connecting to an existing WiFi network, not creating our own
 
     const bool connStatus = wifi_connect();
 
