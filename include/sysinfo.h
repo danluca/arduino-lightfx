@@ -111,6 +111,7 @@ public:
     static void setupStateLED();
 
     // JSON marshalling methods
+    friend class SysInfoPersistence;
     friend void readSysInfo();
     friend void saveSysInfo();
     friend void state_led_update();
