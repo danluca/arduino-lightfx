@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef RP2040_LIGHTFX_EARLE_FILESYSTEM_H
@@ -66,10 +66,10 @@ public:
     String sha256(const char *path) const;
 
     size_t readFile(const char *fname, String *s) const;
-    size_t writeFile(const char *fname, String *s) const;
-    size_t appendFile(const char *fname, String *s) const;
-    size_t appendFile(const char *fname, uint8_t *buffer, size_t size) const;
-    bool writeFileAsync(const char *fname, String *s) const;
+    size_t writeFile(const char *fname, const String *s) const;
+    size_t appendFile(const char *fname, const String *s) const;
+    size_t appendFile(const char *fname, const uint8_t *buffer, const size_t size) const;
+    bool writeFileAsync(const char *fname, const String *s, QueueHandle_t completionQueue = nullptr, uint16_t completionId = 0) const;
     bool list(const char *path, std::deque<FileInfo> *list) const;
 
 protected:
@@ -77,7 +77,6 @@ protected:
     size_t prvWriteFile(const char *fname, const String *s) const;
     size_t prvAppendFile(const char *fname, const String *s) const;
     size_t prvAppendFile(const char *fname, const uint8_t *buffer, size_t size) const;
-    size_t prvWriteFileAndFreeMem(const char *fname, const String *s) const;
     bool prvRemove(const char *path) const;
     bool prvRename(const char *fromName, const String *toName) const;
     bool prvExists(const char *path) const;

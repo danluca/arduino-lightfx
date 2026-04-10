@@ -111,6 +111,7 @@ void alarm_misc_run() {
         case ALARM_SETUP: alarm_setup(); break;
         case ALARM_CHECK: alarm_check(); break;
         case SAVE_SYS_INFO: saveSysInfo(); break;
+        case SAVE_SYS_INFO_DONE: log_info(F("SysInfo saved successfully")); break;
         case HOLIDAY_UPDATE: holidayUpdate(); break;
         default:
             log_error(F("Misc Action %hu not supported"), action);

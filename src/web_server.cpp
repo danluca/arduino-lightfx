@@ -363,12 +363,9 @@ void web::handlePutConfig(WebClient &client) {
                 upd[csBroadcast] = syncMode;
         }
     }
-    uint16_t curFxPos = 0;
-    bool autoRoll = false;
-    bool sleepEnabled = false;
-    curFxPos = fxRegistry.curEffectPos();
-    autoRoll = fxRegistry.isAutoRoll();
-    sleepEnabled = fxRegistry.isSleepEnabled();
+    uint16_t curFxPos = fxRegistry.curEffectPos();
+    bool autoRoll = fxRegistry.isAutoRoll();
+    bool sleepEnabled = fxRegistry.isSleepEnabled();
     const Holiday holiday = paletteFactory.getHoliday();
 
     log_info(F("FX: Current config updated effect %hu, autoswitch %s, sleep %s, holiday %s, brightness %hu, brightness adjustment %s"),

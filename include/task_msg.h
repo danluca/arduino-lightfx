@@ -15,15 +15,15 @@ extern QueueHandle_t almQueue;
 extern QueueHandle_t bcQueue;
 extern QueueHandle_t diagQueue;
 
-enum AlmAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO, HOLIDAY_UPDATE};
+enum AlmAction:uint8_t { ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO, HOLIDAY_UPDATE, SAVE_SYS_INFO_DONE };
 
-enum FxAction:uint8_t {AUTO_FX, MANUAL_FX, COLOR_THEME, STRIP_BRIGHTNESS, AUDIO_THRESHOLD, SLEEP_ENABLED, SLEEP_STATE, AUDIO_CHANGE, SAVE_STATE};
+enum FxAction:uint8_t { AUTO_FX, MANUAL_FX, COLOR_THEME, STRIP_BRIGHTNESS, AUDIO_THRESHOLD, SLEEP_ENABLED, SLEEP_STATE, AUDIO_CHANGE, SAVE_STATE };
 struct FxActionMessage {
     FxAction action;
     uint32_t data;
 };
 
-enum CommAction:uint8_t {TIME_SETUP, TIME_UPDATE, FX_SYNC, WIFI_ENSURE, STATUS_LED_CHECK, ENABLE_BROADCAST, SCAN_CLIENTS};
+enum CommAction:uint8_t { TIME_SETUP, TIME_UPDATE, FX_SYNC, WIFI_ENSURE, STATUS_LED_CHECK, ENABLE_BROADCAST, SCAN_CLIENTS };
 
 /**
  * Structure of the message sent to the Communications task
@@ -33,9 +33,9 @@ struct bcTaskMessage {
     uint16_t data;
 };
 
-enum DiagAction:uint8_t {RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO, RESET_CALIBRATION, FX_HEARTBEAT, TASK_SNAPSHOT};
+enum DiagAction:uint8_t { RND_ENTROPY, SYS_TEMP, SYS_VOLTAGE, DIAG_INFO, RESET_CALIBRATION, FX_HEARTBEAT, TASK_SNAPSHOT };
 
-enum MikeAction:uint8_t {AUDIO_THRESHOLD_UPDATE};
+enum MikeAction:uint8_t { AUDIO_THRESHOLD_UPDATE };
 struct AudioActionMessage {
     MikeAction action;
     uint32_t data;

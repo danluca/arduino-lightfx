@@ -12,6 +12,7 @@ std::atomic<uint32_t> HealthMonitor::lastCheckInMs[3] = {0, 0, 0};
 uint32_t HealthMonitor::healthStatus = 0;
 static constexpr uint16_t warnIntervalMs = 1000;
 static constexpr uint16_t watchdogLowWatermarkMs = 2000;
+static uint32_t lastWarnMs = 0;
 
 void HealthMonitor::init() {
     const uint32_t nowMs = millis();
@@ -37,7 +38,7 @@ void HealthMonitor::checkIn(const HealthBit bit) {
     }
 
     if (watchdog_get_time_remaining_ms() < watchdogLowWatermarkMs) {
-        static uint32_t lastWarnMs = 0;
+        // static uint32_t lastWarnMs = 0;
         if (nowMs - lastWarnMs > warnIntervalMs) {
             log_warn(F("HealthMonitor-C: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                 diffs[0], diffs[1], diffs[2], nowMs);
@@ -69,7 +70,7 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
         watchdog_update();
 #if LOGGING_ENABLED == 1
         if (diffs[0] > warnMs || diffs[1] > warnMs || diffs[2] > warnMs) {
-            static uint32_t lastWarnMs = 0;
+            // static uint32_t lastWarnMs = 0;
             if (nowMs - lastWarnMs > warnIntervalMs) {
                 log_warn(F("HealthMonitor-U: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                     diffs[0], diffs[1], diffs[2], nowMs);
@@ -78,11 +79,11 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
             }
         }
     } else {
-        static uint32_t lastLogMs = 0;
-        if (nowMs - lastLogMs > warnIntervalMs) {
+        // static uint32_t lastLogMs = 0;
+        if (nowMs - lastWarnMs > warnIntervalMs) {
             log_error(F("HealthMonitor-U: Task(s) STALLED! STOPS PINGING WATCHDOG. [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                 diffs[0], diffs[1], diffs[2], nowMs);
-            lastLogMs = nowMs;
+            lastWarnMs = nowMs;
             logTaskStats();
         }
     }

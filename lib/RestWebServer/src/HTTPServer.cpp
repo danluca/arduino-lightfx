@@ -222,7 +222,7 @@ void HTTPServer::handleClient() {
             _state = _clients.empty() ? IDLE : HANDLING_CLIENT;
             //fall-through
         case IDLE:
-            if (WiFiClient wifiClient = _server.available()) {
+            if (WiFiClient wifiClient = _server.accept()) {
                 bool newClient = true;
                 //did we have this client before? check if same socket
                 for (const auto& client : _clients) {

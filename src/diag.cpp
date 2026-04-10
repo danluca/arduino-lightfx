@@ -113,13 +113,14 @@ void diagSetup() {
     else if (xTimerStart(thSysVoltage, 0) != pdPASS)
         log_error(F("Cannot start the sysVoltage timer - Ignored."));
 
-#if LOGGING_ENABLED == 1
-    const TimerHandle_t thTaskSnapshot = xTimerCreate("taskSnapshot", pdMS_TO_TICKS(5 * 1000), pdTRUE, &tmrTaskSnapshotId, enqueueTaskSnapshot);
+    //scheduling this timer every 10seconds for capturing task metrics - we need it even for when logging is disabled to support the web tasks endpoint
+    const TimerHandle_t thTaskSnapshot = xTimerCreate("taskSnapshot", pdMS_TO_TICKS(10 * 1000), pdTRUE, &tmrTaskSnapshotId, enqueueTaskSnapshot);
     if (thTaskSnapshot == nullptr)
         log_error(F("Cannot create taskSnapshot timer - Ignored."));
     else if (xTimerStart(thTaskSnapshot, 0) != pdPASS)
         log_error(F("Cannot start the taskSnapshot timer - Ignored."));
 
+#if LOGGING_ENABLED == 1
     //log the thread, memory and diagnostic measurements info event - no-op if logging is disabled - repeated each 30.25 seconds
     const TimerHandle_t thDiagInfo = xTimerCreate("diagInfo", pdMS_TO_TICKS(30 * 1000 + 250), pdTRUE, &tmrDiagInfoId, enqueueDiagInfo);
     if (thDiagInfo == nullptr)
@@ -128,14 +129,14 @@ void diagSetup() {
         log_error(F("Cannot start the diagInfo timer - Ignored."));
 #endif
 
-    //monitor FX heartbeat for stalls - repeated each 1 second
-    const TimerHandle_t thFxHeartbeat = xTimerCreate("fxHeartbeat", pdMS_TO_TICKS(1000), pdTRUE, &tmrFxHeartbeatId, enqueueFxHeartbeat);
+    //monitor FX heartbeat for stalls - repeated each 3 seconds (roughly half the watchdog timer)
+    const TimerHandle_t thFxHeartbeat = xTimerCreate("fxHeartbeat", pdMS_TO_TICKS(3 * 1000), pdTRUE, &tmrFxHeartbeatId, enqueueFxHeartbeat);
     if (thFxHeartbeat == nullptr)
         log_error(F("Cannot create fxHeartbeat timer - Ignored."));
     else if (xTimerStart(thFxHeartbeat, 0) != pdPASS)
         log_error(F("Cannot start the fxHeartbeat timer - Ignored."));
     //save the current system info event to filesystem - repeated each 300 seconds (5 minutes)
-    const TimerHandle_t thSaveSysInfo = xTimerCreate("saveSysInfo", pdMS_TO_TICKS(300 * 1000), pdTRUE, &tmrSaveSysInfoId, enqueueSaveSysInfo);
+    const TimerHandle_t thSaveSysInfo = xTimerCreate("saveSysInfo", pdMS_TO_TICKS(317 * 1000), pdTRUE, &tmrSaveSysInfoId, enqueueSaveSysInfo);
     if (thSaveSysInfo == nullptr)
         log_error(F("Cannot create saveSysInfo timer - Ignored."));
     else if (xTimerStart(thSaveSysInfo, 0) != pdPASS)

@@ -9,6 +9,7 @@
 #include "filesystem.h"
 #include "log.h"
 #include "sysinfo_internal.h"
+#include "task_msg.h"
 #include "version.h"
 
 namespace {
@@ -23,6 +24,7 @@ SysInfoPersistence &SysInfoPersistence::instance() {
 }
 
 void SysInfoPersistence::markDirty() {
+    CoreMutex lock(&mutex_);
     dirty_ = true;
 }
 
@@ -103,8 +105,16 @@ void SysInfoPersistence::read() {
 
 void SysInfoPersistence::save() {
     const uint32_t nowMs = millis();
-    if (!dirty_ && lastSaveMs_ != 0 && (nowMs - lastSaveMs_) < kSysInfoSaveIntervalMs)
-        return;
+    {
+        CoreMutex lock(&mutex_);
+        if (writePending_)
+            return;
+        if (!dirty_ && lastSaveMs_ != 0 && (nowMs - lastSaveMs_) < kSysInfoSaveIntervalMs)
+            return;
+
+        writePending_ = true;
+        dirty_ = false;
+    }
 
     JsonDocument doc;
     SysInfo::sysConfig(doc);
@@ -113,11 +123,13 @@ void SysInfoPersistence::save() {
     str->reserve(measureJson(doc));
     serializeJson(doc, *str);
 
-    if (SyncFsImpl.writeFileAsync(sysFileName, str.get())) {
-        dirty_ = false;
+    if (SyncFsImpl.writeFileAsync(sysFileName, str.get(), almQueue, AlmAction::SAVE_SYS_INFO_DONE)) {
+        CoreMutex lock(&mutex_);
         lastSaveMs_ = nowMs;
-        (void)str.release();
     } else {
+        CoreMutex lock(&mutex_);
+        writePending_ = false;
+        dirty_ = true;
         log_error(F("Failed to enqueue async system information file write %s"), sysFileName);
     }
 

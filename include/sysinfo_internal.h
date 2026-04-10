@@ -65,7 +65,9 @@ public:
     void save();
 
 private:
+    mutable mutex_t mutex_{};
     bool dirty_{true};
+    bool writePending_{false};
     uint32_t lastSaveMs_{0};
 };
 
