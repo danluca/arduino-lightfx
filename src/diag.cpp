@@ -24,6 +24,7 @@
 #define DIAG_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 
 static constexpr uint maxAdc = 1 << ADC_RESOLUTION;
+static constexpr uint fxHeartbeatInterval = 3000;   //ms - roughly half the watchdog timer (~8.1s); see watchdogSetup in util.cpp
 
 CalibrationMeasurement cpuTempRange(Unit::Deg_C);
 MeasurementRange lineVoltage(Unit::Volts);
@@ -129,8 +130,8 @@ void diagSetup() {
         log_error(F("Cannot start the diagInfo timer - Ignored."));
 #endif
 
-    //monitor FX heartbeat for stalls - repeated each 3 seconds (roughly half the watchdog timer)
-    const TimerHandle_t thFxHeartbeat = xTimerCreate("fxHeartbeat", pdMS_TO_TICKS(3 * 1000), pdTRUE, &tmrFxHeartbeatId, enqueueFxHeartbeat);
+    //monitor FX heartbeat for stalls
+    const TimerHandle_t thFxHeartbeat = xTimerCreate("fxHeartbeat", pdMS_TO_TICKS(fxHeartbeatInterval), pdTRUE, &tmrFxHeartbeatId, enqueueFxHeartbeat);
     if (thFxHeartbeat == nullptr)
         log_error(F("Cannot create fxHeartbeat timer - Ignored."));
     else if (xTimerStart(thFxHeartbeat, 0) != pdPASS)
@@ -620,7 +621,7 @@ void checkFxHeartbeat() {
         fxStallReported = false;
         return;
     }
-    constexpr uint32_t fxStallWarnMs = 2500u;
+    constexpr uint32_t fxStallWarnMs = fxHeartbeatInterval + 1000u;
     if (!fxStallReported && (nowMs - heartbeatMs) > fxStallWarnMs) {
         fxStallReported = true;
         watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerFxStall;

@@ -271,7 +271,7 @@ void fx_run() {
     if (isFirmwareUpgrading) {
         watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageFirmwareUpgrade;
         displayFirmwareUpgradePattern();
-        HealthMonitor::update(7000, 3000);
+        HealthMonitor::update(7000, 4000);
         watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
         return;
     }
@@ -287,7 +287,7 @@ void fx_run() {
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageBeforeLoop;
     fxRegistry.loop();
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterLoop;
-    HealthMonitor::update(7000, 3000);
+    HealthMonitor::update(7000, 4000);
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
 }
 
