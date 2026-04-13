@@ -2,6 +2,7 @@
 //
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <hardware/watchdog.h>
 #include <memory>
 
 #include "config.h"
@@ -10,6 +11,8 @@
 #include "log.h"
 #include "sysinfo_internal.h"
 #include "task_msg.h"
+#include "TimeFormat.h"
+#include "TimeService.h"
 #include "version.h"
 
 namespace {
@@ -142,4 +145,161 @@ void readSysInfo() {
 
 void saveSysInfo() {
     SysInfoPersistence::instance().save();
+}
+
+/**
+ * Writes the "slowness" section of the health event file when the health monitor detects task slowness or a stall.
+ * Reads the existing file first to preserve the "reboot" section, then overwrites with the updated slowness data.
+ * The top 3 non-idle tasks by CPU delta percentage in the last interval are included.
+ * File write is asynchronous so as not to block the caller.
+ * @param c0Diff milliseconds since last CORE0 check-in
+ * @param c1Diff milliseconds since last CORE1 check-in
+ * @param fxDiff milliseconds since last FX check-in
+ * @param isStall true when the watchdog is no longer being updated (task stalled), false for a slowness warning
+ */
+void saveSlownessHealthEvent(const uint32_t c0Diff, const uint32_t c1Diff, const uint32_t fxDiff, const bool isStall) {
+    TaskRuntimeSnapshot current, previous;
+    if (!TaskRuntimeMonitor::instance().load(current, previous))
+        return;
+
+    const uint64_t totalDelta = runtimeDelta(current.totalRunTime, previous.totalRunTime);
+
+    // Find top 3 non-idle tasks by CPU delta percentage
+    struct TopTask { const char *name = nullptr; float pct = 0.0f; };
+    TopTask top[3];
+    for (const auto &task : current.tasks) {
+        if (isIdleTaskName(task.pcTaskName)) continue;
+        const TaskStatus_t *prev = findTaskStatus(previous.tasks, task.xTaskNumber);
+        const uint64_t delta = prev
+            ? runtimeDelta(task.ulRunTimeCounter, prev->ulRunTimeCounter)
+            : task.ulRunTimeCounter;
+        const float pct = runtimePct(delta, totalDelta);
+        for (int i = 0; i < 3; i++) {
+            if (pct > top[i].pct) {
+                for (int j = 2; j > i; j--) top[j] = top[j - 1];
+                top[i] = {task.pcTaskName, pct};
+                break;
+            }
+        }
+    }
+
+    // Read existing file to preserve the reboot section
+    String existing;
+    JsonDocument doc;
+    if (SyncFsImpl.readFile(healthEventFileName, &existing) > 0)
+        deserializeJson(doc, existing);
+
+    const time_t curTime = now();
+    auto slowness = doc["slowness"].to<JsonObject>();
+    slowness["type"] = isStall ? "stall" : "slowness";
+    slowness["uptimeMs"] = current.capturedAtMs;
+    slowness["cpuLoadPct"] = cpuLoadPct(current, previous);
+    slowness["windowSec"] = snapshotWindowSec(current, previous);
+    slowness["curMillis"] = millis();
+    slowness["curDate"] = TimeFormat::dateAsString(curTime);
+    slowness["curTime"] = TimeFormat::timeAsString(curTime);
+    const auto diffs = slowness["diffs"].to<JsonObject>();
+    diffs["c0"] = c0Diff;
+    diffs["c1"] = c1Diff;
+    diffs["fx"] = fxDiff;
+    const auto topArr = slowness["topTasks"].to<JsonArray>();
+    for (const auto &t : top) {
+        if (t.name == nullptr) break;
+        auto jt = topArr.add<JsonObject>();
+        jt["name"] = t.name;
+        jt["cpuPct"] = t.pct;
+    }
+
+    String out;
+    out.reserve(measureJson(doc));
+    serializeJson(doc, out);
+    doc.clear();
+
+    if (!SyncFsImpl.writeFileAsync(healthEventFileName, &out))
+        log_error(F("Failed to enqueue health event file write to %s"), healthEventFileName);
+}
+
+/**
+ * Writes the "reboot" section of the health event file using the watchdog scratch registers that hold
+ * the reset cause markers. Must be called before logSystemInfo() clears those registers.
+ * Reads the existing file first to preserve the "slowness" section.
+ * Only writes when the reset was watchdog-triggered or a non-none reset marker is present.
+ * File write is synchronous since this runs early in the boot sequence.
+ */
+void saveRebootHealthEvent() {
+    const RP2040::resetReason_t resetReason = rp2040.getResetReason();
+    const uint32_t resetMarker = watchdog_hw->scratch[kResetMarkerScratchIndex];
+    if (resetReason != RP2040::WDT_RESET && resetMarker == kResetMarkerNone)
+        return;
+
+    const uint32_t fxStage = watchdog_hw->scratch[kFxStageScratchIndex];
+    const uint32_t fsBlocked = watchdog_hw->scratch[kFsBlockedScratchIndex];
+
+    auto resetReasonStr = [](const RP2040::resetReason_t r) -> const char * {
+        switch (r) {
+            case RP2040::WDT_RESET:     return csWatchdog;
+            case RP2040::PWRON_RESET:   return csPowerOn;
+            case RP2040::RUN_PIN_RESET: return csPinReset;
+            case RP2040::SOFT_RESET:    return csSoftReset;
+            case RP2040::DEBUG_RESET:   return csDebug;
+            default:                    return "unknown";
+        }
+    };
+    auto markerStr = [](const uint32_t m) -> const char * {
+        switch (m) {
+            case kResetMarkerNone:          return "none";
+            case kResetMarkerPanic:         return "panic";
+            case kResetMarkerAssert:        return "assert";
+            case kResetMarkerHardFault:     return "hardfault";
+            case kResetMarkerMalloc:        return "malloc_failed";
+            case kResetMarkerStackOverflow: return "stack_overflow";
+            case kResetMarkerFxStall:       return "fx_stall";
+            case kResetMarkerOta:           return "ota";
+            case kResetMarkerReboot:        return "reboot";
+            default:                        return "unknown";
+        }
+    };
+    auto stageStr = [](const uint32_t s) -> const char * {
+        switch (s) {
+            case kFxStageNone:             return "none";
+            case kFxStageEnter:            return "enter";
+            case kFxStageAfterQueue:       return "after_queue";
+            case kFxStageAfterOtaCheck:    return "after_ota_check";
+            case kFxStageFirmwareUpgrade:  return "fw_upgrade";
+            case kFxStageBeforeLoop:       return "before_loop";
+            case kFxStageAfterLoop:        return "after_loop";
+            case kFxStageAfterPing:        return "after_ping";
+            default:                       return "unknown";
+        }
+    };
+
+    // Read existing file to preserve the slowness section
+    String existing;
+    JsonDocument doc;
+    if (SyncFsImpl.readFile(healthEventFileName, &existing) > 0)
+        deserializeJson(doc, existing);
+
+    auto reboot = doc["reboot"].to<JsonObject>();
+    reboot["uptimeMs"] = millis();
+    reboot["resetReason"] = resetReasonStr(resetReason);
+    reboot["resetMarker"] = markerStr(resetMarker);
+    reboot["fxStage"] = stageStr(fxStage);
+    if ((fsBlocked & 0xFF000000u) == kFsBlockedMagic) {
+        static constexpr const char *fsActions[] = {
+            "READ_FILE", "WRITE_FILE", "WRITE_FILE_ASYNC", "APPEND_FILE", "APPEND_FILE_BIN",
+            "RENAME", "DELETE", "EXISTS", "FORMAT", "LIST_FILES", "INFO", "STAT", "MAKE_DIR", "SHA256"
+        };
+        const uint8_t op = static_cast<uint8_t>((fsBlocked >> 16) & 0xFFu);
+        reboot["fsBlocked"] = op < 14 ? fsActions[op] : "UNKNOWN";
+        reboot["fsBlockedWaitSec"] = static_cast<uint16_t>(fsBlocked & 0xFFFFu);
+    }
+
+    String out;
+    out.reserve(measureJson(doc));
+    serializeJson(doc, out);
+    doc.clear();
+
+    SyncFsImpl.writeFile(healthEventFileName, &out);
+    log_info(F("Reboot health event saved to %s (reason=%s, marker=%s)"),
+        healthEventFileName, resetReasonStr(resetReason), markerStr(resetMarker));
 }

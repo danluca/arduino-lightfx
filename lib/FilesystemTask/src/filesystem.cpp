@@ -211,9 +211,8 @@ static bool validatePayloadKind(const FsRequest &request, const FsPayloadKind ex
     return false;
 }
 
-template<typename T>
-static T *getMutablePayload(const FsRequest &request) {
-    auto *payload = request.payload.template asMutable<T>();
+template<typename T> static T *getMutablePayload(const FsRequest &request) {
+    auto *payload = request.payload.asMutable<T>();
     if (payload != nullptr)
         return payload;
 

@@ -731,6 +731,7 @@ void web::server_setup() {
         server.serveStatic("/", SyncFsImpl, "/status/", &inFlashResources, hdCacheStatic);
         server.serveStatic("/file", SyncFsImpl, "/", nullptr, hdCacheStatic);
         server.serveStatic("/config.json", SyncFsImpl, "/status/sysconfig.json", nullptr, hdCacheJson);
+        server.serveStatic("/health.json", SyncFsImpl, healthEventFileName, nullptr, hdCacheJson);
         server.on("/status.json", HTTP_GET, handleGetStatus);
         server.on("/fx", HTTP_PUT, handlePutConfig);
         server.on("/tasks.json", HTTP_GET, handleGetTasks);

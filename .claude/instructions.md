@@ -1,7 +1,7 @@
 # RP2040 LightFX Project Context
 
 ## Project Overview
-This is an RP2040-based lighting effects controller project using the Arduino framework and PlatformIO. The target platform is the Nano RP2040 Connect board.
+This is an RP2350-based lighting effects controller project using the Arduino framework and PlatformIO. The target platform is the Pimoroni Plasma2350 W board.
 
 ## Context for Agent interactions
 - always include the following files and folders for context when interacting with the agent:
@@ -15,7 +15,7 @@ This is an RP2040-based lighting effects controller project using the Arduino fr
   - `www` for web interface
 
 ## Technical Constraints
-- **Limited Heap Memory**: Only 128KB heap available - always be mindful of memory allocations
+- **Limited Heap Memory**: Only 512KB heap available - always be mindful of memory allocations
 - **Real-time Performance**: LED effects need to run smoothly without blocking
 - **Memory Monitoring**: We have malloc wrappers and memory metrics tracking in place
 - **Re-entrant Code**: Some code needs to be re-entrant safe

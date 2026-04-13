@@ -29,6 +29,8 @@ void logSystemInfo();
 void logSystemState();
 void readSysInfo();
 void saveSysInfo();
+void saveSlownessHealthEvent(uint32_t c0Diff, uint32_t c1Diff, uint32_t fxDiff, bool isStall);
+void saveRebootHealthEvent();
 const char *taskStatusToString(eTaskState state);
 
 struct CRGB;

@@ -219,6 +219,7 @@ void setup() {
 
     sysInfo->setSysStatus(SysStatus::Setup0);
     log_info(F("Main CORE0 Setup completed, CORE1 notified of WiFi %d. System status: %#hX"), c1NtfStatus, sysInfo->getSysStatus());
+    saveRebootHealthEvent();    // must precede logSystemInfo() which clears the watchdog scratch registers
     logSystemInfo();
 }
 

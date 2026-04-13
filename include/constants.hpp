@@ -83,6 +83,7 @@ inline constexpr auto csCORE0 = "CORE0";
 inline constexpr auto csCORE1 = "CORE1";
 inline constexpr auto csFxTask = "Fx";
 inline constexpr auto csFWImageFilename = "/fw.bin";
+inline constexpr auto healthEventFileName = "/status/health_event.json";
 // Soft-reset markers stored in watchdog scratch register.
 inline constexpr uint32_t kResetMarkerNone = 0u;
 inline constexpr uint32_t kResetMarkerPanic = 0xA11CE520u;
