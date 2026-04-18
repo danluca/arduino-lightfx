@@ -33,6 +33,7 @@ volatile uint8_t saturation = 100;
 volatile uint8_t dotBpm = 30;
 volatile uint16_t hueDiff = 256;
 std::atomic<bool> stripBrightnessLocked = false;
+static bool fxStateDirty = false;  // set when FX state needs persisting; coalesces saves to one per fx_run iteration
 
 static_assert(FRAME_SIZE < NUM_PIXELS, "FRAME_SIZE must not exceed NUM_PIXELS");
 static_assert(FRAME_SIZE > 10, "FRAME_SIZE must be at least 10 pixels");
@@ -232,7 +233,7 @@ void switchToRandomEffect() {
     log_info(F("Attempting switching effect to a new random one"));
     fxRegistry.nextRandomEffectPos();
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);
-    saveFxState();
+    fxStateDirty = true;
 }
 
 //FX Run -------
@@ -249,7 +250,7 @@ void fx_run() {
             case COLOR_THEME: paletteFactory.setHoliday(static_cast<Holiday>(msg.data)); break;
             case SLEEP_ENABLED: fxRegistry.enableSleep(static_cast<bool>(msg.data)); break;
             case SLEEP_STATE: fxRegistry.setSleepState(static_cast<bool>(msg.data)); break;
-            case SAVE_STATE: saveFxState(); break;
+            case SAVE_STATE: fxStateDirty = true; break;
             case STRIP_BRIGHTNESS: {
                 const auto br = static_cast<uint8_t>(msg.data);
                 stripBrightnessLocked = br > 0;
@@ -282,6 +283,13 @@ void fx_run() {
 
     EVERY_N_MINUTES(EFFECT_SWITCH_INTERVAL_MINUTES) {
         switchToRandomEffect();
+    }
+
+    // Coalesced state save: multiple dirty sources (SAVE_STATE messages, effect switches, etc.)
+    // all set fxStateDirty and we do one FS write here, at most once per iteration.
+    if (fxStateDirty) {
+        saveFxState();
+        fxStateDirty = false;
     }
 
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageBeforeLoop;

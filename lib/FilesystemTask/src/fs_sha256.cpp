@@ -2,23 +2,7 @@
 //
 
 #include "fs_sha256.h"
-
-/**
- * Convenience for converting byte array to hex - Same as StringUtils::asHexString
- * @param data data
- * @param len size of data
- * @return data as a hex string
- */
-String byteArrayToHex(const uint8_t *data, const size_t len) {
-    String hexString;
-    hexString.reserve(len * 2);
-    for (size_t i = 0; i < len; ++i) {
-        char buffer[3];
-        snprintf(buffer, sizeof(buffer), "%02x", data[i]);
-        hexString += buffer;
-    }
-    return hexString;
-}
+#include "stringutils.h"
 
 /**
  * Computes SHA-256 hash value of the input data
@@ -38,7 +22,7 @@ String sha256(const uint8_t *data, const size_t len) {
         // Finalize the hash (writes the digest into the `result` buffer)
         pico_sha256_finish(&ctx, &result);
         // convert to hex string
-        return byteArrayToHex(result.bytes, SHA256_RESULT_BYTES);
+        return StringUtils::asHexString(result.bytes, SHA256_RESULT_BYTES);
     }
     pico_sha256_cleanup(&ctx);  //the finish already unlocks, but just in case
     return {};
@@ -56,7 +40,7 @@ String sha256(const String &data) {
 
 /**
  * Initializes an SHA-256 context - prepares to compute SHA-256 hash values
- * @return SHA-256 context created
+ * @return SHA-256 context created, or nullptr if the hardware engine is unavailable
  */
 pico_sha256_state_t * sha256_init() {
     const auto ctx = new pico_sha256_state_t;
@@ -66,7 +50,6 @@ pico_sha256_state_t * sha256_init() {
         return nullptr;
     }
     return ctx;
-    // otherwise return the context
 }
 
 /**
@@ -84,13 +67,13 @@ void sha256_update(pico_sha256_state_t *ctx, const uint8_t *data, const size_t l
 /**
  * Finishes the SHA-256 hash calculations and returns the result. Needs at least one call to sha256_update
  * @param ctx the SHA-256 context initialized by sha256_init
- * @return SHA-256 value as hex string
+ * @return SHA-256 value as hex string, or empty string if ctx is null
  */
 String sha256_final(pico_sha256_state_t *ctx) {
     if (ctx == nullptr)
-        return "ERROR: nullptr context";
+        return {};
     sha256_result_t hash;
     pico_sha256_finish(ctx, &hash);
     delete ctx;
-    return byteArrayToHex(hash.bytes, SHA256_RESULT_BYTES);
+    return StringUtils::asHexString(hash.bytes, SHA256_RESULT_BYTES);
 }

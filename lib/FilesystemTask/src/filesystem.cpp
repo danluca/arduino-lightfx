@@ -17,7 +17,9 @@
 #define MAX_DIR_LEVELS  10          // maximum number of directory levels to list (limits the recursion in the list function)
 #define FILE_BLOCK_DETECT_TICKS pdMS_TO_TICKS(1000)
 #define FILE_BLOCK_WARN_EVERY_INTERVALS 2
-static constexpr size_t kFsRequestPoolSize = 32u;
+#define FILE_COMPLETION_MAX_WAIT_SEC 4
+// Sized for: ~5 caller tasks (CORE0, CORE1, Fx, ALM, web) × 1 blocking slot each + headroom for queued async writes
+static constexpr size_t kFsRequestPoolSize = 16u;
 static constexpr uint8_t kFsBlockedScratchIndex = 2u;
 static constexpr uint32_t kFsBlockedMagic = 0xFB000000u;
 
@@ -26,7 +28,6 @@ static constexpr uint32_t kFsBlockedMagic = 0xFB000000u;
 #define FIRMWARE_BIN_FILE "/firmware.bin"                  // additional FW upgrade file related to OTA_COMMAND_FILE
 
 SynchronizedFS SyncFsImpl;
-FS SyncLittleFS(FSImplPtr(&SyncFsImpl));
 static auto rootDir = FS_PATH_SEPARATOR;
 
 //ahead definitions
@@ -64,12 +65,12 @@ struct FsPayload {
 };
 
 struct FsRequest {
-    enum class Action : uint8_t { READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, APPEND_FILE_BIN, RENAME,
+    enum class Action : uint8_t { NONE = 0, READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, APPEND_FILE_BIN, RENAME,
         DELETE, EXISTS, FORMAT, LIST_FILES, INFO, STAT, MAKE_DIR, SHA256 };
 
     enum class PayloadStorage : uint8_t { NONE, BORROWED, REQUEST_STRING };
 
-    Action action = Action::FORMAT;
+    Action action = Action::NONE;
     TaskHandle_t replyTask = nullptr;
     String path{};
     FsPayload payload{};
@@ -79,7 +80,7 @@ struct FsRequest {
     String ownedString{};
 
     void reset() {
-        action = Action::INFO;
+        action = Action::NONE;
         replyTask = nullptr;
         path = "";
         payload.reset();
@@ -129,6 +130,7 @@ static FsRequestPool gFsRequestPool;
 
 [[maybe_unused]] static const char* fsActionToString(const FsRequest::Action action) {
     switch (action) {
+        case FsRequest::Action::NONE: return "NONE";
         case FsRequest::Action::READ_FILE: return "READ_FILE";
         case FsRequest::Action::WRITE_FILE: return "WRITE_FILE";
         case FsRequest::Action::WRITE_FILE_ASYNC: return "WRITE_FILE_ASYNC";
@@ -190,6 +192,11 @@ static FsRequest *makeOwnedStringRequest(const FsRequest::Action action, const c
 static bool enqueueFsRequest(const QueueHandle_t queue, FsRequest *request) {
     if (request == nullptr)
         return false;
+    if (queue == nullptr) {
+        log_error(F("FS not initialized — call begin() before issuing FS operations"));
+        gFsRequestPool.release(request);
+        return false;
+    }
 
     auto *queuedRequest = request;
     const BaseType_t qResult = xQueueSend(queue, &queuedRequest, 0);
@@ -199,6 +206,17 @@ static bool enqueueFsRequest(const QueueHandle_t queue, FsRequest *request) {
         return false;
     }
     return true;
+}
+
+/**
+ * Clears any pending task notification then enqueues the request. Must be called instead of enqueueFsRequest
+ * for all blocking callers so that a stale notification from a prior timed-out operation cannot be confused
+ * with the response to the current one. Clearing happens before enqueue — at that moment no notification
+ * from the current request can exist yet, so nothing real is discarded.
+ */
+static bool clearAndEnqueueFsRequest(const QueueHandle_t queue, FsRequest *request) {
+    xTaskNotifyStateClear(nullptr);
+    return enqueueFsRequest(queue, request);
 }
 
 static bool validatePayloadKind(const FsRequest &request, const FsPayloadKind expected) {
@@ -221,11 +239,12 @@ template<typename T> static T *getMutablePayload(const FsRequest &request) {
 }
 
 /**
- * Waits for FS task completion without a hard timeout. It emits periodic warnings if an operation appears blocked.
+ * Waits for FS task completion with a hard timeout. It emits periodic warnings if an operation appears blocked.
+ * Callers must use clearAndEnqueueFsRequest (not enqueueFsRequest directly) so that any stale notification
+ * from a prior timed-out operation is cleared before the new request is sent.
  */
 static uint32_t waitForFsCompletion(const FsRequest::Action action, const char *path, const QueueHandle_t queue) {
-    constexpr TickType_t minTicks = 1;
-    const TickType_t detectTicks = FILE_BLOCK_DETECT_TICKS > 0 ? FILE_BLOCK_DETECT_TICKS : minTicks;
+    const TickType_t detectTicks = FILE_BLOCK_DETECT_TICKS > 0 ? FILE_BLOCK_DETECT_TICKS : 1;
 
     uint32_t intervals = 0;
     for (;;) {
@@ -241,11 +260,15 @@ static uint32_t waitForFsCompletion(const FsRequest::Action action, const char *
 
         ++intervals;
         const uint32_t waitedSeconds = (intervals * detectTicks * portTICK_PERIOD_MS) / 1000u;
-        watchdog_hw->scratch[kFsBlockedScratchIndex] =
-            kFsBlockedMagic | (static_cast<uint32_t>(action) << 16) | (waitedSeconds & 0xFFFFu);
+        watchdog_hw->scratch[kFsBlockedScratchIndex] = kFsBlockedMagic | (static_cast<uint32_t>(action) << 16) | (waitedSeconds & 0xFFFFu);
         if (intervals == 1 || (intervals % FILE_BLOCK_WARN_EVERY_INTERVALS) == 0) {
             log_error(F("FS operation %s for %s blocked for %lu ms. caller=%s queueDepth=%u"), fsActionToString(action), (path && *path) ? path : "<none>",
                 intervals * detectTicks * portTICK_PERIOD_MS, pcTaskGetName(nullptr), static_cast<unsigned>(uxQueueMessagesWaiting(queue)));
+        }
+        if (waitedSeconds >= FILE_COMPLETION_MAX_WAIT_SEC) {
+            log_error(F("FS operation %s for %s took too long (%lu ms). caller=%s queueDepth=%u"), fsActionToString(action), (path && *path) ? path : "<none>",
+                intervals * detectTicks * portTICK_PERIOD_MS, pcTaskGetName(nullptr), static_cast<unsigned>(uxQueueMessagesWaiting(queue)));
+            return 0;
         }
     }
 }
@@ -314,17 +337,16 @@ static void logFiles(FS& fs, const char *startPath, String &s, const std::functi
  * @param path accumulated absolute path of the directory
  * @param callback callback to execute for each directory entry
  */
-static void listFiles(FS& fs, String &path, const std::function<void(const FileInfo&)> &callback) {
+static void listFiles(FS& fs, const String &path, const std::function<void(const FileInfo&)> &callback) {
     Dir dir = fs.openDir(path);
     while (dir.next()) {
         FileInfo fInfo {dir.fileName(), path, dir.fileSize(), dir.fileTime(), dir.isDirectory()};
         callback(fInfo);
         if (fInfo.isDir) {
-            path.concat(FS_PATH_SEPARATOR);
-            path.concat(fInfo.name);
-            Dir d = fs.openDir(path);
-            listFiles(fs, path, callback);
-            path.remove(path.length()-fInfo.name.length()-1);
+            String childPath = path;
+            if (!(childPath.length() == 1 && childPath[0] == '/')) childPath.concat(FS_PATH_SEPARATOR);
+            childPath.concat(fInfo.name);
+            listFiles(fs, childPath, callback);
         }
     }
 }
@@ -472,9 +494,11 @@ void fsExecute() {
     if (request->replyTask != nullptr) {
         xTaskNotify(request->replyTask, result, eSetValueWithOverwrite);
     }
-    if (request->completionQueue != nullptr && completionSuccess) {
+    if (request->completionQueue != nullptr) {
+        // Always notify regardless of success so callers are never left waiting indefinitely.
+        // Failures are already logged above; the caller can detect them via the result value if needed.
         if (xQueueSend(request->completionQueue, &request->completionId, 0) != pdTRUE) {
-            log_error(F("Failed to post async write completion for %s"), request->path.c_str());
+            log_error(F("Failed to post async completion for %s"), request->path.c_str());
         }
     }
 
@@ -498,12 +522,6 @@ SynchronizedFS::~SynchronizedFS() {
     Scheduler.stopTask(fsTask);
     if (fsPtr)
         fsPtr->end();
-}
-
-bool SynchronizedFS::setConfig(const FSConfig &cfg) {
-    if (fsPtr)
-        return fsPtr->setConfig(cfg);
-    return false;
 }
 
 bool SynchronizedFS::begin() {
@@ -547,7 +565,7 @@ size_t SynchronizedFS::readFile(const char *fname, String *s) const {
     log_info(F("Sending READ_FILE message to filesystem task for file name %s"), fname);
 
     size_t sz = 0;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         //wait for the filesystem task to finish and notify us
         sz = waitForFsCompletion(FsRequest::Action::READ_FILE, fname, queue);
         if (sz == 0)
@@ -560,12 +578,19 @@ size_t SynchronizedFS::readFile(const char *fname, String *s) const {
 
 /**
  * Blocking function that writes the string content into a file with provided name. Can be called from any task.
+ * Uses an owned copy of the string so the caller may free it immediately after this call returns, even on timeout.
+ * A timeout means the FS task is congested; the write will still complete, but this call returns 0 early.
  * @param fname file name to write into
  * @param s content to write
  * @return number of bytes written - 0 if there was an error (e.g. timeout)
  */
 size_t SynchronizedFS::writeFile(const char *fname, const String *s) const {
-    auto *request = makeBorrowedRequest(FsRequest::Action::WRITE_FILE, xTaskGetCurrentTaskHandle(), fname, s, FsPayloadKind::STRING);
+    if (fname == nullptr || s == nullptr) {
+        log_error(F("writeFile: invalid parameters (fname=%p, s=%p)"), fname, s);
+        return 0;
+    }
+    // makeOwnedStringRequest copies *s into the request so the caller can free it after this call returns.
+    auto *request = makeOwnedStringRequest(FsRequest::Action::WRITE_FILE, fname, *s, nullptr, 0, xTaskGetCurrentTaskHandle());
     if (request == nullptr) {
         log_error(F("Failed to create request to write file - request pool likely full: fname=%s"), fname);
         return 0;
@@ -573,7 +598,7 @@ size_t SynchronizedFS::writeFile(const char *fname, const String *s) const {
     log_info(F("Sending WRITE_FILE message to filesystem task for file name %s"), fname);
 
     size_t sz = 0;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         //wait for the filesystem task to finish and notify us
         sz = waitForFsCompletion(FsRequest::Action::WRITE_FILE, fname, queue);
         if (sz == 0)
@@ -611,12 +636,18 @@ bool SynchronizedFS::writeFileAsync(const char *fname, const String *s, const Qu
 /**
  * Blocking function that appends the string content into a file with given name. Can be called from any task.
  * The file is created if it doesn't already exist (similar with writeFile); if it exists the content is appended at the end of the file.
+ * Uses an owned copy of the string so the caller may free it immediately after this call returns, even on timeout.
  * @param fname file path to append to - does not have to exist
  * @param s content to write
  * @return true if successfully appended to, false otherwise
  */
 size_t SynchronizedFS::appendFile(const char *fname, const String *s) const {
-    auto *request = makeBorrowedRequest(FsRequest::Action::APPEND_FILE, xTaskGetCurrentTaskHandle(), fname, s, FsPayloadKind::STRING);
+    if (fname == nullptr || s == nullptr) {
+        log_error(F("appendFile: invalid parameters (fname=%p, s=%p)"), fname, s);
+        return 0;
+    }
+    // makeOwnedStringRequest copies *s into the request so the caller can free it after this call returns.
+    auto *request = makeOwnedStringRequest(FsRequest::Action::APPEND_FILE, fname, *s, nullptr, 0, xTaskGetCurrentTaskHandle());
     if (request == nullptr) {
         log_error(F("Failed to create request to append file - request pool likely full: fname=%s"), fname);
         return 0;
@@ -624,7 +655,7 @@ size_t SynchronizedFS::appendFile(const char *fname, const String *s) const {
     log_info(F("Sending APPEND_FILE message to filesystem task for file name %s"), fname);
 
     size_t sz = 0;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         //wait for the filesystem task to finish and notify us
         sz = waitForFsCompletion(FsRequest::Action::APPEND_FILE, fname, queue);
         if (sz == 0)
@@ -644,7 +675,7 @@ size_t SynchronizedFS::appendFile(const char *fname, const uint8_t *buffer, cons
     log_info(F("Sending APPEND_FILE_BIN message to filesystem task for file name %s for %zu bytes"), fname, size);
 
     size_t sz = 0;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         //wait for the filesystem task to finish and notify us
         sz = waitForFsCompletion(FsRequest::Action::APPEND_FILE_BIN, fname, queue);
         if (sz == 0)
@@ -669,7 +700,7 @@ bool SynchronizedFS::remove(const char *path) {
     log_info(F("Sending DELETE_FILE message to filesystem task for file name %s"), path);
 
     bool success = false;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         success = waitForFsCompletion(FsRequest::Action::DELETE, path, queue);
         if (!success)
             log_error(F("Error deleting file %s - error waiting for completion"), path);
@@ -695,7 +726,7 @@ bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
     log_info(F("Sending RENAME message to filesystem task for file name %s"), pathFrom);
 
     bool success = false;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         success = waitForFsCompletion(FsRequest::Action::RENAME, pathFrom, queue);
         if (!success)
             log_error(F("Error renaming file %s - error waiting for completion"), pathFrom);
@@ -719,7 +750,7 @@ bool SynchronizedFS::exists(const char *fname) {
     log_info(F("Sending FILE_EXISTS message to filesystem task for file name %s"), fname);
 
     bool exists = false;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         exists = waitForFsCompletion(FsRequest::Action::EXISTS, fname, queue);
         if (!exists)
             log_info(F("File %s does not exist"), fname);
@@ -742,7 +773,7 @@ bool SynchronizedFS::format() {
     log_info(F("Sending FORMAT message to filesystem task"));
 
     bool formatted = false;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         formatted = waitForFsCompletion(FsRequest::Action::FORMAT, nullptr, queue);
         if (!formatted)
             log_error(F("Error formatting file system - error waiting for completion"));
@@ -767,7 +798,7 @@ bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
     log_info(F("Sending LIST_FILES message to filesystem task for path %s"), path);
 
     bool completed = false;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         completed = waitForFsCompletion(FsRequest::Action::LIST_FILES, path, queue);
         if (!completed)
             log_error(F("Error listing files from path %s - error waiting for completion"), path);
@@ -792,7 +823,7 @@ bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
     log_info(F("Sending INFO message to filesystem task for path %s"), path);
 
     bool successful = false;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         successful = waitForFsCompletion(FsRequest::Action::INFO, path, queue);
         if (!successful)
             log_error(F("Error retrieving file info for path %s - error waiting for completion"), path);
@@ -813,7 +844,7 @@ bool SynchronizedFS::stat(const char *path, FSStat *st) {
     log_info(F("Sending STAT message to filesystem task for path %s"), path);
 
     bool successful = false;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         successful = waitForFsCompletion(FsRequest::Action::STAT, path, queue);
         if (!successful)
             log_error(F("Error retrieving file info for path %s - error waiting for completion"), path);
@@ -836,7 +867,7 @@ String SynchronizedFS::sha256(const char *path) const {
     log_info(F("Sending SHA256 message to filesystem task for path %s"), path);
 
     bool successful = false;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         successful = waitForFsCompletion(FsRequest::Action::SHA256, path, queue);
         if (!successful)
             log_error(F("Error calculating SHA-256 hash for path %s - error waiting for completion"), path);
@@ -863,7 +894,7 @@ bool SynchronizedFS::info(FSInfo &info) {
 bool SynchronizedFS::mkdir(const char *path) {
     auto *request = makeBorrowedRequest(FsRequest::Action::MAKE_DIR, xTaskGetCurrentTaskHandle(), path);
     bool success = false;
-    if (enqueueFsRequest(queue, request)) {
+    if (clearAndEnqueueFsRequest(queue, request)) {
         success = waitForFsCompletion(FsRequest::Action::MAKE_DIR, path, queue);
         if (!success)
             log_error(F("Error creating directory %s - error waiting for completion"), path);
@@ -1053,7 +1084,7 @@ bool SynchronizedFS::prvList(const char *path, std::deque<FileInfo> *fiList) con
         log_error(F("Path %s does not exist, no files listed"), path);
         return false;
     }
-    String dirPath = path;
+    const String dirPath = path;
     auto captureFile = [&fiList](const FileInfo &info) { fiList->push_back(info); };
     listFiles(*fsPtr, dirPath, captureFile);
     return true;
@@ -1108,6 +1139,11 @@ bool SynchronizedFS::prvSha256(const char *path, String *sha256) const {
         return false;
     }
     pico_sha256_state_t* ctx = sha256_init();
+    if (ctx == nullptr) {
+        log_error(F("SHA-256 hardware engine unavailable for %s — try again later"), path);
+        f.close();
+        return false;
+    }
     size_t fSize = 0;
     uint8_t buf[FILE_BUF_SIZE]{};
     while (const size_t charsRead = f.read(buf, FILE_BUF_SIZE)) {

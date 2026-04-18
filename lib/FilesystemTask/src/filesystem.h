@@ -6,7 +6,6 @@
 
 #include <Arduino.h>
 #include <FS.h>
-#include <FSImpl.h>
 #include <functional>
 #include <deque>
 #include "SchedulerExt.h"
@@ -26,7 +25,12 @@ struct FileInfo {
     bool isDir = false;
 };
 
-class SynchronizedFS : public FSImpl {
+/**
+ * Thread-safe filesystem wrapper that routes all operations through a dedicated FreeRTOS task.
+ * Direct file handle access (open/openDir) is intentionally unsupported — file handles cannot
+ * safely cross task boundaries with LittleFS.
+ */
+class SynchronizedFS {
     FS* fsPtr{};
     QueueHandle_t queue{};
     TaskWrapper* fsTask{};
@@ -34,41 +38,26 @@ class SynchronizedFS : public FSImpl {
 public:
     SynchronizedFS();
     explicit SynchronizedFS(FS& fs);
-    ~SynchronizedFS() override;
+    ~SynchronizedFS();
 
-    bool setConfig(const FSConfig &cfg) override;
-    bool begin() override;
+    bool begin();
     bool begin(FS &fs);
-    void end() override;
-    bool format() override;
-    bool info(FSInfo &info) override;
-    //not supported - we'd have to experiment with getting a File pointer out from another task and whether multiple file objects can be used concurrently
-    //at first glance, the LittleFSFileImpl does make use of the LittleFS instance, indicating it may not be thread safe...
-    FileImplPtr open(const char *path, OpenMode openMode, AccessMode accessMode) override {
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-        Serial.println("SynchronizedFS::open not supported");
-#endif
-        return nullptr;
-    };
-    DirImplPtr openDir(const char *path) override {
-#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
-        Serial.println("SynchronizedFS::openDir not supported");
-#endif
-        return nullptr;
-    };
-    bool exists(const char *path) override;
-    bool rename(const char *pathFrom, const char *pathTo) override;
-    bool remove(const char *path) override;
-    bool mkdir(const char *path) override;
-    bool rmdir(const char *path) override;
-    bool stat(const char *path, FSStat *st) override;
+    void end();
+    bool format();
+    bool info(FSInfo &info);
+    bool exists(const char *path);
+    bool rename(const char *pathFrom, const char *pathTo);
+    bool remove(const char *path);
+    bool mkdir(const char *path);
+    bool rmdir(const char *path);
+    bool stat(const char *path, FSStat *st);
     bool stat(const char *path, FileInfo *info) const;
     String sha256(const char *path) const;
 
     size_t readFile(const char *fname, String *s) const;
     size_t writeFile(const char *fname, const String *s) const;
     size_t appendFile(const char *fname, const String *s) const;
-    size_t appendFile(const char *fname, const uint8_t *buffer, const size_t size) const;
+    size_t appendFile(const char *fname, const uint8_t *buffer, size_t size) const;
     bool writeFileAsync(const char *fname, const String *s, QueueHandle_t completionQueue = nullptr, uint16_t completionId = 0) const;
     bool list(const char *path, std::deque<FileInfo> *list) const;
 
