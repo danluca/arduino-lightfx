@@ -49,8 +49,8 @@ class WebClient {
     [[nodiscard]] HTTPRaw& raw() const { return *_rawBody; }
     [[nodiscard]] WebRequest& request() const { return *_request; }
     [[nodiscard]] HTTPClientStatus status() const { return _status; }
-    // this client's (unique) identifier - usually leveraging underlying WiFiClient socket number
-    [[nodiscard]] uint8_t clientID() const { return _clientID; }
+    // this client's (unique) identifier - client's remote ephemeral port, unique per connection
+    [[nodiscard]] uint16_t clientID() const { return _clientID; }
     [[nodiscard]] IPAddress remoteIP() const { return _remoteIP; }
     // time when client handling started - for metrics
     [[nodiscard]] time_t startHandlingTime() const { return _startHandlingTime; }
@@ -158,7 +158,8 @@ protected:
     size_t           _contentWritten;
     String           _responseHeaders;
     bool             _chunked;
-    uint8_t          _clientID;
+    bool             _closed{false};
+    uint16_t         _clientID;
 };
 
 #endif //WEBCLIENT_H

@@ -78,7 +78,8 @@ void Timezone::calcTimeChanges(const int year) {
  * @param stdStart
  * @param name
  */
-Timezone::Timezone(const TimeChangeRule &dstStart, const TimeChangeRule &stdStart, const char* name): m_dst(dstStart), m_std(stdStart), mutex() {
+Timezone::Timezone(const TimeChangeRule &dstStart, const TimeChangeRule &stdStart, const char* name): m_dst(dstStart), m_std(stdStart) {
+    mutex_init(&mutex);
     strncpy(m_name, name, sizeof(m_name)-1);
 }
 
@@ -87,7 +88,8 @@ Timezone::Timezone(const TimeChangeRule &dstStart, const TimeChangeRule &stdStar
  * @param stdTime
  * @param name
  */
-Timezone::Timezone(const TimeChangeRule &stdTime, const char* name) : m_dst(stdTime), m_std(stdTime), mutex() {
+Timezone::Timezone(const TimeChangeRule &stdTime, const char* name) : m_dst(stdTime), m_std(stdTime) {
+    mutex_init(&mutex);
     strncpy(m_name, name, sizeof(m_name)-1);
 }
 
@@ -142,20 +144,15 @@ time_t Timezone::toUTC(const time_t &local) {
  * @return the pointer to the DST structure for year provided
  */
 const dstTransitions * Timezone::getTransitions(const int year) {
-    // find a DST transitions structure for the year; make a new one if we don't have it
-    const dstTransitions *transitions = nullptr;
+    // Entire search-or-create is under the mutex to prevent two tasks from computing the same year concurrently,
+    // which would fill the fixed-size queue with duplicate entries and evict older valid ones.
+    CoreMutex coreMutex(&mutex);
     for (auto const &t : currentTransitions) {
-        if (t.m_year == static_cast<uint>(year)) {
-            transitions = &t;
-            break;
-        }
+        if (t.m_year == static_cast<uint>(year))
+            return &t;
     }
-    if (transitions == nullptr) {
-        CoreMutex coreMutex(&mutex);
-        calcTimeChanges(year);
-        transitions = &currentTransitions.back();   //last entry in the current transitions is the one we just made for the year yr
-    }
-    return transitions;
+    calcTimeChanges(year);
+    return &currentTransitions.back();
 }
 
 /**

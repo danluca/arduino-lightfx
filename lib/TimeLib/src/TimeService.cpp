@@ -217,26 +217,16 @@ time_t nowMillis() {
  * @return The current UTC time in milliseconds since January 1, 1970.
  */
 time_t utcNowMillis() {
-  const time_t sysClock = timeService.getLocalClockMillisFunc();  // current milliseconds since boot
-  const time_t utcMillis = (sysClock - timeService.syncLocalMillis) + timeService.syncUnixMillis + timeService.drift;  //current UTC time in millis
-  return utcMillis;
+  return timeService.utcFromRtcMillis(timeService.getLocalClockMillisFunc());
 }
 
 /**
  * Converts the given RTC timestamp in milliseconds to UTC time in milliseconds.
- * The calculation adjusts the provided rtcMillis value using the current synchronized
- * local time (syncLocalMillis), the synchronized UTC time (syncUnixMillis),
- * and the applied drift correction.
- *
- * This method operates similarly to utcNowMillis but avoids additional function
- * calls for improved efficiency by reducing stack depth.
- *
  * @param rtcMillis A reference to the time in milliseconds, as retrieved from the RTC.
  * @return The corresponding UTC time in milliseconds since January 1, 1970.
  */
 time_t TimeService::utcFromRtcMillis(const time_t &rtcMillis) const {
-  // similar logic with the utcNowMillis - repeated rather than doing a function call for efficiency (less stack depth)
-  return (rtcMillis - syncLocalMillis) + syncUnixMillis + drift;  //current UTC time in millis
+  return (rtcMillis - syncLocalMillis) + syncUnixMillis + drift;
 }
 
 /**
@@ -266,11 +256,12 @@ void TimeService::setTime(const time_t t) {
   breakTime(t, tm);
   datetime_t dt {};
   rtc_get_datetime(&dt);
-  const bool timeNeedsUpdate = dt.year != tm.tm_year || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
+  const int16_t fullYear = static_cast<int16_t>(tm.tm_year + TM_EPOCH_YEAR);
+  const bool timeNeedsUpdate = dt.year != fullYear || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
                           dt.hour != tm.tm_hour || dt.min != tm.tm_min; //tolerate 1 min drift
 
   if (timeNeedsUpdate) {
-    dt.year = static_cast<int16_t>(tm.tm_year);
+    dt.year = fullYear;
     dt.month = static_cast<int8_t>(tm.tm_mon+1);
     dt.day = static_cast<int8_t>(tm.tm_mday);
     dt.hour = static_cast<int8_t>(tm.tm_hour);
@@ -296,7 +287,7 @@ void TimeService::setTime(const time_t t) {
  */
 time_t TimeService::setTime(const uint16_t hr, const uint16_t min, const uint16_t sec, const uint16_t day, const uint16_t month, const int year, const int offset) {
   tmElements_t tm{};
-  tm.tm_year = year;
+  tm.tm_year = year - TM_EPOCH_YEAR;  // makeTime interprets tm_year as years since 1900
   tm.tm_mon = month == 0 ? month : month-1;  //per https://en.cppreference.com/w/c/chrono/tm.html the tm_mon field uses 0-11 range
   tm.tm_mday = day;
   tm.tm_hour = hr;
@@ -311,11 +302,12 @@ time_t TimeService::setTime(const uint16_t hr, const uint16_t min, const uint16_
 #ifdef PICO_RP2040
   datetime_t dt{};
   rtc_get_datetime(&dt);
-  const bool timeNeedsUpdate = dt.year != tm.tm_year || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
+  const int16_t fullYear = static_cast<int16_t>(tm.tm_year + TM_EPOCH_YEAR);
+  const bool timeNeedsUpdate = dt.year != fullYear || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
                           dt.hour != tm.tm_hour || dt.min != tm.tm_min; // tolerate 1 min drift
 
   if (timeNeedsUpdate) {
-    dt.year = static_cast<int16_t>(tm.tm_year);
+    dt.year = fullYear;
     dt.month = static_cast<int8_t>(tm.tm_mon+1);
     dt.day = static_cast<int8_t>(tm.tm_mday);
     dt.hour = static_cast<int8_t>(tm.tm_hour);

@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef TIMEFORMAT_H
@@ -10,10 +10,8 @@
 class TimeFormat {
 public:
     static size_t toString(const time_t &time, String &str);
-    static size_t toString(const time_t &time, const char* formatter, String &str);
     static String asString(const time_t &time, bool includeTZ = true);
     static String asStringMs(const time_t &timeMs, bool includeTZ = true);
-    static String asString(const time_t &time, const char* formatter, bool includeTZ = true);
     static String dateAsString(const time_t &time);
     static String timeAsString(const time_t &time, bool includeTZ = false);
     /* date strings */

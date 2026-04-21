@@ -26,18 +26,18 @@
  * TASK ALLOCATIONS
  * First Core
  *   - CORE0 (default task - setup, loop) - Web and communications, lowered priority (5)
- *   - ALM - alarm processing and some misc actions (inherited priority - 5)
- *   - FS - filesystem interaction (raised priority from calling task - 7)
- *   - IdleCore0 - default kernel tasks (high priority - 11), used to stop temporarily first core
- * NOTE: The USB task is bound to first core (high priority - 10), however, the task is disabled in release mode.
+ *   - ALM - alarm processing and misc actions, priority (5)
+ *   - FS - filesystem interaction, raised priority from calling task (7); queue-driven, ops are brief
+ *   - IdleCore0 - kernel task (priority 11), used to temporarily stop first core
+ * NOTE: The USB task is bound to first core (priority 10), disabled in release mode.
  *
  * Second Core
- *   - CORE1 (default task - setup1, loop1) - Diag - diagnostic tasks, interaction with I2C devices, regular priority (6)
- *   - FX - light effects (regular priority - 6)
- *   - IdleCore1 - default kernel task (high priority - 11), used to stop temporarily second core
+ *   - CORE1 (default task - setup1, loop1) - Diag - diagnostic tasks, interaction with I2C devices, priority (6)
+ *   - FX - light effects, priority (7); yields naturally between frames, giving Diag ~30ms slots
+ *   - IdleCore1 - kernel task (priority 11), used to temporarily stop second core
  *
- * Following kernel tasks are set to run on either core (core affinity 0xFFFFFFFF):
- *   - SRL - serial logging, enabled for either core, started from a Core0 task (regular priority - 6)
+ * Following tasks run on either core (core affinity 0xFFFFFFFF):
+ *   - SRL - serial logging, priority (4); below all app tasks, drains during web/ALM yield gaps
  *   - IDLE0, IDLE1, Tmr Svc
  * CORE0, CORE1 tasks are created with a default 1024 bytes of stack, fixed size
  * There seem to be this odd coupling between FX and Mic tasks, if both are enabled they need to be on the same core.

@@ -298,7 +298,7 @@ void logTaskStats() {
     logHeapStats();
     struct mallinfo mf = mallinfo();
     log_info(F("Malloc memory stats: allocated=%u, used=%u, free=%u"), mf.arena, mf.uordblks, mf.fordblks);
-    log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinBufferSpace());
+    log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinFreeSpace());
 #endif
 }
 
@@ -379,7 +379,7 @@ void SysInfo::heapStats(JsonObject &doc) {
 #endif
 
 #if LOGGING_ENABLED == 1
-    doc["logMinBufferSpace"] = Log.getMinBufferSpace();
+    doc["logMinBufferSpace"] = Log.getMinFreeSpace();
 #endif
 }
 

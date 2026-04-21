@@ -29,10 +29,10 @@ FunctionRequestHandler::~FunctionRequestHandler() {
  * @return true if this handler's locator coordinates match; false otherwise
  */
 bool FunctionRequestHandler::match(const String &requestUri, const HTTPMethod method) const {
-     if (_method != HTTP_ANY && _method != method)
-         return false;
-     std::vector<String> pathArgs;
-     return _uri->canHandle(requestUri, pathArgs);
+    if (_method != HTTP_ANY && method != HTTP_ANY && _method != method)
+        return false;
+    std::vector<String> pathArgs;
+    return _uri->canHandle(requestUri, pathArgs);
 }
 
 bool FunctionRequestHandler::canHandle(WebClient &client) {
@@ -50,10 +50,9 @@ bool FunctionRequestHandler::canUpload(WebClient &client) {
 }
 
 bool FunctionRequestHandler::canRaw(WebClient &client) {
-    if (!_ufn || _method == HTTP_GET || (_filter != nullptr ? _filter(client) == false : false))
+    if (!_ufn || _method == HTTP_GET)
         return false;
-
-    return true;
+    return canHandle(client);
 }
 
 bool FunctionRequestHandler::handle(WebClient &client) {
@@ -92,11 +91,11 @@ StaticFileRequestHandler::StaticFileRequestHandler(FS &fs, const char *path, con
 }
 
 bool StaticFileRequestHandler::match(const String &requestUri, const HTTPMethod method) const {
-     if (method != HTTP_GET)
-         return false;
-     if ((_isFile && requestUri != _uri) || !requestUri.startsWith(_uri))
-         return false;
-     return true;
+    if (method != HTTP_GET && method != HTTP_ANY)
+        return false;
+    if ((_isFile && requestUri != _uri) || !requestUri.startsWith(_uri))
+        return false;
+    return true;
 }
 
 bool StaticFileRequestHandler::canHandle(WebClient &client) {
@@ -161,11 +160,11 @@ StaticSyncFileRequestHandler::StaticSyncFileRequestHandler(const SynchronizedFS 
 }
 
 bool StaticSyncFileRequestHandler::match(const String &requestUri, const HTTPMethod method) const {
-     if (method != HTTP_GET)
-         return false;
-     if ((_isFile && requestUri != _uri) || !requestUri.startsWith(_uri))
-         return false;
-     return true;
+    if (method != HTTP_GET && method != HTTP_ANY)
+        return false;
+    if ((_isFile && requestUri != _uri) || !requestUri.startsWith(_uri))
+        return false;
+    return true;
 }
 
 bool StaticSyncFileRequestHandler::canHandle(WebClient& client) {
@@ -192,14 +191,13 @@ bool StaticSyncFileRequestHandler::handle(WebClient& client) {
 
     const String contentType = mime::getContentType(path);
 
-    const auto content = new String();
-    _fs.readFile(path.c_str(), content);
+    String content;
+    _fs.readFile(path.c_str(), &content);
 
     if (_cache_header.length() != 0)
         client.addResponseHeader(F("Cache-Control"), _cache_header);
 
-    client.streamData(*content, contentType);
-    delete content;
+    client.streamData(content.c_str(), content.length(), contentType);
     return true;
 }
 
@@ -228,15 +226,14 @@ StaticInMemoryRequestHandler::StaticInMemoryRequestHandler(const std::map<std::s
 }
 
 bool StaticInMemoryRequestHandler::match(const String &requestUri, const HTTPMethod method) const {
-     if (method != HTTP_GET) {
-         return false;
-     }
-     String path;
-     getPath(requestUri, path);
-     path.toLowerCase();
-     if (const std::string pathStr = path.c_str(); _inMemResources.find(pathStr) == _inMemResources.end())
-         return false;
-     return true;
+    if (method != HTTP_GET && method != HTTP_ANY)
+        return false;
+    String path;
+    getPath(requestUri, path);
+    path.toLowerCase();
+    if (const std::string pathStr = path.c_str(); _inMemResources.find(pathStr) == _inMemResources.end())
+        return false;
+    return true;
 }
 
 bool StaticInMemoryRequestHandler::canHandle(WebClient& client) {

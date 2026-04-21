@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef TIMESERVICE_H
@@ -54,7 +54,7 @@ int localHour(time_t t); // the hour for the given time in local timezone (0-23)
 int localMinute(time_t t); // the minute for the given time in local timezone (0-59)
 int localSecond(time_t t); // the second for the given time in local timezone (0-59)
 int localDay(time_t t); // the day for the given time in local timezone (1-31)
-int localWeekday(time_t t); // the weekday for the given time in local timezone (1-7, Sunday is 1)
+int localWeekday(time_t t); // the weekday for the given time in local timezone (0-6, Sunday is 0)
 int localMonth(time_t t); // the month for the given time in local timezone (1-12, Jan is 1)
 int localYear(time_t t); // the year for the given time in local timezone
 int localDayOfYear(time_t t); // the day of the year for the given time in local timezone (1-366)
@@ -67,9 +67,11 @@ time_t utcNowMillis();  // return the current UTC time as milliseconds since Jan
 class TimeService {
     NTPClient ntpClient;
     getSystemLocalClock getLocalClockMillisFunc;
-    time_t syncUnixMillis {0};    // the absolute time - matching syncLocalMillis - when this cache was updated last. In UTC millis since 1/1/1970
-    time_t syncLocalMillis {0};   // the last cached millis() value
-    time_t drift {0};           // the current drift adjustment in milliseconds (to be applied as a correction to absolute time)
+    // Note: the three fields below store millisecond values despite using time_t (a seconds-typed alias).
+    // time_t on this platform is int64_t, so there is no overflow risk for the foreseeable future.
+    time_t syncUnixMillis {0};    // UTC milliseconds since 1/1/1970 at the last sync point
+    time_t syncLocalMillis {0};   // millis() value captured at the last sync point
+    time_t drift {0};             // cumulative drift correction in milliseconds
     Timezone *tz {};
 
 public:

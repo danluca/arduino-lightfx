@@ -75,7 +75,7 @@ size_t prvAppend(String &str, const char *fmt, va_list args) {
     // Compute the required size without consuming the original va_list
     va_list argsCopy;
     va_copy(argsCopy, args);
-    const size_t sz = vsnprintf(nullptr, 0, fmt, argsCopy) + 1; //account for '/n' terminating char
+    const size_t sz = vsnprintf(nullptr, 0, fmt, argsCopy) + 1; //account for '\0' null terminator not counted by vsnprintf
     va_end(argsCopy);
 
     // Allocate exact-size temporary buffer on heap to avoid large stack frames

@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 by Dan Luca. All rights reserved.
+// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef TIMEDEF_H
@@ -40,9 +40,9 @@ typedef enum {
 #define nextSunday(_time_) (previousSunday(_time_)+SECS_PER_WEEK)          // time at the end of the week for the given time
 
 /* Useful Macros for converting elapsed time to a time_t */
-#define minutesToTime_t ((M)) ( (M) * SECS_PER_MIN)
-#define hoursToTime_t   ((H)) ( (H) * SECS_PER_HOUR)
-#define daysToTime_t    ((D)) ( (D) * SECS_PER_DAY)
-#define weeksToTime_t   ((W)) ( (W) * SECS_PER_WEEK)
+#define minutesToTime_t(M) ((M) * SECS_PER_MIN)
+#define hoursToTime_t(H)   ((H) * SECS_PER_HOUR)
+#define daysToTime_t(D)    ((D) * SECS_PER_DAY)
+#define weeksToTime_t(W)   ((W) * SECS_PER_WEEK)
 
 #endif //TIMEDEF_H

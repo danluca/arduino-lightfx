@@ -1,4 +1,4 @@
-// Copyright (c) 2024 by Dan Luca. All rights reserved.
+// Copyright (c) 2024,2026 by Dan Luca. All rights reserved.
 //
 
 #pragma once
@@ -33,7 +33,7 @@ namespace LogUtil {
 
         void push_back(const T value[], const size_t sz) {
             CoreMutex coreMutex(&mutex_);
-            size_t i = sz > capacity() ? sz - capacity() : 0;
+            size_t i = sz > buffer_.size() ? sz - buffer_.size() : 0;
             for (; i < sz; ++i) {
                 buffer_[head_] = value[i];
                 if(full_)
@@ -45,7 +45,7 @@ namespace LogUtil {
 
         T pop_front() {
             CoreMutex coreMutex(&mutex_);
-            if(empty())
+            if(_empty())
                 return T();
 
             auto val = buffer_[tail_];
@@ -57,9 +57,9 @@ namespace LogUtil {
 
         size_t pop_front(T dest[], const size_t sz) {
             CoreMutex coreMutex(&mutex_);
-            if (empty())
+            if (_empty())
                 return 0;
-            const size_t avail = min(sz, size());
+            const size_t avail = min(sz, _size());
             for (size_t i = 0; i < avail; i++) {
                 dest[i] = buffer_[tail_];
                 tail_ = (tail_ + 1) % buffer_.size();
@@ -76,10 +76,12 @@ namespace LogUtil {
         }
 
         [[nodiscard]] bool empty() const {
-            return (!full_ && (head_ == tail_));
+            CoreMutex coreMutex(const_cast<mutex_t*>(&mutex_));
+            return _empty();
         }
 
         [[nodiscard]] bool full() const {
+            CoreMutex coreMutex(const_cast<mutex_t*>(&mutex_));
             return full_;
         }
 
@@ -88,56 +90,24 @@ namespace LogUtil {
         }
 
         [[nodiscard]] size_t size() const {
+            CoreMutex coreMutex(const_cast<mutex_t*>(&mutex_));
+            return _size();
+        }
+
+    private:
+        [[nodiscard]] bool _empty() const {
+            return (!full_ && (head_ == tail_));
+        }
+
+        [[nodiscard]] size_t _size() const {
             return full_ ? buffer_.size() : (head_ >= tail_ ? head_ - tail_ : buffer_.size() + head_ - tail_);
         }
 
-        //implement iterator
-        //    class iterator {
-        //    public:
-        //        iterator(std::vector<T> &buffer, size_t index) : buffer_(buffer), index_(index) {}
-        //
-        //        iterator &operator++() {
-        //            index_ = (index_ + 1) % buffer_.size();
-        //            return *this;
-        //        }
-        //
-        //        iterator operator++(int) {
-        //            iterator temp = *this;
-        //            ++(*this);
-        //            return temp;
-        //        }
-        //
-        //        bool operator==(const iterator &other) const {
-        //            return index_ == other.index_;
-        //        }
-        //
-        //        bool operator!=(const iterator &other) const {
-        //            return !(*this == other);
-        //        }
-        //
-        //        T &operator*() {
-        //            return buffer_[index_];
-        //        }
-        //
-        //    private:
-        //        std::vector<T> &buffer_;
-        //        size_t index_;
-        //    };
-        //
-        //    iterator begin() {
-        //        return iterator(buffer_, tail_);
-        //    }
-        //
-        //    iterator end() {
-        //        return iterator(buffer_, head_);
-        //    }
-
-    private:
         std::vector<T> buffer_;
         size_t head_;
         size_t tail_;
         bool full_;
-        mutex_t mutex_;
+        mutable mutex_t mutex_;
     };
 }
 #endif //PICO_LOG_CIRCULAR_BUFFER_H

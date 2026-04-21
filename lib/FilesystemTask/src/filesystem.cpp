@@ -4,6 +4,7 @@
 #include <FreeRTOS.h>
 #include <LittleFS.h>
 #include <queue.h>
+#include <queue>
 #include <functional>
 #include <TimeLib.h>
 #include "hardware/watchdog.h"
@@ -34,8 +35,8 @@ static auto rootDir = FS_PATH_SEPARATOR;
 void fsExecute();
 void fsInit();
 
-// filesystem task definition - priority is overwritten during setup, see fsSetup
-TaskDef fsDef {fsInit, fsExecute, 1536, "FS", 1, CORE_0};
+// filesystem task definition - priority is overwritten during setup, see SynchronizedFS::begin
+TaskDef fsDef {fsInit, fsExecute, 1536, "FS", 255, CORE_0};
 
 enum class FsPayloadKind : uint8_t { NONE, STRING, BYTES, FILE_INFO_LIST, FILE_INFO, FS_STAT, };
 

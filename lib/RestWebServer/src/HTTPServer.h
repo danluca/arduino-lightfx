@@ -69,15 +69,10 @@ public:
     void setServerAgent(const char *agent) { _serverAgent = agent; }
     void setServerAgent(const __FlashStringHelper *agent) { _serverAgent = agent; }
     [[nodiscard]] String serverAgent() const { return _serverAgent; }
-    template<typename... Args> void collectHeaders(const Args&... args) { // set the request headers to collect (variadic template version)
+    template<typename... Args> void collectHeaders(const Args&... args) {
         _headersOfInterest.clear();
-        const int argsCount = sizeof...(args);
-        const String* strArgs = new String[argsCount] {String(args)...};
         _headersOfInterest.push_back(AUTHORIZATION_HEADER);
-        for (int i = 0; i < argsCount; i++) {
-            _headersOfInterest.push_back(strArgs[i]);
-        }
-        delete[] strArgs;
+        (_headersOfInterest.push_back(String(args)), ...);
     }
     [[nodiscard]] const std::deque<String>& headersOfInterest() const { return _headersOfInterest; }
     // Hook
