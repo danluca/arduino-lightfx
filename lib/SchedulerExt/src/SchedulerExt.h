@@ -38,7 +38,7 @@ struct TaskDef {
     NoArgTask loop{};                   // loop function pointer (called repeatedly indefinitely), cannot be null
     const uint32_t stackSize {1024};    // stack size in bytes to allocate to the new thread (default 1024)
     const char* threadName {};          // custom thread name provided optionally; if not provided thread name is built generically using "Thd N" pattern
-    mutable uint8_t priority {1};       // the task priority - must be between 1 and configMAX_PRIORITIES-1; the IDLE task has priority 0; mutable as the actual priority may be determined in relation with launching task
+    uint8_t priority {1};              // the task priority - must be between 1 and configMAX_PRIORITIES-1; the IDLE task has priority 0; value >= configMAX_PRIORITIES means inherit from launching task
     CoreAffinity core {CORE_0};         // which core to run on - default to main core (0)
 };
 
@@ -55,9 +55,9 @@ public:
     enum State:uint8_t {NEW, EXECUTING, TERMINATED};
 };
 
-class TaskWrapper final : Runnable {
+class TaskWrapper final : public Runnable {
 public:
-    explicit TaskWrapper(TaskDefPtr taskDef, int16_t x);
+    explicit TaskWrapper(TaskDefPtr taskDef, int16_t x, uint8_t effectivePriority);
 
     ~TaskWrapper() override { delete [] id; }
 
@@ -71,8 +71,8 @@ public:
     [[nodiscard]] State getState() const { return state; }
 
 protected:
-    void run () override;
-    [[nodiscard]] bool waitToEnd(uint16_t msTimeOut=1000) const;    //defaults to waiting 1s for task to finish
+    void run() override;
+    bool waitToEnd(uint16_t msTimeOut=1000);    //defaults to waiting 1s for task to finish
     void terminate() override;
 
     const NoArgTask fnSetup, fnLoop;
@@ -84,6 +84,7 @@ protected:
     const int16_t index;
     UBaseType_t uid{};
     volatile Runnable::State state {NEW};
+    volatile bool _shouldStop {false};
     friend class SchedulerClassExt;
 };
 
@@ -93,7 +94,7 @@ public:
 
     TaskWrapper* startTask(TaskDefPtr taskDef);
 
-    bool stopTask(const TaskWrapper *pt);
+    bool stopTask(TaskWrapper *pt);
     [[nodiscard]] TaskWrapper* getTask(uint index) const;
     [[nodiscard]] TaskWrapper* getTask(const char* name) const;
     [[nodiscard]] TaskWrapper* getTask(UBaseType_t uid) const;
@@ -103,7 +104,7 @@ public:
     static void yield() { ::yield(); };
     static void delay(const uint32_t ms) { ::vTaskDelay(pdMS_TO_TICKS(ms)); };
 private:
-    mutex_t mutex {};
+    mutable mutex_t mutex {};
     std::deque<TaskWrapper*> tasks {};
     static bool scheduleTask(TaskWrapper *taskJob);
 };

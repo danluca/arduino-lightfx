@@ -78,9 +78,9 @@ size_t TimeFormat::monthStr(const uint8_t month, char *buffer) {
  * @return number of characters written
  */
 size_t TimeFormat::monthShortStr(const uint8_t month, char *buffer) {
-   for (int i=0; i < dt_SHORT_STR_LEN; i++)      
-      buffer[i] = pgm_read_byte(&(monthShortNames_P[i+ (month*dt_SHORT_STR_LEN)]));  
-   // buffer[dt_SHORT_STR_LEN] = 0;
+   for (int i=0; i < dt_SHORT_STR_LEN; i++)
+      buffer[i] = pgm_read_byte(&(monthShortNames_P[i+ (month*dt_SHORT_STR_LEN)]));
+   buffer[dt_SHORT_STR_LEN] = '\0';
    return dt_SHORT_STR_LEN;
 }
 
@@ -109,9 +109,9 @@ size_t TimeFormat::dayStr(const uint8_t day, char *buffer) {
  */
 size_t TimeFormat::dayShortStr(const uint8_t day, char *buffer) {
    const uint8_t index = day*dt_SHORT_STR_LEN;
-   for (int i=0; i < dt_SHORT_STR_LEN; i++)      
-      buffer[i] = pgm_read_byte(&(dayShortNames_P[index + i]));  
-   // buffer[dt_SHORT_STR_LEN] = 0;
+   for (int i=0; i < dt_SHORT_STR_LEN; i++)
+      buffer[i] = pgm_read_byte(&(dayShortNames_P[index + i]));
+   buffer[dt_SHORT_STR_LEN] = '\0';
    return dt_SHORT_STR_LEN;
 }
 

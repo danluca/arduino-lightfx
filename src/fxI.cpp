@@ -459,7 +459,7 @@ void FxI4::loadSeedFromFile() {
     seedFile += (random8() % 4 + 1);
     seedFile += seedFile_extension;
     if (const size_t sz = SyncFsImpl.readFile(seedFile.c_str(), content); sz == 0 || content->length() == 0) {
-        log_warn(F("FxI4: seed file '%s' not found or empty. Using pseudo-random seed."), seedFile);
+        log_warn(F("FxI4: seed file '%s' not found or empty. Using pseudo-random seed."), seedFile.c_str());
         // Fill with a pseudo-random envelope so the effect still works
         seed.reserve(1024);
         uint8_t val = random8();

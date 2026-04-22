@@ -115,12 +115,13 @@ RequestHandler& HTTPServer::on(const Uri &uri, const HTTPMethod method, const TH
 
 bool HTTPServer::removeRoute(const String &uri, const HTTPMethod method) {
     bool anyHandlerRemoved = false;
-    for (auto it = _requestHandlers.begin(); it != _requestHandlers.end(); ++it) {
-        if (const RequestHandler *handler = *it; handler->match(uri, method)) {
-            delete handler;
-            _requestHandlers.erase(it);
+    for (auto it = _requestHandlers.begin(); it != _requestHandlers.end(); ) {
+        if ((*it)->match(uri, method)) {
+            delete *it;
+            it = _requestHandlers.erase(it);
             anyHandlerRemoved = true;
-        }
+        } else
+            ++it;
     }
     return anyHandlerRemoved;
 }
@@ -231,10 +232,10 @@ void HTTPServer::handleClient() {
         case IDLE:
             if (WiFiClient wifiClient = _server.available()) {
                 bool newClient = true;
-                //did we have this client before? check if same socket
+                //did we have this client before? check if same remote endpoint
                 for (const auto& client : _clients) {
-                    if (client->clientID() == wifiClient.socket()) {
-                        newClient = false;  //same socket, so we have this client already
+                    if (client->clientID() == wifiClient.remotePort()) {
+                        newClient = false;  //same remote endpoint, already tracking this client
                         break;
                     }
                 }

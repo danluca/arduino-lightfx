@@ -68,8 +68,8 @@ WebClient::WebClient(HTTPServer *server, const WiFiClient &client): _server(serv
     _startWaitTime = _startHandlingTime;
     _stopHandlingTime = 0;
     _rawWifiClient.setTimeout(HTTP_MAX_SEND_WAIT);
-    // the ID is relying on the WiFiClient's internal socket used; the ID is used in discriminating new clients from existing ones that the WiFiServer may report
-    _clientID = _rawWifiClient.socket();
+    // remote ephemeral port is unique per TCP connection — used to detect duplicate accept() reports
+    _clientID = _rawWifiClient.remotePort();
     _remoteIP = _rawWifiClient.remoteIP();
     _responseHeaders.reserve(INITIAL_HEADERS_BUFFER_SIZE);
 }
@@ -87,8 +87,9 @@ WebClient::~WebClient() {
  * Closes the underlying connection (WiFi client) and logs the metrics of processing this request
  */
 void WebClient::close() {
-    if (_stopHandlingTime > 0)
-        return;     //already ran
+    if (_closed)
+        return;
+    _closed = true;
     _rawWifiClient.stop();
     _status = HC_CLOSED;
     _uploadBody.reset();
@@ -393,6 +394,16 @@ void WebClient::_processRequest() {
         if (!handled)
             log_error("Web request handler failed to handle %s request %s", httpMethodToString(request().method()), request().uri().c_str());
     }
+    if (!handled) {
+        // Check if the URI is registered for a different method → 405 before generic 404
+        for (const auto& handler : _server->_requestHandlers) {
+            if (handler->match(request().uri(), HTTP_ANY)) {
+                send(405, mime::mimeTable[mime::txt].mimeType, Util::responseCodeToString(405));
+                handled = true;
+                break;
+            }
+        }
+    }
     if (!handled && _server->_notFoundHandler) {
         (_server->_notFoundHandler)(*this);
         handled = true;
@@ -446,8 +457,10 @@ void WebClient::_parseHttpHeaders() {
                 _request->_boundaryStr = headerValue.substring(headerValue.indexOf('=') + 1);
                 _request->_boundaryStr.replace("\"", "");
             }
-        } else if (headerName.equalsIgnoreCase(F("Content-Length")))
-            _request->_contentLength = headerValue.toInt();
+        } else if (headerName.equalsIgnoreCase(F("Content-Length"))) {
+            const long cl = headerValue.toInt();
+            _request->_contentLength = cl < 0 ? 0 : static_cast<size_t>(cl);
+        }
     }
 }
 
@@ -794,7 +807,7 @@ bool WebClient::_earlyValidateRequest() {
     // Valid first bytes: GET, POST, PUT, DELETE, HEAD, OPTIONS, CONNECT, TRACE, PATCH
     const char c = static_cast<char>(firstByte);
     if (c < 'A' || c > 'Z') {
-        log_error("Invalid first byte 0x%02X ('%c') - not an HTTP method start: %s", firstByte, (c >= 0x20 && c <= 0x7E) ? c : '?', _rawWifiClient.readString().c_str());
+        log_error("Invalid first byte 0x%02X ('%c') from %s - not an HTTP method start, rejecting", firstByte, (c >= 0x20 && c <= 0x7E) ? c : '?', _remoteIP.toString().c_str());
         return false;
     }
 
@@ -811,7 +824,7 @@ bool WebClient::_earlyValidateRequest() {
 HTTPClientStatus WebClient::handleRequest() {
     // disconnected is an unrecoverable state
     if (!_rawWifiClient.connected()) {
-        log_warn(F("Client ID %d disconnected from %s, closing WebClient; request: %s"), _clientID, _remoteIP.toString().c_str(), _rawWifiClient.readString().c_str());
+        log_warn(F("Client ID %d disconnected from %s, closing WebClient"), _clientID, _remoteIP.toString().c_str());
         _status = HC_DISCONNECTED;
         close();
         return _status;
@@ -841,7 +854,7 @@ HTTPClientStatus WebClient::handleRequest() {
 
             // Early validation: check if incoming data looks like HTTP
             if (!_earlyValidateRequest()) {
-                log_error("Early validation failed - rejecting connection from %s without response: %s", _remoteIP.toString().c_str(), _rawWifiClient.peek() >= 0 ? _rawWifiClient.readString().c_str() : "no data");
+                log_error("Early validation failed - rejecting connection from %s without response", _remoteIP.toString().c_str());
                 _status = HC_ERROR;
                 return _status;
             }

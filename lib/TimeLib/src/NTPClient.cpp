@@ -89,8 +89,8 @@ bool NTPClient::update(time_t &epochTime, int &wait) {
     delay(20);
     cb = _udp->parsePacket();
     if (timeout > 250) {
-      log_error(F("NTP update failed - timed out (50000ms)"));
-      return false; // timeout after 1000 ms
+      log_error(F("NTP update failed - timed out (5000ms)"));
+      return false; // timeout after ~5000 ms (251 iterations × 20ms)
     }
     timeout++;
   } while (cb == 0);
@@ -103,7 +103,7 @@ bool NTPClient::update(time_t &epochTime, int &wait) {
     return false;
   }
   _udp->read(_packetBuffer, NTP_PACKET_SIZE);
-  log_debug(F("NTP update received packet [%d bytes] - %s"), cb, StringUtils::asHexString(_packetBuffer, NTP_PACKET_SIZE));
+  log_debug(F("NTP update received packet [%d bytes] - %s"), cb, StringUtils::asHexString(_packetBuffer, NTP_PACKET_SIZE).c_str());
   // check the status of Stratum - 0 means invalid, and we've received a kiss-of-death code
   if (_packetBuffer[1] == 0) {
     log_error(F("NTP update failed - kiss-of-death received: "), String(_packetBuffer+12, 4).c_str());

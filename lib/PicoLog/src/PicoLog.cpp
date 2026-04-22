@@ -11,36 +11,41 @@
 PicoLog Log;
 TaskWrapper *twStream;
 
-#define SERIAL_BUFFER_SIZE 256
+static constexpr size_t RAW_WRITE_CHUNK_SIZE = 512;
 static constexpr char fmtTimestamp[] PROGMEM = "%02lu:%02lu:%02lu.%03lu";
 static constexpr char fmtTaskPriorityChanged[] PROGMEM = " [C%u-%s-%lu/%lu]";
 static constexpr char fmtTaskPriorityRegular[] PROGMEM = " [C%u-%s-%lu]";
 static constexpr char logLevelTags[] PROGMEM = "SFEWIDT";    //NOTE this string must be as long as LogLevel enum!
 static constexpr char fmtLevel[] PROGMEM = " %c: ";
-static constexpr size_t RAW_WRITE_CHUNK_SIZE = 512;
 
 /**
  * Flushes the log data queue by processing and outputting all queued log messages.
  * If the log queue is empty, delays execution briefly to allow for log gathering.
  */
-void flushData() {
-    if (Log.m_queue.empty()) {
-        vTaskDelay(pdMS_TO_TICKS(250)); //empty log queue, allow some time to collect log statements
+void PicoLog::flush() {
+    if (m_queue.empty()) {
+        vTaskDelay(pdMS_TO_TICKS(250));
         return;
     }
-    if (const size_t logSize = Log.m_queue.size(); logSize > Log.m_maxBufferSize)
-        Log.m_maxBufferSize = logSize;
-    while (!Log.m_queue.empty()) {
-        char buf[SERIAL_BUFFER_SIZE]{0};    //zero-initialized buffer
-        const size_t sz = min(Log.m_queue.size(), static_cast<size_t>(SERIAL_BUFFER_SIZE - 1));    //leave room for null terminator
-        Log.m_queue.pop_front(buf, sz);
-        buf[sz] = '\0'; //null-terminate for safety (not strictly required since we control write length)
-        Log.m_stream->write(buf, sz);
+    const size_t logSize = m_queue.size();
+    size_t expected = m_maxBufferSize.load(std::memory_order_relaxed);
+    while (logSize > expected && !m_maxBufferSize.compare_exchange_weak(expected, logSize, std::memory_order_relaxed))
+        ;
+    while (!m_queue.empty()) {
+        char buf[RAW_WRITE_CHUNK_SIZE]{0};
+        const size_t sz = min(m_queue.size(), static_cast<size_t>(RAW_WRITE_CHUNK_SIZE - 1));
+        m_queue.pop_front(buf, sz);
+        buf[sz] = '\0';
+        m_stream->write(buf, sz);
     }
-    Log.m_stream->flush();
+    m_stream->flush();
 }
 
-TaskDef tdStream {nullptr, flushData, 1024, "SRL", 255, CORE_ALL};
+void flushData() {
+    Log.flush();
+}
+
+TaskDef tdStream {nullptr, flushData, 1024, "SRL", 4, CORE_ALL};
 
 
 /**

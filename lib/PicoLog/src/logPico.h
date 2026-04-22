@@ -7,6 +7,8 @@
 #define RP2350_LIGHTFX_LOGPICO_H
 
 #include <Arduino.h>
+#include <atomic>
+#include <type_traits>
 #include <util/circular_buffer.h>
 
 #define CR "\n"
@@ -21,6 +23,7 @@ class PicoLog {
     ~PicoLog() = default;
 
     void begin(SerialUSB* serial, LogLevel level = INFO);
+    void flush();
 
     /**
      * Sets the timebase used for logging operations - essentially an offset to be added to
@@ -42,7 +45,7 @@ class PicoLog {
     size_t write(LogLevel level, const char *data);
     size_t write(LogLevel level, const char *data, size_t len);
     size_t write(LogLevel level, const __FlashStringHelper *data);
-    size_t getMinBufferSpace() const { return LOG_BUFFER_SIZE - m_maxBufferSize; }
+    size_t getMinFreeSpace() const { return LOG_BUFFER_SIZE - m_maxBufferSize.load(std::memory_order_relaxed); }
 
     template<class T> size_t log(LogLevel level, const T format, ...) {
         if (!isEnabled(level)) return 0;
@@ -52,13 +55,34 @@ class PicoLog {
         va_end(args);
         return sz;
     }
-    template<class T, typename... Args> size_t silent(const T format, Args... args) { return log(SILENT, format, args...); }
-    template<class T, typename... Args> size_t fatal(const T format, Args... args) { return log(FATAL, format, args...); }
-    template<class T, typename... Args> size_t error(const T format, Args... args) { return log(ERROR, format, args...); }
-    template<class T, typename... Args> size_t warn(const T format, Args... args) { return log(WARNING, format, args...); }
-    template<class T, typename... Args> size_t info(const T format, Args... args) { return log(INFO, format, args...); }
-    template<class T, typename... Args> size_t debug(const T format, Args... args) { return log(DEBUG, format, args...); }
-    template<class T, typename... Args> size_t trace(const T format, Args... args) { return log(TRACE, format, args...); }
+    template<class T, typename... Args> size_t silent(const T format, Args... args) {
+        static_assert((std::is_trivially_copyable_v<Args> && ...), "Log arguments must be trivially copyable — use .c_str() for String/std::string");
+        return log(SILENT,  format, args...);
+    }
+    template<class T, typename... Args> size_t fatal(const T format, Args... args) {
+        static_assert((std::is_trivially_copyable_v<Args> && ...), "Log arguments must be trivially copyable — use .c_str() for String/std::string");
+        return log(FATAL,   format, args...);
+    }
+    template<class T, typename... Args> size_t error(const T format, Args... args) {
+        static_assert((std::is_trivially_copyable_v<Args> && ...), "Log arguments must be trivially copyable — use .c_str() for String/std::string");
+        return log(ERROR,   format, args...);
+    }
+    template<class T, typename... Args> size_t warn(const T format, Args... args) {
+        static_assert((std::is_trivially_copyable_v<Args> && ...), "Log arguments must be trivially copyable — use .c_str() for String/std::string");
+        return log(WARNING, format, args...);
+    }
+    template<class T, typename... Args> size_t info(const T format, Args... args) {
+        static_assert((std::is_trivially_copyable_v<Args> && ...), "Log arguments must be trivially copyable — use .c_str() for String/std::string");
+        return log(INFO,    format, args...);
+    }
+    template<class T, typename... Args> size_t debug(const T format, Args... args) {
+        static_assert((std::is_trivially_copyable_v<Args> && ...), "Log arguments must be trivially copyable — use .c_str() for String/std::string");
+        return log(DEBUG,   format, args...);
+    }
+    template<class T, typename... Args> size_t trace(const T format, Args... args) {
+        static_assert((std::is_trivially_copyable_v<Args> && ...), "Log arguments must be trivially copyable — use .c_str() for String/std::string");
+        return log(TRACE,   format, args...);
+    }
 
 
 private:
@@ -66,7 +90,7 @@ private:
     LogUtil::CircularBuffer<char> m_queue{LOG_BUFFER_SIZE};
     Print* m_stream{nullptr};
     time_t m_timebase{0};
-    size_t m_maxBufferSize{0};
+    std::atomic<size_t> m_maxBufferSize{0};
 
     [[nodiscard]] bool isStreamingEnabled() const { return m_stream != nullptr; };
     size_t writeRaw(LogLevel level, const char *data, size_t len);
@@ -75,7 +99,6 @@ private:
     size_t print(LogLevel level, const __FlashStringHelper *format, va_list args);
     static size_t printThread(char *msg, size_t capacity, const TaskStatus_t &taskStatus);
     static size_t printLevel(LogLevel level, char *msg, size_t capacity);
-    friend void flushData();
 };
 
 extern PicoLog Log;

@@ -6,74 +6,78 @@
 #define ARDUINO_LIGHTFX_FIXED_QUEUE_H
 
 #include <deque>
-#include <queue>
 
 /**
  * @class FixedQueue
  *
- * @brief A class that represents a fixed size queue.
+ * @brief A fixed-capacity FIFO queue. When full, the oldest element is evicted on push.
  *
- * This class is a specialization of std::queue that limits the
- * maximum number of elements that can be stored in the queue to a
- * fixed number defined by the template parameter MaxSize. If the
- * queue exceeds its maximum size, the oldest element is automatically
- * removed when a new element is added.
- * @note If the type T is a raw pointer, the FixedQueue will take ownership of the pointers and delete them when they are removed from the queue.
- * @note The recommended way to use this queue with pointer types is to engage smart pointers (e.g., std::unique_ptr) to avoid manual memory management.
+ * Implemented via composition over std::deque — not inheriting std::queue — to avoid
+ * the virtual-destructor and non-virtual-push pitfalls of STL container inheritance.
  *
- * @tparam T The type of elements to be stored in the queue.
- * @tparam MaxSize The maximum number of elements that can be stored in the queue.
- * @tparam Container The underlying container type used to store the elements (default: std::deque<T>).
+ * Ownership: elements are destroyed normally when evicted or when the queue is destroyed.
+ * Use std::unique_ptr<T> for heap-allocated elements that need automatic cleanup.
  *
- * @note This class inherits from std::queue to provide the basic queue functionality.
- *
- * @see std::queue
+ * @tparam T       The element type.
+ * @tparam MaxSize The maximum number of elements (compile-time, must be > 0).
+ * @tparam Container Underlying container (default: std::deque<T>).
  */
-template <typename T, int MaxSize, typename Container = std::deque<T>> class FixedQueue : public std::queue<T, Container> {
+template <typename T, size_t MaxSize, typename Container = std::deque<T>>
+class FixedQueue {
 public:
-    FixedQueue() = default;
-    ~FixedQueue() {
-        clearAndCleanup();
-    }
-    // Handle lvalues (copies)
-    void push(const T& value) {
-        preparePush();
-        std::queue<T, Container>::push(value);
-    }
-    // Handle rvalues (moves - required for std::unique_ptr)
-    void push(T&& value) {
-        preparePush();
-        std::queue<T, Container>::push(std::move(value));
-    }
     typedef typename Container::iterator iterator;
     typedef typename Container::const_iterator const_iterator;
 
-    iterator begin() { return this->c.begin(); }
-    iterator end() { return this->c.end(); }
-    const_iterator begin() const { return this->c.begin(); }
-    const_iterator end() const { return this->c.end(); }
-    iterator erase(iterator it) {
-        if constexpr (std::is_pointer_v<T>)
-            delete *it;
-        return this->c.erase(it);
+    FixedQueue() = default;
+    ~FixedQueue() = default;
+
+    FixedQueue(const FixedQueue&) = default;
+    FixedQueue& operator=(const FixedQueue&) = default;
+    FixedQueue(FixedQueue&&) = default;
+    FixedQueue& operator=(FixedQueue&&) = default;
+
+    // Push an lvalue — evicts the oldest element if at capacity.
+    void push(const T& value) {
+        preparePush();
+        c.push_back(value);
     }
+
+    // Push an rvalue (move) — required for std::unique_ptr elements.
+    void push(T&& value) {
+        preparePush();
+        c.push_back(std::move(value));
+    }
+
+    // In-place construction — also enforces the capacity limit.
+    template<typename... Args>
+    void emplace(Args&&... args) {
+        preparePush();
+        c.emplace_back(std::forward<Args>(args)...);
+    }
+
+    [[nodiscard]] T& front()             { return c.front(); }
+    [[nodiscard]] const T& front() const { return c.front(); }
+    [[nodiscard]] T& back()              { return c.back(); }
+    [[nodiscard]] const T& back() const  { return c.back(); }
+
+    [[nodiscard]] bool   empty() const { return c.empty(); }
+    [[nodiscard]] size_t size()  const { return c.size(); }
+
+    iterator begin() { return c.begin(); }
+    iterator end()   { return c.end(); }
+    const_iterator begin() const { return c.begin(); }
+    const_iterator end()   const { return c.end(); }
+
+    // Erase element at iterator position; returns iterator to the next element.
+    // Element is destroyed normally (unique_ptr cleans up automatically).
+    iterator erase(iterator it) { return c.erase(it); }
 
 private:
-    void preparePush() {
-        if (this->size() >= MaxSize) {
-            if constexpr (std::is_pointer_v<T>)
-                delete this->c.front();
-            this->c.pop_front();
-        }
-    }
+    Container c{};
 
-    void clearAndCleanup() {
-        if constexpr (std::is_pointer_v<T>) {
-            while (!this->empty()) {
-                delete this->c.front();
-                this->c.pop_front();
-            }
-        }
+    void preparePush() {
+        if (c.size() >= MaxSize)
+            c.pop_front();
     }
 };
 

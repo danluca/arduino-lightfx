@@ -16,17 +16,17 @@
 
 #include "SchedulerExt.h"
 
-#define TASK_NOTIFY_TERMINATE 0xF0
-
 static constexpr char fmtTaskName[] PROGMEM = "Tsk %d";
 
 SchedulerClassExt Scheduler;
 
 void taskJobExecutor(void *params) {
-    auto *tj = static_cast<Runnable*>(params);
+    // Upcast to Runnable* (public base) so run()/terminate() are accessible via their public Runnable declarations.
+    // The downcast to TaskWrapper* first ensures correct pointer arithmetic with public inheritance.
+    Runnable *tj = static_cast<TaskWrapper*>(params);
     tj->run();
-    //should never get here - but if we do, must delete the task per FreeRTOS documentation - https://www.freertos.org/implementing-a-FreeRTOS-task.html
     tj->terminate();
+    vTaskDelete(nullptr);   // self-delete per FreeRTOS docs when the entry function returns
 }
 
 /**
@@ -35,13 +35,19 @@ void taskJobExecutor(void *params) {
  * @return pointer to TaskWrapper created for this task
  */
 TaskWrapper *SchedulerClassExt::startTask(const TaskDefPtr taskDef) {
+    // Resolve effective priority before taking the mutex — uxTaskPriorityGet(nullptr) is safe to call anytime
+    const uint8_t effectivePriority = taskDef->priority >= configMAX_PRIORITIES
+        ? static_cast<uint8_t>(uxTaskPriorityGet(nullptr))
+        : taskDef->priority;
+
     CoreMutex core_mutex(&mutex);
-    //if priority is not provided (above the range), use the default priority of the calling task
-    if (taskDef->priority >= configMAX_PRIORITIES)
-        taskDef->priority = uxTaskPriorityGet(nullptr);
-    auto *job = new TaskWrapper(taskDef, tasks.size());
+    auto *job = new TaskWrapper(taskDef, static_cast<int16_t>(tasks.size()), effectivePriority);
+    if (!scheduleTask(job)) {
+        delete job;
+        return nullptr;
+    }
     tasks.push_back(job);
-    return scheduleTask(job) ? job : nullptr;
+    return job;
 }
 
 /**
@@ -63,23 +69,28 @@ bool SchedulerClassExt::scheduleTask(TaskWrapper *taskJob) {
 
 /**
  * Waits for the thread to terminate, then disposes it and frees its slot in the local thread array
- * If the thread is not one tracked in the local thread array, it returns osErrorParameter
+ * If the thread is not one tracked in the local thread array, it returns false
  * @param pt pointer to the thread to terminate
  * @return whether the task termination and resource cleanup were successful
  */
-bool SchedulerClassExt::stopTask(const TaskWrapper *pt) {
-    CoreMutex core_mutex(&mutex);
-    for (auto it = tasks.begin(); it != tasks.end(); ++it) {
-        if (const auto *task = *it; task == pt) {
-            //signal task to terminate and wait
-            const bool tskEnd = task->waitToEnd();
-            //deallocate the thread (created with new) and its name
-            tasks.erase(it);
-            delete task;
-            return tskEnd;
+bool SchedulerClassExt::stopTask(TaskWrapper *pt) {
+    // Remove from deque while holding the mutex, then wait and delete without it
+    TaskWrapper *found = nullptr;
+    {
+        CoreMutex core_mutex(&mutex);
+        for (auto it = tasks.begin(); it != tasks.end(); ++it) {
+            if (*it == pt) {
+                found = *it;
+                tasks.erase(it);
+                break;
+            }
         }
     }
-    return false;
+    if (!found)
+        return false;
+    const bool tskEnd = found->waitToEnd();
+    delete found;
+    return tskEnd;
 }
 
 /**
@@ -87,18 +98,22 @@ bool SchedulerClassExt::stopTask(const TaskWrapper *pt) {
  * @param forced whether to forcefully terminate task (not wait) or signal the task to terminate and wait 1 second (default)
  */
 void SchedulerClassExt::stopAllTasks(const bool forced) {
-    CoreMutex core_mutex(&mutex);
-    //iterate tasks in reverse order and stop them
-    while (tasks.size() > 0) {
-        if (TaskWrapper *task = tasks.back(); task != nullptr) {
-            if (forced)
-                task->terminate();          //forcefully terminate task
-            else
-                (void)task->waitToEnd();    //signal task to terminate and wait
-            //free up resources
-            tasks.pop_back();
-            delete task;
-        }
+    // Drain the deque while holding the mutex, then process without it to avoid blocking other callers
+    std::deque<TaskWrapper*> toStop;
+    {
+        CoreMutex core_mutex(&mutex);
+        toStop.swap(tasks);
+    }
+    while (!toStop.empty()) {
+        TaskWrapper *task = toStop.back();
+        toStop.pop_back();
+        if (task == nullptr)
+            continue;
+        if (forced)
+            task->terminate();
+        else
+            (void)task->waitToEnd();
+        delete task;
     }
 }
 
@@ -109,6 +124,7 @@ void SchedulerClassExt::stopAllTasks(const bool forced) {
  * Note: no API is provided to resume all tasks. Reboot the system.
  */
 void SchedulerClassExt::suspendAllTasks() const {
+    CoreMutex core_mutex(&mutex);
     for (auto & task : tasks) {
         if (task != nullptr)
             vTaskSuspend(task->handle);
@@ -121,6 +137,7 @@ void SchedulerClassExt::suspendAllTasks() const {
  * @return task with given name, nullptr is no task exists with the input name
  */
 TaskWrapper *SchedulerClassExt::getTask(const char *name) const {
+    CoreMutex core_mutex(&mutex);
     for (auto & task : tasks) {
         if (task != nullptr && strcmp(task->id, name) == 0)
             return task;
@@ -129,11 +146,13 @@ TaskWrapper *SchedulerClassExt::getTask(const char *name) const {
 }
 
 /**
- * Retrieves the task wrapper at given index
- * @param index task index to retrieve
- * @return the task at given index, or nullptr if the index is higher than max tasks or there is no task at the index
+ * Retrieves the task wrapper at the given positional index in the internal deque.
+ * Note: indices shift when tasks are removed via stopTask/stopAllTasks — not a stable identifier.
+ * @param index positional index (0-based) in the tasks deque
+ * @return the task at given index, or nullptr if out of range
  */
 TaskWrapper *SchedulerClassExt::getTask(const uint index) const {
+    CoreMutex core_mutex(&mutex);
     return index >= tasks.size() ? nullptr : tasks[index];
 }
 
@@ -143,6 +162,7 @@ TaskWrapper *SchedulerClassExt::getTask(const uint index) const {
  * @return the task wrapper that matches a task with the uid provided, nullptr is none found
  */
 TaskWrapper *SchedulerClassExt::getTask(const UBaseType_t uid) const {
+    CoreMutex core_mutex(&mutex);
     for (auto &task : tasks) {
         if (task != nullptr && task->uid == uid)
             return task;
@@ -155,9 +175,11 @@ TaskWrapper *SchedulerClassExt::getTask(const UBaseType_t uid) const {
  * Initialize a task wrapper from task definitions
  * @param taskDef definitions
  * @param x index in the Scheduler tasks array that this task will take
+ * @param effectivePriority resolved priority (sentinel already substituted by startTask)
  */
-TaskWrapper::TaskWrapper(const TaskDefPtr taskDef, const int16_t x) : fnSetup(taskDef->setup), fnLoop(taskDef->loop), stackSize(taskDef->stackSize),
-    coreAffinity(taskDef->core), priority(taskDef->priority), index(x) {
+TaskWrapper::TaskWrapper(const TaskDefPtr taskDef, const int16_t x, const uint8_t effectivePriority) :
+    fnSetup(taskDef->setup), fnLoop(taskDef->loop), stackSize(taskDef->stackSize),
+    coreAffinity(taskDef->core), priority(effectivePriority), index(x) {
     if (taskDef->threadName) {
         const size_t sz = strlen(taskDef->threadName);
         id = new char[sz + 1]();   //zero initialized array
@@ -170,46 +192,46 @@ TaskWrapper::TaskWrapper(const TaskDefPtr taskDef, const int16_t x) : fnSetup(ta
 }
 
 /**
- * Executes the task
+ * Executes the task. Sets state to TERMINATED before returning so waitToEnd() can detect clean exit.
  */
 void TaskWrapper::run() {
     state = EXECUTING;
     if (fnSetup)
         fnSetup();
-    if (fnLoop == nullptr)
-        return;
-    //with each loop, check if we have been notified to stop - it is important to block for at least 1 tick
-    //such that the task scheduler can give other threads a chance to run
-    while (ulTaskNotifyTake(pdTRUE, 0) != TASK_NOTIFY_TERMINATE) {
-        fnLoop();
-        vTaskDelay(1);
+    if (fnLoop != nullptr) {
+        while (!_shouldStop) {
+            fnLoop();
+            vTaskDelay(1);
+        }
     }
+    state = TERMINATED;
 }
 
 /**
- * Notifies the task to stop running. Returns when the notification was received, fnLoop execution finished or the timeout expired, and task was deleted.
+ * Signals the task to stop and waits for it to exit cleanly, then force-deletes on timeout.
  * The timeout is rounded up to nearest 100ms. Default timeout is 1000ms = 1s.
- * Can be called from other threads
+ * Can be called from other threads.
  */
-bool TaskWrapper::waitToEnd(const uint16_t msTimeOut) const {
-    xTaskNotify(handle, TASK_NOTIFY_TERMINATE, eSetValueWithOverwrite);
-    //wait for the task to finish a fnLoop execution or timeout
+bool TaskWrapper::waitToEnd(const uint16_t msTimeOut) {
+    _shouldStop = true;
     uint16_t nbrLoops = msTimeOut/100 + 1;      //ensure we have at least 1 loop as well as round up the timeout to nearest 100ms
     while (state != TERMINATED && nbrLoops > 0) {
         vTaskDelay(pdMS_TO_TICKS(100));
         nbrLoops--;
     }
-    vTaskDelete(handle);
+    // Only force-delete if the task did not self-terminate; otherwise it will self-delete via vTaskDelete(nullptr)
+    if (state != TERMINATED)
+        vTaskDelete(handle);
     return state == TERMINATED;
 }
 
 /**
- * Forcefully terminates the task
+ * Forcefully terminates the task immediately. No-op if already terminated.
  */
 void TaskWrapper::terminate() {
-    if (state < EXECUTING)
+    if (state == TERMINATED)
         return;
+    _shouldStop = true;
     state = TERMINATED;
     vTaskDelete(handle);
 }
-
