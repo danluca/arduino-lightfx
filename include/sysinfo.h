@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef ARDUINO_LIGHTFX_SYSINFO_H
@@ -13,7 +13,15 @@
 #include "util.h"
 
 #define MAX_WATCHDOG_REBOOT_TIMESTAMPS  10      // max number of watchdog reboots to keep in the list
-typedef FixedQueue<time_t, MAX_WATCHDOG_REBOOT_TIMESTAMPS> WatchdogQueue;
+
+struct WatchdogRebootInfo {
+    time_t time {0};
+    const char *resetReason {nullptr};
+    const char *marker {nullptr};
+    const char *fxStage {nullptr};
+    const char *fsBlockedAction {nullptr};
+};
+typedef FixedQueue<WatchdogRebootInfo, MAX_WATCHDOG_REBOOT_TIMESTAMPS> WatchdogQueue;
 
 extern unsigned long prevStatTime;
 extern unsigned long prevIdleTime;
@@ -87,11 +95,11 @@ public:
     [[nodiscard]] const String& getWiFiFwVersion() const { return wifiFwVersion; }
     [[nodiscard]] const String& getSSID() const { return ssid; }
     [[nodiscard]] int getCPUFrequency() const { return cpuFrequency; }
-    void addWatchdogReboot(time_t t);
+    void addWatchdogReboot(const WatchdogRebootInfo& info);
     [[nodiscard]] size_t watchdogRebootsCount() const;
     [[nodiscard]] bool hasWatchdogReboots() const;
     [[nodiscard]] time_t lastWatchdogReboot() const;
-    [[nodiscard]] std::vector<time_t> watchdogRebootsSnapshot() const;
+    [[nodiscard]] std::vector<WatchdogRebootInfo> watchdogRebootsSnapshot() const;
     void transformWatchdogReboots(const std::function<time_t(time_t)>& transform);
     void markDirtyBoot() { cleanBoot = false; }
     [[nodiscard]] bool isCleanBoot() const { return cleanBoot; }

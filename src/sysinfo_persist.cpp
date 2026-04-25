@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -19,6 +19,71 @@ namespace {
 
 constexpr uint32_t kSysInfoSaveIntervalMs = 300u * 1000u;
 SysInfoPersistence g_sysInfoPersistence{};
+
+static const char* resetReasonStr(const RP2040::resetReason_t r) {
+    switch (r) {
+        case RP2040::WDT_RESET:     return csWatchdog;
+        case RP2040::PWRON_RESET:   return csPowerOn;
+        case RP2040::RUN_PIN_RESET: return csPinReset;
+        case RP2040::SOFT_RESET:    return csSoftReset;
+        case RP2040::DEBUG_RESET:   return csDebug;
+        default:                    return "unknown";
+    }
+}
+
+static const char* markerStr(const uint32_t m) {
+    switch (m) {
+        case kResetMarkerNone:          return "none";
+        case kResetMarkerPanic:         return "panic";
+        case kResetMarkerAssert:        return "assert";
+        case kResetMarkerHardFault:     return "hardfault";
+        case kResetMarkerMalloc:        return "malloc_failed";
+        case kResetMarkerStackOverflow: return "stack_overflow";
+        case kResetMarkerFxStall:       return "fx_stall";
+        case kResetMarkerOta:           return "ota";
+        case kResetMarkerReboot:        return "reboot";
+        default:                        return "unknown";
+    }
+}
+
+static const char* stageStr(const uint32_t s) {
+    switch (s) {
+        case kFxStageNone:             return "none";
+        case kFxStageEnter:            return "enter";
+        case kFxStageAfterQueue:       return "after_queue";
+        case kFxStageAfterOtaCheck:    return "after_ota_check";
+        case kFxStageFirmwareUpgrade:  return "fw_upgrade";
+        case kFxStageBeforeLoop:       return "before_loop";
+        case kFxStageAfterLoop:        return "after_loop";
+        case kFxStageAfterPing:        return "after_ping";
+        default:                       return "unknown";
+    }
+}
+
+static constexpr const char* kResetReasons[] = {csWatchdog, csPowerOn, csPinReset, csSoftReset, csDebug, "unknown"};
+static constexpr const char* kMarkers[] = {"none","panic","assert","hardfault","malloc_failed","stack_overflow","fx_stall","ota","reboot","unknown"};
+static constexpr const char* kFxStages[] = {"none","enter","after_queue","after_ota_check","fw_upgrade","before_loop","after_loop","after_ping","unknown"};
+static constexpr const char* kFsActions[] = {
+    "READ_FILE", "WRITE_FILE", "WRITE_FILE_ASYNC", "APPEND_FILE", "APPEND_FILE_BIN",
+    "RENAME", "DELETE", "EXISTS", "FORMAT", "LIST_FILES", "INFO", "STAT", "MAKE_DIR", "SHA256"
+};
+static constexpr size_t kFsActionsCount = sizeof(kFsActions) / sizeof(kFsActions[0]);
+
+static const char* fsActionStr(const uint32_t fsBlocked) {
+    if ((fsBlocked & 0xFF000000u) != kFsBlockedMagic)
+        return nullptr;
+    const uint8_t op = static_cast<uint8_t>((fsBlocked >> 16) & 0xFFu);
+    return op < kFsActionsCount ? kFsActions[op] : "UNKNOWN";
+}
+
+// Match s against a known set of string literal pointers; returns the matching pointer or nullptr.
+template<size_t N>
+static const char* matchLiteral(const char* s, const char* const (&candidates)[N]) {
+    if (!s || !*s) return nullptr;
+    for (size_t i = 0; i < N; i++)
+        if (strcmp(s, candidates[i]) == 0) return candidates[i];
+    return nullptr;
+}
 
 } // namespace
 
@@ -57,8 +122,14 @@ void SysInfo::sysConfig(JsonDocument &doc) {
     doc[csStackSize] = sysInfo->stackSize;
     doc[csFreeStack] = sysInfo->freeStack;
     const auto reboots = doc[csWdReboots].to<JsonArray>();
-    for (const auto &t : sysInfo->watchdogRebootsSnapshot())
-        (void)reboots.add(t);
+    for (const auto &r : sysInfo->watchdogRebootsSnapshot()) {
+        auto obj = reboots.add<JsonObject>();
+        obj["time"] = r.time;
+        if (r.resetReason) obj["reason"] = r.resetReason;
+        if (r.marker) obj["marker"] = r.marker;
+        if (r.fxStage) obj["fxStage"] = r.fxStage;
+        if (r.fsBlockedAction) obj["fsBlocked"] = r.fsBlockedAction;
+    }
 }
 
 void SysInfoPersistence::read() {
@@ -79,11 +150,21 @@ void SysInfoPersistence::read() {
         const String bldTime = doc[csBuildTime];
         const auto gitBranch = doc[csScmBranch].as<String>();
         if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {
-            const auto wdReboots = doc[csWdReboots].as<JsonArray>();
-            for (JsonVariant i : wdReboots)
-                sysInfo->addWatchdogReboot(i.as<time_t>());
+            for (JsonVariant i : doc[csWdReboots].as<JsonArray>()) {
+                if (!i.is<JsonObject>()) continue;
+                WatchdogRebootInfo info;
+                info.time = i["time"].as<time_t>();
+                info.resetReason = matchLiteral(i["reason"].as<const char*>(), kResetReasons);
+                info.marker = matchLiteral(i["marker"].as<const char*>(), kMarkers);
+                info.fxStage = matchLiteral(i["fxStage"].as<const char*>(), kFxStages);
+                const char* fsRaw = i["fsBlocked"].as<const char*>();
+                info.fsBlockedAction = matchLiteral(fsRaw, kFsActions);
+                if (!info.fsBlockedAction && fsRaw && strcmp(fsRaw, "UNKNOWN") == 0)
+                    info.fsBlockedAction = "UNKNOWN";
+                sysInfo->addWatchdogReboot(info);
+            }
         } else {
-            log_warn(F("Build version change detected - previous watchdog reboot timestamps %s have been discarded"), doc[csWdReboots].as<String>().c_str());
+            log_warn(F("Build version change detected - previous watchdog reboot records %s have been discarded"), doc[csWdReboots].as<String>().c_str());
         }
         sysInfo->boardId = doc[csBoardId].as<String>();
         sysInfo->secElemId = doc[csSecElemId].as<String>();
@@ -234,44 +315,7 @@ void saveRebootHealthEvent() {
 
     const uint32_t fxStage = watchdog_hw->scratch[kFxStageScratchIndex];
     const uint32_t fsBlocked = watchdog_hw->scratch[kFsBlockedScratchIndex];
-
-    auto resetReasonStr = [](const RP2040::resetReason_t r) -> const char * {
-        switch (r) {
-            case RP2040::WDT_RESET:     return csWatchdog;
-            case RP2040::PWRON_RESET:   return csPowerOn;
-            case RP2040::RUN_PIN_RESET: return csPinReset;
-            case RP2040::SOFT_RESET:    return csSoftReset;
-            case RP2040::DEBUG_RESET:   return csDebug;
-            default:                    return "unknown";
-        }
-    };
-    auto markerStr = [](const uint32_t m) -> const char * {
-        switch (m) {
-            case kResetMarkerNone:          return "none";
-            case kResetMarkerPanic:         return "panic";
-            case kResetMarkerAssert:        return "assert";
-            case kResetMarkerHardFault:     return "hardfault";
-            case kResetMarkerMalloc:        return "malloc_failed";
-            case kResetMarkerStackOverflow: return "stack_overflow";
-            case kResetMarkerFxStall:       return "fx_stall";
-            case kResetMarkerOta:           return "ota";
-            case kResetMarkerReboot:        return "reboot";
-            default:                        return "unknown";
-        }
-    };
-    auto stageStr = [](const uint32_t s) -> const char * {
-        switch (s) {
-            case kFxStageNone:             return "none";
-            case kFxStageEnter:            return "enter";
-            case kFxStageAfterQueue:       return "after_queue";
-            case kFxStageAfterOtaCheck:    return "after_ota_check";
-            case kFxStageFirmwareUpgrade:  return "fw_upgrade";
-            case kFxStageBeforeLoop:       return "before_loop";
-            case kFxStageAfterLoop:        return "after_loop";
-            case kFxStageAfterPing:        return "after_ping";
-            default:                       return "unknown";
-        }
-    };
+    const char* const fsAction = fsActionStr(fsBlocked);
 
     // Read existing file to preserve the slowness section
     String existing;
@@ -284,13 +328,8 @@ void saveRebootHealthEvent() {
     reboot["resetReason"] = resetReasonStr(resetReason);
     reboot["resetMarker"] = markerStr(resetMarker);
     reboot["fxStage"] = stageStr(fxStage);
-    if ((fsBlocked & 0xFF000000u) == kFsBlockedMagic) {
-        static constexpr const char *fsActions[] = {
-            "READ_FILE", "WRITE_FILE", "WRITE_FILE_ASYNC", "APPEND_FILE", "APPEND_FILE_BIN",
-            "RENAME", "DELETE", "EXISTS", "FORMAT", "LIST_FILES", "INFO", "STAT", "MAKE_DIR", "SHA256"
-        };
-        const uint8_t op = static_cast<uint8_t>((fsBlocked >> 16) & 0xFFu);
-        reboot["fsBlocked"] = op < 14 ? fsActions[op] : "UNKNOWN";
+    if (fsAction) {
+        reboot["fsBlocked"] = fsAction;
         reboot["fsBlockedWaitSec"] = static_cast<uint16_t>(fsBlocked & 0xFFFFu);
     }
 
@@ -302,4 +341,7 @@ void saveRebootHealthEvent() {
     SyncFsImpl.writeFile(healthEventFileName, &out);
     log_info(F("Reboot health event saved to %s (reason=%s, marker=%s)"),
         healthEventFileName, resetReasonStr(resetReason), markerStr(resetMarker));
+
+    if (resetReason == RP2040::WDT_RESET)
+        sysInfo->addWatchdogReboot({now(), resetReasonStr(resetReason), markerStr(resetMarker), stageStr(fxStage), fsAction});
 }

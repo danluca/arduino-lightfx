@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <FreeRTOS.h>
 #include <LittleFS.h>
@@ -129,8 +129,14 @@ void web::handleGetStatus(WebClient &client) {
     if (sysInfo->hasWatchdogReboots())
         doc["lastWatchdogReboot"] = TimeFormat::asString(sysInfo->lastWatchdogReboot());
     const auto wdReboots = doc["watchdogReboots"].to<JsonArray>();
-    for (const auto &wd: sysInfo->watchdogRebootsSnapshot())
-        wdReboots.add<String>(TimeFormat::asString(wd));
+    for (const auto &r : sysInfo->watchdogRebootsSnapshot()) {
+        auto obj = wdReboots.add<JsonObject>();
+        obj["time"] = TimeFormat::asString(r.time);
+        if (r.resetReason) obj["reason"] = r.resetReason;
+        if (r.marker) obj["marker"] = r.marker;
+        if (r.fxStage) obj["fxStage"] = r.fxStage;
+        if (r.fsBlockedAction) obj["fsBlocked"] = r.fsBlockedAction;
+    }
 
     // WiFi
     const auto wifi = doc["wifi"].to<JsonObject>();

@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 
@@ -89,9 +89,9 @@ SysStatus SysInfo::getSysStatus() const {
     return status;
 }
 
-void SysInfo::addWatchdogReboot(const time_t t) {
+void SysInfo::addWatchdogReboot(const WatchdogRebootInfo& info) {
     CoreMutex coreMutex(&mutex);
-    wdReboots.push(t);
+    wdReboots.push(info);
     SysInfoPersistence::instance().markDirty();
 }
 
@@ -107,22 +107,22 @@ bool SysInfo::hasWatchdogReboots() const {
 
 time_t SysInfo::lastWatchdogReboot() const {
     CoreMutex coreMutex(&mutex);
-    return wdReboots.empty() ? 0 : wdReboots.back();
+    return wdReboots.empty() ? 0 : wdReboots.back().time;
 }
 
-std::vector<time_t> SysInfo::watchdogRebootsSnapshot() const {
+std::vector<WatchdogRebootInfo> SysInfo::watchdogRebootsSnapshot() const {
     CoreMutex coreMutex(&mutex);
-    std::vector<time_t> snapshot;
+    std::vector<WatchdogRebootInfo> snapshot;
     snapshot.reserve(wdReboots.size());
-    for (const auto &t : wdReboots)
-        snapshot.push_back(t);
+    for (const auto &r : wdReboots)
+        snapshot.push_back(r);
     return snapshot;
 }
 
 void SysInfo::transformWatchdogReboots(const std::function<time_t(time_t)> &transform) {
     CoreMutex coreMutex(&mutex);
-    for (auto &t : wdReboots)
-        t = transform(t);
+    for (auto &r : wdReboots)
+        r.time = transform(r.time);
 }
 
 /**

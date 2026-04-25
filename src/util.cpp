@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <FreeRTOS.h>
 #include <task.h>
@@ -128,9 +128,7 @@ uint32_t secRandom(const uint32_t minLim, const uint32_t maxLim) {
  */
 void watchdogSetup() {
     if (watchdog_caused_reboot()) {
-        const time_t rebootTime = now();
-        log_warn(F("A watchdog caused reboot has occurred at %s"), TimeFormat::asString(rebootTime).c_str());
-        sysInfo->addWatchdogReboot(rebootTime);
+        log_warn(F("A watchdog caused reboot has occurred at %s"), TimeFormat::asString(now()).c_str());
         sysInfo->markDirtyBoot();
     }
     //if no ping in 8 seconds, reboot
