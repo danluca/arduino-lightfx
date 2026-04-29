@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 
@@ -40,5 +40,5 @@ public:
 
 private:
     static std::atomic<uint32_t> lastCheckInMs[3]; // For CORE0, CORE1, FX
-    static uint32_t healthStatus;
+    static std::atomic<uint32_t> healthStatus;
 };

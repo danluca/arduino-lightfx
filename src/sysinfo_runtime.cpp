@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -321,15 +321,11 @@ void logTaskSummary() {
     if (!TaskRuntimeMonitor::instance().load(current, previous))
         return;
 
-    log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% window=%.2f s heapUsed=%zu heapFree=%zu heapLow=%zu freeBlocks=%zu largestFree=%zu"),
-        static_cast<unsigned>(current.tasks.size()),
-        cpuLoadPct(current, previous),
-        snapshotWindowSec(current, previous),
-        configTOTAL_HEAP_SIZE - current.heapStats.xAvailableHeapSpaceInBytes,
-        current.heapStats.xAvailableHeapSpaceInBytes,
-        current.heapStats.xMinimumEverFreeBytesRemaining,
-        current.heapStats.xNumberOfFreeBlocks,
-        current.heapStats.xSizeOfLargestFreeBlockInBytes);
+    log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% window=%.2f s heapUsed=%zu heapFree=%zu heapLow=%zu freeBlocks=%zu largestFree=%zu task cycles cur/prev %llu / %llu"),
+        static_cast<unsigned>(current.tasks.size()), cpuLoadPct(current, previous), snapshotWindowSec(current, previous),
+        configTOTAL_HEAP_SIZE - current.heapStats.xAvailableHeapSpaceInBytes, current.heapStats.xAvailableHeapSpaceInBytes,
+        current.heapStats.xMinimumEverFreeBytesRemaining, current.heapStats.xNumberOfFreeBlocks, current.heapStats.xSizeOfLargestFreeBlockInBytes,
+        current.totalRunTime, previous.totalRunTime);
 #endif
 }
 

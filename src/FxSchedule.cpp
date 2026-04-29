@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include "FxSchedule.h"
@@ -12,6 +12,8 @@
 #include "util.h"
 #include "task_msg.h"
 #include "log.h"
+#include <CoreMutex.h>
+#include <deque>
 
 constexpr uint16_t dailyBedTime = 30*SECS_PER_MIN;          //12:30am bedtime
 constexpr uint16_t dailyWakeupTime = 6*SECS_PER_HOUR;       //6:00am wakeup time
@@ -23,7 +25,8 @@ QueueHandle_t almQueue;
 uint16_t currentDay = 0;
 
 void enqueueHoliday(TimerHandle_t xTimer);
-std::deque<AlarmData*> scheduledAlarms;
+static std::deque<AlarmData*> scheduledAlarms;
+static mutex_t almMutex;
 
 
 const char *alarmTypeToString(const AlarmType alType) {
@@ -34,8 +37,18 @@ const char *alarmTypeToString(const AlarmType alType) {
     }
 }
 
+// Returns a snapshot copy of scheduled alarms — lock held only for the copy
+std::vector<AlarmData> getScheduledAlarmsCopy() {
+    CoreMutex lock(&almMutex);
+    std::vector<AlarmData> result;
+    result.reserve(scheduledAlarms.size());
+    for (const auto *al : scheduledAlarms)
+        result.push_back(*al);
+    return result;
+}
+
 /**
- * Finds the next alarm to trigger
+ * Finds the next alarm to trigger — must be called with almMutex held
  */
 AlarmData *findNextAlarm() {
     AlarmData *nextAlarm = nullptr;
@@ -82,6 +95,7 @@ uint countTodayAlarms(const AlarmType alType, const time_t refTime) {
 
 /**
  * Sets the schedule for the day - ensures there are at least one alarm of each type scheduled in the future for reference time provided
+ * Must be called with almMutex held.
  * @param time reference time
  */
 void scheduleDay(const time_t time) {
@@ -110,7 +124,7 @@ void scheduleDay(const time_t time) {
 }
 
 /**
- * Logs the alarms to the console - info level
+ * Logs the alarms to the console - info level. Must be called with almMutex held.
  */
 void logAlarms() {
 #if LOGGING_ENABLED == 1
@@ -120,7 +134,7 @@ void logAlarms() {
 }
 
 /**
- * Setup the default sleep/wake-up schedule
+ * Setup the default sleep/wake-up schedule. Must be called with almMutex held.
  */
 void setupAlarmSchedule() {
     if (!sysInfo->isSysStatus(SysStatus::Wifi)) {
@@ -174,7 +188,8 @@ void alarm_setup() {
         log_error(F("Cannot start the alarmCheck timer - Ignored."));
 
     //time update event - holiday - repeat every 12h
-    if (TimerHandle_t thHoliday = xTimerCreate("holidayUpdate", pdMS_TO_TICKS(12 * 3600 * 1000), pdTRUE, &tmrHolidayUpdateId, enqueueHoliday); thHoliday == nullptr)
+    const TimerHandle_t thHoliday = xTimerCreate("holidayUpdate", pdMS_TO_TICKS(12 * 3600 * 1000), pdTRUE, &tmrHolidayUpdateId, enqueueHoliday);
+    if (thHoliday == nullptr)
         log_error(F("Cannot create holidayUpdate timer - Ignored."));
     else if (xTimerStart(thHoliday, 0) != pdPASS)
         log_error(F("Cannot start the holidayUpdate timer - Ignored."));
@@ -184,38 +199,57 @@ void alarm_setup() {
 
 void alarm_check() {
     const time_t time = now();
-    for (auto it = scheduledAlarms.begin(); it != scheduledAlarms.end();) {
-        if (const auto al = *it; al->value <= time) {
-            log_info(F("Alarm %p type %d triggered at %s for scheduled time %s; handler %p"), al, al->type, TimeFormat::asString(time).c_str(),
-                TimeFormat::asString(al->value).c_str(), al->onEventHandler);
-            if (al->onEventHandler)
-                al->onEventHandler();
-            else
-                log_error(F("Alarm %p type %d has no handler"), al, al->type);
-            it = scheduledAlarms.erase(it);
-            delete al;
-        } else
-            ++it;
-    }
-    //if no more alarms or a new day - attempt to schedule next alarms
-    if (scheduledAlarms.empty() || currentDay != day(time)) {
-        log_info(F("Alarms queue empty or a new day - scheduling more"));
-        setupAlarmSchedule();
-    } else {
-        log_info(F("Alarms remaining:"));
-        logAlarms();
-    }
-    //at this point we should have a next alarm
-    time_t nextAlarmCheck = 15*60; //default 15 minutes
-    if (const AlarmData *nextAlarm = findNextAlarm()) {
-        if (nextAlarm->value - now() > 24*SECS_PER_HOUR) {
-            log_warn(F("Time was way off (a proper NTP sync may have occurred later) and alarms were improperly scheduled - re-scheduling"));
-            setupAlarmSchedule();
-            nextAlarm = findNextAlarm();
+
+    // Phase 1: fire expired alarms — collect handlers, erase entries, then release lock
+    // At most 1 WAKEUP + 1 BEDTIME alarm exist at any time (scheduleDay invariant)
+    AlarmHandlerPtr triggered[2] = {};
+    uint8_t triggeredCount = 0;
+    {
+        CoreMutex lock(&almMutex);
+        for (auto it = scheduledAlarms.begin(); it != scheduledAlarms.end();) {
+            if (const auto al = *it; al->value <= time) {
+                log_info(F("Alarm %p type %d triggered at %s for scheduled time %s; handler %p"), al, al->type, TimeFormat::asString(time).c_str(),
+                    TimeFormat::asString(al->value).c_str(), al->onEventHandler);
+                if (al->onEventHandler && triggeredCount < 2)
+                    triggered[triggeredCount++] = al->onEventHandler;
+                else if (!al->onEventHandler)
+                    log_error(F("Alarm %p type %d has no handler"), al, al->type);
+                it = scheduledAlarms.erase(it);
+                delete al;
+            } else {
+                ++it;
+            }
         }
-        nextAlarmCheck = max(min(nextAlarm->value-now(), 12*SECS_PER_HOUR)/10, 60);  // set timer at minimum 1 minute or 10% of time to next alarm, but no more than 5% of day (72 minutes)
-    } else
-        log_error(F("There are no alarms scheduled - checking alarms in 15 min, by default"));
+    }  // almMutex released
+
+    // Phase 2: call handlers outside the lock
+    for (uint8_t i = 0; i < triggeredCount; i++)
+        triggered[i]();
+
+    // Phase 3: reschedule under lock, then create timer outside
+    time_t nextAlarmCheck = 15*60; //default 15 minutes
+    {
+        CoreMutex lock(&almMutex);
+        if (scheduledAlarms.empty() || currentDay != day(time)) {
+            log_info(F("Alarms queue empty or a new day - scheduling more"));
+            setupAlarmSchedule();
+        } else {
+            log_info(F("Alarms remaining:"));
+            logAlarms();
+        }
+        if (const AlarmData *nextAlarm = findNextAlarm()) {
+            if (nextAlarm->value - now() > 24*SECS_PER_HOUR) {
+                log_warn(F("Time was way off (a proper NTP sync may have occurred later) and alarms were improperly scheduled - re-scheduling"));
+                setupAlarmSchedule();
+                nextAlarm = findNextAlarm();
+            }
+            nextAlarmCheck = max(min(nextAlarm->value-now(), 12*SECS_PER_HOUR)/10, 60);  // set timer at minimum 1 minute or 10% of time to next alarm, but no more than 5% of day (72 minutes)
+        } else {
+            log_error(F("There are no alarms scheduled - checking alarms in 15 min, by default"));
+        }
+    }  // almMutex released
+
+    // Phase 4: create next check timer — no lock needed
     const TimerHandle_t thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
     if (thAlarmCheck == nullptr)
         log_error(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
@@ -231,6 +265,4 @@ void enqueueHoliday(TimerHandle_t xTimer) {
     static constexpr AlmAction msg = HOLIDAY_UPDATE;
     if (const BaseType_t qResult = xQueueSend(almQueue, &msg, 0); qResult == pdFALSE)
         log_error(F("Error sending HOLIDAY_UPDATE message to ALM queue for timer %hu [%s] - error %ld"), getTimerId(xTimer), getTimerName(xTimer), qResult);
-    // else
-    //     log_infoln(F("Sent HOLIDAY_UPDATE event successfully to broadcast task for timer %hu [%s]"), getTimerId(xTimer), getTimerName(xTimer));
 }

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "efx_setup.h"
 #include "HealthMonitor.h"
@@ -222,9 +222,9 @@ void displayFirmwareUpgradePattern() {
 }
 
 void updateBrightness() {
-    const uint8_t oldBrightness = stripBrightness;
+    const uint8_t oldBrightness = stripBrightness.load();
     stripBrightness = adjustStripBrightness();
-    if (oldBrightness != stripBrightness) {
+    if (oldBrightness != stripBrightness.load()) {
         log_info(F("Strip brightness updated from %d to %d"), oldBrightness, stripBrightness.load());
     }
 }

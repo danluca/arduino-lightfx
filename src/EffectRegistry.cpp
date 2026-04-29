@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include "efx_setup.h"
 #include "FxSchedule.h"
@@ -61,6 +61,10 @@ uint16_t EffectRegistry::nextRandomEffectPos() {
         uint16_t totalSelectionWeight = 0;
         for (const auto &info : effectInfos)
             totalSelectionWeight += info->selectionWeight;
+        if (totalSelectionWeight == 0) {
+            log_warn(F("All effects have zero selection weight - skipping random selection"));
+            return desiredEffectIndex;
+        }
         uint16_t rnd = random16(0, totalSelectionWeight);
         for (uint16_t i = 0; i < effectsCount; ++i) {
             rnd = qsuba(rnd, effectInfos[i]->selectionWeight);
@@ -178,7 +182,7 @@ void EffectRegistry::loop() {
     // Check if active effect has completed its transition to Idle
     if (activeEffect && activeEffect->getState() == Idle) {
         // Log the effect change
-        if (lastEffectIndex != nextEffectIndex) {
+        if (lastEffectIndex != nextEffectIndex && lastEffectIndex < effectsCount && nextEffectIndex < effectsCount) {
             log_info(F("Effect change: from index %d [%s] to %d [%s]"), lastEffectIndex, effectInfos[lastEffectIndex]->desc.id,
                 nextEffectIndex, effectInfos[nextEffectIndex]->desc.id);
         }

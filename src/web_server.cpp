@@ -207,12 +207,11 @@ void web::handleGetStatus(WebClient &client) {
         jts["unixMillis"] = unixMillis;
     }
     const auto alarms = time["alarms"].to<JsonArray>();
-    for (const auto &al: scheduledAlarms) {
+    for (const auto &al: getScheduledAlarmsCopy()) {
         auto jal = alarms.add<JsonObject>();
-        jal["timeLong"] = al->value;
-        jal["timeFmt"] = TimeFormat::asString(al->value);
-        jal["type"] = alarmTypeToString(al->type);
-        //        jal["taskPtr"] = (long)al->onEventHandler;
+        jal["timeLong"] = al.value;
+        jal["timeFmt"] = TimeFormat::asString(al.value);
+        jal["type"] = alarmTypeToString(al.type);
     }
     //System
     const auto temp = doc["temp"].to<JsonObject>();
