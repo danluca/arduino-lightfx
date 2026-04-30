@@ -40,6 +40,7 @@ static const char* markerStr(const uint32_t m) {
         case kResetMarkerMalloc:        return "malloc_failed";
         case kResetMarkerStackOverflow: return "stack_overflow";
         case kResetMarkerFxStall:       return "fx_stall";
+        case kResetMarkerCore0Stall:    return "core0_stall";
         case kResetMarkerOta:           return "ota";
         case kResetMarkerReboot:        return "reboot";
         default:                        return "unknown";

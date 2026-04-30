@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 
@@ -38,6 +38,7 @@ const char *resetMarkerToString(const uint32_t marker) {
         case kResetMarkerMalloc: return "malloc_failed";
         case kResetMarkerStackOverflow: return "stack_overflow";
         case kResetMarkerFxStall: return "fx_stall";
+        case kResetMarkerCore0Stall: return "core0_stall";
         case kResetMarkerOta: return "ota";
         case kResetMarkerReboot: return "reboot";
         case kResetMarkerUnknown: return "unknown";

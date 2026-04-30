@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef CONSTANTS_H
@@ -92,6 +92,7 @@ inline constexpr uint32_t kResetMarkerHardFault = 0xA11CE522u;
 inline constexpr uint32_t kResetMarkerMalloc = 0xA11CE523u;
 inline constexpr uint32_t kResetMarkerStackOverflow = 0xA11CE524u;
 inline constexpr uint32_t kResetMarkerFxStall = 0xA11CE525u;
+inline constexpr uint32_t kResetMarkerCore0Stall = 0xA11CE526u;
 inline constexpr uint32_t kResetMarkerOta = 0xA11CE502u;
 inline constexpr uint32_t kResetMarkerReboot = 0xA11CE503u;
 inline constexpr uint32_t kResetMarkerUnknown = 0xA11CE504u;

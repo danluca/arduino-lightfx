@@ -5,9 +5,9 @@
 #include "HealthMonitor.h"
 #include <hardware/watchdog.h>
 #include "constants.hpp"
+#include "global.h"
 #include "log.h"
 #include "sysinfo.h"
-#include "task_msg.h"
 
 std::atomic<uint32_t> HealthMonitor::lastCheckInMs[3] = {0, 0, 0};
 std::atomic<uint32_t> HealthMonitor::healthStatus = 0;
@@ -59,7 +59,9 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
     uint32_t diffs[3];
     
     for (int i = 0; i < 3; i++) {
-        diffs[i] = nowMs - lastCheckInMs[i].load(std::memory_order_relaxed);
+        // in odd race conditions, the check-in time may be in the future from nowMs (1ms observed)
+        const uint32_t checkInMs = lastCheckInMs[i].load(std::memory_order_relaxed);
+        diffs[i] = qsuba(nowMs, checkInMs);
         // ignore CORE1 checkin, its normal operation is to be blocked until a queue message arrives
         // ignore CORE0 checkin, it can block for long times during wifi reconnect, ping, etc.
         if (diffs[i] > timeoutMs && i == 2) {
@@ -68,23 +70,9 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
     }
 
     if (diffs[0] > 15000) {
-        log_error(F("HealthMonitor-U: Persistent CORE0 slowness/starvation detected [C0:%lu] - RESETTING WiFi stack"), diffs[0]);
-        sysInfo->resetSysStatus(SysStatus::Wifi); //mark wifi as down to prevent further pings until we attempt recovery
-        cyw43_arch_deinit();
-        vTaskDelay(250);    //little delay to allow the deinit to take effect before we reset - this is a bit hacky but the watchdog reset is pretty fast so we want to ensure the deinit has time to run
-        if (cyw43_arch_init()) {
-            log_error(F("HealthMonitor-U: Failed to re-initialize WiFi after CORE0 slowness/starvation - board may be inoperable until next reset"));
-            allHealthy = false;
-        } else {
-            //send WIFI_ENSURE message to CORE0 to unblock it if it's stuck in a wifi operation
-            static constexpr bcTaskMessage msg{WIFI_ENSURE, 0};
-            if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult != pdTRUE) {
-                log_error(F("Error sending WIFI_ENSURE message to BC queue for CORE0 starvation - error %ld"), qResult);
-                allHealthy = false;
-            } else {
-                log_warn(F("HealthMonitor-U: Disconnected and sent WIFI_ENSURE message to CORE0 to attempt recovery from slowness/starvation"));
-            }
-        }
+        log_error(F("HealthMonitor-U: Persistent CORE0 starvation detected [C0:%lu] - triggering watchdog reset"), diffs[0]);
+        watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerCore0Stall;
+        allHealthy = false;
     }
 
     if (allHealthy) {
