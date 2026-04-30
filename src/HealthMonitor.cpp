@@ -86,7 +86,7 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
                 logTaskStats();
 #endif
                 lastWarnMs = nowMs;
-                saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], false);
+                //saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], false);
             }
         }
     } else {
