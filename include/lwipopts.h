@@ -73,7 +73,6 @@ extern unsigned long __lwip_rand(void);
 #define LWIP_MDNS_RESPONDER           1
 #define MDNS_MAX_SERVICES             4
 #define LWIP_TCPIP_CORE_LOCKING       1
-#define LWIP_CHKSUM_COPY_ALGORITHM    1
 
 // See #1285
 #define MEMP_NUM_UDP_PCB              (__LWIP_MEMMULT * 7)

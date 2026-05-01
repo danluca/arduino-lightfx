@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #ifndef WEBCLIENT_H
@@ -75,6 +75,7 @@ class WebClient {
 
     void setContentLength(size_t contentLength);
     void addResponseHeader(const String& name, const String& value, bool first = false);
+    void recordBytesWritten(const size_t n) { _contentWritten += n; }
     size_t sendContent(const String &content);
     size_t sendContent(const char *content, size_t contentLength);
     size_t sendContent_P(PGM_P content);
