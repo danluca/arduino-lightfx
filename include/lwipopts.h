@@ -40,7 +40,7 @@ extern unsigned long __lwip_rand(void);
 #define MEM_SIZE                      32768  // Increased from 16384 for RP2350's 256KB heap
 #define MEMP_NUM_TCP_SEG              32
 #define MEMP_NUM_ARP_QUEUE            10
-#define PBUF_POOL_SIZE                24
+#define PBUF_POOL_SIZE                40    // increased from 24
 #define LWIP_ARP                      7
 #define LWIP_ETHERNET                 1
 #define LWIP_ICMP                     1
@@ -52,7 +52,7 @@ extern unsigned long __lwip_rand(void);
 #define TCP_SND_BUF                   (8 * TCP_MSS)
 #define TCP_SND_QUEUELEN              ((4 * (TCP_SND_BUF) + (TCP_MSS - 1)) / (TCP_MSS))
 #define TCP_LISTEN_BACKLOG            1
-#define TCP_DEFAULT_LISTEN_BACKLOG    1  // Reduced
+#define TCP_DEFAULT_LISTEN_BACKLOG    2
 #define LWIP_NETIF_STATUS_CALLBACK    1
 #define LWIP_NETIF_LINK_CALLBACK      1
 #define LWIP_NETIF_HOSTNAME           1
@@ -75,8 +75,10 @@ extern unsigned long __lwip_rand(void);
 #define LWIP_TCPIP_CORE_LOCKING       1
 
 // See #1285
-#define MEMP_NUM_UDP_PCB              (__LWIP_MEMMULT * 7)
-#define MEMP_NUM_TCP_PCB              (__LWIP_MEMMULT * 5)
+// #define MEMP_NUM_UDP_PCB              (__LWIP_MEMMULT * 7)
+// #define MEMP_NUM_TCP_PCB              (__LWIP_MEMMULT * 5)
+#define MEMP_NUM_UDP_PCB              12    // increased for RP2350 larger RAM
+#define MEMP_NUM_TCP_PCB              24    // increased for RP2350 larger RAM
 
 #if LWIP_IPV6
 #define LWIP_IPV6_DHCP6               1
