@@ -38,7 +38,7 @@ static constexpr auto serverAgent = "rp2040-luca/1.0.0";
 static constexpr auto hdFmtDate = "%4d-%02d-%02d %02d:%02d:%02d CST";
 static constexpr auto hdFmtContentDisposition = "inline; filename=\"%s\"";
 static constexpr auto msgRequestNotMapped = "URI not mapped to a handler on this server";
-// static constexpr auto configJsonFilename = "config.json";
+static constexpr auto configJsonFilename = "config.json";
 static constexpr auto statusJsonFilename = "status.json";
 static constexpr auto tasksJsonFilename = "tasks.json";
 static constexpr auto filesJsonFilename = "files.json";
@@ -111,6 +111,28 @@ size_t web::marshalJson(const JsonDocument &doc, WebClient &client) {
     const size_t bodySz = serializeJson(doc, wbs);
     client.recordBytesWritten(bodySz);  // body bypasses _currentClientWrite; register it for accurate totals
     return bodySz;
+}
+
+/**
+ * Web request handler - GET /config.json. Builds response dynamically from in-memory system info and effects registry.
+ */
+void web::handleGetConfig(WebClient &client) {
+    dateHeader(client);
+    contentDispositionHeader(client, configJsonFilename);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
+
+    JsonDocument doc;
+    SysInfo::sysConfig(doc);
+    const auto hldList = doc["holidayList"].to<JsonArray>();
+    for (uint8_t hi = None; hi <= NewYear; hi++)
+        hldList.add(holidayToString(static_cast<Holiday>(hi)));
+    const auto fxArray = doc["fx"].to<JsonArray>();
+    fxRegistry.describeConfig(fxArray);
+
+    const size_t sz = marshalJson(doc, client);
+    doc.clear();
+    (void) sz;
+    log_info(F("Handler handleGetConfig invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
 /**
@@ -734,7 +756,7 @@ void web::server_setup() {
         server.setServerAgent(serverAgent);
         server.serveStatic("/", SyncFsImpl, "/status/", &inFlashResources, hdCacheStatic);
         server.serveStatic("/file", SyncFsImpl, "/", nullptr, hdCacheStatic);
-        server.serveStatic("/config.json", SyncFsImpl, "/status/sysconfig.json", nullptr, hdCacheJson);
+        server.on("/config.json", HTTP_GET, handleGetConfig);
         server.serveStatic("/health.json", SyncFsImpl, healthEventFileName, nullptr, hdCacheJson);
         server.on("/status.json", HTTP_GET, handleGetStatus);
         server.on("/fx", HTTP_PUT, handlePutConfig);

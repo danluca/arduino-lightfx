@@ -31,7 +31,6 @@ inline constexpr auto kXSourceBoard = "board";
 inline constexpr auto kHeaderUserAgent = "User-Agent";
 inline constexpr auto kUaBoardPrefix = "rp2040-lightfx-master";     // User-Agent prefix used by board-originated sync/broadcast requests
 inline constexpr auto fxCfgFileName = "/status/fxconfig.json";
-inline constexpr auto sysCfgFileName = "/status/sysconfig.json";
 inline constexpr auto calibFileName = "/status/calibration.json";
 inline constexpr auto stateFileName = "/state.json";
 inline constexpr auto sysFileName = "/sys.json";

@@ -13,6 +13,7 @@ namespace web {
 
     void server_setup();
     void webserver();
+    void handleGetConfig(WebClient& client);
     void handleGetStatus(WebClient& client);
     void handlePutConfig(WebClient& client);
     void handleGetTasks(WebClient& client);

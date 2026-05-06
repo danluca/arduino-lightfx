@@ -6,7 +6,9 @@
       "Read",
       "Edit",
       "Write",
-      "MultiEdit"
+      "MultiEdit",
+      "Bash(Get-ChildItem -Path \"D:\\\\Projects\\\\Arduino\\\\repos\\\\rp2350-lightfx\" -Recurse -Directory)",
+      "Bash(Select-Object -First 20)"
     ]
   }
 }
