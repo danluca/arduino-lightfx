@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <FreeRTOS.h>
 #include <LittleFS.h>
@@ -157,6 +157,14 @@ void web::handleGetStatus(WebClient &client) {
     fxRegistry.pastEffectsRun(lastFx); //ordered earliest to latest (current effect is the last element)
     fx[csBrightness] = stripBrightness.load();
     fx[csBrightnessLocked] = stripBrightnessLocked.load();
+    fx["totalAudioBumps"] = totalAudioBumps.load();
+    {
+        CoreMutex lock(&audioStatsMutex);
+        fx[csAudioThreshold] = audioBumpThreshold.load();
+        const auto audioHist = fx["audioHist"].to<JsonArray>();
+        for (const uint16_t x: maxAudio)
+            audioHist.add<uint16_t>(x);
+    }
     // Master/Slave status
     const auto master = doc["master"].to<JsonObject>();
     master["active"] = fxBroadcastEnabled.load();
