@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -10,6 +10,7 @@
 #include "sysinfo.h"
 #include "util.h"
 #include "task_msg.h"
+#include "HealthMonitor.h"
 #if LOGGING_ENABLED == 1
 #include "stringutils.h"
 #include "log.h"
@@ -238,6 +239,7 @@ void scanClients() {
             continue;
         }
         //note one ping can take up to 7.5 seconds
+        HealthMonitor::checkIn(HEALTH_CORE0);
         if (const int resPing = WiFi.ping(ip); resPing >= 0) {
             (*it)->setOnline(true);
             (*it)->lastSeenMillis = millis();

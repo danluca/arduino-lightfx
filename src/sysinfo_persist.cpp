@@ -62,7 +62,7 @@ static const char* stageStr(const uint32_t s) {
 }
 
 static constexpr const char* kResetReasons[] = {csWatchdog, csPowerOn, csPinReset, csSoftReset, csDebug, "unknown"};
-static constexpr const char* kMarkers[] = {"none","panic","assert","hardfault","malloc_failed","stack_overflow","fx_stall","ota","reboot","unknown"};
+static constexpr const char* kMarkers[] = {"none","panic","assert","hardfault","malloc_failed","stack_overflow","fx_stall","core0_stall","ota","reboot","unknown"};
 static constexpr const char* kFxStages[] = {"none","enter","after_queue","after_ota_check","fw_upgrade","before_loop","after_loop","after_ping","unknown"};
 static constexpr const char* kFsActions[] = {
     "READ_FILE", "WRITE_FILE", "WRITE_FILE_ASYNC", "APPEND_FILE", "APPEND_FILE_BIN",

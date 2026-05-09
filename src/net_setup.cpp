@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "net_setup.h"
 #include <algorithm>
@@ -13,6 +13,7 @@
 #include "log.h"
 #include "stringutils.h"
 #include "web_server.h"
+#include "HealthMonitor.h"
 #if MDNS_ENABLED==1
 #include <LEAmDNS.h>
 #endif
@@ -150,6 +151,7 @@ bool wifi_connect() {
         wifiStatus = WiFi.begin(ssid, pass);
         // Wait for connection with a 30-second timeout
         while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 30000) {
+            HealthMonitor::checkIn(HEALTH_CORE0);
             taskDelay(500);
         }
         if (wifiStatus = WiFi.status(); wifiStatus != WL_CONNECTED) {
@@ -228,6 +230,7 @@ bool wifi_check() {
     int gwPingTime = -1;
     uint8_t pingAttempts = 0;
     for (int i = 0; i < 4; i++) {
+        HealthMonitor::checkIn(HEALTH_CORE0);
         gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 128);
         pingAttempts++;
         if (gwPingTime >= 0)
