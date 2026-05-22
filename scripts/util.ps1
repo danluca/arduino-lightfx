@@ -73,7 +73,7 @@ function prepCoreStackSize([int]$size) {
 function prepEnvironment([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg) {
 
     ensureHeap4Strategy
-    prepCoreStackSize(2048) # set core stack size to 2KB to increase stack sizes for CORE tasks, default is 1024 bytes
+    prepCoreStackSize(3072) # set core stack size to 3KB to increase stack sizes for CORE tasks, default is 1024 bytes
 
     $boardId = (Get-BoardByName $board).Id
     $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"

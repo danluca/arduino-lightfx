@@ -209,7 +209,7 @@ bool wifi_setup() {
     }
     checkFirmwareVersion();
     //enable low-power mode - web server is not the primary function of this module
-    WiFi.defaultLowPowerMode();
+    WiFi.noLowPowerMode();
     WiFi.mode(WIFI_STA);   //station mode - we're connecting to an existing WiFi network, not creating our own
 
     const bool connStatus = wifi_connect();
@@ -254,8 +254,6 @@ bool wifi_check() {
 
 /**
  * Similar with wifi_connect, but with some preamble cleanup
- * Watch out: https://github.com/arduino/nina-fw/issues/63 - after WiFi reconnect, the server seems to stop working (returns disconnected clients?)
- * Should we invoke a board reset instead? (NVIC_SystemReset)
  */
 void wifi_reconnect() {
     log_debug(F("wifi_reconnect: start"));
