@@ -15,6 +15,7 @@
 #include "sysinfo.h"
 #include "util.h"
 #include "task_msg.h"
+#include "HealthMonitor.h"
 #include "index_html.h"
 #include "pixel_css.h"
 #include "pixel_js.h"
@@ -479,6 +480,7 @@ void handleFWImageUpload(WebClient &client) {
                 //create a file for the incoming data
                 if (SyncFsImpl.exists(fwData->fileName.c_str()))
                     SyncFsImpl.remove(fwData->fileName.c_str());
+                markFwUpgradeInitiated();  //mark that FW upgrade stream has started - prevent Core0 from running comms
             }
             log_info(F("FW upload auth %s, size read %zu, size expected %zu, sha-256 expected %s"), fwData->auth ? "OK" : "failed",
                 raw.totalSize, req.contentLength(), fwData->checkSum.c_str());
@@ -506,6 +508,7 @@ void handleFWImageUpload(WebClient &client) {
                     client.send(406, mime::mimeTable[mime::txt].mimeType, R"({"error": "Upload data integrity failed - Checksum does not match"})");
                     log_error(F("FW upload and storage (size read/expected %zu/%zu bytes) failed - checksum does not match: sha-256 expected: %s, actual: %s"),
                         raw.totalSize, req.contentLength(), fwData->checkSum.c_str(), sha256.c_str());
+                    clearFwUpgradeInitiated();
                 }
             } else {
                 client.send(401, mime::mimeTable[mime::txt].mimeType, R"({"error": "Unauthorized call"})");
@@ -519,6 +522,8 @@ void handleFWImageUpload(WebClient &client) {
             client.send(400, mime::mimeTable[mime::txt].mimeType, R"({"error": "Bad Request or Read - Aborted"})");
             log_error(F("FW upload and storage (size read/expected %zu/%zu bytes) failed - aborted"), raw.totalSize, req.contentLength());
             const auto fd = static_cast<FWUploadData *>(raw.data);
+            if (fd->auth)
+                clearFwUpgradeInitiated();
             if (SyncFsImpl.exists(fd->fileName.c_str()))
                 SyncFsImpl.remove(fd->fileName.c_str());
             delete fd;
@@ -526,6 +531,26 @@ void handleFWImageUpload(WebClient &client) {
         break;
         default: break;
     }
+}
+
+/**
+ * Mark that a firmware upgrade has been initiated — enters OTA mode in the health monitor,
+ * extending the CORE0 stall threshold to 120 s and resetting the stall timer right before
+ * the blocking raw-data read loop begins.
+ */
+void web::markFwUpgradeInitiated() {
+    HealthMonitor::enterOtaMode();
+    HealthMonitor::checkIn(HEALTH_CORE0);
+    log_info(F("FW upgrade initiated - Core0 will suspend comms during upload"));
+}
+
+/**
+ * Clear OTA mode and restore normal health monitor thresholds.
+ * Call this on any upload failure (aborted or checksum mismatch).
+ */
+void web::clearFwUpgradeInitiated() {
+    HealthMonitor::exitOtaMode();
+    log_info(F("FW upgrade flag cleared - resuming normal Core0 operations"));
 }
 
 /**
@@ -754,6 +779,9 @@ void web::server_setup() {
     if (!server_handlers_configured) {
         log_info(F("Starting Web server setup"));
         server.setServerAgent(serverAgent);
+        // Wire CORE0 health check-in into the raw-transfer loop so the starvation detector
+        // stays quiet while a long OTA upload blocks this core
+        WebClient::setRawTransferHeartbeat([]() { HealthMonitor::checkIn(HEALTH_CORE0); });
         server.serveStatic("/", SyncFsImpl, "/status/", &inFlashResources, hdCacheStatic);
         server.serveStatic("/file", SyncFsImpl, "/", nullptr, hdCacheStatic);
         server.on("/config.json", HTTP_GET, handleGetConfig);

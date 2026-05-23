@@ -229,9 +229,13 @@ void setup() {
 void loop() {
     HealthMonitor::checkIn(HEALTH_CORE0);
     // logTaskProbe();
-    web_run();
+    web::webserver();
+    // During FW upgrade, skip comms to prevent blocking the web server which handles the upload
+    if (!HealthMonitor::isInOtaMode()) {
+        commRun();
+    }
     handle_fw_upgrade();
-    vTaskDelay(5);   //this is important to allow other tasks to execute on core 0
+    vTaskDelay(10);   //this is important to allow other tasks to execute on core 0
 
     // static uint32_t lastCore0WdtPingMs = 0;
     // const uint32_t nowMsPing = millis();

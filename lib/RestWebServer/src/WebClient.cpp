@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include "WebClient.h"
@@ -24,6 +24,12 @@ static const char* httpMethodStr[] = {
 };
 #define INITIAL_HEADERS_BUFFER_SIZE 256
 static constexpr size_t httpMethodsCount = std::size(httpMethodStr);
+
+std::function<void()> WebClient::_rawTransferHeartbeat;
+
+void WebClient::setRawTransferHeartbeat(std::function<void()> fn) {
+    _rawTransferHeartbeat = std::move(fn);
+}
 static constexpr char Content_Type[] PROGMEM = "Content-Type";
 static constexpr char Content_Length[] PROGMEM = "Content-Length";
 static constexpr char WWW_Authenticate[] = "WWW-Authenticate";
@@ -462,6 +468,10 @@ bool WebClient::_handleRawData() {
             return false;
         }
         _requestHandler->raw(*this);
+        // Yield so other tasks (e.g. FX/watchdog feeder) can run during long raw transfers
+        vTaskDelay(5);
+        // Ping the application heartbeat so CORE0 starvation detection stays quiet during upload
+        if (_rawTransferHeartbeat) _rawTransferHeartbeat();
     }
     //notify the handler the raw reading has ended
     _rawBody->status = RAW_END;
@@ -810,12 +820,16 @@ HTTPClientStatus WebClient::handleRequest() {
     }
 
     // Watchdog: check if client has been alive too long (prevents stuck clients)
+    // Skip this check if performing raw upload (e.g. FW image), which can legitimately take 120+ seconds
     const time_t clientLifetime = millis() - _startHandlingTime;
     if (clientLifetime > HTTP_MAX_CLIENT_LIFETIME) {
-        log_error("Client ID %d exceeded maximum lifetime (%lld ms), forcing disconnect", _clientID, clientLifetime);
-        _status = HC_ERROR;
-        close();
-        return _status;
+        // Allow FW uploads and other raw data transfers to exceed normal lifetime limits
+        if (_rawBody == nullptr || _rawBody->status != RAW_WRITE) {
+            log_error("Client ID %d exceeded maximum lifetime (%lld ms), forcing disconnect", _clientID, clientLifetime);
+            _status = HC_ERROR;
+            close();
+            return _status;
+        }
     }
 
     switch (_status) {

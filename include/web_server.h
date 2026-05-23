@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_WEB_SERVER_H
 #define LIGHTFX_WEB_SERVER_H
@@ -19,6 +19,8 @@ namespace web {
     void handleGetTasks(WebClient& client);
     void handleNotFound(WebClient& client);
     size_t marshalJson(const JsonDocument &doc, WebClient &client);
+    void markFwUpgradeInitiated();
+    void clearFwUpgradeInitiated();
 }
 
 #endif //LIGHTFX_WEB_SERVER_H

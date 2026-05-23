@@ -11,6 +11,7 @@
 
 std::atomic<uint32_t> HealthMonitor::lastCheckInMs[3] = {0, 0, 0};
 std::atomic<uint32_t> HealthMonitor::healthStatus = 0;
+std::atomic<bool> HealthMonitor::otaMode = false;
 static constexpr uint16_t warnIntervalMs = 1000;
 static constexpr uint16_t watchdogLowWatermarkMs = 2000;
 static uint32_t lastWarnMs = 0;
@@ -51,6 +52,20 @@ void HealthMonitor::checkIn(const HealthBit bit) {
 
 }
 
+void HealthMonitor::enterOtaMode() {
+    otaMode.store(true, std::memory_order_relaxed);
+    log_info(F("HealthMonitor: OTA mode entered - CORE0 starvation threshold extended to 120s"));
+}
+
+void HealthMonitor::exitOtaMode() {
+    otaMode.store(false, std::memory_order_relaxed);
+    log_info(F("HealthMonitor: OTA mode exited - CORE0 starvation threshold restored to 15s"));
+}
+
+bool HealthMonitor::isInOtaMode() {
+    return otaMode.load(std::memory_order_relaxed);
+}
+
 void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
     if (healthStatus.load(std::memory_order_relaxed) == 0)
         return;
@@ -69,7 +84,9 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
         }
     }
 
-    if (diffs[0] > 15000) {
+    // During OTA upload CORE0 is blocked in the raw-data read loop; extend the stall threshold to 120 s
+    const uint32_t core0StallThreshold = otaMode.load(std::memory_order_relaxed) ? 120000u : 15000u;
+    if (diffs[0] > core0StallThreshold) {
         log_error(F("HealthMonitor-U: Persistent CORE0 starvation detected [C0:%lu] - triggering watchdog reset"), diffs[0]);
         watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerCore0Stall;
         allHealthy = false;

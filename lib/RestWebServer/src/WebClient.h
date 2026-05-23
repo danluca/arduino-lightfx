@@ -76,6 +76,9 @@ class WebClient {
     void setContentLength(size_t contentLength);
     void addResponseHeader(const String& name, const String& value, bool first = false);
     void recordBytesWritten(const size_t n) { _contentWritten += n; }
+    // Callback invoked each iteration of the raw-data read loop — use to refresh health/watchdog heartbeats
+    static void setRawTransferHeartbeat(std::function<void()> fn);
+
     size_t sendContent(const String &content);
     size_t sendContent(const char *content, size_t contentLength);
     size_t sendContent_P(PGM_P content);
@@ -141,6 +144,8 @@ protected:
     size_t _uploadReadBytes(uint8_t* buf, size_t len);
     void _prepareHeader(String& response, int code, const char* content_type, size_t contentLength);
     size_t _streamFileCore(size_t fileSize, const String &fileName, const String &contentType, int code = 200);
+
+    static std::function<void()> _rawTransferHeartbeat;
 
     HTTPServer* _server;
     WiFiClient  _rawWifiClient;

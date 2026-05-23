@@ -38,7 +38,23 @@ public:
      */
     static void init();
 
+    /**
+     * Enter OTA mode — suppresses the CORE0 starvation detection while firmware upload is in progress
+     */
+    static void enterOtaMode();
+
+    /**
+     * Exit OTA mode — restores normal CORE0 starvation detection threshold
+     */
+    static void exitOtaMode();
+
+    /**
+     * Returns true while a firmware upload is in progress (OTA mode is active)
+     */
+    static bool isInOtaMode();
+
 private:
     static std::atomic<uint32_t> lastCheckInMs[3]; // For CORE0, CORE1, FX
     static std::atomic<uint32_t> healthStatus;
+    static std::atomic<bool> otaMode;
 };
