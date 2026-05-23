@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -692,7 +692,7 @@ size_t SynchronizedFS::appendFile(const char *fname, const uint8_t *buffer, cons
  * @param path file path to delete - absolute path
  * @return true if successfully deleted, false otherwise
  */
-bool SynchronizedFS::remove(const char *path) {
+bool SynchronizedFS::remove(const char *path) const {
     auto *request = makeBorrowedRequest(FsRequest::Action::DELETE, xTaskGetCurrentTaskHandle(), path);
     if (request == nullptr) {
         log_error(F("Failed to create DELETE request to delete file - request pool likely full: path=%s"), path);
@@ -717,7 +717,7 @@ bool SynchronizedFS::remove(const char *path) {
  * @param pathTo new path name
  * @return true if rename was successful (old path exists, rename succeeded); false otherwise
  */
-bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
+bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) const {
     auto *request = makeOwnedStringRequest(FsRequest::Action::RENAME, pathFrom, String(pathTo ? pathTo : ""), nullptr, 0,
                         xTaskGetCurrentTaskHandle());
     if (request == nullptr) {
@@ -742,7 +742,7 @@ bool SynchronizedFS::rename(const char *pathFrom, const char *pathTo) {
  * @param fname file path to check - absolute path
  * @return true if file exists, false otherwise
  */
-bool SynchronizedFS::exists(const char *fname) {
+bool SynchronizedFS::exists(const char *fname) const {
     auto *request = makeBorrowedRequest(FsRequest::Action::EXISTS, xTaskGetCurrentTaskHandle(), fname);
     if (request == nullptr) {
         log_error(F("Failed to create EXISTS request to check file existence - request pool likely full: fname=%s"), fname);
@@ -765,7 +765,7 @@ bool SynchronizedFS::exists(const char *fname) {
  * Blocking function that formats the file system. Can be called from any task
  * @return true if successful
  */
-bool SynchronizedFS::format() {
+bool SynchronizedFS::format() const {
     auto *request = makeBorrowedRequest(FsRequest::Action::FORMAT, xTaskGetCurrentTaskHandle(), nullptr);
     if (request == nullptr) {
         log_error(F("Failed to create FORMAT request to format file system - request pool likely full"));
@@ -790,7 +790,7 @@ bool SynchronizedFS::format() {
  * @param path path to list files from (recursively)
  * @param list list to collect all file info
  */
-bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
+bool SynchronizedFS::list(const char *path, const std::deque<FileInfo> *list) const {
     auto *request = makeBorrowedRequest(FsRequest::Action::LIST_FILES, xTaskGetCurrentTaskHandle(), path, list, FsPayloadKind::FILE_INFO_LIST, 0, true);
     if (request == nullptr) {
         log_error(F("Failed to create LIST_FILES request to list files - request pool likely full: path=%s"), path);
@@ -812,10 +812,10 @@ bool SynchronizedFS::list(const char *path, std::deque<FileInfo> *list) const {
 /**
  * Blocking function that retrieves file information from the file system if it exists. Can be called from any task
  * @param path path to get info for
- * @param info file info object to populate
- * @return file information; if file doesn't exist the fields \code size\endcode and \code modTime\endcode are both 0
+ * @param info file info object to populate; if file doesn't exist the fields \code size\endcode and \code modTime\endcode are both 0
+ * @return true if file info retrieval was successful, false otherwise
  */
-bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
+bool SynchronizedFS::stat(const char *path, const FileInfo *info) const {
     auto *request = makeBorrowedRequest(FsRequest::Action::INFO, xTaskGetCurrentTaskHandle(), path, info, FsPayloadKind::FILE_INFO, 0, true);
     if (request == nullptr) {
         log_error(F("Failed to create INFO request to retrieve file info - request pool likely full: path=%s"), path);
@@ -836,7 +836,13 @@ bool SynchronizedFS::stat(const char *path, FileInfo *info) const {
     return successful;
 }
 
-bool SynchronizedFS::stat(const char *path, FSStat *st) {
+/**
+ * Blocking function that retrieves file information from the file system if it exists. Can be called from any task
+ * @param path path to retrieve info for
+ * @param st stat structure to fill
+ * @return true if file info retrieval was successful, false otherwise
+ */
+bool SynchronizedFS::stat(const char *path, const FSStat *st) const {
     auto *request = makeBorrowedRequest(FsRequest::Action::STAT, xTaskGetCurrentTaskHandle(), path, st, FsPayloadKind::FS_STAT, 0, true);
     if (request == nullptr) {
         log_error(F("Failed to create STAT request to retrieve file info - request pool likely full: path=%s"), path);
@@ -851,12 +857,16 @@ bool SynchronizedFS::stat(const char *path, FSStat *st) {
             log_error(F("Error retrieving file info for path %s - error waiting for completion"), path);
         else
             log_info(F("File info retrieved successfully for path %s"), path);
-    }
-    if (!successful)
+    } else
         log_error(F("Failed to retrieve file info for path %s"), path);
     return successful;
 }
 
+/**
+ * Calculate the SHA-256 hash of a file and return it as a lowercase string
+ * @param path file path to calculate SHA-256 hash
+ * @return the SHA-256 hash as a lowercase string
+ */
 String SynchronizedFS::sha256(const char *path) const {
     String strSha2;
     strSha2.reserve(65);
@@ -867,32 +877,56 @@ String SynchronizedFS::sha256(const char *path) const {
     }
     log_info(F("Sending SHA256 message to filesystem task for path %s"), path);
 
-    bool successful = false;
     if (clearAndEnqueueFsRequest(queue, request)) {
-        successful = waitForFsCompletion(FsRequest::Action::SHA256, path, queue);
-        if (!successful)
+        if (const bool successful = waitForFsCompletion(FsRequest::Action::SHA256, path, queue); !successful)
             log_error(F("Error calculating SHA-256 hash for path %s - error waiting for completion"), path);
-        else
-            log_info(F("SHA-256 hash calculated successfully for path %s"), path);
-    }
-    if (!successful)
+        else {
+            log_info(F("SHA-256 hash calculated successfully for path %s - returning standard lower case"), path);
+            strSha2.toLowerCase();
+        }
+    } else
         log_error(F("Failed to calculate SHA-256 hash for path %s (does not exist or not a file)"), path);
     return strSha2;
 }
 
-void SynchronizedFS::end() {
+/**
+ * Stops the filesystem task and invokes the end method of the underlying filesystem implementation, if present.
+ * This method ensures that all filesystem operations are properly terminated and any active tasks related to
+ * the filesystem are stopped. Useful for cleaning up resources and preventing further operations.
+ */
+void SynchronizedFS::end() const {
     Scheduler.stopTask(fsTask);
     if (fsPtr)
         fsPtr->end();
 }
 
-bool SynchronizedFS::info(FSInfo &info) {
+
+/**
+ * Retrieves general information about the filesystem.
+ *
+ * This method attempts to populate the provided FSInfo structure with details about the filesystem, such as its capacity, usage,
+ * and other relevant metadata. The operation depends on the validity of the internal filesystem pointer.
+ *
+ * @param info Reference to an FSInfo structure that will be populated with filesystem information if the operation succeeds.
+ *
+ * @return True if the filesystem information was successfully retrieved, false if the operation failed (e.g., if the filesystem pointer
+ *         is not set or invalid).
+ */
+bool SynchronizedFS::info(FSInfo &info) const {
     if (fsPtr)
         return fsPtr->info(info);
     return false;
 }
 
-bool SynchronizedFS::mkdir(const char *path) {
+/**
+ * Creates a new directory at the specified path.
+ * This method constructs a task request to create the directory, clears any pending notifications in
+ * the queue, and waits for the operation to complete. Logs an error if the directory creation fails.
+ *
+ * @param path The full path of the directory to be created. Must be a valid, non-null string.
+ * @return true if the directory is successfully created, false if the operation fails or an error occurs.
+ */
+bool SynchronizedFS::mkdir(const char *path) const {
     auto *request = makeBorrowedRequest(FsRequest::Action::MAKE_DIR, xTaskGetCurrentTaskHandle(), path);
     bool success = false;
     if (clearAndEnqueueFsRequest(queue, request)) {
@@ -905,7 +939,14 @@ bool SynchronizedFS::mkdir(const char *path) {
     return success;
 }
 
-bool SynchronizedFS::rmdir(const char *path) {
+/**
+ * Removes a directory at the specified path by delegating the operation
+ * to the remove method. The path must point to an empty directory.
+ *
+ * @param path The path of the directory to be removed. This should be a null-terminated string.
+ * @return True if the directory was successfully removed, false otherwise.
+ */
+bool SynchronizedFS::rmdir(const char *path) const {
     return remove(path);
 }
 

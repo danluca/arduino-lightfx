@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef RP2040_LIGHTFX_EARLE_FILESYSTEM_H
@@ -42,16 +42,16 @@ public:
 
     bool begin();
     bool begin(FS &fs);
-    void end();
-    bool format();
-    bool info(FSInfo &info);
-    bool exists(const char *path);
-    bool rename(const char *pathFrom, const char *pathTo);
-    bool remove(const char *path);
-    bool mkdir(const char *path);
-    bool rmdir(const char *path);
-    bool stat(const char *path, FSStat *st);
-    bool stat(const char *path, FileInfo *info) const;
+    void end() const;
+    [[nodiscard]] bool format() const;
+    bool info(FSInfo &info) const;
+    bool exists(const char *path) const;
+    bool rename(const char *pathFrom, const char *pathTo) const;
+    bool remove(const char *path) const;
+    bool mkdir(const char *path) const;
+    bool rmdir(const char *path) const;
+    bool stat(const char *path, const FSStat *st) const;
+    bool stat(const char *path, const FileInfo *info) const;
     String sha256(const char *path) const;
 
     size_t readFile(const char *fname, String *s) const;
@@ -59,7 +59,7 @@ public:
     size_t appendFile(const char *fname, const String *s) const;
     size_t appendFile(const char *fname, const uint8_t *buffer, size_t size) const;
     bool writeFileAsync(const char *fname, const String *s, QueueHandle_t completionQueue = nullptr, uint16_t completionId = 0) const;
-    bool list(const char *path, std::deque<FileInfo> *list) const;
+    bool list(const char *path, const std::deque<FileInfo> *list) const;
 
 protected:
     size_t prvReadFile(const char *fname, String *s) const;

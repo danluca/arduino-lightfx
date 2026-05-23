@@ -474,7 +474,7 @@ void handleFWImageUpload(WebClient &client) {
             // *auth = req.header("X-Token").equals("*QisW@tWtx4WvERf") ? 0x01 : 0x00;
             fwData->auth = req.header("X-Token").equals(authToken);
             fwData->checkSum = req.header("X-Check");
-            fwData->checkSum.toLowerCase();
+            fwData->checkSum.toLowerCase(); //matches the output style of SyncFsImpl.sha256
             fwData->fileName = csFWImageFilename;
             if (fwData->auth) {
                 //create a file for the incoming data
@@ -489,7 +489,7 @@ void handleFWImageUpload(WebClient &client) {
         case RAW_WRITE:
             //append one raw buffer at a time into the file if auth succeeded
             if (const FWUploadData *fwData = static_cast<FWUploadData *>(raw.data); fwData->auth) {
-                SyncFsImpl.appendFile(fwData->fileName.c_str(), raw.buf, raw.currentSize);
+                (void)SyncFsImpl.appendFile(fwData->fileName.c_str(), raw.buf, raw.currentSize);
             }
             break;
         case RAW_END:

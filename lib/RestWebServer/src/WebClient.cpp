@@ -573,8 +573,8 @@ bool WebClient::_parseRequest() {
     request()._method = method;
     request()._boundaryStr = "";
 
-    log_debug( F("Web Request data: originating from %s; URI: %s %s %s; content length: %zu"), _rawWifiClient.remoteIP().toString().c_str(),
-        methodStr.c_str(), request()._reqUrl.c_str(), searchStr.c_str(), request()._contentLength);
+    log_info( F("==== Web Request received from %s at URI: %s %s; content length: %zu"), _rawWifiClient.remoteIP().toString().c_str(),
+        methodStr.c_str(), request()._reqUrl.c_str(), request()._contentLength);
     _parseArguments(searchStr);
     _parseHttpHeaders();
 
