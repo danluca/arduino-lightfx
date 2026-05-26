@@ -331,7 +331,7 @@ void logTaskSummary() {
         static_cast<unsigned>(current.tasks.size()), cpuLoadPct(current, previous), snapshotWindowSec(current, previous),
         (configTOTAL_HEAP_SIZE - current.heapStats.xAvailableHeapSpaceInBytes)*100.0f/configTOTAL_HEAP_SIZE, current.heapStats.xMinimumEverFreeBytesRemaining,
         current.heapStats.xSizeOfLargestFreeBlockInBytes, current.mallocStats.used*100.0f/current.mallocStats.size,
-        current.mallocStats.free, current.totalRunTime, previous.totalRunTime);
+        current.mallocStats.available, current.totalRunTime, previous.totalRunTime);
 #endif
 }
 
