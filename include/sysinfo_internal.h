@@ -7,6 +7,12 @@
 
 #include "sysinfo.h"
 
+struct SimpleMallocStats {
+    size_t size{0};
+    size_t used{0};
+    size_t available{0};
+};
+
 /**
  * Represents a snapshot of task runtime statistics and system resource usage at a specific point in time.
  * Key fields include:
@@ -27,6 +33,7 @@ struct TaskRuntimeSnapshot {
     uint64_t totalRunTime{0};
     uint64_t idleRunTime{0};
     HeapStats_t heapStats{};
+    SimpleMallocStats mallocStats{};
     unsigned long capturedAtMs{0};
     bool valid{false};
 };

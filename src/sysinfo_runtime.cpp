@@ -24,8 +24,9 @@ constexpr unsigned long kTaskSnapshotMaxAgeMs = kTaskSnapshotIntervalMs * 2;
 constexpr unsigned long kTaskSnapshotForceMinIntervalMs = 10000ul;
 
 #if LOGGING_ENABLED == 1
-constexpr auto heapStackInfoFmt = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
+constexpr auto heapStackInfoFmt = "APP HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
 constexpr auto heapPSRAMInfoFmt = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
+constexpr auto newlibHeapInfoFmt = "NEWLIB/OS HEAP INFO\n  Heap      :: size=%zu used=%zu free=%zu usage=%.1f%% \n";
 constexpr auto fmtTaskInfo = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f %%\n";
 constexpr auto fmtTotalCPULoad = "\nTotal CPU Load:    %.2f %% / %.2f s\n";
 #endif
@@ -165,6 +166,11 @@ bool TaskRuntimeMonitor::populate(TaskRuntimeSnapshot &snapshot) {
         }
 
         vPortGetHeapStats(&snapshot.heapStats);
+        const struct mallinfo mf = mallinfo();
+        snapshot.mallocStats.size = mf.arena;
+        snapshot.mallocStats.used = mf.uordblks;
+        snapshot.mallocStats.available = mf.fordblks;
+
         snapshot.capturedAtMs = millis();
         snapshot.valid = true;
         return true;
@@ -297,7 +303,7 @@ void logTaskStats() {
     log_write(INFO, buf);
     logHeapStats();
     struct mallinfo mf = mallinfo();
-    log_info(F("Malloc memory stats: allocated=%u, used=%u, free=%u"), mf.arena, mf.uordblks, mf.fordblks);
+    log_info(newlibHeapInfoFmt, mf.arena, mf.uordblks, mf.fordblks, (float)mf.uordblks / mf.arena * 100.0f);
     log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinFreeSpace());
 #endif
 }
@@ -321,11 +327,11 @@ void logTaskSummary() {
     if (!TaskRuntimeMonitor::instance().load(current, previous))
         return;
 
-    log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% window=%.2f s heapUsed=%zu heapFree=%zu heapLow=%zu freeBlocks=%zu largestFree=%zu task cycles cur/prev %llu / %llu"),
+    log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% window=%.2f s appHeapUsed=%.2f %% minAppHeap=%zu maxBlockFree=%zu newlibHeapUsed=%.2f %% newlibHeapFree=%zu task cycles cur/prev %llu / %llu"),
         static_cast<unsigned>(current.tasks.size()), cpuLoadPct(current, previous), snapshotWindowSec(current, previous),
-        configTOTAL_HEAP_SIZE - current.heapStats.xAvailableHeapSpaceInBytes, current.heapStats.xAvailableHeapSpaceInBytes,
-        current.heapStats.xMinimumEverFreeBytesRemaining, current.heapStats.xNumberOfFreeBlocks, current.heapStats.xSizeOfLargestFreeBlockInBytes,
-        current.totalRunTime, previous.totalRunTime);
+        (configTOTAL_HEAP_SIZE - current.heapStats.xAvailableHeapSpaceInBytes)*100.0f/configTOTAL_HEAP_SIZE, current.heapStats.xMinimumEverFreeBytesRemaining,
+        current.heapStats.xSizeOfLargestFreeBlockInBytes, current.mallocStats.used*100.0f/current.mallocStats.size,
+        current.mallocStats.free, current.totalRunTime, previous.totalRunTime);
 #endif
 }
 

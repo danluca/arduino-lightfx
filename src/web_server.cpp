@@ -479,7 +479,7 @@ void handleFWImageUpload(WebClient &client) {
             if (fwData->auth) {
                 //create a file for the incoming data
                 if (SyncFsImpl.exists(fwData->fileName.c_str()))
-                    SyncFsImpl.remove(fwData->fileName.c_str());
+                    (void)SyncFsImpl.remove(fwData->fileName.c_str());
                 markFwUpgradeInitiated();  //mark that FW upgrade stream has started - prevent Core0 from running comms
             }
             log_info(F("FW upload auth %s, size read %zu, size expected %zu, sha-256 expected %s"), fwData->auth ? "OK" : "failed",
@@ -525,7 +525,7 @@ void handleFWImageUpload(WebClient &client) {
             if (fd->auth)
                 clearFwUpgradeInitiated();
             if (SyncFsImpl.exists(fd->fileName.c_str()))
-                SyncFsImpl.remove(fd->fileName.c_str());
+                (void)SyncFsImpl.remove(fd->fileName.c_str());
             delete fd;
         }
         break;
@@ -595,7 +595,7 @@ static bool ensureParentDirs(const String &filePath) {
             cur += "/";
             cur += part;
             // try to create; ignore failure (may already exist)
-            SyncFsImpl.mkdir(cur.c_str());
+            (void)SyncFsImpl.mkdir(cur.c_str());
         }
         start = slash + 1;
     }
@@ -653,7 +653,7 @@ void handleFileUploadRaw(WebClient &client) {
             }
             if (ud->auth) {
                 if (SyncFsImpl.exists(ud->fileName.c_str()))
-                    SyncFsImpl.remove(ud->fileName.c_str());
+                    (void)SyncFsImpl.remove(ud->fileName.c_str());
             }
             log_info(F("File upload start auth %s, dest %s, size expected %zu, sha-256 expected %s"),
                      ud->auth ? "OK" : "failed", ud->fileName.c_str(), req.contentLength(), ud->checkSum.c_str());
@@ -661,7 +661,7 @@ void handleFileUploadRaw(WebClient &client) {
         break;
         case RAW_WRITE:
             if (const auto *ud = static_cast<FileUploadData *>(raw.data); ud->auth) {
-                SyncFsImpl.appendFile(ud->fileName.c_str(), raw.buf, raw.currentSize);
+                (void)SyncFsImpl.appendFile(ud->fileName.c_str(), raw.buf, raw.currentSize);
             }
             break;
         case RAW_END: {
@@ -698,7 +698,7 @@ void handleFileUploadRaw(WebClient &client) {
             log_error(F("Generic upload aborted, size read/expected %zu/%zu bytes"), raw.totalSize, req.contentLength());
             const auto ud = static_cast<FileUploadData *>(raw.data);
             if (ud && SyncFsImpl.exists(ud->fileName.c_str()))
-                SyncFsImpl.remove(ud->fileName.c_str());
+                (void)SyncFsImpl.remove(ud->fileName.c_str());
             delete ud;
         }
         break;

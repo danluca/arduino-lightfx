@@ -154,3 +154,13 @@ void taskDelay(const uint32_t ms) {
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
+ /**
+  *  @brief Warm-reboots the chip in normal mode
+  *  See RP2040Support.h (cores/rp2040/RP2040Support.h)
+  */
+[[noreturn]] void reboot() {
+    watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerReboot;
+    watchdog_reboot(0, 0, 10);
+    while (true)
+        tight_loop_contents();
+}
