@@ -98,12 +98,15 @@ class FsRequestPool {
 
 public:
     FsRequest *acquire() {
+        // Critical section protects only the inUse[] flag — reset() must run outside
+        // because String assignments in FsRequest::reset() call malloc → pvPortMalloc →
+        // vTaskSuspendAll(), which asserts portGET_CRITICAL_NESTING_COUNT() == 0.
         taskENTER_CRITICAL();
         for (size_t i = 0; i < kFsRequestPoolSize; ++i) {
             if (!inUse[i]) {
                 inUse[i] = true;
-                requests[i].reset();
                 taskEXIT_CRITICAL();
+                requests[i].reset();
                 return &requests[i];
             }
         }
@@ -115,10 +118,13 @@ public:
         if (request == nullptr)
             return;
 
+        // Reset String members outside the critical section for the same reason as acquire().
+        // The slot stays marked in-use during reset, so no other task can claim it prematurely.
+        request->reset();
+
         taskENTER_CRITICAL();
         for (size_t i = 0; i < kFsRequestPoolSize; ++i) {
             if (&requests[i] == request) {
-                requests[i].reset();
                 inUse[i] = false;
                 break;
             }
