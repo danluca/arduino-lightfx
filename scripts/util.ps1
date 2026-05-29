@@ -70,13 +70,15 @@ function prepCoreStackSize([int]$size) {
 }
 
 # Function to prepare the build environment with appropriate flags
-function prepEnvironment([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg) {
+function prepEnvironment([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg, [bool]$map = $false, [string]$envName = "") {
 
     #ensureHeap4Strategy
     #prepCoreStackSize(3072) # set core stack size to 3KB to increase stack sizes for CORE tasks, default is 1024 bytes
 
     $boardId = (Get-BoardByName $board).Id
     $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"
+    Remove-Item Env:PLATFORMIO_LINKER_MAP -ErrorAction SilentlyContinue
+
     if ($log) {
         $env:PLATFORMIO_BUILD_FLAGS += " -DLOGGING_ENABLED=1"
     }
@@ -85,6 +87,18 @@ function prepEnvironment([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bo
     }
     if (!$log -and !$dbg) {
         $env:PLATFORMIO_BUILD_FLAGS += " -DPIO_FRAMEWORK_ARDUINO_NO_USB"
+    }
+    if ($map) {
+        if ([string]::IsNullOrWhiteSpace($envName)) {
+            $envName = Get-BoardEnvName $dbg
+        }
+
+        $logsDir = Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath "logs"
+        if (!(Test-Path $logsDir -PathType Container)) {
+            New-Item $logsDir -ItemType Directory | Out-Null
+        }
+
+        $env:PLATFORMIO_LINKER_MAP = Join-Path -Path $logsDir -ChildPath "firmware-$board-$envName.map"
     }
 }
 
@@ -112,16 +126,19 @@ function Clean([bool]$dbg) {
 }
 
 # Function to build the application
-function Build-Application([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg) {
+function Build-Application([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bool]$dbg, [bool]$map = $false) {
     $envName = Get-BoardEnvName $dbg
     
     Write-Host "`nPlatformIO building for board '$board' with environment '$envName'" -ForegroundColor Cyan
 
-    prepEnvironment $board $log $ignoreBroadcast $dbg
+    prepEnvironment $board $log $ignoreBroadcast $dbg $map $envName
     $frameworkCommit = Get-FrameworkArduinoPicoShortCommit
 
     Write-Host "Building application firmware..." -ForegroundColor Green
     Write-Host "  > framework-arduinopico at commit: $frameworkCommit `n" -ForegroundColor Green
+    if ($map) {
+        Write-Host "  > linker map: $env:PLATFORMIO_LINKER_MAP `n" -ForegroundColor Green
+    }
     # Add your build commands here
     # Example:
     # & "path\to\build\tool" --env $envName
@@ -147,4 +164,3 @@ function Update-FirmwareSerial([string]$board, [bool]$log, [bool]$ignoreBroadcas
 ## Main
 #######################################
 . $PSScriptRoot/boards.ps1
-

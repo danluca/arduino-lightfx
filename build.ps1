@@ -9,7 +9,8 @@ param (
     [ValidateSet("Dev","Tree")]
     [string]$board = "Dev",
     [switch]$log,
-    [switch]$ignoreBroadcast
+    [switch]$ignoreBroadcast,
+    [switch]$map
 )
 
 . $PSScriptRoot/scripts/util.ps1
@@ -23,5 +24,5 @@ if (test-path -path $PSScriptRoot/logs/build-$board.log -type Leaf) {
     remove-item -force -path $PSScriptRoot/logs/build-$board.log
 }
 start-transcript -path $PSScriptRoot/logs/build-$board.log -force
-Build-Application $board $log $ignoreBroadcast $dbg
+Build-Application $board $log $ignoreBroadcast $dbg $map
 stop-transcript
