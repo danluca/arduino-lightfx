@@ -24,7 +24,7 @@ constexpr unsigned long kTaskSnapshotMaxAgeMs = kTaskSnapshotIntervalMs * 2;
 constexpr unsigned long kTaskSnapshotForceMinIntervalMs = 10000ul;
 
 #if LOGGING_ENABLED == 1
-constexpr auto heapStackInfoFmt = "APP HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
+constexpr auto heapStackInfoFmt = "-->\nAPP HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
 constexpr auto heapPSRAMInfoFmt = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
 constexpr auto newlibHeapInfoFmt = "NEWLIB/OS HEAP INFO\n  Heap      :: size=%zu used=%zu free=%zu usage=%.1f%% \n";
 constexpr auto fmtTaskInfo = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f %%\n";
@@ -302,8 +302,6 @@ void logTaskStats() {
     snprintf(buf, sizeof(buf), fmtTotalCPULoad, cpuLoadPct(current, previous), snapshotWindowSec(current, previous));
     log_write(INFO, buf);
     logHeapStats();
-    struct mallinfo mf = mallinfo();
-    log_info(newlibHeapInfoFmt, mf.arena, mf.uordblks, mf.fordblks, (float)mf.uordblks / mf.arena * 100.0f);
     log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinFreeSpace());
 #endif
 }
@@ -352,11 +350,17 @@ void logHeapStats() {
         return;
 
     String strHeapInfo;
-    strHeapInfo.reserve(256);
+    strHeapInfo.reserve(512);
+    //app heap stats
     HeapStats_t heapStats;
     vPortGetHeapStats(&heapStats);
+    //newLib heap stats
+    struct mallinfo mf = mallinfo();
+    float newLibHeapUsedPct = static_cast<float>(mf.uordblks) * 100.0f / static_cast<float>(mf.arena);
+
     StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), configTOTAL_HEAP_SIZE, (configTOTAL_HEAP_SIZE - heapStats.xAvailableHeapSpaceInBytes), heapStats.xAvailableHeapSpaceInBytes,
         heapStats.xMinimumEverFreeBytesRemaining, heapStats.xSizeOfLargestFreeBlockInBytes, heapStats.xSizeOfSmallestFreeBlockInBytes, heapStats.xNumberOfFreeBlocks);
+    StringUtils::append(strHeapInfo, newlibHeapInfoFmt, mf.arena, mf.uordblks, mf.fordblks, newLibHeapUsedPct);
 #ifdef PICO_RP2350
     StringUtils::append(strHeapInfo, heapPSRAMInfoFmt, rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap(), rp2040.getUsedPSRAMHeap());
 #endif
