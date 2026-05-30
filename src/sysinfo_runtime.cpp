@@ -326,12 +326,20 @@ void logTaskSummary() {
     TaskRuntimeSnapshot previous;
     if (!TaskRuntimeMonitor::instance().load(current, previous))
         return;
-
-    log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% window=%.2f s appHeapUsed=%.2f %% minAppHeap=%zu maxBlockFree=%zu newlibHeapUsed=%.2f %% newlibHeapFree=%zu task cycles cur/prev %llu / %llu"),
-        static_cast<unsigned>(current.tasks.size()), cpuLoadPct(current, previous), snapshotWindowSec(current, previous),
-        (configTOTAL_HEAP_SIZE - current.heapStats.xAvailableHeapSpaceInBytes)*100.0f/configTOTAL_HEAP_SIZE, current.heapStats.xMinimumEverFreeBytesRemaining,
-        current.heapStats.xSizeOfLargestFreeBlockInBytes, current.mallocStats.used*100.0f/current.mallocStats.size,
-        current.mallocStats.available, current.totalRunTime, previous.totalRunTime);
+    float appHeapUsedPct = (configTOTAL_HEAP_SIZE - current.heapStats.xAvailableHeapSpaceInBytes)*100.0f/configTOTAL_HEAP_SIZE;
+    float appHeapMaxUsePct = (configTOTAL_HEAP_SIZE - current.heapStats.xMinimumEverFreeBytesRemaining)*100.0f/configTOTAL_HEAP_SIZE;
+    float libHeapUsedPct = current.mallocStats.used*100.0f/current.mallocStats.size;
+    size_t newLibHeapSize = current.mallocStats.size;
+    if (current.heapStats.xSizeOfLargestFreeBlockInBytes > 10240)
+        log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% timeWindow=%.2f s appHeapUsed=%.2f %% maxAppHeapUsed=%.2f %% newlibHeapUsed=%.2f %% newLibHeapSize=%zu newlibHeapFree=%zu taskCtr cur/prev %llu / %llu"),
+            static_cast<unsigned>(current.tasks.size()), cpuLoadPct(current, previous), snapshotWindowSec(current, previous),
+            appHeapUsedPct, appHeapMaxUsePct, libHeapUsedPct, newLibHeapSize, current.mallocStats.available,
+            current.totalRunTime, previous.totalRunTime);
+    else
+        log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% timeWindow=%.2f s appHeapUsed=%.2f %% maxAppHeapUsed=%.2f %% maxBlockFree=%zu newlibHeapUsed=%.2f %% newLibHeapSize=%zu newlibHeapFree=%zu taskCtr cur/prev %llu / %llu"),
+            static_cast<unsigned>(current.tasks.size()), cpuLoadPct(current, previous), snapshotWindowSec(current, previous),
+            appHeapUsedPct, appHeapMaxUsePct, current.heapStats.xSizeOfLargestFreeBlockInBytes, libHeapUsedPct, newLibHeapSize, current.mallocStats.available,
+            current.totalRunTime, previous.totalRunTime);
 #endif
 }
 
