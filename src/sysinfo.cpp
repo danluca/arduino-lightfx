@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -13,6 +13,7 @@
 #include "version.h"
 #include "constants.hpp"
 #include "log.h"
+#include "stringutils.h"
 #if LOGGING_ENABLED == 1
 #include <stringutils.h>
 #endif
@@ -21,11 +22,11 @@
 
 #if LOGGING_ENABLED == 1
 // static constexpr char threadInfoFmt[] = "[%u] %s:: time=%s [%u%%] priority(c.b)=%u.%u state=%s id=%u core=%#X stackSize=%u free=%u\n";
-static constexpr auto heapStackInfoFmt = "HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
-static constexpr auto heapPSRAMInfoFmt = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
-static constexpr auto sysInfoFmt = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
-static constexpr auto fmtTaskInfo = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f %%\n";
-static constexpr auto fmtTotalCPULoad = "\nTotal CPU Load:    %.2f %% / %.2f s\n";
+constexpr auto heapStackInfoFmt = "-->\nAPP HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
+constexpr auto newlibHeapInfoFmt = "NEWLIB/OS HEAP INFO\n  Heap      :: size=%zu used=%zu free=%zu usage=%.1f%% \n";
+constexpr auto sysInfoFmt = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
+constexpr auto fmtTaskInfo = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f %%\n";
+constexpr auto fmtTotalCPULoad = "\nTotal CPU Load:    %.2f %% / %.2f s\n";
 #endif
 static constexpr auto unknown = "N/A";
 static constexpr auto idleTaskMarker = "idle";
@@ -172,9 +173,6 @@ void logTaskStats() {
     }
     // Simple heap stats
     logHeapStats();
-    struct mallinfo mf = mallinfo();
-    log_info(F("Malloc memory stats: allocated=%u, used=%u, free=%u"), mf.arena, mf.uordblks, mf.fordblks);
-
     log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinFreeSpace());
     // log_info(F("Current watchdog remaining value %u us"), watchdog_get_time_remaining_ms());
 
@@ -223,15 +221,15 @@ void logTaskSummary() {
     prevIdleRunTime = idleRunTime;
     prevSysTime = nowMs;
 
-    log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% window=%.2f s heapUsed=%zu heapFree=%zu heapLow=%zu freeBlocks=%zu largestFree=%zu"),
-        static_cast<unsigned>(taskCount),
-        cpuLoadPct,
-        timeWindowSec,
-        configTOTAL_HEAP_SIZE - heapStats.xAvailableHeapSpaceInBytes,
-        heapStats.xAvailableHeapSpaceInBytes,
-        heapStats.xMinimumEverFreeBytesRemaining,
-        heapStats.xNumberOfFreeBlocks,
-        heapStats.xSizeOfLargestFreeBlockInBytes);
+    float appHeapUsedPct = static_cast<float>(configTOTAL_HEAP_SIZE - heapStats.xAvailableHeapSpaceInBytes) * 100.0f / static_cast<float>(configTOTAL_HEAP_SIZE);
+    float appHeapMaxUsePct = static_cast<float>(configTOTAL_HEAP_SIZE - heapStats.xMinimumEverFreeBytesRemaining) * 100.0f / static_cast<float>(configTOTAL_HEAP_SIZE);
+    struct mallinfo mf = mallinfo();
+    float newLibHeapUsedPct = static_cast<float>(mf.uordblks) * 100.0f / static_cast<float>(mf.arena);
+
+    log_info(F("TASK SUMMARY: tasks=%u cpuLoad=%.2f %% window=%.2f s appHeapUsed=%.2f %% maxAppHeapUsed=%.2f %% maxBlockFree=%zu newlibHeapUsed=%.2f %% newLibHeapSize=%zu newlibHeapFree=%zu taskCtr cur/prev %llu / %llu"),
+        static_cast<unsigned>(taskCount), cpuLoadPct, timeWindowSec, appHeapUsedPct, appHeapMaxUsePct, heapStats.xSizeOfLargestFreeBlockInBytes,
+        newLibHeapUsedPct, mf.arena, mf.fordblks, totalRunTime, prevTotalRunTime);
+
 #endif
 }
 
@@ -243,11 +241,17 @@ void logHeapStats() {
     if (!Log.isEnabled(INFO))
         return;    // Simple heap stats
     String strHeapInfo;
-    strHeapInfo.reserve(256);  //ensure enough space to avoid reallocations
+    strHeapInfo.reserve(512);  //ensure enough space to avoid reallocations
+    //app heap stats
     HeapStats_t heapStats;
     vPortGetHeapStats(&heapStats);
+    //newLib heap stats
+    struct mallinfo mf = mallinfo();
+    float newLibHeapUsedPct = static_cast<float>(mf.uordblks) * 100.0f / static_cast<float>(mf.arena);
+
     StringUtils::append(strHeapInfo, heapStackInfoFmt, rp2040.getStackPointer(), configTOTAL_HEAP_SIZE, (configTOTAL_HEAP_SIZE-heapStats.xAvailableHeapSpaceInBytes), heapStats.xAvailableHeapSpaceInBytes,
         heapStats.xMinimumEverFreeBytesRemaining, heapStats.xSizeOfLargestFreeBlockInBytes, heapStats.xSizeOfSmallestFreeBlockInBytes, heapStats.xNumberOfFreeBlocks);
+    StringUtils::append(strHeapInfo, newlibHeapInfoFmt, mf.arena, mf.uordblks, mf.fordblks, newLibHeapUsedPct);
 #ifdef PICO_RP2350
     StringUtils::append(strHeapInfo, heapPSRAMInfoFmt, rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap(), rp2040.getUsedPSRAMHeap());
 #endif
