@@ -7,4 +7,5 @@ cmake-build-*/
 secrets.h
 www/*.json
 __*/
+scripts/lfxpy/
 .output*
