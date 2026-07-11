@@ -18,6 +18,7 @@
 constexpr uint16_t dailyBedTime = 30*SECS_PER_MIN;          //12:30am bedtime
 constexpr uint16_t dailyWakeupTime = 6*SECS_PER_HOUR;       //6:00am wakeup time
 static uint16_t tmrAlarmCheck = 30;
+static TimerHandle_t thAlarmCheck = nullptr;
 static uint16_t tmrHolidayUpdateId = 31;
 static bool alarmSetup = false;
 QueueHandle_t almQueue;
@@ -181,11 +182,18 @@ void alarm_setup() {
     else
         log_error(F("There are no alarms scheduled - checking alarms in 15 min, by default"));
     //create and start the timer to check for alarms
-    const TimerHandle_t thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
-    if (thAlarmCheck == nullptr)
-        log_error(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
-    else if (xTimerStart(thAlarmCheck, 0) != pdPASS)
-        log_error(F("Cannot start the alarmCheck timer - Ignored."));
+    if (thAlarmCheck == nullptr) {
+        thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
+        if (thAlarmCheck == nullptr)
+            log_error(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
+        else if (xTimerStart(thAlarmCheck, 0) != pdPASS)
+            log_error(F("Cannot start the alarmCheck timer - Ignored."));
+    } else {
+        if (xTimerChangePeriod(thAlarmCheck, pdMS_TO_TICKS(nextAlarmCheck*1000), 0) != pdPASS)
+            log_error(F("Cannot change alarmCheck timer period - Ignored."));
+        else if (xTimerReset(thAlarmCheck, 0) != pdPASS)
+            log_error(F("Cannot reset the alarmCheck timer - Ignored."));
+    }
 
     //time update event - holiday - repeat every 12h
     const TimerHandle_t thHoliday = xTimerCreate("holidayUpdate", pdMS_TO_TICKS(12 * 3600 * 1000), pdTRUE, &tmrHolidayUpdateId, enqueueHoliday);
@@ -250,11 +258,19 @@ void alarm_check() {
     }  // almMutex released
 
     // Phase 4: create next check timer — no lock needed
-    const TimerHandle_t thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
-    if (thAlarmCheck == nullptr)
-        log_error(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
-    else if (xTimerStart(thAlarmCheck, 0) != pdPASS)
-        log_error(F("Cannot start the alarmCheck timer - Ignored."));
+    if (thAlarmCheck == nullptr) {
+        log_error(F("alarmCheck timer was not initialized earlier - attempting to create a one-shot timer now"));
+        thAlarmCheck = xTimerCreate("alarmCheck", pdMS_TO_TICKS(nextAlarmCheck*1000), pdFALSE, &tmrAlarmCheck, enqueueAlarmCheck);
+        if (thAlarmCheck == nullptr)
+            log_error(F("Cannot create alarmCheck timer - Ignored. There is NO alarm check scheduled"));
+        else if (xTimerStart(thAlarmCheck, 0) != pdPASS)
+            log_error(F("Cannot start the alarmCheck timer - Ignored."));
+    } else {
+        if (xTimerChangePeriod(thAlarmCheck, pdMS_TO_TICKS(nextAlarmCheck*1000), 0) != pdPASS)
+            log_error(F("Cannot change alarmCheck timer period - Ignored."));
+        else if (xTimerReset(thAlarmCheck, 0) != pdPASS)
+            log_error(F("Cannot reset the alarmCheck timer - Ignored."));
+    }
 }
 
 /**
