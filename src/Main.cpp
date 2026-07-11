@@ -304,7 +304,7 @@ void vApplicationMallocFailedHook() {
     watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerMalloc;
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
-        Serial.println("Malloc failed");
+        Serial.println("pvPortMalloc failed");
 #endif
     watchdog_reboot(0, 0, 10);
     while (true)
