@@ -56,7 +56,7 @@ static HTTPMethod httpMethodFromName(const char* httpName) {
  * @param method HTTPMethod to convert to a (name) string
  * @return name of the HTTP method to use in logging
  */
-static const char* httpMethodToString(const HTTPMethod method) {
+[[maybe_unused]] static const char* httpMethodToString(const HTTPMethod method) {
     if (method >= httpMethodsCount)
         return "HTTP UNKNOWN";
     return httpMethodStr[method];
@@ -424,7 +424,7 @@ void WebClient::_parseHttpHeaders() {
         headerName.trim();
         String headerValue = req.substring(headerDiv + 1);
         headerValue.trim();
-        bool hdCollected = false;
+        [[maybe_unused]] bool hdCollected = false;
         for (const auto &h: _server->_headersOfInterest) {
             if (h.equalsIgnoreCase(headerName)) {
                 auto header = new NameValuePair();  //freed up by WebRequest destructor

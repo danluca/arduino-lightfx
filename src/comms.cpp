@@ -11,10 +11,8 @@
 #include "util.h"
 #include "task_msg.h"
 #include "HealthMonitor.h"
-#if LOGGING_ENABLED == 1
 #include "stringutils.h"
 #include "log.h"
-#endif
 
 std::atomic<bool> fxBroadcastEnabled = false;
 volatile BroadcastState broadcastState = Uninitialized;

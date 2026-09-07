@@ -9,6 +9,7 @@
 #include "transition.h"
 #include "util.h"
 #include "task_msg.h"
+#include "stringutils.h"
 #include "constants.hpp"
 #include <hardware/watchdog.h>
 
@@ -189,7 +190,7 @@ void fx_setup() {
     serializeJson(doc, *str);
     if (!SyncFsImpl.writeFile(fxCfgFileName, str))
         log_error(F("Cannot save FxConfig JSON file %s"), fxCfgFileName);
-    const uint16_t curFxPos = fxRegistry.curEffectPos();
+    [[maybe_unused]] const uint16_t curFxPos = fxRegistry.curEffectPos();
     if (const EffectInfo *curFxInfo = fxRegistry.getEffectInfo(curFxPos); curFxInfo != nullptr)
         log_info(F("Fx Setup done - current effect %s (%d) set desired state to Setup (%d)"), curFxInfo->desc.id, curFxPos, Setup);
     else

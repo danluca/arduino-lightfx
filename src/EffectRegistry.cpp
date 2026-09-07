@@ -4,6 +4,7 @@
 #include "FxSchedule.h"
 #include "transition.h"
 #include "comms.h"
+#include "stringutils.h"
 
 
 // EffectRegistry

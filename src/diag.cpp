@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -17,9 +17,7 @@
 #include "constants.hpp"
 #include "task_msg.h"
 #include "log.h"
-#if LOGGING_ENABLED == 1
 #include "stringutils.h"
-#endif
 
 #define DIAG_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 
@@ -36,7 +34,7 @@ static uint16_t tmrRndEntropyId = 10;
 static uint16_t tmrSysTempId = 11;
 static uint16_t tmrSysVoltageId = 12;
 static uint16_t tmrSaveSysInfoId = 13;
-static uint16_t tmrDiagInfoId = 14;
+[[maybe_unused]] static uint16_t tmrDiagInfoId = 14;
 static uint16_t tmrFxHeartbeatId = 15;
 static uint16_t tmrTaskSnapshotId = 16;
 
@@ -147,7 +145,7 @@ void diagSetup() {
     deviceSetup();
     // diagDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle()) + 1;
     // diagTask = Scheduler.startTask(&diagDef);
-    const TaskHandle_t diagTask = xTaskGetCurrentTaskHandle();
+    [[maybe_unused]] const TaskHandle_t diagTask = xTaskGetCurrentTaskHandle();
     log_info(F("Diagnostic thread [%s] - priority %lu - has been setup. Events are dispatching."), pcTaskGetName(diagTask), uxTaskPriorityGet(diagTask));
 }
 
@@ -538,7 +536,7 @@ void saveCalibrationInfo() {
     serializeCalibrationParams(calibCpuTemp, cbparams);
     auto str = new String();    //larger temporary string, put it on the heap
     str->reserve(measureJson(doc));
-    const size_t sz = serializeJson(doc, *str);
+    [[maybe_unused]] const size_t sz = serializeJson(doc, *str);
     if (SyncFsImpl.writeFile(calibFileName, str))
         log_info(F("Successfully saved CPU temp calibration information file %s [%zd bytes]"), calibFileName, sz);
     else

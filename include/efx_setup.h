@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright by Dan Luca. All rights reserved
 //
 #pragma once
 #ifndef LIGHTFX_EFX_SETUP_H
@@ -15,9 +15,6 @@
 #include "constants.hpp"
 #include "fxutil.h"
 #include "log.h"
-#if LOGGING_ENABLED == 1
-#include <stringutils.h>
-#endif
 
 using namespace fx;
 

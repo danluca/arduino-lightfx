@@ -145,7 +145,7 @@ bool wifi_connect() {
     // attempt to connect to WiFi network:
     WiFi.setTimeout(7500);     // default timeout is 15 seconds - see WiFiClass.h
 
-    uint attCount = 1;
+    [[maybe_unused]] uint attCount = 1;
     while (wifiStatus != WL_CONNECTED) {
         const unsigned long startAttemptTime = millis();
         wifiStatus = WiFi.begin(ssid, pass);
@@ -228,7 +228,7 @@ bool wifi_check() {
         return false;
     }
     int gwPingTime = -1;
-    uint8_t pingAttempts = 0;
+    [[maybe_unused]] uint8_t pingAttempts = 0;
     for (int i = 0; i < 4; i++) {
         HealthMonitor::checkIn(HEALTH_CORE0);
         gwPingTime = WiFi.ping(sysInfo->refGatewayIpAddress(), 128);
@@ -237,8 +237,8 @@ bool wifi_check() {
             break;  // Gateway responsive, bail out
         taskDelay(100);  // Brief delay between attempts to avoid transient states
     }
-    const int32_t rssi = WiFi.RSSI();
-    const uint8_t wifiBars = barSignalLevel(rssi);
+    [[maybe_unused]] const int32_t rssi = WiFi.RSSI();
+    [[maybe_unused]] const uint8_t wifiBars = barSignalLevel(rssi);
     if ((gwPingTime < 0) || (rssi < -75)) {
         sysInfo->resetSysStatus(SysStatus::Wifi);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
@@ -308,7 +308,7 @@ void printSuccessfulWifiStatus() {
     log_info(F("MAC Address %s"), sysInfo->getMacAddress().c_str());
 
     // print the received signal strength:
-    int32_t rssi = WiFi.RSSI();
+    [[maybe_unused]] int32_t rssi = WiFi.RSSI();
     log_info(F("Signal strength (RSSI) %d dBm; %hhu bars"), rssi, barSignalLevel(rssi));
 
     // print where to go in a browser:

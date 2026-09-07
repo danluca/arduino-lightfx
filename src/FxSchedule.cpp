@@ -121,7 +121,9 @@ void scheduleDay(const time_t time) {
         else
             scheduledAlarms.push_back(new AlarmData{.value=bedTime + SECS_PER_DAY, .type=BEDTIME, .onEventHandler=bedtime});
     }
+#if LOGGING_ENABLED == 1    
     log_info(F("Scheduled %zu new alarms for Day %s"), scheduledAlarms.size() - curAlarmCount, TimeFormat::asString(time).c_str());
+#endif    
 }
 
 /**

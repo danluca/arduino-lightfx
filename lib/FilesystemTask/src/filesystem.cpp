@@ -425,7 +425,7 @@ void fsExecute() {
         return;
     // the reception was successful, hence the request pointer is valid
     uint32_t result = 0;
-    bool completionSuccess = false;
+    [[maybe_unused]] bool completionSuccess = false;
     switch (request->action) {
         case FsRequest::Action::READ_FILE:
             if (validatePayloadKind(*request, FsPayloadKind::STRING)) {
@@ -1008,7 +1008,7 @@ size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
     }
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
-    const time_t lastWrite = f.getLastWrite();
+    [[maybe_unused]] const time_t lastWrite = f.getLastWrite();
     f.close();
     // Integrity check: Verify write completed fully (size matches expected)
     if (fSize != s->length()) {
@@ -1034,8 +1034,8 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const String *s) const {
     }
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
-    const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
-    const size_t totalSize = f.size();
+    [[maybe_unused]] const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
+    [[maybe_unused]] const size_t totalSize = f.size();
     f.close();
     // Integrity check: Verify write completed fully (size matches expected)
     if (fSize != s->length()) {
@@ -1061,8 +1061,8 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const uint8_t *buffer, c
     }
     f.setTimeCallback(now);
     fSize = f.write(buffer, size);
-    const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
-    const size_t totalSize = f.size();
+    [[maybe_unused]] const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
+    [[maybe_unused]] const size_t totalSize = f.size();
     f.close();
     // Integrity check: Verify write completed fully (size matches expected)
     if (fSize != size) {
@@ -1175,7 +1175,7 @@ bool SynchronizedFS::prvSha256(const char *path, String *sha256) const {
         log_error(F("File %s does not exist, no SHA256 hash calculated"), path);
         return false;
     }
-    const ulong start = millis();
+    [[maybe_unused]] const ulong start = millis();
     File f = fsPtr->open(path, "r");
     if (!f) {
         log_error(F("Failed to open file %s for reading - invalid file handle, possible FS corruption"), path);
@@ -1192,7 +1192,7 @@ bool SynchronizedFS::prvSha256(const char *path, String *sha256) const {
         f.close();
         return false;
     }
-    size_t fSize = 0;
+    [[maybe_unused]] size_t fSize = 0;
     uint8_t buf[FILE_BUF_SIZE]{};
     while (const size_t charsRead = f.read(buf, FILE_BUF_SIZE)) {
         sha256_update(ctx, buf, charsRead);

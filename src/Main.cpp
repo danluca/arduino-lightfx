@@ -48,7 +48,7 @@
 void web_run();
 void alarm_misc_begin();
 void alarm_misc_run();
-static void logTaskProbe();
+[[maybe_unused]] static void logTaskProbe();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
 constexpr TaskDef fxTasks {fx_setup, fx_run, 1536, csFxTask, 7, CORE_1};
 constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1536, "ALM", 5, CORE_0};
@@ -191,7 +191,7 @@ void setup() {
     readSysInfo();
 
     const TaskHandle_t core1 = xTaskGetHandle(csCORE1);    //retrieve a task handle for the second core
-    const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
+    [[maybe_unused]] const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
     log_info(F("Basic components ok - CORE1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
 
     wifi_setup();           // blocking until we get WiFi
@@ -201,7 +201,7 @@ void setup() {
     web::server_setup();
 
     // notifies Core1 to start processing tasks that need WiFi
-    const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
+    [[maybe_unused]] const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
 
     watchdogSetup();
     HealthMonitor::init();

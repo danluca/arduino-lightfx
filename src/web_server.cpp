@@ -390,10 +390,10 @@ void web::handlePutConfig(WebClient &client) {
                 upd[csBroadcast] = syncMode;
         }
     }
-    uint16_t curFxPos = fxRegistry.curEffectPos();
-    bool autoRoll = fxRegistry.isAutoRoll();
-    bool sleepEnabled = fxRegistry.isSleepEnabled();
-    const Holiday holiday = paletteFactory.getHoliday();
+    [[maybe_unused]] const uint16_t curFxPos = fxRegistry.curEffectPos();
+    [[maybe_unused]] bool autoRoll = fxRegistry.isAutoRoll();
+    [[maybe_unused]] bool sleepEnabled = fxRegistry.isSleepEnabled();
+    [[maybe_unused]] const Holiday holiday = paletteFactory.getHoliday();
 
     log_info(F("FX: Current config updated effect %hu, autoswitch %s, sleep %s, holiday %s, brightness %hu, brightness adjustment %s"),
         curFxPos, StringUtils::asString(autoRoll), StringUtils::asString(sleepEnabled),
@@ -501,7 +501,7 @@ void handleFWImageUpload(WebClient &client) {
                     client.send(200, mime::mimeTable[mime::txt].mimeType, R"({"status": "OK"})");
                     log_info(F("FW upload and storage %s (size read %zu bytes) succeeded - sha-256 actual: %s"), fwData->fileName.c_str(), raw.totalSize, sha256.c_str());
                     if (const TaskHandle_t core0Handle = xTaskGetHandle(csCORE0)) {
-                        const BaseType_t fwNotif = xTaskNotify(core0Handle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
+                        [[maybe_unused]] const BaseType_t fwNotif = xTaskNotify(core0Handle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
                         log_info(F("CORE0 task has been notified of FW image upload complete, notification status %d"), fwNotif);
                     }
                 } else {
