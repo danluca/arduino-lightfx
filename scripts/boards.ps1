@@ -16,7 +16,7 @@ class Board {
 
 # Board name → URI mapping
 $boardMap = @{
-    'Dev'  = [Board]::new(1, 'Dev', 'http://192.168.0.72')
+    'Dev'  = [Board]::new(1, 'Dev', 'http://192.168.0.75')
     'Tree' = [Board]::new(2, 'Tree', 'http://192.168.0.182')
 }
 
