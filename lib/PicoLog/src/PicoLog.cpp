@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include "logPico.h"
@@ -45,7 +45,7 @@ void flushData() {
     Log.flush();
 }
 
-TaskDef tdStream {nullptr, flushData, 1024, "SRL", 4, CORE_ALL};
+TaskDef tdStream {.setup = nullptr, .loop = flushData, .stackSize = 1024, .threadName = "SRL", .priority = 4, .core = CORE_ALL};
 
 
 /**

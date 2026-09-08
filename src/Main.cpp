@@ -45,13 +45,12 @@
  * On the other hand, the WiFi using WiFiNINA library seems to only work well on CORE0.
  */
 
-void web_run();
-void alarm_misc_begin();
-void alarm_misc_run();
+static void alarm_misc_begin();
+static void alarm_misc_run();
 [[maybe_unused]] static void logTaskProbe();
 //task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
-constexpr TaskDef fxTasks {fx_setup, fx_run, 1536, csFxTask, 7, CORE_1};
-constexpr TaskDef alarmTasks {alarm_misc_begin, alarm_misc_run, 1536, "ALM", 5, CORE_0};
+constexpr TaskDef fxTasks {.setup = fx_setup, .loop = fx_run, .stackSize = 1536, .threadName = csFxTask, .priority = 7, .core = CORE_1};
+constexpr TaskDef alarmTasks {.setup = alarm_misc_begin, .loop = alarm_misc_run, .stackSize = 1536, .threadName = "ALM", .priority = 5, .core = CORE_0};
 bool core1_separate_stack = true;
 
 /**
@@ -118,20 +117,7 @@ void alarm_misc_run() {
     }
 }
 
-/**
- * Executes the primary web-related tasks - runs the web server and communication functions
- * This function is intended to be invoked regularly to handle web communication and actions efficiently.
- * NOTE: It is by design that both web-server and comms activities are sequenced and run in the same task.
- * Without this feature, the web server and communication functions would run concurrently requiring all data structures to be thread-safe,
- * engage locks; which would increase code complexity. In particular \code fxBroadcastRecipients \endcode is at risk of data corruption.
- *
- */
-void web_run() {
-    web::webserver();
-    commRun();
-}
-
-void filesystem_setup() {
+static void filesystem_setup() {
     SyncFsImpl.begin(LittleFS);
     log_info(F("Filesystem setup completed"));
     sysInfo->setSysStatus(SysStatus::Filesystem);

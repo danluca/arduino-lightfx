@@ -31,107 +31,109 @@ static constexpr uint32_t kFsBlockedMagic = 0xFB000000u;
 SynchronizedFS SyncFsImpl;
 static auto rootDir = FS_PATH_SEPARATOR;
 
-//ahead definitions
+//ahead declarations
 void fsExecute();
 void fsInit();
 
 // filesystem task definition - priority is overwritten during setup, see SynchronizedFS::begin
-TaskDef fsDef {fsInit, fsExecute, 1536, "FS", 255, CORE_0};
+static TaskDef fsDef {.setup = fsInit, .loop = fsExecute, .stackSize = 1536, .threadName = "FS", .priority = 255, .core = CORE_0};
 
-enum class FsPayloadKind : uint8_t { NONE, STRING, BYTES, FILE_INFO_LIST, FILE_INFO, FS_STAT, };
+namespace {
+    enum class FsPayloadKind : uint8_t { NONE, STRING, BYTES, FILE_INFO_LIST, FILE_INFO, FS_STAT, };
 
-struct FsPayload {
-    const void *ptr = nullptr;
-    size_t size = 0;
-    FsPayloadKind kind = FsPayloadKind::NONE;
-    bool writable = false;
+    struct FsPayload {
+        const void *ptr = nullptr;
+        size_t size = 0;
+        FsPayloadKind kind = FsPayloadKind::NONE;
+        bool writable = false;
 
-    void reset() {
-        ptr = nullptr;
-        size = 0;
-        kind = FsPayloadKind::NONE;
-        writable = false;
-    }
+        void reset() {
+            ptr = nullptr;
+            size = 0;
+            kind = FsPayloadKind::NONE;
+            writable = false;
+        }
 
-    template<typename T> [[nodiscard]] const T *as() const {
-        return static_cast<const T *>(ptr);
-    }
+        template<typename T> [[nodiscard]] const T *as() const {
+            return static_cast<const T *>(ptr);
+        }
 
-    template<typename T> [[nodiscard]] T *asMutable() const {
-        if (!writable)
+        template<typename T> [[nodiscard]] T *asMutable() const {
+            if (!writable)
+                return nullptr;
+
+            return static_cast<T *>(const_cast<void *>(ptr));
+        }
+    };
+
+    struct FsRequest {
+        enum class Action : uint8_t { NONE = 0, READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, APPEND_FILE_BIN, RENAME,
+            DELETE, EXISTS, FORMAT, LIST_FILES, INFO, STAT, MAKE_DIR, SHA256 };
+
+        enum class PayloadStorage : uint8_t { NONE, BORROWED, REQUEST_STRING };
+
+        Action action = Action::NONE;
+        TaskHandle_t replyTask = nullptr;
+        String path{};
+        FsPayload payload{};
+        PayloadStorage payloadStorage = PayloadStorage::NONE;
+        QueueHandle_t completionQueue = nullptr;
+        uint16_t completionId = 0;
+        String ownedString{};
+
+        void reset() {
+            action = Action::NONE;
+            replyTask = nullptr;
+            path = "";
+            payload.reset();
+            payloadStorage = PayloadStorage::NONE;
+            completionQueue = nullptr;
+            completionId = 0;
+            ownedString = "";
+        }
+    };
+
+    class FsRequestPool {
+        FsRequest requests[kFsRequestPoolSize]{};
+        bool inUse[kFsRequestPoolSize]{};
+
+    public:
+        FsRequest *acquire() {
+            // Critical section protects only the inUse[] flag — reset() must run outside
+            // because String assignments in FsRequest::reset() call malloc → pvPortMalloc →
+            // vTaskSuspendAll(), which asserts portGET_CRITICAL_NESTING_COUNT() == 0.
+            taskENTER_CRITICAL();
+            for (size_t i = 0; i < kFsRequestPoolSize; ++i) {
+                if (!inUse[i]) {
+                    inUse[i] = true;
+                    taskEXIT_CRITICAL();
+                    requests[i].reset();
+                    return &requests[i];
+                }
+            }
+            taskEXIT_CRITICAL();
             return nullptr;
-
-        return static_cast<T *>(const_cast<void *>(ptr));
-    }
-};
-
-struct FsRequest {
-    enum class Action : uint8_t { NONE = 0, READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, APPEND_FILE_BIN, RENAME,
-        DELETE, EXISTS, FORMAT, LIST_FILES, INFO, STAT, MAKE_DIR, SHA256 };
-
-    enum class PayloadStorage : uint8_t { NONE, BORROWED, REQUEST_STRING };
-
-    Action action = Action::NONE;
-    TaskHandle_t replyTask = nullptr;
-    String path{};
-    FsPayload payload{};
-    PayloadStorage payloadStorage = PayloadStorage::NONE;
-    QueueHandle_t completionQueue = nullptr;
-    uint16_t completionId = 0;
-    String ownedString{};
-
-    void reset() {
-        action = Action::NONE;
-        replyTask = nullptr;
-        path = "";
-        payload.reset();
-        payloadStorage = PayloadStorage::NONE;
-        completionQueue = nullptr;
-        completionId = 0;
-        ownedString = "";
-    }
-};
-
-class FsRequestPool {
-    FsRequest requests[kFsRequestPoolSize]{};
-    bool inUse[kFsRequestPoolSize]{};
-
-public:
-    FsRequest *acquire() {
-        // Critical section protects only the inUse[] flag — reset() must run outside
-        // because String assignments in FsRequest::reset() call malloc → pvPortMalloc →
-        // vTaskSuspendAll(), which asserts portGET_CRITICAL_NESTING_COUNT() == 0.
-        taskENTER_CRITICAL();
-        for (size_t i = 0; i < kFsRequestPoolSize; ++i) {
-            if (!inUse[i]) {
-                inUse[i] = true;
-                taskEXIT_CRITICAL();
-                requests[i].reset();
-                return &requests[i];
-            }
         }
-        taskEXIT_CRITICAL();
-        return nullptr;
-    }
 
-    void release(FsRequest *request) {
-        if (request == nullptr)
-            return;
+        void release(FsRequest *request) {
+            if (request == nullptr)
+                return;
 
-        // Reset String members outside the critical section for the same reason as acquire().
-        // The slot stays marked in-use during reset, so no other task can claim it prematurely.
-        request->reset();
+            // Reset String members outside the critical section for the same reason as acquire().
+            // The slot stays marked in-use during reset, so no other task can claim it prematurely.
+            request->reset();
 
-        taskENTER_CRITICAL();
-        for (size_t i = 0; i < kFsRequestPoolSize; ++i) {
-            if (&requests[i] == request) {
-                inUse[i] = false;
-                break;
+            taskENTER_CRITICAL();
+            for (size_t i = 0; i < kFsRequestPoolSize; ++i) {
+                if (&requests[i] == request) {
+                    inUse[i] = false;
+                    break;
+                }
             }
+            taskEXIT_CRITICAL();
         }
-        taskEXIT_CRITICAL();
-    }
-};
+    };
+}
 
 static FsRequestPool gFsRequestPool;
 
