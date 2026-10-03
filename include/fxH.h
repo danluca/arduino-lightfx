@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXH_H
 #define LIGHTFX_FXH_H
@@ -61,8 +61,6 @@ namespace FxH {
         void baseConfig(JsonObject &json) const override;
 
         void Fire2012WithPalette(uint8_t xFire);
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxH2 : public LedEffect {
@@ -78,8 +76,6 @@ namespace FxH {
         static void confetti_pal();
 
         static void updateParams();
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxH3 : public LedEffect {
@@ -91,8 +87,6 @@ namespace FxH {
         void run() override;
 
         void baseConfig(JsonObject &json) const override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxH4 : public LedEffect {
@@ -105,7 +99,6 @@ namespace FxH {
 
         void baseConfig(JsonObject &json) const override;
 
-        [[nodiscard]] uint8_t selectionWeight() const override;
     private:
         static constexpr uint8_t twinkleDensity = 5;
         static constexpr uint8_t twinkleSpeed = 4;
@@ -129,7 +122,6 @@ namespace FxH {
 
         void baseConfig(JsonObject &json) const override;
 
-        [[nodiscard]] uint8_t selectionWeight() const override;
     private:
         int red {0};
         int green {0};
@@ -186,8 +178,6 @@ namespace FxH {
         void run() override;
 
         bool windDown() override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
         ~FxH6() override;
 

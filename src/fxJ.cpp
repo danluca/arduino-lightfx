@@ -10,8 +10,13 @@
 using namespace FxJ;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxj1Desc = {EFFECT_FACTORY(FxJ1), "FXJ1", "Popcorn", 8};
-static const EffectInfo fxj2Desc = {EFFECT_FACTORY(FxJ2), "FXJ2", "Rain on a window", 8};
+static const EffectInfo fxj1Desc = {.factory = EFFECT_FACTORY(FxJ1), .desc = {.id = "FXJ1", .description = "Popcorn"}, .selectionWeight = 16};
+static constexpr HolidayWeight fxj2HolidayWeights[] = {
+    {.holiday = Halloween, .weight = 36},
+    {.holiday = ValentineDay, .weight = 0},
+    {.holiday = Christmas, .weight = 0}
+};
+static const EffectInfo fxj2Desc = {.factory = EFFECT_FACTORY(FxJ2), .desc = {.id = "FXJ2", .description = "Rain on a window"}, .selectionWeight = 20, HOLIDAY_WEIGHTS(fxj2HolidayWeights)};
 
 void FxJ::fxRegister() {
     fxRegistry.registerEffect(&fxj1Desc);
@@ -118,10 +123,6 @@ void FxJ1::run() {
         replicateMirrorSet(frame, others, dirRight);
         FastLED.show(stripBrightness);
     }
-}
-
-uint8_t FxJ1::selectionWeight() const {
-    return 8;
 }
 
 // FXJ2 - Rain on a window
@@ -296,6 +297,3 @@ void FxJ2::run() {
     }
 }
 
-uint8_t FxJ2::selectionWeight() const {
-    return 8;
-}

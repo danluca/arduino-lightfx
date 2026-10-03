@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "fxC.h"
 #include "transition.h"
@@ -9,12 +9,27 @@ using namespace FxC;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxc1Desc = {EFFECT_FACTORY(FxC1), {"FXC1", "blend between two concurrent animations"}, 35};
-static const EffectInfo fxc2Desc = {EFFECT_FACTORY(FxC2), {"FXC2", "blur function"}, 5};
-static const EffectInfo fxc3Desc = {EFFECT_FACTORY(FxC3), {"FXC3", "Perlin Noise for moving up and down the strand"}, 4};
-static const EffectInfo fxc4Desc = {EFFECT_FACTORY(FxC4), {"FxC4", "lightnings"}, 9};
-static const EffectInfo fxc5Desc = {EFFECT_FACTORY(FxC5), {"FXC5", "matrix"}, 20};
-static const EffectInfo fxc6Desc = {EFFECT_FACTORY(FxC6), {"FXC6", "one sine"}, 20};
+static const EffectInfo fxc1Desc = {.factory = EFFECT_FACTORY(FxC1), .desc = {.id = "FXC1", .description = "blend between two concurrent animations"}, .selectionWeight = 35};
+static const EffectInfo fxc2Desc = {.factory = EFFECT_FACTORY(FxC2), .desc = {.id = "FXC2", .description = "blur function"}, .selectionWeight = 5};
+static const EffectInfo fxc3Desc = {.factory = EFFECT_FACTORY(FxC3), .desc = {.id = "FXC3", .description = "Perlin Noise for moving up and down the strand"}, .selectionWeight = 4};
+static constexpr HolidayWeight fxc4HolidayWeights[] = {
+    {.holiday = Halloween, .weight = 20},
+    {.holiday = ValentineDay, .weight = 0},
+    {.holiday = StPatrick, .weight = 0},
+    {.holiday = MemorialDay, .weight = 0},
+    {.holiday = IndependenceDay, .weight = 0},
+    {.holiday = Christmas, .weight = 0},
+    {.holiday = NewYear, .weight = 0},
+    {.holiday = Thanksgiving, .weight = 0},
+    {.holiday = Party, .weight = 0}
+};
+static const EffectInfo fxc4Desc = {.factory = EFFECT_FACTORY(FxC4), .desc = {.id = "FxC4", .description = "lightnings"}, .selectionWeight = 9, HOLIDAY_WEIGHTS(fxc4HolidayWeights)};
+static constexpr HolidayWeight fxc5HolidayWeights[] = {
+    {.holiday = Halloween, .weight = 30},
+    {.holiday = Christmas, .weight = 10}
+};
+static const EffectInfo fxc5Desc = {.factory = EFFECT_FACTORY(FxC5), .desc = {.id = "FXC5", .description = "matrix"}, .selectionWeight = 20, HOLIDAY_WEIGHTS(fxc5HolidayWeights)};
+static const EffectInfo fxc6Desc = {.factory = EFFECT_FACTORY(FxC6), .desc = {.id = "FXC6", .description = "one sine"}, .selectionWeight = 20};
 
 void FxC::fxRegister() {
     fxRegistry.registerEffect(&fxc1Desc);
@@ -76,9 +91,6 @@ bool FxC1::windDown() {
     return transEffect.offWipe(true);
 }
 
-uint8_t FxC1::selectionWeight() const {
-    return 35;
-}
 //Fx C2
 /**
  * blur
@@ -114,10 +126,6 @@ void FxC2::run() {
 
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
-}
-
-uint8_t FxC2::selectionWeight() const {
-    return 5;
 }
 
 //Fx C3
@@ -175,10 +183,6 @@ bool FxC3::windDown() {
     return transEffect.offSpots();
 }
 
-uint8_t FxC3::selectionWeight() const {
-    return 4;
-}
-
 // Fx C4
 FxC4::FxC4() : LedEffect(fxc4Desc) {}
 
@@ -216,10 +220,6 @@ void FxC4::run() {
 
 bool FxC4::windDown() {
     return true;
-}
-
-uint8_t FxC4::selectionWeight() const {
-    return paletteFactory.getHoliday() == Halloween ? 20 : 2;
 }
 
 // Fx C5
@@ -286,10 +286,6 @@ bool FxC5::windDown() {
     return transEffect.offWipe(false);
 }
 
-uint8_t FxC5::selectionWeight() const {
-    return 20;
-}
-
 // Fx C6
 FxC6::FxC6() : LedEffect(fxc6Desc) {}
 
@@ -343,6 +339,3 @@ bool FxC6::windDown() {
     return transEffect.offWipe(true);
 }
 
-uint8_t FxC6::selectionWeight() const {
-    return 20;
-}

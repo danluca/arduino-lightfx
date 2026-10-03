@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXA_H
 #define LIGHTFX_FXA_H
@@ -22,8 +22,6 @@ namespace FxA {
 
         void baseConfig(JsonObject &json) const override;
 
-        [[nodiscard]] uint8_t selectionWeight() const override;
-
     protected:
         void makeDot(CRGB color, uint16_t szDot) const;
 
@@ -41,8 +39,6 @@ namespace FxA {
         void run() override;
 
         void baseConfig(JsonObject &json) const override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         enum Movement { forward, pause, backward };
@@ -63,8 +59,6 @@ namespace FxA {
 
         void baseConfig(JsonObject &json) const override;
 
-        [[nodiscard]] uint8_t selectionWeight() const override;
-
     protected:
         CRGBSet dot;
         void makeDot(CRGB color, uint16_t szDot) const;
@@ -82,8 +76,6 @@ namespace FxA {
         void run() override;
 
         void baseConfig(JsonObject &json) const override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         CRGBSet dot;
@@ -106,8 +98,6 @@ namespace FxA {
 
         void baseConfig(JsonObject &json) const override;
 
-        [[nodiscard]] uint8_t selectionWeight() const override;
-
     protected:
         CRGBSet ovr;
 
@@ -121,8 +111,6 @@ namespace FxA {
         void setup() override;
 
         void run() override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
         ~SleepLight() override = default;
 

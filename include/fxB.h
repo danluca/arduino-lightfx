@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025 by Dan Luca. All rights reserved
+// Copyright by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_FXB_H
 #define LIGHTFX_FXB_H
@@ -39,8 +39,6 @@ namespace FxB {
         void run() override;
 
         void baseConfig(JsonObject &json) const override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB2 : public LedEffect {
@@ -50,8 +48,6 @@ namespace FxB {
         void setup() override;
 
         void run() override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB3 : public LedEffect {
@@ -63,8 +59,6 @@ namespace FxB {
         void run() override;
 
         void baseConfig(JsonObject &json) const override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB4 : public LedEffect {
@@ -76,8 +70,6 @@ namespace FxB {
         void run() override;
 
         void baseConfig(JsonObject &json) const override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB5 : public LedEffect {
@@ -89,8 +81,6 @@ namespace FxB {
         void run() override;
 
         void baseConfig(JsonObject &json) const override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB6 : public LedEffect {
@@ -100,8 +90,6 @@ namespace FxB {
         void setup() override;
 
         void run() override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB7 : public LedEffect {
@@ -113,8 +101,6 @@ namespace FxB {
         void run() override;
 
         void baseConfig(JsonObject &json) const override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB8 : public LedEffect {
@@ -126,8 +112,6 @@ namespace FxB {
         void run() override;
 
         void baseConfig(JsonObject &json) const override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxB9 : public LedEffect {
@@ -137,8 +121,6 @@ namespace FxB {
         void setup() override;
 
         void run() override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 }
 

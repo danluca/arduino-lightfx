@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include "efx_setup.h"
 #include "FxSchedule.h"
@@ -58,19 +58,29 @@ uint16_t EffectRegistry::curEffectPos() const {
 
 uint16_t EffectRegistry::nextRandomEffectPos() {
     if (autoSwitch && !sleepState) {
-        //weighted randomization of the next effect index
+        //weighted randomization of the next effect index - weights are adjusted for the current holiday
+        const Holiday holiday = paletteFactory.getHoliday();
         uint16_t totalSelectionWeight = 0;
-        for (const auto &info : effectInfos)
-            totalSelectionWeight += info->selectionWeight;
-        uint16_t rnd = random16(0, totalSelectionWeight);
+        for (uint16_t i = 0; i < effectsCount; ++i)
+            if (i != sleepEffectIndex)
+                totalSelectionWeight += effectInfos[i]->effectiveSelectionWeight(holiday);
+        if (totalSelectionWeight == 0) {
+            log_warn(F("No effects eligible for random selection during holiday %s; keeping current effect index %d [%s]"),
+                holidayToString(holiday), desiredEffectIndex, effectInfos[desiredEffectIndex]->desc.id);
+            return desiredEffectIndex;
+        }
+        uint16_t rnd = random16(totalSelectionWeight+1);
         for (uint16_t i = 0; i < effectsCount; ++i) {
-            rnd = qsuba(rnd, effectInfos[i]->selectionWeight);
-            if (rnd == 0) {
-                desiredEffectIndex = i;  //sleep effect weight is 0, so it cannot be chosen randomly
+            if (i == sleepEffectIndex)
+                continue;
+            const uint8_t weight = effectInfos[i]->effectiveSelectionWeight(holiday);
+            if (rnd < weight) {
+                desiredEffectIndex = i;
                 break;
             }
+            rnd -= weight;
         }
-        log_info(F("Random effect selection: index %d [%s]"), desiredEffectIndex, effectInfos[desiredEffectIndex]->desc.id);
+        log_info(F("Random effect selection for holiday %s: index %d [%s]"), holidayToString(holiday), desiredEffectIndex, effectInfos[desiredEffectIndex]->desc.id);
         transitionEffect();
     } else {
         log_info(F("Random effect selection skipped - auto switch %s, sleep state %s"), StringUtils::asString(autoSwitch), StringUtils::asString(sleepState));
@@ -109,15 +119,16 @@ void EffectRegistry::transitionEffect() {
  * Registers a new LED effect in the EffectRegistry.
  *
  * This method adds an LED effect, characterized by its description and factory implementation,
- * to the registry. Each effect is assigned a unique index upon registration. A weight can also
- * be provided to indicate the priority or probability of the effect being selected during random
- * selection.
+ * to the registry. Each effect is assigned a unique index upon registration. The effect info also carries
+ * a default weight and optional holiday specific weights that determine the probability of the effect being
+ * selected during random selection.
  *
  * If the registered effect matches the predefined sleep light effect ID, it will be tagged
  * as the sleep effect within the registry.
  *
  * @param info The description of the effect, containing its ID, a brief description, a factory function that generates instances
- * of the effect, and a numeric value between 1 and 255 that determines the weight or priority of the effect for random selection.
+ * of the effect, a numeric value between 0 and 255 that determines the default weight of the effect for random selection, and
+ * optional holiday weight overrides (see HolidayWeight).
  * @return The index of the registered effect in the EffectRegistry.
  */
 uint16_t EffectRegistry::registerEffect(const EffectInfo* info) {

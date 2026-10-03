@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "fxB.h"
 #include "transition.h"
@@ -9,15 +9,37 @@ using namespace FxB;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxb1Desc = {EFFECT_FACTORY(FxB1), "FXB1", "rainbow", 15};
-static const EffectInfo fxb2Desc = {EFFECT_FACTORY(FxB2), "FXB2", "rainbow with glitter", 40};
-static const EffectInfo fxb3Desc = {EFFECT_FACTORY(FxB3), "FXB3", "confetti B", 24};
-static const EffectInfo fxb4Desc = {EFFECT_FACTORY(FxB4), "FXB4", "sinelon", 20};
-static const EffectInfo fxb5Desc = {EFFECT_FACTORY(FxB5), "FXB5", "juggle short segments", 30};
-static const EffectInfo fxb6Desc = {EFFECT_FACTORY(FxB6), "FXB6", "bpm", 20};
-static const EffectInfo fxb7Desc = {EFFECT_FACTORY(FxB7), "FXB7", "ease", 10};
-static const EffectInfo fxb8Desc = {EFFECT_FACTORY(FxB8), "FXB8", "fadein", 15};
-static const EffectInfo fxb9Desc = {EFFECT_FACTORY(FxB9), "FXB9", "juggle long segments", 14};
+static constexpr HolidayWeight fxb1HolidayWeights[] = {
+    {.holiday = Party, .weight = 25},
+    {.holiday = ValentineDay, .weight = 30},
+    {.holiday = StPatrick, .weight = 0},
+    {.holiday = MemorialDay, .weight = 0},
+    {.holiday = IndependenceDay, .weight = 40},
+    {.holiday = Thanksgiving, .weight = 0},
+    {.holiday = Christmas, .weight = 30}
+};
+static const EffectInfo fxb1Desc = {.factory = EFFECT_FACTORY(FxB1), .desc = {.id = "FXB1", .description = "rainbow"}, .selectionWeight = 15, HOLIDAY_WEIGHTS(fxb1HolidayWeights)};
+static constexpr HolidayWeight fxb2HolidayWeights[] = {
+    {.holiday = Party, .weight = 50},
+    {.holiday = ValentineDay, .weight = 50},
+    {.holiday = StPatrick, .weight = 0},
+    {.holiday = MemorialDay, .weight = 0},
+    {.holiday = IndependenceDay, .weight = 80},
+    {.holiday = Thanksgiving, .weight = 0},
+    {.holiday = Christmas, .weight = 50}
+};
+static const EffectInfo fxb2Desc = {.factory = EFFECT_FACTORY(FxB2), .desc = {.id = "FXB2", .description = "rainbow with glitter"}, .selectionWeight = 40, HOLIDAY_WEIGHTS(fxb2HolidayWeights)};
+static constexpr HolidayWeight fxb3HolidayWeights[] = {
+    {.holiday = Party, .weight = 36},
+    {.holiday = NewYear, .weight = 36}
+};
+static const EffectInfo fxb3Desc = {.factory = EFFECT_FACTORY(FxB3), .desc = {.id = "FXB3", .description = "confetti B"}, .selectionWeight = 24, HOLIDAY_WEIGHTS(fxb3HolidayWeights)};
+static const EffectInfo fxb4Desc = {.factory = EFFECT_FACTORY(FxB4), .desc = {.id = "FXB4", .description = "sinelon"}, .selectionWeight = 20};
+static const EffectInfo fxb5Desc = {.factory = EFFECT_FACTORY(FxB5), .desc = {.id = "FXB5", .description = "juggle short segments"}, .selectionWeight = 30};
+static const EffectInfo fxb6Desc = {.factory = EFFECT_FACTORY(FxB6), .desc = {.id = "FXB6", .description = "bpm"}, .selectionWeight = 20};
+static const EffectInfo fxb7Desc = {.factory = EFFECT_FACTORY(FxB7), .desc = {.id = "FXB7", .description = "ease"}, .selectionWeight = 10};
+static const EffectInfo fxb8Desc = {.factory = EFFECT_FACTORY(FxB8), .desc = {.id = "FXB8", .description = "fadein"}, .selectionWeight = 15};
+static const EffectInfo fxb9Desc = {.factory = EFFECT_FACTORY(FxB9), .desc = {.id = "FXB9", .description = "juggle long segments"}, .selectionWeight = 14};
 
 uint16_t FxB::szStack = 0;
 
@@ -68,10 +90,6 @@ void FxB1::baseConfig(JsonObject &json) const {
     json["brightness"] = brightness;
 }
 
-uint8_t FxB1::selectionWeight() const {
-    return 15;
-}
-
 //FXB2
 FxB2::FxB2() : LedEffect(fxb2Desc) {}
 
@@ -102,10 +120,6 @@ void FxB::addGlitter(const fract8 chanceOfGlitter) {
     if (random8() < chanceOfGlitter) {
         leds[random16(NUM_PIXELS)] += CRGB::White;
     }
-}
-
-uint8_t FxB2::selectionWeight() const {
-    return 40;
 }
 
 //FXB3
@@ -153,10 +167,6 @@ void FxB3::baseConfig(JsonObject &json) const {
     json["brightness"] = brightness;
 }
 
-uint8_t FxB3::selectionWeight() const {
-    return 24;
-}
-
 //FXB4
 FxB4::FxB4() : LedEffect(fxb4Desc) {}
 
@@ -189,10 +199,6 @@ void FxB::sinelon() {
 void FxB4::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
     json["brightness"] = brightness;
-}
-
-uint8_t FxB4::selectionWeight() const {
-    return 20;
 }
 
 //FXB5
@@ -239,10 +245,6 @@ void FxB5::baseConfig(JsonObject &json) const {
     json["brightness"] = brightness;
 }
 
-uint8_t FxB5::selectionWeight() const {
-    return 30;
-}
-
 //FXB6
 FxB6::FxB6() : LedEffect(fxb6Desc) {}
 
@@ -270,10 +272,6 @@ void FxB::bpm() {
     replicateSet(tpl, others);
     hue += 8;  // slowly cycle the "base color" through the rainbow
     FastLED.show(stripBrightness);
-}
-
-uint8_t FxB6::selectionWeight() const {
-    return 20;
 }
 
 //FXB7
@@ -320,10 +318,6 @@ void FxB7::baseConfig(JsonObject &json) const {
     json["brightness"] = brightness;
 }
 
-uint8_t FxB7::selectionWeight() const {
-    return 10;
-}
-
 //FXB8
 FxB8::FxB8() : LedEffect(fxb8Desc) {}
 
@@ -367,10 +361,6 @@ void FxB::fadein() {
 void FxB8::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
     json["brightness"] = brightness;
-}
-
-uint8_t FxB8::selectionWeight() const {
-    return 15;
 }
 
 // FxB9
@@ -431,6 +421,3 @@ void FxB::juggle_long() {
 
 FxB9::FxB9() : LedEffect(fxb9Desc) {}
 
-uint8_t FxB9::selectionWeight() const {
-    return 14;
-}

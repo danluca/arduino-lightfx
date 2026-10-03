@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "fxF.h"
 #include <vector>
@@ -11,11 +11,33 @@ using namespace FxF;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxf1Desc = {EFFECT_FACTORY(FxF1), "FXF1", "beat wave", 12};
-static const EffectInfo fxf2Desc = {EFFECT_FACTORY(FxF2), "FXF2", "Halloween breathe with various color blends", 32};
-static const EffectInfo fxf3Desc = {EFFECT_FACTORY(FxF3), "FXF3", "Eye Blink", 32};
-static const EffectInfo fxf4Desc = {EFFECT_FACTORY(FxF4), "FXF4", "Bouncy segments", 32};
-static const EffectInfo fxf5Desc = {EFFECT_FACTORY(FxF5), "FXF5", "Fireworks", 37};
+static const EffectInfo fxf1Desc = {.factory = EFFECT_FACTORY(FxF1), .desc = {.id = "FXF1", .description = "beat wave"}, .selectionWeight = 12};
+static constexpr HolidayWeight fxf2HolidayWeights[] = {
+    {.holiday = Halloween, .weight = 42},
+    {.holiday = ValentineDay, .weight = 0},
+    {.holiday = Christmas, .weight = 0},
+    {.holiday = NewYear, .weight = 0}
+};
+static const EffectInfo fxf2Desc = {.factory = EFFECT_FACTORY(FxF2), .desc = {.id = "FXF2", .description = "Halloween breathe with various color blends"}, .selectionWeight = 32, HOLIDAY_WEIGHTS(fxf2HolidayWeights)};
+static constexpr HolidayWeight fxf3HolidayWeights[] = {
+    {.holiday = Halloween, .weight = 42},
+    {.holiday = ValentineDay, .weight = 0},
+    {.holiday = Christmas, .weight = 0},
+    {.holiday = NewYear, .weight = 0}
+};
+static const EffectInfo fxf3Desc = {.factory = EFFECT_FACTORY(FxF3), .desc = {.id = "FXF3", .description = "Eye Blink"}, .selectionWeight = 32, HOLIDAY_WEIGHTS(fxf3HolidayWeights)};
+static constexpr HolidayWeight fxf4HolidayWeights[] = {
+    {.holiday = Halloween, .weight = 12}
+};
+static const EffectInfo fxf4Desc = {.factory = EFFECT_FACTORY(FxF4), .desc = {.id = "FXF4", .description = "Bouncy segments"}, .selectionWeight = 32, HOLIDAY_WEIGHTS(fxf4HolidayWeights)};
+static constexpr HolidayWeight fxf5HolidayWeights[] = {
+    {.holiday = Party, .weight = 48},
+    {.holiday = MemorialDay, .weight = 48},
+    {.holiday = IndependenceDay, .weight = 80},
+    {.holiday = Halloween, .weight = 10},
+    {.holiday = NewYear, .weight = 80}
+};
+static const EffectInfo fxf5Desc = {.factory = EFFECT_FACTORY(FxF5), .desc = {.id = "FXF5", .description = "Fireworks"}, .selectionWeight = 20, HOLIDAY_WEIGHTS(fxf5HolidayWeights)};
 
 void FxF::fxRegister() {
     fxRegistry.registerEffect(&fxf1Desc);
@@ -61,10 +83,6 @@ void FxF1::run() {
 
 bool FxF1::windDown() {
     return transEffect.offSpots();
-}
-
-uint8_t FxF1::selectionWeight() const {
-    return 12;
 }
 
 // FxF2
@@ -126,10 +144,6 @@ void FxF2::makePattern(uint8_t hue) {
 
 bool FxF2::windDown() {
     return transEffect.offWipe(false);
-}
-
-uint8_t FxF2::selectionWeight() const {
-    return paletteFactory.getHoliday() == Halloween ? 42 : 24;
 }
 
 // FxF3
@@ -220,10 +234,6 @@ Viewport FxF3::nextEyePos() {
 
 bool FxF3::windDown() {
     return transEffect.offWipe(true);
-}
-
-uint8_t FxF3::selectionWeight() const {
-    return paletteFactory.getHoliday() == Halloween ? 42 : 24;
 }
 
 /**
@@ -447,10 +457,6 @@ bool FxF4::windDown() {
     return transEffect.offWipe(true);
 }
 
-uint8_t FxF4::selectionWeight() const {
-    return paletteFactory.getHoliday() == Halloween ? 12 : 42;
-}
-
 // FxF5 - algorithm by Carl Rosendahl, adapted from code published at https://www.anirama.com/1000leds/1d-fireworks/
 // HEAVY floating point math
 FxF5::FxF5() : LedEffect(fxf5Desc) {}
@@ -583,6 +589,3 @@ bool FxF5::windDown() {
     return transEffect.offWipe(true);
 }
 
-uint8_t FxF5::selectionWeight() const {
-    return paletteFactory.getHoliday() == Halloween ? 10 : 64;
-}

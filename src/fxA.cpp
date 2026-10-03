@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "fxA.h"
 #include "transition.h"
@@ -9,12 +9,12 @@ using namespace FxA;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxa1Desc = {EFFECT_FACTORY(FxA1), "FXA1", "Multiple Tetris segments", 3};
-static const EffectInfo fxa2Desc = {EFFECT_FACTORY(FxA2), "FXA2", "Randomly sized and spaced segments moving on entire strip", 10};
-static const EffectInfo fxa3Desc = {EFFECT_FACTORY(FxA3), "FXA3", "Moving variable dot size back and forth", 20 };
-static const EffectInfo fxa4Desc = {EFFECT_FACTORY(FxA4), "FXA4", "Moving variable dot size back and forth with gradient background", 20 };
-static const EffectInfo fxa5Desc = {EFFECT_FACTORY(FxA5), "FXA5", "Moving color swath on top of another", 20 };
-static const EffectInfo fxa6Desc = {EFFECT_FACTORY(SleepLight), "FXA6", "Sleep Light", 0};
+static const EffectInfo fxa1Desc = {.factory = EFFECT_FACTORY(FxA1), .desc = {.id = "FXA1", .description = "Multiple Tetris segments"}, .selectionWeight = 3};
+static const EffectInfo fxa2Desc = {.factory = EFFECT_FACTORY(FxA2), .desc = {.id = "FXA2", .description = "Randomly sized and spaced segments moving on entire strip"}, .selectionWeight = 10};
+static const EffectInfo fxa3Desc = {.factory = EFFECT_FACTORY(FxA3), .desc = {.id = "FXA3", .description = "Moving variable dot size back and forth"}, .selectionWeight = 20 };
+static const EffectInfo fxa4Desc = {.factory = EFFECT_FACTORY(FxA4), .desc = {.id = "FXA4", .description = "Moving variable dot size back and forth with gradient background"}, .selectionWeight = 20 };
+static const EffectInfo fxa5Desc = {.factory = EFFECT_FACTORY(FxA5), .desc = {.id = "FXA5", .description = "Moving color swath on top of another"}, .selectionWeight = 20 };
+static const EffectInfo fxa6Desc = {.factory = EFFECT_FACTORY(SleepLight), .desc = {.id = "FXA6", .description = "Sleep Light"}, .selectionWeight = 0};
 
 uint16_t FxA::szStack = 0;
 
@@ -123,10 +123,6 @@ void FxA1::baseConfig(JsonObject &json) const {
     json["segmentSize"] = szSegment;
 }
 
-uint8_t FxA1::selectionWeight() const {
-    return 3;
-}
-
 // FX A2
 FxA2::FxA2() : LedEffect(fxa2Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
@@ -206,10 +202,6 @@ void FxA2::baseConfig(JsonObject &json) const {
     json["segmentSize"] = szSegment;
 }
 
-uint8_t FxA2::selectionWeight() const {
-    return 10;
-}
-
 // Fx A3
 FxA3::FxA3() : LedEffect(fxa3Desc), dot(frame(0, FRAME_SIZE-1)) {
 }
@@ -259,10 +251,6 @@ void FxA3::run() {
 
 void FxA3::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
-}
-
-uint8_t FxA3::selectionWeight() const {
-    return 20;
 }
 
 // FX A4
@@ -332,10 +320,6 @@ void FxA4::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
 }
 
-uint8_t FxA4::selectionWeight() const {
-    return 20;
-}
-
 // Fx A5
 FxA5::FxA5() : LedEffect(fxa5Desc), ovr(frame(0, FRAME_SIZE-1)) {
 }
@@ -397,10 +381,6 @@ void FxA5::run() {
 
 void FxA5::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
-}
-
-uint8_t FxA5::selectionWeight() const {
-    return 20;
 }
 
 // SleepLight
@@ -486,9 +466,5 @@ SleepLight::SleepLightState SleepLight::step() {
 //    if (oldState != state)
 //        log_info(F("SleepLight state changed from %d to %d, colorBuf=%r, refPixel=%r"), oldState, state, (CRGB)colorBuf, *refPixel);
     return oldState;
-}
-
-uint8_t SleepLight::selectionWeight() const {
-    return 0;   //we don't want this effect part of the random selection of entertaining light effects
 }
 
