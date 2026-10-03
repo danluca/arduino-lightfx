@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include <Arduino.h>
@@ -18,10 +18,10 @@
  * The function creates the following queues:
  * - `almQueue`: A queue for ALM-related tasks to handle communication between cores. Stores `AlmAction` items.
  * - `bcQueue`: A broadcast queue to manage actions sent by enqueue methods and processed by the execute method.
- *   Stores pointers to `bcTaskMessage` structures.
+ *   Stores `bcTaskMessage` items.
  * - `diagQueue`: A queue for diagnostic actions, storing `DiagAction` items.
  * - `fxQueue`: A queue for FX-related actions, storing `FxActionMessage` items.
- * - `micQueue`: A queue for actions related to microphone operations, storing `MikeAction` items.
+ * - `micQueue`: A queue for actions related to microphone operations, storing `AudioActionMessage` items.
  */
 void task_msg_setup() {
     //create a receiving queue for the ALM task for communication between cores
@@ -47,8 +47,8 @@ void task_msg_setup() {
         log_error(F("Failed to create fxQueue - FX messaging will not work"));
     }
 
-    // micQueue stores pointers to AudioActionMessage allocated by producers; consumer deletes after processing
-    micQueue = xQueueCreate(10, sizeof(AudioActionMessage*));
+    // micQueue stores AudioActionMessage by value; no allocations needed
+    micQueue = xQueueCreate(10, sizeof(AudioActionMessage));
     if (micQueue == nullptr) {
         log_error(F("Failed to create micQueue - MIC messaging will not work"));
     }

@@ -69,7 +69,7 @@ uint16_t EffectRegistry::nextRandomEffectPos() {
                 holidayToString(holiday), desiredEffectIndex, effectInfos[desiredEffectIndex]->desc.id);
             return desiredEffectIndex;
         }
-        uint16_t rnd = random16(totalSelectionWeight+1);
+        uint16_t rnd = random16(totalSelectionWeight);
         for (uint16_t i = 0; i < effectsCount; ++i) {
             if (i == sleepEffectIndex)
                 continue;

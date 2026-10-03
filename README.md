@@ -4,20 +4,20 @@ A sophisticated, feature-rich LED lighting effects controller for WS2811/WS2812 
 
 ## Features
 
-- **70+ Custom Light Effects**: Original animations and community-inspired patterns
+- **50 Custom Light Effects**: Original animations and community-inspired patterns
 - **Effect Registry**: Auto-registration system for modular effect management
 - **Web Interface**: Real-time configuration via WiFi-enabled web server with JSON REST API
 - **Smart Scheduling**: Time-aware dimming and automatic holiday detection
 - **Multi-Core Architecture**: FreeRTOS-based task distribution across both RP2040 cores
 - **Audio Reactive**: PDM microphone integration for sound-responsive effects
 - **OTA Updates**: Over-the-air firmware updates
-- **Memory Monitoring**: Custom malloc wrappers with real-time heap tracking
+- **Memory Monitoring**: Real-time heap and task stack tracking from FreeRTOS statistics
 
 ## Target Hardware
 
 **Primary Board**: [Arduino Nano RP2040 Connect](https://docs.arduino.cc/hardware/nano-rp2040-connect)
 - Dual-core RP2040 @ 133MHz (ARM Cortex-M0+)
-- 264KB SRAM (128KB configured for heap)
+- 264KB SRAM (144KB configured for heap)
 - 16MB Flash (4MB configured)
 - WiFi (U-blox NINA W102)
 - Built-in PDM microphone
@@ -65,11 +65,14 @@ pio device monitor
 
 ## Configuration
 
-1. **WiFi Setup**: Configure credentials in `include/secrets.h`:
+1. **Secrets**: Copy `include/secrets.h.example` to `include/secrets.h` (git-ignored - never commit it) and fill in:
 ```cpp
-#define WIFI_SSID "your-network"
-#define WIFI_PASSWORD "your-password"
+#define WF_SSID "your-network"
+#define WF_PSW  "your-password"
+#define FW_AUTH_TOKEN "your-upload-token"   // X-Token for firmware (POST /fw) and file (POST/PUT /upload) uploads
 ```
+   The build fails if `FW_AUTH_TOKEN` is missing. The upload scripts (`ota_upgrade.ps1`, `scripts/upload_audio_seed.*`) read the token from
+   the `LIGHTFX_AUTH_TOKEN` environment variable when set, otherwise from `include/secrets.h`.
 
 2. **LED Configuration**: Edit `include/config.h`:
    - Pin assignment (default: GPIO 25 / D2)
@@ -90,7 +93,7 @@ This project prioritizes **performance and features over portability** - unapolo
 - Object-oriented design with `LedEffect` base class
 - Auto-registration pattern via `EffectRegistry`
 - Each effect encapsulates its own state and rendering logic
-- 70+ effects organized across multiple source files (fxA.cpp through fxK.cpp)
+- 50 effects organized across multiple source files (fxA.cpp through fxK.cpp)
 
 **Time Intelligence**:
 - Automatic holiday detection (day/month based)
@@ -99,10 +102,9 @@ This project prioritizes **performance and features over portability** - unapolo
 - NTP synchronization for accurate timekeeping
 
 **Resource Management**:
-- Custom memory allocation wrappers (`alloc_ovr.cpp`)
-- Heap monitoring and leak detection
+- Heap and task stack monitoring from FreeRTOS statistics (`vPortGetHeapStats`, see `sysinfo.cpp`)
 - Heap 4 (FreeRTOS) memory allocator for optimized memory footprint
-- 128KB heap configuration (optimized from 164KB default)
+- 144KB heap configuration (optimized from 164KB default)
 - Real-time memory statistics via web interface
 
 ### Core Technologies
@@ -118,7 +120,7 @@ This project prioritizes **performance and features over portability** - unapolo
 - Static IP configuration recommended
 - Core0 affinity for stability
 
-**LED Control**: [FastLED](https://github.com/FastLED/FastLED) 3.9+
+**LED Control**: [FastLED](https://github.com/FastLED/FastLED) 3.10.3 (pinned in `platformio.ini`)
 - Hardware PIO acceleration on RP2040
 - Non-blocking PWM signal generation
 - Rich color manipulation primitives
@@ -140,9 +142,8 @@ This project prioritizes **performance and features over portability** - unapolo
 - **Mic Task**: PDM microphone signal processing
 - **CORE1 Task**: Diagnostics, logging, temperature monitoring
 
-**Stack Optimization**: For optimal performance, modify `~/.platformio/packages/framework-arduinopico/libraries/FreeRTOS/src/variantHooks.cpp`:
-- CORE0: 3072 bytes (from default 1024)
-- CORE1: 1536 bytes (from default 1024)
+**Stack Sizes**: CORE0 and CORE1 task stack depths are 2048 (from default 1024), set through the `configCORE0_TASK_STACK_DEPTH` and
+`configCORE1_TASK_STACK_DEPTH` build flags in `platformio.ini`; these are honored by the [arduino-pico fork](https://github.com/danluca/arduino-pico/tree/feat/stable) used by this project.
 
 ## Hardware Integration
 
@@ -185,7 +186,7 @@ Contributions welcome! This project benefits from:
 - Verify standard: `pio run -v` (look for `-std=gnu++17`)
 - Match existing code style
 - Comment complex algorithms
-- Consider memory constraints (128KB heap)
+- Consider memory constraints (144KB heap)
 
 **Development Workflow**:
 1. Fork and create feature branch from `dev/12-fxe`
@@ -217,7 +218,7 @@ rp2040-lightfx/
 │   └── ...
 ├── include/          # Headers
 │   ├── config.h      # Hardware configuration
-│   ├── secrets.h     # WiFi credentials (not in repo)
+│   ├── secrets.h     # WiFi credentials, upload token (not in repo - see secrets.h.example)
 │   ├── LedEffect.h   # Effect base class
 │   └── ...
 ├── www/              # Web interface assets
@@ -237,7 +238,7 @@ rp2040-lightfx/
 
 **Memory Issues**:
 - Monitor via web stats page
-- Check custom malloc wrappers are active
+- Check the `Heap ::` lines in the serial log
 - Reduce heap via `configTOTAL_HEAP_SIZE` if needed
 
 **Effects Not Smooth**:
@@ -248,6 +249,7 @@ rp2040-lightfx/
 **OTA Update Fails**:
 - Ensure static IP configured
 - Check network connectivity
+- Verify the script token (`LIGHTFX_AUTH_TOKEN` or `include/secrets.h`) matches the `FW_AUTH_TOKEN` the board firmware was built with
 - Verify sufficient flash space
 
 ## Advanced: Hardware Debugging

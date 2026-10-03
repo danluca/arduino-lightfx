@@ -1,6 +1,6 @@
-## Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+## Copyright (c) by Dan Luca. All rights reserved.
 ##
-## USB Firmware update script for RP2350-based boards; allows default Arduino OTA if available
+## USB Firmware update script for Arduino Nano RP2040 Connect boards; allows default Arduino OTA if available
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]
@@ -55,7 +55,7 @@ function updateFirmwareOTA() {
     Write-Information "${clrMsg}Updating firmware OTA to $ipAddress board${clrReset}" -InformationAction Continue
     Clean -dbg $dbg
     Build-Application $board $log $ignoreBroadcast $dbg
-    arduino-cli upload --fqbn $boardFqbn --upload-field password=$otaPassword --protocol network --port "$ipAddress" -i .pio/build/$brdEnv/firmware.bin
+    arduino-cli upload --fqbn $boardFqbn --upload-field password=$otaPassword --protocol network --port "$ipAddress" -i .pio/build/$(Get-BoardEnvName $dbg)/firmware.bin
 
 }
 
