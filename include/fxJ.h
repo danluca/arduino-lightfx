@@ -14,7 +14,6 @@ namespace FxJ {
         FxJ1();
         void setup() override;
         void run() override;
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     private:
         static constexpr uint8_t maxKernels = 10;
@@ -48,7 +47,6 @@ namespace FxJ {
         FxJ2();
         void setup() override;
         void run() override;
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     private:
         static constexpr uint8_t maxDrops = 12;

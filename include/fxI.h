@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright by Dan Luca. All rights reserved
 //
 #ifndef ARDUINO_LIGHTFX_FXI_H
 #define ARDUINO_LIGHTFX_FXI_H
@@ -17,7 +17,6 @@ namespace FxI {
         void setup() override;
         void run() override; // Main loop for the ping-pong effect
         void reWall();
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     private:
         uint16_t wallStart, wallEnd, prevWallStart, prevWallEnd;
@@ -33,7 +32,6 @@ namespace FxI {
         FxI2();
         void setup() override;
         void run() override;
-        [[nodiscard]] inline uint8_t selectionWeight() const override;
 
     private:
         void pacifica_loop();
@@ -51,7 +49,6 @@ namespace FxI {
         void setup() override;
         void init_drop(int32_t maxPos);
         void run() override;
-        [[nodiscard]] uint8_t selectionWeight() const override;
     private:
         // Fixed-point physics (8 fractional bits)
         int32_t pos256{};   // position * 256
@@ -75,7 +72,6 @@ namespace FxI {
         void setup() override;
         void run() override;
         void cleanup() override;
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     private:
         void loadSeedFromFile();
@@ -111,7 +107,6 @@ namespace FxI {
         void setup() override;
         void cleanup() override;
         void run() override;
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     private:
         // main swell moving towards shore (index 0)
@@ -165,7 +160,6 @@ namespace FxI {
         FxI6();
         void setup() override;
         void run() override;
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     private:
         // lane geometry

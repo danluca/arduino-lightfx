@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "fxH.h"
 #include "transition.h"
@@ -8,12 +8,34 @@ using namespace FxH;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxh1Desc = {EFFECT_FACTORY(FxH1), "FXH1", "Fire segments", 48};
-static const EffectInfo fxh2Desc = {EFFECT_FACTORY(FxH2), "FXH2", "confetti H", 24};
-static const EffectInfo fxh3Desc = {EFFECT_FACTORY(FxH3), "FXH3", "filling the strand with colours", 18};
-static const EffectInfo fxh4Desc = {EFFECT_FACTORY(FxH4), "FXH4", "TwinkleFox", 12};
-static const EffectInfo fxh5Desc = {EFFECT_FACTORY(FxH5), "FXH5", "RainbowSparkle", 5};
-static const EffectInfo fxh6Desc = {EFFECT_FACTORY(FxH6), "FXH6", "JustSparkle", 5};
+static constexpr HolidayWeight fxh1HolidayWeights[] = {
+    {.holiday = Halloween, .weight = 64},
+    {.holiday = Thanksgiving, .weight = 56},
+    {.holiday = StPatrick, .weight = 18},
+    {.holiday = ValentineDay, .weight = 10}
+};
+static const EffectInfo fxh1Desc = {.factory = EFFECT_FACTORY(FxH1), .desc = {.id = "FXH1", .description = "Fire segments"}, .selectionWeight = 48, HOLIDAY_WEIGHTS(fxh1HolidayWeights)};
+static const EffectInfo fxh2Desc = {.factory = EFFECT_FACTORY(FxH2), .desc = {.id = "FXH2", .description = "confetti H"}, .selectionWeight = 24};
+static const EffectInfo fxh3Desc = {.factory = EFFECT_FACTORY(FxH3), .desc = {.id = "FXH3", .description = "filling the strand with colours"}, .selectionWeight = 18};
+static constexpr HolidayWeight fxh4HolidayWeights[] = {
+    {.holiday = ValentineDay, .weight = 20},
+    {.holiday = Christmas, .weight = 36},
+    {.holiday = NewYear, .weight = 24}
+};
+static const EffectInfo fxh4Desc = {.factory = EFFECT_FACTORY(FxH4), .desc = {.id = "FXH4", .description = "TwinkleFox"}, .selectionWeight = 12, HOLIDAY_WEIGHTS(fxh4HolidayWeights)};
+static constexpr HolidayWeight fxh5HolidayWeights[] = {
+    {.holiday = Party, .weight = 10},
+    {.holiday = StPatrick, .weight = 0},
+    {.holiday = Halloween, .weight = 0},
+    {.holiday = Thanksgiving, .weight = 0},
+    {.holiday = Christmas, .weight = 0}
+};
+static const EffectInfo fxh5Desc = {.factory = EFFECT_FACTORY(FxH5), .desc = {.id = "FXH5", .description = "RainbowSparkle"}, .selectionWeight = 5, HOLIDAY_WEIGHTS(fxh5HolidayWeights)};
+static constexpr HolidayWeight fxh6HolidayWeights[] = {
+    {.holiday = Halloween, .weight = 25},
+    {.holiday = NewYear, .weight = 10}
+};
+static const EffectInfo fxh6Desc = {.factory = EFFECT_FACTORY(FxH6), .desc = {.id = "FXH6", .description = "JustSparkle"}, .selectionWeight = 0, HOLIDAY_WEIGHTS(fxh6HolidayWeights)};
 
 void FxH::fxRegister() {
     fxRegistry.registerEffect(&fxh1Desc);
@@ -168,10 +190,6 @@ void FxH1::baseConfig(JsonObject &json) const {
     json["numberOfFires"] = numFires;
 }
 
-uint8_t FxH1::selectionWeight() const {
-    return paletteFactory.getHoliday() == Halloween ? 64 : 32;
-}
-
 // FxH2
 FxH2::FxH2() : LedEffect(fxh2Desc) {}
 
@@ -243,10 +261,6 @@ void FxH2::baseConfig(JsonObject &json) const {
     json["speed"] = speed.load();
 }
 
-uint8_t FxH2::selectionWeight() const {
-    return 24;
-}
-
 /**
  * fill_colours - TBD whether to keep, too close to rainbow march, etc.
  *
@@ -297,10 +311,6 @@ void FxH3::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
     json["hueDiff"] = hueDiff;
     json["speed"] = speed.load();
-}
-
-uint8_t FxH3::selectionWeight() const {
-    return 18;
 }
 
 /**
@@ -359,10 +369,6 @@ void FxH4::run() {
 
 void FxH4::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
-}
-
-uint8_t FxH4::selectionWeight() const {
-    return 12;
 }
 
 //  This function loops over each pixel, calculates the adjusted 'clock' that this pixel should use, and calls
@@ -549,10 +555,6 @@ void FxH5::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
 }
 
-uint8_t FxH5::selectionWeight() const {
-    return 5;
-}
-
 void FxH5::electromagneticSpectrum(int transitionSpeed) {
     switch(colorStep) {
         case 0:
@@ -696,10 +698,6 @@ void FxH6::run() {
 
 bool FxH6::windDown() {
     return LedEffect::windDown();
-}
-
-uint8_t FxH6::selectionWeight() const {
-    return 5;
 }
 
 FxH6::~FxH6() {

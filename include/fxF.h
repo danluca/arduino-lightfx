@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024 by Dan Luca. All rights reserved
+// Copyright by Dan Luca. All rights reserved
 //
 #ifndef ARDUINO_LIGHTFX_FXF_H
 #define ARDUINO_LIGHTFX_FXF_H
@@ -17,8 +17,6 @@ namespace FxF {
         void run() override;
 
         bool windDown() override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
     };
 
     class FxF2 : public LedEffect {
@@ -30,8 +28,6 @@ namespace FxF {
         void run() override;
 
         bool windDown() override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         void makePattern(uint8_t hue);
@@ -84,8 +80,6 @@ namespace FxF {
 
         EyeBlink *findAvailableEye();
 
-        [[nodiscard]] uint8_t selectionWeight() const override;
-
     protected:
         static const uint8_t maxEyes = 5;   //correlated with size of a FRAME
         EyeBlink eyes[maxEyes]{};
@@ -100,8 +94,6 @@ namespace FxF {
         void run() override;
 
         bool windDown() override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         enum FxState {Bounce, Reduce, Flash};
@@ -133,8 +125,6 @@ namespace FxF {
         void run() override;
 
         bool windDown() override;
-
-        [[nodiscard]] uint8_t selectionWeight() const override;
 
     protected:
         //Spark sparks[NUM_SPARKS]{};

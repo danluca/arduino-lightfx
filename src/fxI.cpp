@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 /**
  * Category I of light effects
@@ -13,12 +13,28 @@ using namespace FxI;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxi1Desc = {EFFECT_FACTORY(FxI1), "FXI1", "Ping Pong", 7};
-static const EffectInfo fxi2Desc = {EFFECT_FACTORY(FxI2), "FXI2", "Pacifica - gentle ocean waves", 9};
-static const EffectInfo fxi3Desc = {EFFECT_FACTORY(FxI3), "FXI3", "Bouncy Ball", 10};
-static const EffectInfo fxi4Desc = {EFFECT_FACTORY(FxI4), "FXI4", "Audio-seeded VU meter", 12};
-static const EffectInfo fxi5Desc = {EFFECT_FACTORY(FxI5), "FXI5", "Shore waves with backwash", 10};
-static const EffectInfo fxi6Desc = {EFFECT_FACTORY(FxI6), "FXI6", "Bowling alley", 9};
+static const EffectInfo fxi1Desc = {.factory = EFFECT_FACTORY(FxI1), .desc = {.id = "FXI1", .description = "Ping Pong"}, .selectionWeight = 7};
+static constexpr HolidayWeight fxi2HolidayWeights[] = {
+    {.holiday = MemorialDay, .weight = 16},
+    {.holiday = IndependenceDay, .weight = 16},
+    {.holiday = Halloween, .weight = 0},
+    {.holiday = Thanksgiving, .weight = 0},
+    {.holiday = Christmas, .weight = 0}
+};
+static const EffectInfo fxi2Desc = {.factory = EFFECT_FACTORY(FxI2), .desc = {.id = "FXI2", .description = "Pacifica - gentle ocean waves"}, .selectionWeight = 9, HOLIDAY_WEIGHTS(fxi2HolidayWeights)};
+static const EffectInfo fxi3Desc = {.factory = EFFECT_FACTORY(FxI3), .desc = {.id = "FXI3", .description = "Bouncy Ball"}, .selectionWeight = 10};
+static constexpr HolidayWeight fxi4HolidayWeights[] = {
+    {.holiday = Party, .weight = 24},
+    {.holiday = NewYear, .weight = 24}
+};
+static const EffectInfo fxi4Desc = {.factory = EFFECT_FACTORY(FxI4), .desc = {.id = "FXI4", .description = "Audio-seeded VU meter"}, .selectionWeight = 12, HOLIDAY_WEIGHTS(fxi4HolidayWeights)};
+static constexpr HolidayWeight fxi5HolidayWeights[] = {
+    {.holiday = MemorialDay, .weight = 16},
+    {.holiday = IndependenceDay, .weight = 16},
+    {.holiday = Halloween, .weight = 0}
+};
+static const EffectInfo fxi5Desc = {.factory = EFFECT_FACTORY(FxI5), .desc = {.id = "FXI5", .description = "Shore waves with backwash"}, .selectionWeight = 10, HOLIDAY_WEIGHTS(fxi5HolidayWeights)};
+static const EffectInfo fxi6Desc = {.factory = EFFECT_FACTORY(FxI6), .desc = {.id = "FXI6", .description = "Bowling alley"}, .selectionWeight = 9};
 
 /**
  * Register FxI effects
@@ -168,10 +184,6 @@ void FxI1::run() {
     }
 }
 
-uint8_t FxI1::selectionWeight() const {
-    return 7;
-}
-
 //FXI2 - Pacifica gentle ocean waves
 FxI2::FxI2(): LedEffect(fxi2Desc) {
 }
@@ -296,10 +308,6 @@ void FxI2::run() {
         replicateSet(tpl, others);
         FastLED.show(stripBrightness);
     }
-}
-
-uint8_t FxI2::selectionWeight() const {
-    return 9;
 }
 
 //FXI3 - Bouncy Ball (vertical drop with damped bounces)
@@ -443,10 +451,6 @@ void FxI3::run() {
         replicateMirrorSet(frame, others, dirRight);
         FastLED.show(stripBrightness);
     }
-}
-
-uint8_t FxI3::selectionWeight() const {
-    return 10;
 }
 
 // FXI4 - Audio-seeded VU meter
@@ -626,8 +630,6 @@ void FxI4::run() {
         speed.setPeriod(frameMs);
     }
 }
-
-uint8_t FxI4::selectionWeight() const { return 12; }
 
 // FXI5 - Shoreline waves: approaching swell, shore whitecaps, and backwash
 FxI5::FxI5() : LedEffect(fxi5Desc), frame(leds, frameSize), rest(leds, frameSize, NUM_PIXELS-1) {
@@ -881,8 +883,6 @@ void FxI5::run() {
     }
 }
 
-uint8_t FxI5::selectionWeight() const { return 10; }
-
 // FXI6 - Bowling alley simulation
 FxI6::FxI6() : LedEffect(fxi6Desc) {}
 
@@ -1003,4 +1003,3 @@ void FxI6::run() {
     }
 }
 
-uint8_t FxI6::selectionWeight() const { return 9; }

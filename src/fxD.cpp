@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "fxD.h"
 #include "transition.h"
@@ -8,11 +8,24 @@ using namespace FxD;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxd1Desc = {EFFECT_FACTORY(FxD1), "FXD1", "Confetti D", 21};
-static const EffectInfo fxd2Desc = {EFFECT_FACTORY(FxD2), "FXD2", "dot beat", 20};
-static const EffectInfo fxd3Desc = {EFFECT_FACTORY(FxD3), "FXD3", "plasma", 24};
-static const EffectInfo fxd4Desc = {EFFECT_FACTORY(FxD4), "FXD4", "rainbow marching", 18};
-static const EffectInfo fxd5Desc = {EFFECT_FACTORY(FxD5), "FXD5", "ripples", 42};
+static constexpr HolidayWeight fxd1HolidayWeights[] = {
+    {.holiday = Party, .weight = 30},
+    {.holiday = NewYear, .weight = 30}
+};
+static const EffectInfo fxd1Desc = {.factory = EFFECT_FACTORY(FxD1), .desc = {.id = "FXD1", .description = "Confetti D"}, .selectionWeight = 21, HOLIDAY_WEIGHTS(fxd1HolidayWeights)};
+static const EffectInfo fxd2Desc = {.factory = EFFECT_FACTORY(FxD2), .desc = {.id = "FXD2", .description = "dot beat"}, .selectionWeight = 20};
+static constexpr HolidayWeight fxd3HolidayWeights[] = {
+    {.holiday = Halloween, .weight = 36}
+};
+static const EffectInfo fxd3Desc = {.factory = EFFECT_FACTORY(FxD3), .desc = {.id = "FXD3", .description = "plasma"}, .selectionWeight = 24, HOLIDAY_WEIGHTS(fxd3HolidayWeights)};
+static constexpr HolidayWeight fxd4HolidayWeights[] = {
+    {.holiday = Party, .weight = 24},
+    {.holiday = ValentineDay, .weight = 0},
+    {.holiday = StPatrick, .weight = 0},
+    {.holiday = Thanksgiving, .weight = 0},
+};
+static const EffectInfo fxd4Desc = {.factory = EFFECT_FACTORY(FxD4), .desc = {.id = "FXD4", .description = "rainbow marching"}, .selectionWeight = 18, HOLIDAY_WEIGHTS(fxd4HolidayWeights)};
+static const EffectInfo fxd5Desc = {.factory = EFFECT_FACTORY(FxD5), .desc = {.id = "FXD5", .description = "ripples"}, .selectionWeight = 64};
 
 int8_t FxD::rot = 1;
 
@@ -89,10 +102,6 @@ bool FxD1::windDown() {
     return transEffect.offSpots();
 }
 
-uint8_t FxD1::selectionWeight() const {
-    return 21;
-}
-
 // Fx D2
 /**
  * dots By: John Burroughs
@@ -140,10 +149,6 @@ bool FxD2::windDown() {
     return transEffect.offWipe(true);
 }
 
-uint8_t FxD2::selectionWeight() const {
-    return 20;
-}
-
 // Fx D3
 void FxD3::setup() {
     LedEffect::setup();
@@ -189,10 +194,6 @@ void FxD3::plasma() const {
 
 FxD3::FxD3() : LedEffect(fxd3Desc) {
     monoColor = 0;
-}
-
-uint8_t FxD3::selectionWeight() const {
-    return 24;
 }
 
 // Fx D4
@@ -246,10 +247,6 @@ void FxD4::rainbow_march() {
 
 bool FxD4::windDown() {
     return transEffect.offSpots();
-}
-
-uint8_t FxD4::selectionWeight() const {
-    return 18;
 }
 
 // Fx D5
@@ -319,6 +316,3 @@ void ripple::Init(CRGBSet *set) {
     step = 0;
 }
 
-uint8_t FxD5::selectionWeight() const {
-    return 42;
-}

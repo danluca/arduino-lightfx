@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef LEDEFFECT_H
@@ -8,6 +8,7 @@
 #include <ArduinoJson.h>
 #include <functional>
 #include "global.h"
+#include "timeutil.h"
 
 // Time Performance by Mark Kriegsman of FastLED at https://gist.github.com/kriegsman/a916be18d32ec675fea8
 
@@ -58,11 +59,41 @@ struct EffectDescription {
 // Effect factory function type - creates a new effect instance
 using EffectFactory = std::function<LedEffect*()>;
 
+/**
+ * Holiday specific override of an effect's random selection weight. A weight of 0 excludes the effect from random
+ * selection while that holiday is active.
+ */
+struct HolidayWeight {
+    Holiday holiday;
+    uint8_t weight;
+};
+
+// Expands a static HolidayWeight array into the (pointer, count) pair expected by EffectInfo
+#define HOLIDAY_WEIGHTS(arr) .holidayWeights = arr, .holidayWeightsCount = static_cast<uint8_t>(sizeof(arr) / sizeof((arr)[0]))
+
 // Effect metadata structure
 struct EffectInfo {
     EffectFactory factory;
     EffectDescription desc{};
-    uint8_t selectionWeight{};
+    uint8_t selectionWeight{};                      //default weight for random selection; 0 excludes the effect
+    const HolidayWeight* holidayWeights = nullptr;  //optional holiday specific weight overrides
+    uint8_t holidayWeightsCount = 0;
+
+    /**
+     * The weight this effect has in random selection for the given holiday - the holiday override if one is defined,
+     * otherwise the default selectionWeight.
+     * @param holiday the current holiday
+     * @return a value between 0 and 255; 0 removes the effect from random selection
+     */
+    [[nodiscard]] uint8_t effectiveSelectionWeight(const Holiday holiday) const {
+        if (!holidayWeights)
+            return selectionWeight;
+        for (uint8_t i = 0; i < holidayWeightsCount; ++i) {
+            if (holidayWeights[i].holiday == holiday)
+                return holidayWeights[i].weight;
+        }
+        return selectionWeight;
+    }
 };
 
 
@@ -93,12 +124,6 @@ public:
     virtual bool windDown();
     virtual void cleanup() { }  // Override in effects that need resource cleanup
     [[nodiscard]] EffectState getState() const { return state; }
-    /**
-     * The weight this effect has when random selection is engaged. Subclasses can customize this value by
-     * e.g., the current holiday, time, etc., hence changing/reshaping the chances of selecting an effect
-     * @return a value between 1 and 255. If returning 0, this effectively removes the effect from random selection.
-     */
-    [[nodiscard]] virtual uint8_t selectionWeight() const { return 1; }
 
 protected:
     uint32_t lastTimeCodeDoneAt = 0;

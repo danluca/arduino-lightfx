@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "fxE.h"
 #include "transition.h"
@@ -8,11 +8,17 @@ using namespace FxE;
 using namespace colTheme;
 
 //~ Effect description strings stored in flash
-static const EffectInfo fxe1Desc = {EFFECT_FACTORY(FxE1), "FXE1", "twinkle", 22};
-static const EffectInfo fxe2Desc = {EFFECT_FACTORY(FxE2), "FXE2", "beat wave", 17};
-static const EffectInfo fxe3Desc = {EFFECT_FACTORY(FxE3), "FXE3", "sawtooth back/forth", 27};
-static const EffectInfo fxe4Desc = {EFFECT_FACTORY(FxE4), "FXE4", "serendipitous", 36};
-static const EffectInfo fxe5Desc = {EFFECT_FACTORY(FxE5), "FXE5", "three single color beat-waves", 42};
+static constexpr HolidayWeight fxe1HolidayWeights[] = {
+    {.holiday = ValentineDay, .weight = 30},
+    {.holiday = Christmas, .weight = 40},
+    {.holiday = NewYear, .weight = 30},
+    {.holiday = Halloween, .weight = 0}
+};
+static const EffectInfo fxe1Desc = {.factory = EFFECT_FACTORY(FxE1), .desc = {.id = "FXE1", .description = "twinkle"}, .selectionWeight = 22, HOLIDAY_WEIGHTS(fxe1HolidayWeights)};
+static const EffectInfo fxe2Desc = {.factory = EFFECT_FACTORY(FxE2), .desc = {.id = "FXE2", .description = "beat wave"}, .selectionWeight = 17};
+static const EffectInfo fxe3Desc = {.factory = EFFECT_FACTORY(FxE3), .desc = {.id = "FXE3", .description = "sawtooth back/forth"}, .selectionWeight = 27};
+static const EffectInfo fxe4Desc = {.factory = EFFECT_FACTORY(FxE4), .desc = {.id = "FXE4", .description = "serendipitous"}, .selectionWeight = 36};
+static const EffectInfo fxe5Desc = {.factory = EFFECT_FACTORY(FxE5), .desc = {.id = "FXE5", .description = "three single color beat-waves"}, .selectionWeight = 42};
 
 uint8_t FxE::twinkRate = 100;
 bool FxE::randHue = true;
@@ -94,10 +100,6 @@ bool FxE1::windDown() {
     return transEffect.offSpots();
 }
 
-uint8_t FxE1::selectionWeight() const {
-    return 22;
-}
-
 // Fx E2
 FxE2::FxE2() : LedEffect(fxe2Desc) {}
 
@@ -135,10 +137,6 @@ void FxE2::beatwave() {
     for (uint16_t i=0; i<tpl.size(); i++)
         tpl[i] = ColorFromPalette(palette, i + wave1 + wave2 + wave3 + wave4, brightness, LINEARBLEND);
     replicateSet(tpl, others);
-}
-
-uint8_t FxE2::selectionWeight() const {
-    return 17;
 }
 
 //Fx E3
@@ -235,10 +233,6 @@ void FxE3::run() {
     }
 }
 
-uint8_t FxE3::selectionWeight() const {
-    return 27;
-}
-
 //Fx E4
 FxE4::FxE4() : LedEffect(fxe4Desc) {}
 
@@ -283,10 +277,6 @@ void FxE4::serendipitous() {
     nblend(tpl[map(X, 0, 65535, 0, tpl.size()-1)], newcolor, 224);    // Try and smooth it out a bit. Higher # means less smoothing.
     tpl.fadeToBlackBy(16);                    // 8 bit, 1 = slow, 255 = fast
     replicateSet(tpl, others);
-}
-
-uint8_t FxE4::selectionWeight() const {
-    return 36;
 }
 
 // FxE5
@@ -336,6 +326,3 @@ void FxE5::run() {
 
 }
 
-uint8_t FxE5::selectionWeight() const {
-    return 42;
-}
