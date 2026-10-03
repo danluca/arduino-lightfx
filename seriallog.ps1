@@ -1,6 +1,6 @@
-## Copyright (c) 2025 by Dan Luca. All rights reserved.
+## Copyright (c) by Dan Luca. All rights reserved.
 ##
-## Serial log capture script for RP2350-based boards
+## Serial log capture script for Arduino Nano RP2040 Connect boards
 [CmdletBinding()]
 param ([string]$port='auto')
 

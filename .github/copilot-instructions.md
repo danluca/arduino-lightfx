@@ -25,7 +25,7 @@ Short, actionable guidance to help an AI coding agent be immediately productive 
 
 - Important project-specific conventions:
     - FreeRTOS + dual-core usage: CORE0 runs networking / web server; CORE1 runs FX and audio tasks. See README and `platformio.ini` build flags that enable FreeRTOS.
-    - Heap is deliberately constrained; code uses wrapper flags (`-Wl,--wrap,malloc`) to instrument allocs. When modifying memory allocations prefer explicit cleanup on effect teardown.
+    - Heap is deliberately constrained (144KB FreeRTOS heap 4, `configTOTAL_HEAP_SIZE`); heap usage is reported from FreeRTOS statistics (`vPortGetHeapStats`) in `src/sysinfo.cpp`. When modifying memory allocations prefer explicit cleanup on effect teardown.
     - Effects often allocate large `std::vector` buffers at `setup()` time (example: seed buffers in `src/fxI.cpp`). Implement `cleanup()` on effects that hold vectors or dynamic buffers; the LedEffect state machine will call it on transition to Idle or before calling another setup to avoid long-lived heap growth.
     - Filesystem access goes through `FilesystemTask` (see `lib/FilesystemTask/src`) — do not perform file I/O directly from multiple threads/tasks.
     - JSON usage is via `ArduinoJson`; watch `JsonDocument` lifetimes to avoid retained allocations.
@@ -41,7 +41,7 @@ Short, actionable guidance to help an AI coding agent be immediately productive 
     - Web/config: `src/web_server.cpp` + `www/` for REST endpoints and static UI.
 
 - Useful heuristics for code edits:
-    - Keep changes minimal and platform-aware: respect `platformio.ini` flags (heap scheme and wrapped allocators). Run builds in `rp2040-rel` first to validate.
+    - Keep changes minimal and platform-aware: respect `platformio.ini` flags (heap scheme and heap size). Run builds in `rp2040-rel` first to validate.
     - When adding runtime logging, prefer existing `sysinfo::logTaskStats()` to keep log format consistent.
     - For large file reads, prefer streaming or freeing buffers after use; reference `src/fxI.cpp` for a seed-file example.
 

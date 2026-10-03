@@ -160,6 +160,22 @@ function Update-FirmwareSerial([string]$board, [bool]$log, [bool]$ignoreBroadcas
     }
 }
 
+# Function to retrieve the upload auth token (X-Token header) - from LIGHTFX_AUTH_TOKEN environment variable if set,
+# otherwise from the FW_AUTH_TOKEN definition in the git-ignored include/secrets.h. The token is never stored in the repository
+function Get-AuthToken() {
+    if (-not [string]::IsNullOrWhiteSpace($env:LIGHTFX_AUTH_TOKEN)) {
+        return $env:LIGHTFX_AUTH_TOKEN
+    }
+    $secretsFile = Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath "include/secrets.h"
+    if (Test-Path $secretsFile -PathType Leaf) {
+        $match = Select-String -Path $secretsFile -Pattern '^\s*#define\s+FW_AUTH_TOKEN\s+"([^"]+)"' | Select-Object -First 1
+        if ($match) {
+            return $match.Matches[0].Groups[1].Value
+        }
+    }
+    throw "Upload auth token not found - set LIGHTFX_AUTH_TOKEN environment variable or define FW_AUTH_TOKEN in include/secrets.h (see include/secrets.h.example)"
+}
+
 #######################################
 ## Main
 #######################################

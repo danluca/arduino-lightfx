@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
 #include "timeutil.h"
@@ -186,7 +186,7 @@ bool isDST(const time_t time) {
  */
 Holiday buildHoliday(const time_t time) {
     const uint16_t md = encodeMonthDay(time);
-    //Valentine's Day: Feb 11 through 15
+    //Valentine's Day: Feb 12 through 15
     if (md > 0x020B && md < 0x0210)
         return ValentineDay;
     //StPatrick's Day: March 15 through 18
@@ -207,7 +207,7 @@ Holiday buildHoliday(const time_t time) {
     //Christmas: Dec 23 through Dec 27
     if (md > 0xC16 && md < 0xC1C)
         return Christmas;
-    //NewYear: Dec 30 through Jan 2
+    //NewYear: Dec 31 through Jan 2
     if (md > 0xC1E || md < 0x103)
         return NewYear;
     //Party: all others (winter holidays)

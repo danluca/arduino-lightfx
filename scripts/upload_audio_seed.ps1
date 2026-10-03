@@ -15,6 +15,11 @@ param(
 )
 
 #######################################
+## Global
+#######################################
+. $PSScriptRoot/util.ps1
+
+#######################################
 ## Functions
 #######################################
 
@@ -89,7 +94,7 @@ try {
 Write-Host "Uploading $outFile (sha256=$sha256) to $Destination"
 
 $headers = @{
-    'X-Token' = "KlFpc1dAdFd0eDRXdkVSZg"
+    'X-Token' = Get-AuthToken
     'X-Path'  = "fx/fxi4_seed$Variant.txt"
     'X-Check' = $sha256
 }

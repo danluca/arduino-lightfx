@@ -12,6 +12,7 @@
 #include "efx_setup.h"
 #include "FxSchedule.h"
 #include "net_setup.h"
+#include "secrets.h"
 #include "sysinfo.h"
 #include "util.h"
 #include "task_msg.h"
@@ -43,7 +44,10 @@ static constexpr auto configJsonFilename = "config.json";
 static constexpr auto statusJsonFilename = "status.json";
 static constexpr auto tasksJsonFilename = "tasks.json";
 static constexpr auto filesJsonFilename = "files.json";
-static constexpr auto authToken = "KlFpc1dAdFd0eDRXdkVSZg";
+#ifndef FW_AUTH_TOKEN
+#error "FW_AUTH_TOKEN is not defined - add it to include/secrets.h (see include/secrets.h.example)"
+#endif
+static constexpr auto authToken = FW_AUTH_TOKEN;
 static constexpr uint16_t serverPort = 80;
 #if MDNS_ENABLED==1
 static auto mdnsStatus = false;
@@ -295,7 +299,9 @@ void web::handlePutConfig(WebClient &client) {
     const WebRequest &req = client.request();
     const String userAgent = req.header("User-Agent");
     const String xSource = req.header(kHeaderXSource);
-    // const bool isUi = xSource.equalsIgnoreCase(kXSourceUi);
+#if IGNORE_WEB_EFFECT_CHANGES == 1
+    const bool isUi = xSource.equalsIgnoreCase(kXSourceUi);
+#endif
     // const bool isBoard = xSource.equalsIgnoreCase(kXSourceBoard) || userAgent.startsWith(kUaBoardPrefix);
     String body = req.body();
 
@@ -471,7 +477,6 @@ void handleFWImageUpload(WebClient &client) {
             //check auth token; determine the file name and prepare to stream into it
             const auto fwData = new FWUploadData();
             raw.data = fwData;
-            // *auth = req.header("X-Token").equals("*QisW@tWtx4WvERf") ? 0x01 : 0x00;
             fwData->auth = req.header("X-Token").equals(authToken);
             fwData->checkSum = req.header("X-Check");
             fwData->checkSum.toLowerCase(); //matches the output style of SyncFsImpl.sha256

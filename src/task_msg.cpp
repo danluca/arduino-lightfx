@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include <Arduino.h>
@@ -18,7 +18,7 @@
  * The function creates the following queues:
  * - `almQueue`: A queue for ALM-related tasks to handle communication between cores. Stores `AlmAction` items.
  * - `bcQueue`: A broadcast queue to manage actions sent by enqueue methods and processed by the execute method.
- *   Stores pointers to `bcTaskMessage` structures.
+ *   Stores `bcTaskMessage` items.
  * - `diagQueue`: A queue for diagnostic actions, storing `DiagAction` items.
  * - `fxQueue`: A queue for FX-related actions, storing `FxActionMessage` items.
  */

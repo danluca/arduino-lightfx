@@ -32,6 +32,10 @@ spectrum or a soundtrack synchronization feature.
 
 ## Generate and validate
 
+> **Note:** these seed files were borrowed from the RP2350 sibling project. The generator
+> (`create_synthetic_seed.py`) and its tests (`test_synthetic_seed.py`) live there and are **not**
+> included in this repository; the commands below must be run from that project.
+
 From the repository root:
 
 ```powershell
@@ -69,8 +73,8 @@ Push-Location scripts/synthetic/selected  # run from the repository root
 Pop-Location
 ```
 
-This replaces all four seed slots on the selected board. Use `Tree` instead of
-`Dev` for that configured board. FXI4 randomly selects a slot during setup;
+This replaces all four seed slots on the selected board. Use `FX01` or `FX02` instead of
+`Dev` for those configured boards. FXI4 randomly selects a slot during setup;
 switch away from FXI4 and back after uploading. The local `fsi4` spelling is
 intentional: the uploader maps it to `fx/fxi4_seedN.txt`, which the firmware reads
 as `/ext/fx/fxi4_seedN.txt`. To restore the audio seeds, run the same uploader

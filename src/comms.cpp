@@ -358,7 +358,7 @@ void fxBroadcast(const uint16_t index) {
 /**
  * Starts or resets the timer responsible for the time setup sequence.
  * If the timer does not already exist, it creates a one-shot timer configured to trigger the
- * `enqueueTimeSetup` callback after a delay of 5 seconds.
+ * `enqueueTimeSetup` callback after a delay of 60 seconds.
  * Logs an error if the timer cannot be created or started.
  */
 void startTimeSetupTimer() {
@@ -499,7 +499,7 @@ void commSetup() {
  */
 void postTimeSetupCheck() {
     if (!sysInfo->isSysStatus(SysStatus::Ntp)) {
-        //enqueue a time setup in 5 seconds
+        //enqueue a time setup in 60 seconds
         startTimeSetupTimer();
     } else
         log_info(F("Time properly setup - no action taken"));

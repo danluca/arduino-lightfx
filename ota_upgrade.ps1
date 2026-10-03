@@ -1,6 +1,6 @@
-## Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+## Copyright (c) by Dan Luca. All rights reserved.
 ##
-## OTA Upgrade script for RP2350-based boards
+## OTA Upgrade script for Arduino Nano RP2040 Connect boards
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]
@@ -27,7 +27,7 @@ function uploadFile($filePath) {
     $f = Get-Item $filePath
     $hash = (sha256 $f.FullName) -split ' ' | Select-Object -First 1
     $headers = @{
-        "X-Token" = "KlFpc1dAdFd0eDRXdkVSZg";
+        "X-Token" = Get-AuthToken;
         "X-Check" = $hash;
     }
     $resp = Invoke-WebRequest -Uri $brdUri/fw -Method Post -InFile $f.FullName -Headers $headers -ContentType "application/octet-stream" -SkipHttpErrorCheck

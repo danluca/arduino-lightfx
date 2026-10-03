@@ -1,9 +1,10 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include "fxutil.h"
 #include "efx_setup.h"
 #include "FxSchedule.h"
 #include "sysinfo.h"
+#include "task_msg.h"
 #include "TimeLib.h"
 #include "util.h"
 
@@ -542,12 +543,13 @@ bool fx::rblend(CRGB &existing, const CRGB &target, const fract8 frOverlay) {
  * <p>Between 10pm-11pm - reduce to 80% of full brightness, i.e., scale with 204</p>
  * <p>Between 11pm-12am - reduce to 70% of full brightness, i.e., scale with 178</p>
  * <p>After 12am - reduce to 60% of full brightness, i.e., scale with 152</p>
+ * <p>The scaled value is further passed through <code>dim8_raw</code>, hence the effective reduction is larger than the percentages above</p>
  */
 uint8_t fx::adjustStripBrightness() {
     if (!stripBrightnessLocked && sysInfo->isSysStatus(SysStatus::Wifi)) {
         const int hr = hour();
 
-        // 6am–10pm: 0, 10pm–11pm: 204, 11pm–12am: 152, 12am–6am: 100
+        // 6am–10pm: 0 (no scaling), 10pm–11pm: 204, 11pm–12am: 178, 12am–6am: 152
         const fract8 scale = (hr >= 6 && hr < 22) ? 0 :
                 (hr >= 22 && hr < 23) ? 204 :
                 (hr == 23)            ? 178 : 152;
@@ -581,6 +583,14 @@ uint8_t fx::getBrightness(const CRGB &rgb) {
     return fx::toHSV(rgb).val;
 }
 
+/**
+ * Adjusts the sleep state for the given time. Called from the ALM task (CORE0) - the change is enqueued
+ * to the FX task (CORE1) rather than applied directly, as it transitions the current effect
+ * @param time reference time
+ */
 void adjustCurrentEffect(const time_t time) {
-    fxRegistry.setSleepState(fxRegistry.isSleepEnabled() && !isAwakeTime(time));
+    const bool sleepState = fxRegistry.isSleepEnabled() && !isAwakeTime(time);
+    const FxActionMessage msg = {.action = SLEEP_STATE, .data = sleepState};
+    if (const BaseType_t qResult = xQueueSend(fxQueue, &msg, 0); qResult != pdTRUE)
+        log_error(F("Error sending SLEEP_STATE(%d) message to FX queue - error %ld"), sleepState, qResult);
 }

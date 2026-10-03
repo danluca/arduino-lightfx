@@ -11,13 +11,13 @@ This is an RP2350-based lighting effects controller project using the Arduino fr
   - `platformio.ini` for project configuration
   - `scripts` for support of PowerShell build and deploy scripts
   - `*.ps1` files for build and deploy
-  - `build_info.py` for build info generation
+  - `scripts/pio_build.py` for build info generation
   - `www` for web interface
 
 ## Technical Constraints
 - **Limited Heap Memory**: Only 512KB heap available - always be mindful of memory allocations
 - **Real-time Performance**: LED effects need to run smoothly without blocking
-- **Memory Monitoring**: We have malloc wrappers and memory metrics tracking in place
+- **Memory Monitoring**: Heap and task stack metrics come from FreeRTOS statistics (`sysinfo.cpp`)
 - **Re-entrant Code**: Some code needs to be re-entrant safe
 
 ## Development Guidelines
@@ -30,7 +30,6 @@ FreeRTOS is used for multitasking.
 - Prefer messaging threads over blocking code
 
 ### Memory Management
-- Always use the custom memory allocation wrappers when available
 - Be conscious of memory leaks - we've had to fix several
 - Check memory metrics on the stats page after changes
 - Avoid large stack allocations
@@ -55,7 +54,7 @@ FreeRTOS is used for multitasking.
 ## Build & Deploy
 - Use provided PowerShell scripts: `build.ps1`, `clean.ps1`, `update.ps1`, `ota_upgrade.ps1`
 - Serial logging available via `seriallog.ps1`
-- Build info is automatically generated via `build_info.py`
+- Build info is automatically generated via `scripts/pio_build.py`
 - when running builds inline as part of the agent, always redirect the output to a 
   file in `logs` folder. Create the folder if it doesn't exist.
 
@@ -63,5 +62,5 @@ FreeRTOS is used for multitasking.
 - LED effects implementation
 - Web interface (www/)
 - OTA update support
-- Memory allocation wrappers
+- Heap and stack monitoring
 - Stats and monitoring
