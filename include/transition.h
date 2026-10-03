@@ -1,4 +1,4 @@
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_TRANSITION_H
@@ -20,7 +20,7 @@ class EffectTransition {
 public:
     bool transition();
     void prepare(uint selector = 0);
-    uint selector() const;
+    [[nodiscard]] uint selector() const;
     void resetRandomBars();
     //fade off effects
     bool offSpots();
@@ -31,13 +31,13 @@ public:
     bool offFade();
 
 protected:
-    static const uint8_t effectsCount = 6;  //number of 'offXYZ' methods
+    static constexpr uint8_t effectsCount = 6;  //number of 'offXYZ' methods
     uint sel=0;
     uint8_t prefFx = 0;
     //offSpots variables
-    uint16_t offSpotShuffleOffset;
-    uint16_t offPosIndex;
-    uint16_t offSpotSegSize;
+    uint16_t offSpotShuffleOffset=0;
+    uint16_t offPosIndex=0;
+    uint16_t offSpotSegSize=0;
     //offRandomBars variables
     std::deque<uint8_t> randomBarSegs;
 };
