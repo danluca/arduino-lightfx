@@ -1,6 +1,6 @@
 ## Copyright (c) by Dan Luca. All rights reserved.
 ##
-## Serial log capture script for Arduino Nano RP2040 Connect boards
+## Serial log capture script for Pimoroni Plasma 2350 W (RP2350) boards
 [CmdletBinding()]
 param ([string]$port='auto')
 

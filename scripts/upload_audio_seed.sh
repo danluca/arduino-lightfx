@@ -6,7 +6,7 @@ ofs=$3
 len=$4
 
 out_file=fsi4_seed$var.txt
-boardUri=http://192.168.0.139
+boardUri=http://192.168.0.75   # Dev board - see scripts/boards.ps1
 
 # upload auth token - LIGHTFX_AUTH_TOKEN environment variable, or FW_AUTH_TOKEN from the git-ignored include/secrets.h
 token=$LIGHTFX_AUTH_TOKEN

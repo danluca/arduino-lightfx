@@ -6,14 +6,14 @@ tags: [bug, build, web, broadcast]
 severity: medium
 issue_state: fixed
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: web
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/web_server.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/web_server.cpp
     title: src/web_server.cpp (lines ~284–386)
   - id: util
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/scripts/util.ps1
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/scripts/util.ps1
     title: scripts/util.ps1 (prepEnvironment)
 ---
 
@@ -30,7 +30,7 @@ The three `#if IGNORE_WEB_EFFECT_CHANGES == 1` blocks (for `auto`, `effect` and 
 
 # Who hits it
 
-`build.ps1 -ignoreBroadcast` and `ota_upgrade.ps1 -ignoreBroadcast` add `-DIGNORE_WEB_EFFECT_CHANGES=1`.[^util] The feature was introduced in `1284316`/`1863cf2` (2025-12) to let a board ignore effect changes broadcast from other boards. `/status.json` still reports `fx.ignoreWebFx`.
+`build.ps1 -ignoreBroadcast` and `ota_upgrade.ps1 -ignoreBroadcast` add `-DIGNORE_WEB_EFFECT_CHANGES=1`.[^util] The feature was introduced on the RP2040 line in `1284316`/`1863cf2` (2025-12) to let a board ignore effect changes broadcast from other boards. `/status.json` still reports `fx.ignoreWebFx`.
 
 # Fix
 
@@ -38,11 +38,11 @@ Restore `const bool isUi = xSource.equalsIgnoreCase(kXSourceUi);` (the `userAgen
 
 # Resolution
 
-Fixed in `d5de0ba`: the `isUi` declaration is restored, guarded by `#if IGNORE_WEB_EFFECT_CHANGES == 1` to avoid an unused-variable warning in default builds.
+Fixed on the RP2040 line in `d5de0ba` and ported here in `6d11a87`: the `isUi` declaration is restored, guarded by `#if IGNORE_WEB_EFFECT_CHANGES == 1` to avoid an unused-variable warning in default builds.
 
 # Verification status
 
-`rp2040-rel` builds both with and without `-DIGNORE_WEB_EFFECT_CHANGES=1`.
+On the RP2040 line, `rp2040-rel` builds both with and without the flag. On this board the fix was checked by reading `src/web_server.cpp`; an `rp2350-rel -ignoreBroadcast` build was not run during this review.
 
 [^web]: src/web_server.cpp (lines ~284–386)
 [^util]: scripts/util.ps1 (prepEnvironment)

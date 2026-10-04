@@ -15,6 +15,7 @@
 #include "secrets.h"
 #include "sysinfo.h"
 #include "util.h"
+#include "stringutils.h"
 #include "task_msg.h"
 #include "HealthMonitor.h"
 #include "index_html.h"

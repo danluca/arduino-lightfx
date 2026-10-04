@@ -1,22 +1,6 @@
 
 // Only one sequence can be selected
 let config = {};
-//canvasjs column chart options
-let histOptions = {
-    theme: "light2",
-    backgroundColor: "#F4F4FD",
-    title: {
-        text: "Audio Levels",
-        fontSize: 18
-    },
-    data: [
-        {
-            type: "column",
-            dataPoints: [
-            ]
-        }
-    ]
-};
 let lastBootTime = 0;
 let rePullConfig = false;
 

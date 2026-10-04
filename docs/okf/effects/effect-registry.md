@@ -4,17 +4,17 @@ title: Effect registry
 description: The global EffectRegistry. It registers effects, assigns registry indexes, picks the next effect by holiday-weighted random selection, handles auto-roll and sleep, and creates each new effect only after the old one is deleted.
 tags: [effects, registry, selection, sleep, random]
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: regh
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/include/EffectRegistry.h
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/include/EffectRegistry.h
     title: include/EffectRegistry.h
   - id: regcpp
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/EffectRegistry.cpp
-    title: src/EffectRegistry.cpp (plus the uncommitted working-tree fix)
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/EffectRegistry.cpp
+    title: src/EffectRegistry.cpp
   - id: efx
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/efx_setup.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/efx_setup.cpp
     title: src/efx_setup.cpp (fx_run)
 ---
 
@@ -35,18 +35,17 @@ Only one `LedEffect` instance exists at any time.[^regcpp]
 
 | Trigger | Method | Behavior |
 |---|---|---|
-| Every 7 min (`EVERY_N_MINUTES(7)` in `fx_run`) | `nextRandomEffectPos()` | Holiday-weighted random pick, then reshuffle the strip indexes, then `saveFxState()` |
-| Audio bump (checked every 30 s) | `nextEffectPos()` | Next index (+1, skipping the sleep effect) |
+| Every 7 min (`EVERY_N_MINUTES(7)` in `fx_run`) | `nextRandomEffectPos()` | Holiday-weighted random pick, then reshuffle the strip indexes, then mark the state dirty so `fx_run` saves `/state.json` |
 | Web or broadcast `MANUAL_FX` | `nextEffectPos(uint16_t)` | Jump to the index, capped at `size-1`. Ignores auto-roll and sleep |
 | Sleep on/off | `setSleepState(bool)` | Switch to FXA6 and remember the previous effect, or restore it |
+
+The RP2040 line also has a sequential `nextEffectPos()` for microphone bumps; it was removed here.
 
 Random and sequential selection do nothing when **auto-roll is off** or the registry **is asleep**.
 
 # Holiday-weighted random selection
 
-The selection weight is `effectiveSelectionWeight(holiday)`: the holiday override if one exists, otherwise the default weight. A weight of 0 excludes the effect. The algorithm draws `rnd = random16(total)` and walks the cumulative weights, skipping the sleep effect. If the total is 0, it keeps the current effect and logs a warning. This feature was added in `73c7243` ("added dynamic weighting by holiday").[^regcpp]
-
-The working tree changes `random16(totalSelectionWeight+1)` to `random16(totalSelectionWeight)`. At `73c7243` the +1 lets `rnd` equal the total, so no effect matches, the desired index stays the same, and roughly 1 in `total` random switches silently keeps the current effect. That change is not committed yet.
+The selection weight is `effectiveSelectionWeight(holiday)`: the holiday override if one exists, otherwise the default weight. A weight of 0 excludes the effect. The algorithm draws `rnd = random16(total)` and walks the cumulative weights, skipping the sleep effect. If the total is 0, it keeps the current effect and logs a warning. This feature was added in `6a6eba9` ("added dynamic weighting by holiday").[^regcpp] An off-by-one in the first version (`random16(total+1)`) is fixed. See [weighted-random off-by-one](/issues/weighted-random-off-by-one.md).
 
 # Sleep
 
@@ -57,7 +56,7 @@ The working tree changes `random16(totalSelectionWeight+1)` to `random16(totalSe
 
 # Thread-safety note
 
-A registry mutex was removed in `3b2aa4d` (2026-03-23) because, by design, only the FX task touches the registry. `adjustCurrentEffect()` (called from the ALM task during alarm setup) and the web and comms readers break that assumption. See [cross-task registry access](/issues/cross-task-registry-access.md).
+A registry mutex was removed in `3b2aa4d` (2026-03-23) because, by design, only the FX task touches the registry. `adjustCurrentEffect()` used to break that assumption from the ALM task; it now posts `SLEEP_STATE` to `fxQueue` instead. The web and comms handlers on CORE0 still call read-only accessors (`curEffectPos`, `getEffectInfo`, `isAutoRoll`, `pastEffectsRun`) without a lock. See [cross-task registry access](/issues/cross-task-registry-access.md).
 
 # Lookup gotchas
 
@@ -65,5 +64,5 @@ A registry mutex was removed in `3b2aa4d` (2026-03-23) because, by design, only 
 * IDs are compared case-sensitively. One ID is `FxC4`, not `FXC4`. See [effect ID inconsistency](/issues/effect-id-case.md).
 
 [^regh]: include/EffectRegistry.h
-[^regcpp]: src/EffectRegistry.cpp (plus the uncommitted working-tree fix)
+[^regcpp]: src/EffectRegistry.cpp
 [^efx]: src/efx_setup.cpp (fx_run)

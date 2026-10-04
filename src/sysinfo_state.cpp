@@ -126,12 +126,10 @@ void SysInfo::transformWatchdogReboots(const std::function<time_t(time_t)> &tran
 }
 
 /**
- * Extracts identification information from a connected Wi-Fi.
- * NOTE: For reasons unknown yet, reading the network information from the Wi-Fi subsystem (through SPI connection) freezes the whole system
- * if the Analog/Digital Converter API calls are present somewhere else in the code. These Wi-Fi network information calls have SPI responses with 3 parameters,
- * unsure if this is a factor in failure - all other SPI calls with Wi-Fi module seem to be working fine, and they have fewer parameters.
- * For this reason, the workaround is to record the IP address and Gateway Address from the configuration provided (we're using static IP assignment) rather
- * than retrieving from the Wi-Fi module.
+ * Extracts identification information from a connected Wi-Fi, including the DHCP assigned IP and gateway addresses.
+ * The IP_ADDR/IP_GW values from config.h are only the defaults used before the Wi-Fi connects; once connected, the addresses
+ * reported by the Wi-Fi stack are authoritative (used for gateway pings and broadcast self-detection).
+ * NOTE: called from CORE0 only (Wi-Fi connect/reconnect) - the IPAddress fields are read by CORE0 tasks only (comms, Wi-Fi checks)
  * @param wifi the Wi-Fi (global) object
  */
 void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
@@ -141,8 +139,10 @@ void SysInfo::setWiFiInfo(::WiFiClass &wifi) {
 
     ssid = wifi.SSID();
     wifiFwVersion = ::WiFiClass::firmwareVersion();
-    strIpAddress = wifi.localIP().toString();
-    strGatewayIpAddress = wifi.gatewayIP().toString();
+    ipAddress = wifi.localIP();
+    ipGateway = wifi.gatewayIP();
+    strIpAddress = ipAddress.toString();
+    strGatewayIpAddress = ipGateway.toString();
 
     if (ssid != oldSsid || strIpAddress != oldIp || strGatewayIpAddress != oldGw)
         SysInfoPersistence::instance().markDirty();

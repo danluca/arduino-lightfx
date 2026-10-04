@@ -4,17 +4,17 @@ title: Shared FX state
 description: Globals and buffers shared by effects (some atomic, read by other tasks), the defaults that resetGlobals() restores, and the fxutil helper library.
 tags: [effects, globals, fastled, fxutil]
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: efxh
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/include/efx_setup.h
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/include/efx_setup.h
     title: include/efx_setup.h
   - id: efx
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/efx_setup.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/efx_setup.cpp
     title: src/efx_setup.cpp (resetGlobals)
   - id: fxutil
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/include/fxutil.h
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/include/fxutil.h
     title: include/fxutil.h
 ---
 
@@ -24,9 +24,6 @@ sources:
 |---|---|---|---|
 | `stripBrightness` | `std::atomic<uint8_t>` | FX (time-of-day dimming, web brightness) | everyone: passed to `FastLED.show()` |
 | `stripBrightnessLocked` | atomic bool | FX (true when the web sets a non-zero brightness) | web status |
-| `fxBump` | atomic bool | Mic (audio peak above threshold) | FX (every 30 s → next effect) |
-| `totalAudioBumps` | atomic u16 | FX | web status |
-| `audioBumpThreshold` | atomic u16 (default 5000) | Mic and state restore | Mic, web |
 | `fxBroadcastEnabled` | atomic bool | Comms, state restore | FX, Comms, web |
 | `speed`, `curPos` | atomic u16 | effects | effects |
 | `brightness`, `colorIndex`, `fade`, `hue`, `delta`, `saturation`, `dotBpm`, `hueDiff` | `volatile` | effects | effects |
@@ -37,7 +34,9 @@ sources:
 
 # `resetGlobals()` defaults (run by `LedEffect::setup()`)
 
-`FastLED.clear` (flushed only when NTP is OK and the board is awake), `setBrightness(255)`, clear `frame`, `palette = paletteFactory.mainPalette()`, `targetPalette = secondaryPalette()`, `mode = Chase`, `brightness = 224`, `colorIndex = lastColorIndex = 0`, `curPos = 0`, `speed = 100`, `fade = 8`, `hue = 50`, `delta = 1`, `saturation = 100`, `dotBpm = 30`, `hueDiff = 256`, `dist = 1`, `dirFwd = true`, `fxBump = false`.
+`FastLED.clear` (flushed only when NTP is OK and the board is awake), `setBrightness(255)`, clear `frame`, `palette = paletteFactory.mainPalette()`, `targetPalette = secondaryPalette()`, `mode = Chase`, `brightness = 224`, `colorIndex = lastColorIndex = 0`, `curPos = 0`, `speed = 100`, `fade = 8`, `hue = 50`, `delta = 1`, `saturation = 100`, `dotBpm = 30`, `hueDiff = 256`, `dist = 1`, `dirFwd = true`.
+
+There are no audio globals (`fxBump`, `totalAudioBumps`, `audioBumpThreshold`) on this board; they belong to the RP2040 line's microphone support.
 
 If you add a shared global, add it to `resetGlobals()` too. Its doc comment says it "needs to account for ALL global variables".[^efx]
 

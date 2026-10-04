@@ -4,14 +4,14 @@ title: Effect catalog
 description: All 50 registered effects, with registry index, ID, description, source file, default random-selection weight and holiday weight overrides.
 tags: [effects, catalog, weights, holidays]
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: fxsrc
-    resource: https://github.com/danluca/arduino-lightfx/tree/73c7243/src
+    resource: https://github.com/danluca/arduino-lightfx/tree/6d11a87/src
     title: src/fxA.cpp … src/fxK.cpp (EffectInfo declarations and fxRegister)
   - id: efx
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/efx_setup.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/efx_setup.cpp
     title: src/efx_setup.cpp (categorySetup order)
 ---
 
@@ -72,7 +72,7 @@ The registry index comes from the registration order: categories A, B, C, D, E, 
 | 48 | FXJ1 | Popcorn (port of WS2812FX Popcorn by Keith Lord, MIT) | 16 | — |
 | 49 | FXJ2 | Rain on a window (inspired by WS2812FX Rain, MIT) | 20 | Halloween 36, Valentine 0, Christmas 0 |
 
-The README and AGENTS.md say "70+ effects". The current registry has 50. See [documentation drift](/issues/documentation-drift.md).
+The effect code is identical to the RP2040 code line, so indexes, IDs and weights match across both. That keeps [broadcast](/network/multi-board-broadcast.md) between an RP2040 and an RP2350 board consistent, as long as both run the same registration order.
 
 # Random-selection odds by holiday
 

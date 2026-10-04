@@ -6,4 +6,4 @@
 * [Effect transitions](effect-transitions.md) - The six turn-off animations that play while an effect winds down.
 * [Shared FX state](shared-fx-state.md) - Globals and buffers that effects share, and what `resetGlobals()` restores.
 * [Adding an effect](adding-an-effect.md) - Step-by-step playbook for writing and registering a new effect.
-* [FXI4 audio seeds](fxi4-audio-seeds.md) - How the VU-meter effect's rhythm seed files are generated, uploaded and loaded.
+* [FXI4 audio seeds](fxi4-audio-seeds.md) - How the VU-meter effect's rhythm seed files are generated (from music or synthesized), uploaded and loaded.

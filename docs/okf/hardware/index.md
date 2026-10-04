@@ -1,5 +1,5 @@
 # Hardware
 
-* [Boards and configuration](boards-and-config.md) - The three deployed boards (Dev, FX01, FX02), their `BOARD_ID` settings, pixel counts, IPs and LED pin settings.
-* [Controller circuit and LED strip](controller-circuit.md) - The 12 V WS2811 strip, the 7805 regulator and 74HCT125 level shifter, the schematic and PCB files, and the alternative board.
-* [Diagnostic sensors](diagnostic-sensors.md) - IMU and CPU temperatures with self-calibration, NINA module temperature, supply voltage, the ECC608 secure element and the PDM microphone.
+* [Boards and configuration](boards-and-config.md) - The two deployed boards (Dev `Xmas2350`, Tree `FXPine`), their `BOARD_ID` settings, chipsets, pixel counts, addresses and LED pin settings.
+* [Controller board and LED strips](controller-circuit.md) - The Plasma 2350 W, the pins the firmware uses, the two strip types, and why the schematic and PCB files in `docs/` do not apply.
+* [Diagnostic sensors](diagnostic-sensors.md) - CPU temperature with a stored calibration point, supply voltage, hardware RNG entropy and task snapshots. No IMU, secure element or microphone.

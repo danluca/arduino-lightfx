@@ -1,39 +1,47 @@
 ---
 type: Playbook
 title: Hardware debugging
-description: Step-through SWD debugging of the Nano RP2040 Connect with a Raspberry Pi Debug Probe. It needs soldered SWD wires and an OpenOCD build that knows the AT25SF128A flash chip.
+description: Step-through SWD debugging of the Plasma 2350 W with a Raspberry Pi Debug Probe, and which parts of the RP2040-era guide in docs/debugging.md still apply.
 tags: [debugging, swd, openocd, picoprobe]
 status: draft
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: dbg
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/docs/debugging.md
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/docs/debugging.md
     title: docs/debugging.md
     author: human:danluca
   - id: pio
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/platformio.ini
-    title: platformio.ini (rp2040-dbg)
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/platformio.ini
+    title: platformio.ini (rp2350-dbg)
+  - id: board
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/boards/pimoroni_plasma2350w.json
+    title: boards/pimoroni_plasma2350w.json (debug section)
 ---
 
-The source document warns: "These instructions might be outdated. Use at your own risk." This concept is marked `draft` for that reason.[^dbg]
+This concept is marked `draft`. `docs/debugging.md` was written for the Nano RP2040 Connect and warns that it "might be outdated"; no RP2350-specific debugging guide exists in the repository, and nothing here was confirmed on a board.[^dbg]
 
-# Why the setup is non-standard
+# What the project configures
 
-* Stock OpenOCD does not know the board's **Atmel AT25SF128A** 16 MB NOR flash.
-* The SWD pads are on the back of the board and are **fragile**. Wires must be soldered on carefully.
-* FastLED does not compile in debug mode unless `FASTLED_ALLOW_INTERRUPTS=0` is set (FastLED issue #1481). The `rp2040-dbg` env sets it in `debug_build_flags`.[^pio]
-* PlatformIO cannot parse the RP2040 SVD file, so the peripheral view is empty. Breakpoints, stepping and variable inspection still work.
+* `rp2350-dbg` env: `debug_tool = picoprobe`, `upload_protocol = picoprobe`, `debug_speed = 5000`, `build_type = debug`, `debug_build_flags = -Og -ggdb -DFASTLED_ALLOW_INTERRUPTS=0`.[^pio]
+* Board file debug section: OpenOCD target `rp2350.cfg`, SVD `rp2350.svd`, J-Link device `RP2350_M33_0`.[^board]
+* `debug_build_flags` sets `FASTLED_ALLOW_INTERRUPTS=0` as a workaround for FastLED issue #1481. With the pinned FastLED 3.10.3 this **breaks** the `rp2350-dbg` build: FastLED's `platforms/arm/compile_test.hpp` stops with `#error "RP2040 platforms should have FASTLED_ALLOW_INTERRUPTS set to 1"` (seen 2026-10-03). The workaround needs revisiting before the debug env can be used.
+
+# What changes from the RP2040 guide
+
+| `docs/debugging.md` step | On the Plasma 2350 W |
+|---|---|
+| Patch OpenOCD's `spi.c` for the Nano's Atmel AT25SF128A flash | Not needed for that chip. Use an OpenOCD build that supports the RP2350 (the Raspberry Pi fork or the one bundled with recent arduino-pico toolchains) |
+| Solder wires to the fragile SWD pads on the back of the Nano | Check the Plasma 2350 W for an SWD header or pads before soldering |
+| Symlink a custom `tool-openocd-raspberrypi` package | Only if the bundled OpenOCD lacks RP2350 support. The commented-out `platform_packages` line in `platformio.ini` still points at the RP2040 build |
+| PlatformIO cannot parse the RP2040 SVD | The board file names `rp2350.svd`; peripheral view support is unverified |
 
 # Steps (summary)
 
-1. Hardware: a Raspberry Pi Debug Probe, JST-SH 3-pin SWD cables, and wires soldered to the SWD pads. The debug UART goes to the header pins.
-2. Download Earle Philhower's OpenOCD from pico-quick-toolchain into `~/Code/Tools/openocd-rp2040-earle`.
-3. Clone `raspberrypi/openocd`, branch `rp2040-v0.12.0`. Add this line to `flash_devices` in `src/flash/nor/spi.c`:
-   `FLASH_ID("atmel 25sf128a", 0x03, 0xeb, 0x02, 0xd8, 0xc7, 0x0001891f, 0x100, 0x1000, 0x1000000),`
-   Then build (`./bootstrap && ./configure && make`) and copy `src/openocd` into the tools `bin/` folder.
-4. Replace the PlatformIO OpenOCD package: `rm -rf ~/.platformio/packages/tool-openocd-raspberrypi`, then `pio pkg install --tool "tool-openocd-raspberrypi=symlink:///home/<you>/Code/Tools/openocd-rp2040-earle"`. That command rewrites `platformio.ini` and strips its comments, so undo that in your editor.
-5. In VS Code, select `env:rp2040-dbg` and run **PIO Debug**. The `picoprobe` upload and debug tool runs at 5000 kHz.[^dbg]
+1. Hardware: a Raspberry Pi Debug Probe and a JST-SH 3-pin SWD cable to the board's SWD connection. The debug UART can go to the header pins.
+2. In VS Code or CLion, select `env:rp2350-dbg` and run **PIO Debug**. The `picoprobe` upload and debug tool runs at 5000 kHz.
+3. Keep the debugger's watchdog behavior in mind: `watchdog_enable(8192, true)` pauses the watchdog while the core is halted, so breakpoints do not reboot the board.
 
 [^dbg]: docs/debugging.md
-[^pio]: platformio.ini (rp2040-dbg)
+[^pio]: platformio.ini (rp2350-dbg)
+[^board]: boards/pimoroni_plasma2350w.json (debug section)

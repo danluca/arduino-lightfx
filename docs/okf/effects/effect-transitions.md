@@ -4,14 +4,14 @@ title: Effect transitions
 description: EffectTransition (transEffect) has six turn-off animations, with direction variants, that play during an effect's WindDown state.
 tags: [effects, transitions, winddown]
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: trans
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/transition.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/transition.cpp
     title: src/transition.cpp
   - id: reg
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/EffectRegistry.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/EffectRegistry.cpp
     title: src/EffectRegistry.cpp (transitionEffect)
 ---
 

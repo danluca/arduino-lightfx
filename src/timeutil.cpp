@@ -101,36 +101,23 @@ bool handleNTPSuccess() {
 }
 
 /**
- * Handles the case when NTP sync fails, either due to a timeout or a failure to get a valid time from the pool.ntp.org server
- * Attempts to leverage Wi-Fi time, potentially sourced from NTP as well. Adjusts the current holiday based on Wi-Fi time if available,
- * fallback to Party if not.
+ * Handles the case when NTP sync fails, either due to a timeout or a failure to get a valid time from the NTP server.
+ * There is no alternative time source on this board - the CYW43 WiFi driver does not track network time
+ * (arduino-pico's <code>WiFi.getTime()</code> returns <code>millis()</code>), hence it must not be used to seed the clock.
+ * The clock is left untouched (unsynchronized) and the holiday remains the one restored from saved state; the NTP sync
+ * is re-attempted later by the timeSetup timer.
  */
 void handleNTPFailure() {
     sysInfo->resetSysStatus(SysStatus::Ntp);
-
-    if (const time_t wifiTime = WiFi.getTime(); wifiTime > 0) {
-        timeService.setTime(wifiTime);
-        const time_t curTime = now();
-        const Holiday holiday = paletteFactory.adjustHoliday(curTime);
-        updateLoggingTimebase();
-        const bool isDaylightSavings = timeService.timezone()->isDST(wifiTime, false);
-        if (isDaylightSavings)
-            sysInfo->setSysStatus(SysStatus::Dst);
-        log_warn(F("No NTP; Current time sourced from WiFi: %s %s (holiday adjusted to %s)"), TimeFormat::asString(curTime).c_str(),
-            isDaylightSavings ? timeService.timezone()->getDSTShort() : timeService.timezone()->getSTDShort(), holidayToString(holiday));
-        logTimeStatus(curTime, holiday);
-    } else {
-        log_error(F("No NTP, WiFi time not available. Current time from raw clock: %s (holiday adjusted to %s)"),
-                  TimeFormat::asString(now()).c_str(), holidayToString(paletteFactory.getHoliday()));
-    }
-    
+    log_error(F("No NTP - current time from unsynchronized clock: %s (holiday kept as %s)"),
+              TimeFormat::asString(now()).c_str(), holidayToString(paletteFactory.getHoliday()));
     log_info(F("Current holiday is %s; system status %#hX"), holidayToString(paletteFactory.getHoliday()), sysInfo->getSysStatus());
 }
 
 /**
  * Sets up the time callback and attempts to source current time from NTP.
- * Callers are ensuring this is called after WiFi connectivity is successful - otherwise there is no point in attempting this
- * as the meaningful fallback if on WiFi time. The last resort is the local unsynchronized time, which has no value.
+ * Callers are ensuring this is called after WiFi connectivity is successful - otherwise there is no point in attempting this.
+ * On failure the local unsynchronized time is kept (see handleNTPFailure) and the caller schedules a retry.
  * @return true if the NTP sync was successful
  */
 bool timeSetup() {

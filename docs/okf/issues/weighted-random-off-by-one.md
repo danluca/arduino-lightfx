@@ -1,20 +1,20 @@
 ---
 type: Issue
 title: Weighted-random off-by-one
-description: nextRandomEffectPos drew random16(total+1), so a draw equal to the total matched no effect and the scheduled switch was skipped. The fix (random16(total)) is in the working tree but not committed.
+description: nextRandomEffectPos drew random16(total+1), so a draw equal to the total matched no effect and the scheduled switch was skipped. Fixed with random16(total).
 tags: [bug, effects, random, registry]
 severity: low
-issue_state: fixed-uncommitted
+issue_state: fixed
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
-stale_after: 2026-11-03T00:00:00Z
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
+stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: reg
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/EffectRegistry.cpp
-    title: src/EffectRegistry.cpp (nextRandomEffectPos) at 73c7243 and in the working tree
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/EffectRegistry.cpp
+    title: src/EffectRegistry.cpp (nextRandomEffectPos)
 ---
 
-# Defect (at commit 73c7243)
+# Defect (as introduced with holiday weighting in `6a6eba9`)
 
 ```cpp
 uint16_t rnd = random16(totalSelectionWeight+1);   // range 0..total
@@ -24,6 +24,6 @@ The cumulative-weight walk finds an effect only when `rnd < total`. When `rnd ==
 
 # State
 
-The working tree changes this to `random16(totalSelectionWeight)`, which is correct. Commit it together with the holiday-weighting feature (`73c7243`). After that, set this concept's `issue_state` to `fixed`, or mark it `status: deprecated`.
+Fixed in `6d11a87`: the draw is now `random16(totalSelectionWeight)`, range `0..total-1`, so every draw selects an effect.
 
-[^reg]: src/EffectRegistry.cpp (nextRandomEffectPos) at 73c7243 and in the working tree
+[^reg]: src/EffectRegistry.cpp (nextRandomEffectPos)

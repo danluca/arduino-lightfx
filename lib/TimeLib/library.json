@@ -1,7 +1,7 @@
 {
   "name": "TimeLib",
   "keywords": "time,ntp,timezone",
-  "description": "Simple Time library for Raspberry Pico RP2040 based (not yet updated for RP2350). Aggregates work from the authors listed as non-maintainers.",
+  "description": "Simple Time library for Raspberry Pico RP2350 based. Aggregates work from the authors listed as non-maintainers.",
   "version": "1.0.0",
   "authors": [{
     "name": "Paul Stoffregen",

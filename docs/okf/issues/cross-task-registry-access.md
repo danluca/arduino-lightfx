@@ -1,22 +1,22 @@
 ---
 type: Issue
 title: Cross-task effect registry access
-description: setupAlarmSchedule() runs on the ALM task (CORE0) and calls adjustCurrentEffect(), which reaches fxRegistry.setSleepState(), transitionEffect() and FastLED.show() while the FX task on CORE1 owns the registry and the LED buffers. The registry has no lock.
+description: setupAlarmSchedule() runs on the ALM task (CORE0) and called adjustCurrentEffect(), which reached fxRegistry.setSleepState(), transitionEffect() and FastLED.show() while the FX task on CORE1 owns the registry and the LED buffers. The registry has no lock. Fixed by posting SLEEP_STATE to fxQueue instead.
 tags: [risk, concurrency, race, registry, freertos]
 severity: medium
 issue_state: fixed
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: sched
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/FxSchedule.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/FxSchedule.cpp
     title: src/FxSchedule.cpp (setupAlarmSchedule)
   - id: fxutil
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/fxutil.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/fxutil.cpp
     title: src/fxutil.cpp (adjustCurrentEffect)
   - id: reg
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/EffectRegistry.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/EffectRegistry.cpp
     title: src/EffectRegistry.cpp
 ---
 
@@ -51,11 +51,13 @@ Have `adjustCurrentEffect` post `FxActionMessage{SLEEP_STATE, asleep}` to `fxQue
 
 # Resolution
 
-Fixed in `d5de0ba` as described above: `adjustCurrentEffect` computes the sleep state and posts `SLEEP_STATE` to `fxQueue`; the FX task applies it on CORE1.
+Fixed on the RP2040 line in `d5de0ba` and ported here in `6d11a87`: `adjustCurrentEffect` computes the sleep state and posts `SLEEP_STATE` to `fxQueue`; the FX task applies it on CORE1. The same commit also put the alarm list behind `almMutex`, because `/status.json` on CORE0 reads it while ALM modifies it.
+
+What remains: the web and comms handlers on CORE0 still call read-only registry accessors (`curEffectPos`, `getEffectInfo`, `isAutoRoll`, `isSleepEnabled`, `pastEffectsRun`) without a lock while FX may be switching effects. These read static `EffectInfo` data and small integers, so the worst expected result is a stale value in a response.
 
 # Verification status
 
-The call path is confirmed in the source. That it causes the observed crashes is **plausible**, not proven. The fix compiles; not yet tested on a board.
+The call path was confirmed in the source. That it caused the observed crashes is **plausible**, not proven. The fix is in the code at `6d11a87`; not yet confirmed on a board.
 
 [^sched]: src/FxSchedule.cpp (setupAlarmSchedule)
 [^fxutil]: src/fxutil.cpp (adjustCurrentEffect)

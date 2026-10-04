@@ -41,17 +41,6 @@ uint16_t EffectRegistry::nextEffectPos(const uint16_t efx) {
     return lastEffectIndex;
 }
 
-uint16_t EffectRegistry::nextEffectPos() {
-    if (!autoSwitch || sleepState)
-        return desiredEffectIndex;
-    desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
-    //increment past the sleep effect, if landed on it
-    if (desiredEffectIndex == sleepEffectIndex)
-        desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
-    transitionEffect();
-    return lastEffectIndex;
-}
-
 uint16_t EffectRegistry::curEffectPos() const {
     return desiredEffectIndex;
 }

@@ -97,7 +97,7 @@ void logSystemInfo() {
 #if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
-    log_info(sysInfoFmt, rp2040_rom_version(), RP2040::f_cpu() / 1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
+    log_info(sysInfoFmt, rp2350_rom_version(), RP2040::f_cpu() / 1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
                sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->getBuildVersion().c_str(), sysInfo->getBuildTime().c_str(),
                sysInfo->get_flash_capacity());
     log_info(F("System reset reason %s"), resetReasonToString(rp2040.getResetReason()));

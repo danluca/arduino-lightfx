@@ -6,14 +6,14 @@ tags: [bug, scripts, ota, powershell]
 severity: low
 issue_state: fixed
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: update
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/update.ps1
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/update.ps1
     title: update.ps1 (updateFirmwareOTA)
   - id: util
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/scripts/util.ps1
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/scripts/util.ps1
     title: scripts/util.ps1
 ---
 
@@ -40,7 +40,9 @@ Set `$brdEnv = Get-BoardEnvName $dbg` before the `arduino-cli upload` line.
 
 # Resolution
 
-Fixed in `d5de0ba`: the upload path uses `.pio/build/$(Get-BoardEnvName $dbg)/firmware.bin`.
+Fixed on the RP2040 line in `d5de0ba` and ported here in `6d11a87`: the upload path uses `.pio/build/$(Get-BoardEnvName $dbg)/firmware.bin`.
+
+On this board the branch is mostly theoretical: the firmware runs no ArduinoOTA responder, so `arduino-cli board list` is unlikely to show it as a network board, and the script falls back to USB.
 
 [^update]: update.ps1 (updateFirmwareOTA)
 [^util]: scripts/util.ps1

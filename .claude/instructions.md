@@ -1,4 +1,4 @@
-# RP2040 LightFX Project Context
+# RP2350 LightFX Project Context
 
 ## Project Overview
 This is an RP2350-based lighting effects controller project using the Arduino framework and PlatformIO. The target platform is the Pimoroni Plasma2350 W board.
@@ -13,11 +13,12 @@ This is an RP2350-based lighting effects controller project using the Arduino fr
   - `*.ps1` files for build and deploy
   - `scripts/pio_build.py` for build info generation
   - `www` for web interface
+  - `docs/okf` knowledge bundle (architecture, tasks, REST API, known issues)
 
 ## Technical Constraints
-- **Limited Heap Memory**: Only 512KB heap available - always be mindful of memory allocations
+- **Limited Heap Memory**: 192KB FreeRTOS heap (of 520KB SRAM, shared with the newlib and lwIP heaps) - always be mindful of memory allocations
 - **Real-time Performance**: LED effects need to run smoothly without blocking
-- **Memory Monitoring**: Heap and task stack metrics come from FreeRTOS statistics (`sysinfo.cpp`)
+- **Memory Monitoring**: Heap and task stack metrics come from FreeRTOS statistics (`sysinfo_runtime.cpp`)
 - **Re-entrant Code**: Some code needs to be re-entrant safe
 
 ## Development Guidelines
@@ -47,8 +48,8 @@ FreeRTOS is used for multitasking.
 - Monitor the stats page for memory issues
 
 ### Git Workflow
-- Main development branch: `dev/12-fxe`
-- Release branch: `rel/nanorp2040connect`
+- Development branch: `dev/plasma2350w`
+- The RP2350 (Raspberry Pi Pico 2 W) code uses `dev/plasma2350w` / `rel/plasma2350w`; shared code (effects, scheduling, `lib/`) may need porting between the two
 - Use descriptive commit messages
 
 ## Build & Deploy

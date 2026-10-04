@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_CONFIG_H
 #define LIGHTFX_CONFIG_H
@@ -48,8 +48,8 @@
 #define FRAME_SIZE  22       //the Xmas tree has 6 strands from the 66 pixels strip, so 22 pixels per 2-strand
 #define PIXEL_BUFFER_SPACE  (4*FRAME_SIZE)    //number of pixels to reserve for secondary buffer (used for effects data maneuvering)
 
-// static IP - alternatively, the router can be configured to reserve IPs based on MAC
-#define IP_ADDR 192,168,0,139    //Board 1 (dev)
+// IP address reserved by the router (DHCP) for this board's MAC - default until Wi-Fi reports the actual address; keep in sync with scripts/boards.ps1
+#define IP_ADDR 192,168,0,75     //Board 1 (dev)
 #define V3_3    3.317f      //measured 3V3 pin voltage in V
 #define MV3_3    3317       //measured 3V3 pin voltage in mV - technically 1000*V3_3 - expressed as int
 // measured resistive Vcc voltage divisor for A0 pin, in ohms
@@ -70,7 +70,7 @@
 #define FRAME_SIZE  75
 #define PIXEL_BUFFER_SPACE  (4*FRAME_SIZE)    //number of pixels to reserve for secondary buffer (used for effects data maneuvering)
 
-// static IP - alternatively, the router can be configured to reserve IPs based on MAC
+// IP address reserved by the router (DHCP) for this board's MAC - default until Wi-Fi reports the actual address; keep in sync with scripts/boards.ps1
 #define IP_ADDR 192,168,0,182    //Board 2
 // measured 3V3 pin voltage (in V and mV)
 #define V3_3    3.317

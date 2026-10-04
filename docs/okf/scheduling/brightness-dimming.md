@@ -4,14 +4,14 @@ title: Brightness dimming
 description: Strip brightness is lowered in steps from 22:00 to 06:00 unless the user locked a fixed brightness through the web API.
 tags: [brightness, dimming, schedule]
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: fxutil
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/fxutil.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/fxutil.cpp
     title: src/fxutil.cpp (adjustStripBrightness)
   - id: efx
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/efx_setup.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/efx_setup.cpp
     title: src/efx_setup.cpp (fx_run, STRIP_BRIGHTNESS)
 ---
 
@@ -26,7 +26,7 @@ sources:
 | 23:00 – 23:59 | 178 (70%) | `dim8_raw(scale8(255, 178))` |
 | 00:00 – 05:59 | 152 (60%) | `dim8_raw(scale8(255, 152))` |
 
-`dim8_raw` applies a gamma-like curve, so the perceived output is much lower than the percentages suggest. The doc comment above the function and the inline comment inside it give different numbers. The table above follows the code.
+`dim8_raw` applies a gamma-like curve, so the perceived output is much lower than the percentages suggest. The function's comments now match these numbers.
 
 # Web override
 

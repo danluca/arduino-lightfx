@@ -4,14 +4,14 @@ title: LED effect lifecycle
 description: The LedEffect base class, its Idle/Setup/Running/WindDown/Cleanup state machine, its virtual hooks, and the AT/FROM time-code macros.
 tags: [effects, state-machine, lifecycle, ledeffect]
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: ledh
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/include/LedEffect.h
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/include/LedEffect.h
     title: include/LedEffect.h
   - id: ledcpp
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/LedEffect.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/LedEffect.cpp
     title: src/LedEffect.cpp
 ---
 

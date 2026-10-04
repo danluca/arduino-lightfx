@@ -1,5 +1,5 @@
 <!-- Copilot / AI assistant instructions for contributors and coding agents -->
-# rp2040-lightfx — AI assistant guidance
+# rp2350-lightfx — AI assistant guidance
 
 Short, actionable guidance to help an AI coding agent be immediately productive in this repository.
 
@@ -9,50 +9,51 @@ Short, actionable guidance to help an AI coding agent be immediately productive 
     - `src/efx_setup.cpp` and `src/LedEffect*.cpp` implement effect creation and setup.
     - `src/EffectRegistry.cpp` manages transitions and selection logic.
     - `src/web_server.cpp` and files under `www/` expose configuration and REST APIs.
-    - `src/sysinfo.cpp` contains heap/stack logging used for diagnostics.
+    - `src/sysinfo_runtime.cpp` contains heap/stack statistics and logging used for diagnostics (`src/sysinfo_*.cpp` hold the rest of `SysInfo`).
     - Filesystem access is single-threaded via a dedicated FS task (see `lib/FilesystemTask` and usages in `src/*`).
 
 - Platform & build:
-    - Project uses PlatformIO. Primary envs: `rp2040-rel` (release-ish) and `rp2040-dbg` (debug). Inspect `platformio.ini` for build flags and memory-related defines.
+    - Project uses PlatformIO. Target board: Pimoroni Plasma 2350 W (RP2350, board file `boards/pimoroni_plasma2350w.json`). Primary envs: `rp2350-rel` (release-ish) and `rp2350-dbg` (debug). Inspect `platformio.ini` for build flags and memory-related defines.
     - Common commands:
       ```bash
-      pio run -e rp2040-rel            # build
-      pio run -e rp2040-rel -t upload # upload firmware
-      pio device monitor -e rp2040-rel # open serial monitor
-      pio run -e rp2040-dbg            # build debug
-      pio debug -e rp2040-dbg          # debug (requires debug probe)
+      pio run -e rp2350-rel            # build
+      pio run -e rp2350-rel -t upload # upload firmware
+      pio device monitor -e rp2350-rel # open serial monitor
+      pio run -e rp2350-dbg            # build debug
+      pio debug -e rp2350-dbg          # debug (requires debug probe)
       ```
 
 - Important project-specific conventions:
-    - FreeRTOS + dual-core usage: CORE0 runs networking / web server; CORE1 runs FX and audio tasks. See README and `platformio.ini` build flags that enable FreeRTOS.
-    - Heap is deliberately constrained (144KB FreeRTOS heap 4, `configTOTAL_HEAP_SIZE`); heap usage is reported from FreeRTOS statistics (`vPortGetHeapStats`) in `src/sysinfo.cpp`. When modifying memory allocations prefer explicit cleanup on effect teardown.
+    - FreeRTOS + dual-core usage: CORE0 runs networking / web server; CORE1 runs the FX and diagnostics tasks (the board has no microphone). See README and `platformio.ini` build flags that enable FreeRTOS.
+    - Heap is deliberately constrained (192KB FreeRTOS heap 4, `configTOTAL_HEAP_SIZE`, leaving room for the newlib and lwIP heaps); heap usage is reported from FreeRTOS statistics (`vPortGetHeapStats`) in `src/sysinfo_runtime.cpp`. When modifying memory allocations prefer explicit cleanup on effect teardown.
     - Effects often allocate large `std::vector` buffers at `setup()` time (example: seed buffers in `src/fxI.cpp`). Implement `cleanup()` on effects that hold vectors or dynamic buffers; the LedEffect state machine will call it on transition to Idle or before calling another setup to avoid long-lived heap growth.
     - Filesystem access goes through `FilesystemTask` (see `lib/FilesystemTask/src`) — do not perform file I/O directly from multiple threads/tasks.
     - JSON usage is via `ArduinoJson`; watch `JsonDocument` lifetimes to avoid retained allocations.
 
 - Integration & external deps:
     - FastLED for LED control (see `include/` and `src/*` effects).
-    - ArduinoJson, WiFiNINA (used with Arduino-Pico core), several helper libs listed in `platformio.ini` `lib_deps`.
-    - Custom OpenOCD setup is documented in the repo `README.md` for debugging with RP2040 boards.
+    - ArduinoJson, StreamUtils (`platformio.ini` `lib_deps`); Arduino-Pico core libraries `WiFi` (CYW43439 + lwIP, options in `include/lwipopts.h`), `HTTPClient`, `LEAmDNS`, `PicoOTA`, LittleFS; local libraries under `lib/`.
+    - Debugging uses the `rp2350-dbg` env with a Raspberry Pi Debug Probe; `docs/debugging.md` was written for the RP2040 board and is only partially applicable.
 
 - Typical investigation entry points (examples):
-    - Memory/heap growth: search for `Heap      ::` log lines and inspect `src/sysinfo.cpp` for `logTaskStats()`; check large allocations in `src/fxI.cpp`.
+    - Memory/heap growth: search for `Heap      ::` log lines and inspect `src/sysinfo_runtime.cpp` for `logTaskStats()`; check large allocations in `src/fxI.cpp`.
     - Effect lifecycle bugs: inspect `include/LedEffect.h` and `src/EffectRegistry.cpp` to see how `setup()`/`run()`/`cleanup`/`idle` states are handled and how cleanup is transitoned through.
     - Web/config: `src/web_server.cpp` + `www/` for REST endpoints and static UI.
 
 - Useful heuristics for code edits:
-    - Keep changes minimal and platform-aware: respect `platformio.ini` flags (heap scheme and heap size). Run builds in `rp2040-rel` first to validate.
+    - Keep changes minimal and platform-aware: respect `platformio.ini` flags (heap scheme and heap size). Run builds in `rp2350-rel` first to validate.
     - When adding runtime logging, prefer existing `sysinfo::logTaskStats()` to keep log format consistent.
     - For large file reads, prefer streaming or freeing buffers after use; reference `src/fxI.cpp` for a seed-file example.
 
 - Context for AI interactions:
     - include folders ./include, ./src, ./lib that contain core code.
+    - The knowledge bundle in `docs/okf/` documents architecture, tasks, queues, timers, REST API and known issues.
     - Tests are not present; focus on static analysis and adherence to existing patterns.
     - Recent code changes may indicate active areas; prioritize understanding those files first.
 
 ------
-name: rp2040-lightfx AI assistant instructions
-description: Instructions for AI coding assistants working on the rp2040-lightfx firmware repository.
+name: rp2350-lightfx AI assistant instructions
+description: Instructions for AI coding assistants working on the rp2350-lightfx firmware repository.
 applyTo: **
 ---
 When modifying or adding LED effects that allocate dynamic memory (e.g., `std::vector`, heap buffers), ensure that the effect class overrides the `cleanup()` method to free or clear those resources. This prevents memory leaks and keeps heap usage stable during effect transitions.

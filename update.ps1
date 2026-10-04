@@ -1,6 +1,6 @@
 ## Copyright (c) by Dan Luca. All rights reserved.
 ##
-## USB Firmware update script for Arduino Nano RP2040 Connect boards; allows default Arduino OTA if available
+## USB Firmware update script for Pimoroni Plasma 2350 W (RP2350) boards; allows default Arduino OTA if available
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]

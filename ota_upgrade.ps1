@@ -1,6 +1,6 @@
 ## Copyright (c) by Dan Luca. All rights reserved.
 ##
-## OTA Upgrade script for Arduino Nano RP2040 Connect boards
+## OTA Upgrade script for Pimoroni Plasma 2350 W (RP2350) boards
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]

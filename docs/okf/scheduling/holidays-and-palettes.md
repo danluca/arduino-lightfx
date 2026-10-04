@@ -4,14 +4,14 @@ title: Holidays and palettes
 description: How the current date maps to a holiday theme (by month and day), which palettes each theme loads, and how auto and manual theme selection interact.
 tags: [holidays, palettes, colors, scheduling]
 status: stable
-generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
+generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
 stale_after: 2027-01-03T00:00:00Z
 sources:
   - id: time
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/timeutil.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/timeutil.cpp
     title: src/timeutil.cpp (buildHoliday)
   - id: pal
-    resource: https://github.com/danluca/arduino-lightfx/blob/73c7243/src/PaletteFactory.cpp
+    resource: https://github.com/danluca/arduino-lightfx/blob/6d11a87/src/PaletteFactory.cpp
     title: src/PaletteFactory.cpp
 ---
 
@@ -19,19 +19,19 @@ sources:
 
 `buildHoliday(time)` encodes the date as `(month << 8) | day` and compares it with **strict** bounds.[^time]
 
-| Holiday | Effective dates | Code comment says |
-|---|---|---|
-| ValentineDay | Feb 12 – Feb 15 | Feb 11 – 15 |
-| StPatrick | Mar 15 – Mar 18 | Mar 15 – 18 |
-| MemorialDay | May 25 – May 31 | May 25 – 31 |
-| IndependenceDay | Jul 1 – Jul 5 | Jul 1 – 5 |
-| Halloween | Oct 1 – Nov 3 | Oct 1 – Nov 3 |
-| Thanksgiving | Nov 4 – Nov 30 | Nov 4 – 30 |
-| Christmas | Dec 23 – Dec 27 | Dec 23 – 27 |
-| NewYear | Dec 31 – Jan 2 | Dec 30 – Jan 2 |
-| Party | every other day | — |
+| Holiday | Effective dates |
+|---|---|
+| ValentineDay | Feb 12 – Feb 15 |
+| StPatrick | Mar 15 – Mar 18 |
+| MemorialDay | May 25 – May 31 |
+| IndependenceDay | Jul 1 – Jul 5 |
+| Halloween | Oct 1 – Nov 3 |
+| Thanksgiving | Nov 4 – Nov 30 |
+| Christmas | Dec 23 – Dec 27 |
+| NewYear | Dec 31 – Jan 2 |
+| Party | every other day |
 
-Because the bounds are strict (`md > 0x020B`, `md > 0xC1E`), Feb 11 and Dec 30 fall into **Party**, unlike the comments say. Dec 28–30 is Party. `None` is not a date-derived theme; it means "no preference".
+Because the bounds are strict (`md > 0x020B`, `md > 0xC1E`), Feb 11 and Dec 28–30 fall into **Party**. The code comments now say the same. `None` is not a date-derived theme; it means "no preference".
 
 # Auto and manual selection
 
