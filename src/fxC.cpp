@@ -23,7 +23,7 @@ static constexpr HolidayWeight fxc4HolidayWeights[] = {
     {.holiday = Thanksgiving, .weight = 0},
     {.holiday = Party, .weight = 0}
 };
-static const EffectInfo fxc4Desc = {.factory = EFFECT_FACTORY(FxC4), .desc = {.id = "FxC4", .description = "lightnings"}, .selectionWeight = 9, HOLIDAY_WEIGHTS(fxc4HolidayWeights)};
+static const EffectInfo fxc4Desc = {.factory = EFFECT_FACTORY(FxC4), .desc = {.id = "FXC4", .description = "lightnings"}, .selectionWeight = 9, HOLIDAY_WEIGHTS(fxc4HolidayWeights)};
 static constexpr HolidayWeight fxc5HolidayWeights[] = {
     {.holiday = Halloween, .weight = 30},
     {.holiday = Christmas, .weight = 10}
