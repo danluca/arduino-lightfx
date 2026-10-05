@@ -35,7 +35,7 @@ void FxJ1::setup() {
     LedEffect::setup();
     dirRight = random8() & 1;
     popChance = random8(2, 5);
-    bgColor = ColorFromPalette(targetPalette, random8(), 8, LINEARBLEND);
+    bgColor = ColorFromPalette(targetPalette, random8(), 6, LINEARBLEND);
     // launch velocity coefficient from the original effect (the "secret sauce") - peaks at ~3/4 of the frame height
     const float coeff = powf(static_cast<float>(tpl.size()), 0.5223324f) * 0.3944296f;
     maxVel256 = static_cast<int32_t>(coeff * 256.0f);
@@ -65,11 +65,11 @@ void FxJ1::pop(Kernel &k) {
 }
 
 void FxJ1::run() {
-    EVERY_N_MILLISECONDS(20) {
+    EVERY_N_MILLIS_I(j1Timer, 25) {
         const uint16_t size = tpl.size();
         CRGBSet revTpl = -tpl;
-        CRGBSet &frame = dirRight ? tpl : revTpl;
-        frame.fill_solid(bgColor);
+        CRGBSet &wFrame = dirRight ? tpl : revTpl;
+        wFrame.fill_solid(bgColor);
 
         // anti-aliased draw across the two pixels straddling the position
         auto draw = [&](int32_t pos256, const CRGB &col) {
@@ -79,11 +79,11 @@ void FxJ1::run() {
             const auto frac = static_cast<uint8_t>(pos256 & 0xFF);
             if (idx < size) {
                 CRGB c = col; c.nscale8_video(255 - frac);
-                frame[idx] += c;
+                wFrame[idx] += c;
             }
             if (idx + 1 < size) {
                 CRGB c = col; c.nscale8_video(frac);
-                frame[idx + 1] += c;
+                wFrame[idx + 1] += c;
             }
         };
 
@@ -116,12 +116,13 @@ void FxJ1::run() {
         // brief white flash marks each pop
         if (flash > 0) {
             if (flashIdx < size)
-                frame[flashIdx] += CRGB(flash, flash, flash);
+                wFrame[flashIdx] += CRGB(flash, flash, flash);
             flash = qsub8(flash, 64);
         }
 
-        replicateMirrorSet(frame, others, dirRight);
+        replicateMirrorSet(wFrame, others, dirRight);
         FastLED.show(stripBrightness);
+        j1Timer.setPeriod(random16(20, 64));
     }
 }
 
@@ -182,11 +183,11 @@ void FxJ2::merge() {
 }
 
 void FxJ2::run() {
-    EVERY_N_MILLISECONDS(20) {
+    EVERY_N_MILLIS_I(j2Timer, 25) {
         ++tick;
         const uint16_t size = tpl.size();
         CRGBSet revTpl = -tpl;
-        CRGBSet &frame = dirRight ? tpl : revTpl;
+        CRGBSet &wFrame = dirRight ? tpl : revTpl;
 
         // new drops hit the glass - intensity ebbs and flows between drizzle and shower
         if (random8() < beatsin8(bpm, 3, 24)) {
@@ -247,11 +248,11 @@ void FxJ2::run() {
         merge();
 
         // render - glass background, wet trails, then the drops themselves
-        frame.fill_solid(bgColor);
+        wFrame.fill_solid(bgColor);
         for (uint16_t i = 0; i < size; i++) {
             if (wet[i] == 0)
                 continue;
-            frame[i] += ColorFromPalette(palette, wetIdx[i], wet[i], LINEARBLEND);
+            wFrame[i] += ColorFromPalette(palette, wetIdx[i], wet[i], LINEARBLEND);
             if (tick & 0x01)
                 wet[i]--;
         }
@@ -262,11 +263,11 @@ void FxJ2::run() {
             const auto frac = static_cast<uint8_t>(pos256 & 0xFF);
             if (idx < size) {
                 CRGB c = col; c.nscale8_video(255 - frac);
-                frame[idx] += c;
+                wFrame[idx] += c;
             }
             if (idx + 1 < size) {
                 CRGB c = col; c.nscale8_video(frac);
-                frame[idx + 1] += c;
+                wFrame[idx + 1] += c;
             }
         };
 
@@ -283,17 +284,18 @@ void FxJ2::run() {
             if (d.flash > 0) {
                 const auto idx = static_cast<uint16_t>(d.pos256 >> 8);
                 const uint8_t side = d.flash / 4;
-                frame[idx] += CRGB(d.flash, d.flash, d.flash);
+                wFrame[idx] += CRGB(d.flash, d.flash, d.flash);
                 if (idx > 0)
-                    frame[idx - 1] += CRGB(side, side, side);
+                    wFrame[idx - 1] += CRGB(side, side, side);
                 if (idx + 1 < size)
-                    frame[idx + 1] += CRGB(side, side, side);
+                    wFrame[idx + 1] += CRGB(side, side, side);
                 d.flash = qsub8(d.flash, 40);
             }
         }
 
-        replicateMirrorSet(frame, others, dirRight);
+        replicateMirrorSet(wFrame, others, dirRight);
         FastLED.show(stripBrightness);
+        j2Timer.setPeriod(random16(20, 64));
     }
 }
 
