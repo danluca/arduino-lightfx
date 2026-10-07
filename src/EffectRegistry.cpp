@@ -45,8 +45,9 @@ uint16_t EffectRegistry::nextEffectPos() {
     if (!autoSwitch || sleepState)
         return desiredEffectIndex;
     desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
-    //increment past the sleep effect, if landed on it
-    if (desiredEffectIndex == sleepEffectIndex)
+    //increment past the sleep effect or an undesired effect for this holiday, if landed on it
+    const Holiday holiday = paletteFactory.getHoliday();
+    while (desiredEffectIndex == sleepEffectIndex || !effectInfos[desiredEffectIndex]->effectiveSelectionWeight(holiday))
         desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
     transitionEffect();
     return lastEffectIndex;
