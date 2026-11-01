@@ -83,6 +83,12 @@ pio device monitor
 
 4. **Access Web Interface**: Navigate to board's IP address after connection 
 
+## Mesh FX Control
+
+A board receiving effect broadcasts from a master recognizes the board-originated `/fx` request and saves its current effect and automatic-effect setting. Each accepted master FX update resets the follower's inactivity timer; no status polling is performed. After 20 minutes without an update, the follower restores its saved local settings. The timeout is configurable with `MESH_CONTROL_TIMEOUT_MINUTES` in `include/config.h`.
+
+The master must continue sending FX updates more frequently than the timeout to maintain control (the current auto-roll interval is 7 minutes). Changing the effect or automatic-effect setting locally while following a master ends the mesh session without restoring over the local change. Sleep scheduling continues to apply while following and on restoration.
+
 ## Architecture
 
 ### Design Philosophy

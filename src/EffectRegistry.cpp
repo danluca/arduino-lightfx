@@ -57,6 +57,21 @@ uint16_t EffectRegistry::curEffectPos() const {
     return desiredEffectIndex;
 }
 
+uint16_t EffectRegistry::effectPosToRestore() const {
+    return sleepState ? beforeSleepEffectIndex : desiredEffectIndex;
+}
+
+void EffectRegistry::restoreEffectPos(const uint16_t efx) {
+    if (effectsCount == 0)
+        return;
+    const uint16_t restoreIndex = capu(efx, effectsCount - 1);
+    if (sleepState) {
+        beforeSleepEffectIndex = restoreIndex;
+        nextEffectPos(sleepEffectIndex);
+    } else
+        nextEffectPos(restoreIndex);
+}
+
 uint16_t EffectRegistry::nextRandomEffectPos() {
     if (autoSwitch && !sleepState) {
         //weighted randomization of the next effect index - weights are adjusted for the current holiday

@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef RP2040_LIGHTFX_TASK_MSG_H
@@ -18,7 +18,7 @@ extern QueueHandle_t micQueue;
 
 enum AlmAction:uint8_t {ALARM_SETUP, ALARM_CHECK, SAVE_SYS_INFO, HOLIDAY_UPDATE};
 
-enum FxAction:uint8_t {AUTO_FX, MANUAL_FX, COLOR_THEME, STRIP_BRIGHTNESS, AUDIO_THRESHOLD, SLEEP_ENABLED, SLEEP_STATE, AUDIO_CHANGE, SAVE_STATE};
+enum FxAction:uint8_t {AUTO_FX, MANUAL_FX, COLOR_THEME, STRIP_BRIGHTNESS, AUDIO_THRESHOLD, SLEEP_ENABLED, SLEEP_STATE, AUDIO_CHANGE, SAVE_STATE, MESH_FX_UPDATE, MESH_FX_RESTORE};
 struct FxActionMessage {
     FxAction action;
     uint32_t data;

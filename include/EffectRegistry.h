@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef EFFECTREGISTRY_H
@@ -40,6 +40,8 @@ public:
     uint16_t nextEffectPos();
 
     [[nodiscard]] uint16_t curEffectPos() const;
+    [[nodiscard]] uint16_t effectPosToRestore() const;
+    void restoreEffectPos(uint16_t efx);
 
     uint16_t nextRandomEffectPos();
 

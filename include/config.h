@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_CONFIG_H
 #define LIGHTFX_CONFIG_H
@@ -23,6 +23,9 @@
 #define IP_SUBNET 255,255,255,0     // usual subnet mask
 #define STATIC_BROADCAST_CLIENTS     10, 11, 12              //this is a CSV of *last byte* of the boards having static IP addresses
 #define MDNS_CACHING_TIMEOUT_MS (60*60*1000)          // 60 minutes for discovered boards to persist in cache
+#ifndef MESH_CONTROL_TIMEOUT_MINUTES
+#define MESH_CONTROL_TIMEOUT_MINUTES 20              // Restore local FX state after 20 minutes without a master FX update
+#endif
 
 // in some networks, reaching the default NTP server pool may be challenging due to the simple UDP client we use and stricter control imposed on the network traffic
 // in those cases the best option is to define a local NTP server as proxy

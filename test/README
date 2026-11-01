@@ -9,3 +9,10 @@ in the development cycle.
 
 More information about PlatformIO Unit Testing:
 - https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+
+The mesh session state has a host-side test. On a machine with a C++17 compiler, run:
+
+```sh
+g++ -std=c++17 -Iinclude test/host/test_mesh_fx_session.cpp -o test_mesh_fx_session
+./test_mesh_fx_session
+```
