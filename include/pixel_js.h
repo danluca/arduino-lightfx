@@ -1,5 +1,5 @@
 #pragma once
-inline constexpr auto pixel_js = R"~~~(
+inline constexpr auto pixel_js PROGMEM = R"~~~(
 
 // Only one sequence can be selected
 let config = {};
@@ -81,9 +81,7 @@ function getStatus() {
             $('#timeNtp').html(`${data.time.ntpSync}`);
             $('#timeCurrent').html(`${data.time.sdate} ${data.time.stime} ${data.time.zoneShort}`);
             $('#timeHoliday').html(`${data.time.holiday}`);
-            $('#lastDrift').html(`${data.time.lastDrift} ms`);
-            $('#avgDrift').html(`${data.time.averageDrift} ms/hr`);
-            $('#totalDrift').html(`${data.time.totalDrift} ms (${data.time.syncSize} sync points @ 17 hrs)`);
+            $('#lastSync').html(data.time.lastSyncAge < 0 ? 'never' : `${new Date(data.time.lastSync * 1000).toISOString()} UTC (${data.time.lastSyncAge} s ago, ${data.time.syncCount} syncs since boot)`);
             $('#cleanBoot').html(`${data.cleanBoot}`);
             let wdr = data.watchdogRebootsCount === 0 ? `${data.watchdogRebootsCount}` : `${data.watchdogRebootsCount}<br/> [last @ ${data.lastWatchdogReboot}]`;
             $('#wdReboots').html(wdr);

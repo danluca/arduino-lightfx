@@ -121,7 +121,7 @@ This project prioritizes **performance and features over portability** - unapolo
 - Native dual-core support
 - C++17 standard
 
-**WiFi**: arduino-pico `WiFi` library on the on-board CYW43439, with lwIP (options tuned in `include/lwipopts.h`)
+**WiFi**: arduino-pico `WiFi` library on the on-board CYW43439, with the framework's precompiled lwIP (options come from the framework's `include/lwipopts.h`; the project's `include/lwipopts.h` only mirrors what its sources see)
 - DHCP addressing with router reservations
 - `LEAmDNS` for mDNS advertising and board discovery
 - All networking runs on Core 0

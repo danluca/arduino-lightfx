@@ -260,10 +260,8 @@ void wifi_reconnect() {
     sysInfo->resetSysStatus(SysStatus::Wifi);
     log_debug(F("wifi_reconnect: stopping web server"));
     web::server.stop();
-    log_debug(F("wifi_reconnect: stopping time service"));
-    timeService.end();
-    delete ntpUDP;
-    ntpUDP = nullptr;
+    log_debug(F("wifi_reconnect: stopping NTP client"));
+    timeService.endNTP();   //restarted by wifi_ensure once the WiFi is back - it queries NTP right away, which also re-syncs the clock after the outage
 #if MDNS_ENABLED==1
     for (const auto& query : serviceQueries)
         MDNS.removeServiceQuery(query);
@@ -291,8 +289,10 @@ void wifi_ensure() {
         wifi_reconnect();
         web::server_setup();
     }
-    if (sysInfo->isSysStatus(SysStatus::Wifi))
+    if (sysInfo->isSysStatus(SysStatus::Wifi)) {
+        timeBegin();    //no-op if the NTP client is running; restarts it after a WiFi reconnect
         postTimeSetupCheck();
+    }
     log_info(F("System status: %#hX"), sysInfo->getSysStatus());
 }
 

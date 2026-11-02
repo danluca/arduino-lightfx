@@ -34,7 +34,7 @@ The code line is a port of the RP2040 (Arduino Nano RP2040 Connect) project that
 |---|---|
 | Board | Pimoroni Plasma 2350 W (custom board file `boards/pimoroni_plasma2350w.json`)[^board] |
 | MCU | RP2350, dual Cortex-M33 at 150 MHz, 520 KB SRAM (512 KB declared as `maximum_ram_size`)[^board] |
-| Wi-Fi | Infineon CYW43439 on-board module, arduino-pico `WiFi` + lwIP (custom `include/lwipopts.h`) |
+| Wi-Fi | Infineon CYW43439 on-board module, arduino-pico `WiFi` + the framework's precompiled lwIP (the framework's `include/lwipopts.h` is the master) |
 | Framework | arduino-pico (Earle Philhower), from the owner's fork `danluca/arduino-pico#feat/stable`, with FreeRTOS SMP enabled[^pio] |
 | LED library | FastLED pinned to 3.10.3[^pio] |
 | FreeRTOS heap | 192 KB, heap_4 scheme (`configTOTAL_HEAP_SIZE`, `configFREERTOS_HEAP_SCHEME=4`)[^pio] |

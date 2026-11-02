@@ -2,6 +2,7 @@
 // Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <Arduino.h>
+#include <TZ.h>
 #include "timeutil.h"
 #include "PaletteFactory.h"
 #include "util.h"
@@ -13,12 +14,9 @@
 constexpr auto fmtDate = "%4d-%02d-%02d";
 constexpr auto fmtTime = "%02d:%02d:%02d";
 constexpr size_t TIME_BUFFER_SIZE = 32;
-constexpr auto TIME_ZONE_NAME = "America/Chicago";
-constexpr TimeChangeRule cdt {.name = "CDT", .week = Second, .dow = Sun, .month = Mar, .hour = 2, .offsetMin = -300};
-constexpr TimeChangeRule cst {.name = "CST", .week = First, .dow = Sun, .month = Nov, .hour = 2, .offsetMin = -360};
-Timezone centralTime(cdt, cst, "America/Chicago");
+// the zone rules come from the C library, from the POSIX TZ string in the framework's TZ.h ("CST6CDT,M3.2.0,M11.1.0" - CDT from the second Sunday of March, CST from the first Sunday of November)
+Timezone centralTime("America/Chicago", TZ_America_Chicago);
 
-WiFiUDP* ntpUDP = nullptr;
 TimeService timeService;
 
 void updateLoggingTimebase() {
@@ -54,13 +52,14 @@ void logTimeStatus(const time_t curTime, const Holiday& holiday) {
     log_info(F("%s %s time, time offset set to %d s, current time %s. NTP sync %s."), timeService.timezone()->getName(), savingsType,
         offset, strTime.c_str(), sysInfo->isSysStatus(SysStatus::Ntp) ? "ok" : "failed (fallback to other source)");
     log_info(F("Current time %s (holiday adjusted to %s); system status %#hX"), strTime.c_str(), holidayToString(holiday), sysInfo->getSysStatus());
-    log_info(F("Time Sync: local millis RTC %lld to unix millis %lld"), timeService.syncLocalTimeMillis(), timeService.syncUTCTimeMillis());
+    log_info(F("Time Sync: %lu SNTP syncs (%lu rejected), last sync at UTC %s (%lld s ago)"), static_cast<unsigned long>(timeService.syncCount()),
+        static_cast<unsigned long>(timeService.rejectedCount()), TimeFormat::asString(timeService.lastSyncUTC(), false).c_str(), static_cast<long long>(timeService.lastSyncAge()));
 #endif
 }
 
 /**
- * NTP sync was successful and time was within valid range; sets the NTP and DST flags accordingly.
- * Adjusts the current holiday based on time. Adjusts the logging timebase.
+ * NTP sync was successful and time was within valid range (checked by the SNTP hook); sets the NTP and DST flags accordingly.
+ * Adjusts the current holiday based on time. Adjusts the logging timebase. Fixes the timestamps captured before the clock was set.
  * @return true (all the time)
  */
 bool handleNTPSuccess() {
@@ -76,9 +75,6 @@ bool handleNTPSuccess() {
     const Holiday holiday = paletteFactory.adjustHoliday(curTime);
     updateLoggingTimebase();
     logTimeStatus(curTime, holiday);
-
-    const TimeSync tSync {.localMillis = static_cast<ulong>(timeService.syncLocalTimeMillis()), .unixMillis=timeService.syncUTCTimeMillis() };
-    timeSyncs.push(tSync);
 
     //update places where time has been captured before NTP sync - watchdog reboots
     sysInfo->transformWatchdogReboots([](const time_t wdTime) {
@@ -101,7 +97,7 @@ bool handleNTPSuccess() {
 }
 
 /**
- * Handles the case when NTP sync fails, either due to a timeout or a failure to get a valid time from the NTP server.
+ * Handles the case when there is no NTP sync (yet), either due to a timeout or a failure to get a valid time from the NTP server.
  * There is no alternative time source on this board - the CYW43 WiFi driver does not track network time
  * (arduino-pico's <code>WiFi.getTime()</code> returns <code>millis()</code>), hence it must not be used to seed the clock.
  * The clock is left untouched (unsynchronized) and the holiday remains the one restored from saved state; the NTP sync
@@ -115,21 +111,31 @@ void handleNTPFailure() {
 }
 
 /**
- * Sets up the time callback and attempts to source current time from NTP.
+ * Whether the system clock has been recently set by NTP - at least one valid SNTP sync, and the most recent one is not older than NTP_STALE_SECS.
+ * The lwIP SNTP client polls the server on its own schedule (SNTP_UPDATE_DELAY, a build flag in platformio.ini); this just reads the outcome.
+ */
+bool timeSynchronized() {
+    return timeService.isSynchronized() && timeService.lastSyncAge() <= NTP_STALE_SECS;
+}
+
+/**
+ * Applies the time zone, makes sure the NTP client is running and checks whether the clock got synchronized - optionally waiting for it.
  * Callers are ensuring this is called after WiFi connectivity is successful - otherwise there is no point in attempting this.
- * On failure the local unsynchronized time is kept (see handleNTPFailure) and the caller schedules a retry.
+ * The NTP queries are done by the lwIP SNTP client, in the background, which also retries on failure; this does not trigger a query.
+ * On failure the local unsynchronized time is kept (see handleNTPFailure) and the caller schedules a re-check.
+ * @param waitMs how long to wait for the first sync, in milliseconds - 0 does not wait (the default)
  * @return true if the NTP sync was successful
  */
-bool timeSetup() {
-    timeBegin();
-    timeService.applyTimezone(centralTime);
+bool timeSetup(const uint32_t waitMs) {
+    if (timeService.timezone() != &centralTime)
+        timeService.applyTimezone(centralTime);
     if (sysInfo->isSysStatus(SysStatus::Wifi)) {
-        // WiFi module does not grab NTP time, and the result to getTime is an odd 10 hours after UTC epoch
-        const bool ntpTimeAvailable = timeService.syncTimeNTP();
+        timeBegin();
+        const bool ntpTimeAvailable = waitMs > 0 ? timeService.waitSynchronized(waitMs) && timeSynchronized() : timeSynchronized();
         if (ntpTimeAvailable)
-            log_info(F("Time service seeded from NTP pool: %s"), TimeFormat::asStringMs(timeService.syncUTCTimeMillis()).c_str());
+            log_info(F("Time set from NTP: %s"), TimeFormat::asStringMs(nowMillis()).c_str());
         else
-            log_warn(F("Acquiring NTP time has FAILED, retrying later..."));
+            log_warn(F("No NTP time yet, will check again later..."));
 
         if (ntpTimeAvailable)
             return handleNTPSuccess();
@@ -141,20 +147,25 @@ bool timeSetup() {
 }
 
 /**
- * Ensures the UDP client is properly instantiated for the timeService - if a new instance is made, timeService.begin() is also called
- * Ensure this is called while WiFi is present - creating a WiFiUDP without WiFi connectivity may lead to unexpected behaviors
+ * Makes sure the NTP client (lwIP SNTP) is running against the NTP server - safe to call repeatedly, it only starts the client if it is not running.
+ * With LOCAL_NTP_SERVER the server is a single local address (NTP_SERVER_IP in config.h, no DNS needed), otherwise the pool.ntp.org name (resolved once).
+ * Ensure this is called while WiFi is present.
  */
 void timeBegin() {
-    //this requires WiFi!
-    if (ntpUDP == nullptr) {
-        ntpUDP = new WiFiUDP();
-
+    if (timeService.isNtpRunning())
+        return;
 #ifdef NTP_SERVER_IP
-        timeService.setNTPServer(IPAddress(NTP_SERVER_IP));
+    const IPAddress ntpServer(NTP_SERVER_IP);
+    if (timeService.beginNTP(ntpServer))
+        log_info(F("NTP client started, server %s"), ntpServer.toString().c_str());
+    else
+        log_error(F("NTP client could not be started, server %s"), ntpServer.toString().c_str());
+#else
+    if (timeService.beginNTP("pool.ntp.org"))
+        log_info(F("NTP client started, server pool.ntp.org"));
+    else
+        log_error(F("NTP client could not be started - cannot resolve pool.ntp.org"));
 #endif
-        timeService.begin(ntpUDP);
-        log_info(F("NTP UDP client created"));
-    }
 }
 
 /**
@@ -272,56 +283,3 @@ uint16_t encodeMonthDay(const time_t time) {
     return (((tm.tm_mon+1) & 0xFF) << 8) + (tm.tm_mday & 0xFF);
 }
 
-/**
- * Computes drift of local time from official time between two time sync points
- * @param from time sync point
- * @param to later time sync point
- * @return time drift in ms - positive means local time is faster, negative means local time is slower than the official time
- */
-int getDrift(const TimeSync &from, const TimeSync &to) {
-    const time_t localDelta = static_cast<time_t>(to.localMillis) - static_cast<time_t>(from.localMillis);
-    const time_t unixDelta = to.unixMillis - from.unixMillis;
-    return static_cast<int>(localDelta - unixDelta);
-}
-
-/**
- * Total amount of drift accumulated in the time sync points
- * @return total time drift in ms
- */
-int getTotalDrift() {
-    if (timeSyncs.size() < 2)
-        return 0;
-    int drift = 0;
-    const TimeSync *prevSync = nullptr;
-    for (auto &ts: timeSyncs) {
-        if (prevSync == nullptr)
-            prevSync = &ts;
-        else
-            drift += getDrift(*prevSync, ts);
-    }
-    return drift;
-}
-
-/**
- * Total time drift averaged over the time period accumulated in the time sync points
- * @return average time drift in ms/hour
- */
-int getAverageTimeDrift() {
-    if (timeSyncs.size() < 2)
-        return 0;
-    const time_t start = timeSyncs.begin()->unixMillis;
-    const time_t end = timeSyncs.back().unixMillis;
-    return static_cast<int>(getTotalDrift() * 3600000L / static_cast<long>(end - start));
-}
-
-/**
- * Most recently measured time drift (between last two time sync points)
- * @return most recent measured time drift in ms
- */
-int getLastTimeDrift() {
-    if (timeSyncs.size() < 2)
-        return 0;
-    const TimeSync &lastSync = timeSyncs.back();
-    const TimeSync &prevSync = timeSyncs.end()[-2];
-    return getDrift(prevSync, lastSync);
-}

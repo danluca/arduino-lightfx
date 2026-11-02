@@ -24,7 +24,7 @@ sources:
 # Stack
 
 * **Radio:** the Plasma 2350 W's on-board Infineon CYW43439 (2.4 GHz 802.11b/g/n), enabled by `-DPICO_CYW43_SUPPORTED=1 -DCYW43_PIN_WL_DYNAMIC=1` in the board file.[^board]
-* **Driver and IP stack:** the arduino-pico `WiFi` library over lwIP. The project overrides lwIP options in `include/lwipopts.h` (32 KB `MEM_SIZE`, more PCBs and pbufs than stock, mDNS responder, IPv4 and IPv6).[^lwip] There is no local Wi-Fi driver library.
+* **Driver and IP stack:** the arduino-pico `WiFi` library over the framework's precompiled lwIP (`liblwip.a`). The lwIP options (16 KB heap, 24 pbufs, 5 TCP and 7 UDP PCBs, the mDNS responder, IPv4 only) come from the **framework's** `include/lwipopts.h`, which is the master; the project's `include/lwipopts.h` only mirrors the options that its own sources see through the lwIP headers and cannot change the sizes. See [framework customizations](/build/framework-customizations.md).[^lwip] There is no local Wi-Fi driver library.
 * **Credentials:** `include/secrets.h` (git-ignored; template `include/secrets.h.example`) must define `WF_SSID` and `WF_PSW`, plus the upload token `FW_AUTH_TOKEN`.
 * **Addressing:** **DHCP**. `WiFi.config({IP_ADDR})` is commented out; the router reserves a fixed address per board MAC (Dev 192.168.0.75, Tree 192.168.0.182). After connecting, `SysInfo` takes the IP and gateway from the Wi-Fi stack; `IP_ADDR`/`IP_GW` in `config.h` are only defaults until then. Hostname: `lightfx-<DEVICE_NAME>`, for example `lightfx-FXPine`.[^net]
 * **Power:** `WiFi.noLowPowerMode()` and station mode (`WIFI_STA`).

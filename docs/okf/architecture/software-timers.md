@@ -29,10 +29,10 @@ sources:
 | `diagInfo` (14) | 30.25 s | repeat | `diagSetup` (only if `LOGGING_ENABLED`) | `diagQueue` `DIAG_INFO` | CORE1: task summary log |
 | `fxHeartbeat` (15) | 3 s | repeat | `diagSetup` | `diagQueue` `FX_HEARTBEAT` | CORE1: FX stall detection |
 | `taskSnapshot` (16) | 10 s | repeat | `diagSetup` | `diagQueue` `TASK_SNAPSHOT` | CORE1: capture per-task run-time stats for `/tasks.json` (runs even without logging) |
-| `timeUpdate` (20) | 17 h | repeat | `commSetup` | `bcQueue` `TIME_UPDATE` | CORE0: NTP re-sync and drift correction |
+| `timeUpdate` (20) | 1 h | repeat | `commSetup` | `bcQueue` `TIME_UPDATE` | CORE0: time housekeeping - NTP flag (sync age), DST flag, log time base. The NTP polling itself (12 h) is done by the lwIP SNTP client |
 | `wifiEnsure` (21) | 7 min | repeat | `commSetup` | `bcQueue` `WIFI_ENSURE` | CORE0: ping the gateway, check RSSI, reconnect |
 | `statusLEDCheck` (23) | 5 s | repeat | `commSetup` | `bcQueue` `STATUS_LED_CHECK` | CORE0: on-board RGB LED |
-| `timeSetup` (24) | 60 s | one-shot, reset on reuse | `startTimeSetupTimer` | `bcQueue` `TIME_SETUP` | CORE0: retry NTP until the first success |
+| `timeSetup` (24) | 60 s | one-shot, reset on reuse | `startTimeSetupTimer` | `bcQueue` `TIME_SETUP` | CORE0: check whether the SNTP client has set the clock yet; repeat until the first sync |
 | `scanClients` (25) | 15 min | repeat | `commSetup` | `bcQueue` `SCAN_CLIENTS` | CORE0: merge mDNS-discovered boards, ping broadcast recipients (mDNS builds) |
 | `alarmCheck` (30) | dynamic | one-shot, re-armed | `alarm_setup` / `alarm_check` | `almQueue` `ALARM_CHECK` | ALM: fire due wake/bed alarms |
 | `holidayUpdate` (31) | 12 h | repeat | `alarm_setup` | `almQueue` `HOLIDAY_UPDATE` | ALM: re-derive the holiday from the date |

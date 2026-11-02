@@ -31,7 +31,7 @@ The RP2350 has 520 KB of SRAM (the board file declares 512 KB). Three allocators
 
 * **FreeRTOS heap:** `configTOTAL_HEAP_SIZE = 192*1024`, up from the 164 KB default. `configFREERTOS_HEAP_SCHEME=4` (heap_4) is the only FreeRTOS scheme that merges adjacent free blocks. `new`/`delete` in application code go through `pvPortMalloc`.[^pio]
 * **newlib heap (malloc/free):** some framework allocations still use it. The `platformio.ini` comment says the FreeRTOS heap is sized to leave room for it, so do not grow `configTOTAL_HEAP_SIZE` without checking the remaining RAM.[^pio]
-* **lwIP heap:** `MEM_SIZE = 32768` plus static pools (`PBUF_POOL_SIZE 40`, `MEMP_NUM_TCP_PCB 24`, `MEMP_NUM_UDP_PCB 12`, `MEMP_NUM_TCP_SEG 32`), raised for the larger RAM. `MEM_LIBC_MALLOC = 0`, so lwIP does not use malloc.[^lwip]
+* **lwIP heap:** the framework's precompiled `liblwip.a` sizes apply: `MEM_SIZE = 16384` plus static pools (`PBUF_POOL_SIZE 24`, `MEMP_NUM_TCP_PCB 5`, `MEMP_NUM_UDP_PCB 7`, `MEMP_NUM_TCP_SEG 32`). They come from the framework's `include/lwipopts.h` (the master) and cannot be changed from the project's `include/lwipopts.h`; see [framework customizations](/build/framework-customizations.md). `MEM_LIBC_MALLOC = 0`, so lwIP does not use malloc.[^lwip]
 
 Other points:
 
@@ -60,7 +60,7 @@ Compile-time guards: `10 < FRAME_SIZE < NUM_PIXELS` and `PIXEL_BUFFER_SPACE > 3Ã
 2. **Large temporary strings go on the heap and get freed explicitly.** For example `new String()` plus `reserve(measureJson(doc))`, then `delete`, in `saveFxState` and `saveCalibrationInfo`.
 3. **`JsonDocument::clear()`** is called before each document goes out of scope.
 4. **Queues hold values, not pointers.** No allocation per message.
-5. **Persistent objects are created once.** For example `ntpUDP` and the timers. `ntpUDP` is only recreated on Wi-Fi reconnect, and the old instance is deleted first. The `alarmCheck` timer is re-armed rather than recreated.
+5. **Persistent objects are created once.** For example the timers. The `alarmCheck` timer is re-armed rather than recreated. The NTP client is the framework's lwIP SNTP client, so the firmware owns no NTP socket or buffer; on a Wi-Fi reconnect it is stopped and started again (`endNTP`, `timeBegin`).
 6. **FX state saves are coalesced.** `fxStateDirty` collects all save requests and `fx_run` writes `/state.json` at most once per iteration.
 7. **Avoid the regex library.** `UriRegex` would add about 300 KB of flash. Upload paths come from the `X-Path` header instead.[^claudeinst]
 

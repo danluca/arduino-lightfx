@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #ifndef ARDUINO_LIGHTFX_TIMEUTIL_H
@@ -18,20 +18,14 @@ const char *holidayToString(Holiday hday);
 bool isDST(time_t time);
 uint16_t encodeMonthDay(time_t time = 0);
 
-struct TimeSync {
-    ulong localMillis{};
-    time_t unixMillis{};
-};
+// how long the system clock may go without an NTP sync before NTP is considered lost - the lwIP SNTP poll interval is 12 hours (SNTP_UPDATE_DELAY, a build flag in platformio.ini)
+constexpr time_t NTP_STALE_SECS = 36 * SECS_PER_HOUR;
+// how long the boot sequence waits for the first NTP sync before carrying on (the retry timer picks it up later)
+constexpr uint32_t NTP_BOOT_WAIT_MS = 10000;
 
 void timeBegin();
-bool timeSetup();
-int getAverageTimeDrift();
-int getLastTimeDrift();
-int getTotalDrift();
-int getDrift(const TimeSync &from, const TimeSync &to);
+bool timeSynchronized();
+bool timeSetup(uint32_t waitMs = 0);
 void updateLoggingTimebase();
-
-extern FixedQueue<TimeSync, 8> timeSyncs;
-extern WiFiUDP* ntpUDP;
 
 #endif //ARDUINO_LIGHTFX_TIMEUTIL_H

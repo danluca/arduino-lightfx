@@ -377,40 +377,33 @@ void startTimeSetupTimer() {
 }
 
 /**
- * Update time with NTP, assert offset (DST or not) and track drift
+ * Time housekeeping, run periodically. The NTP polling itself is done by the lwIP SNTP client (poll interval SNTP_UPDATE_DELAY, a build flag in platformio.ini), which steps
+ * the system clock - there is nothing to query or correct here. This reconciles the status flags with the clock: the NTP flag (a sync that is too old means
+ * NTP has been lost), the DST flag (transitions), and the logging time base.
  */
 void timeUpdate() {
     if (!sysInfo->isSysStatus(SysStatus::Wifi)) {
-        log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform NTP time sync. System status: %#hX"), sysInfo->getSysStatus());
+        log_error(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot check NTP time sync. System status: %#hX"), sysInfo->getSysStatus());
         return;
     }
-    timeBegin();    //ensures we have network connectivity infrastructure
-    const bool bHadNtpSync = sysInfo->isSysStatus(SysStatus::Ntp);
-    if (const time_t syncElapsedHours = (millis() - timeService.syncLocalTimeMillis())/1000/SECS_PER_HOUR; bHadNtpSync && syncElapsedHours < 12) {
-        log_info(F("Time NTP sync was already performed recently %lld hours ago. Skipping - we want to check NTP at least 12 hours apart"), syncElapsedHours);
-        return;    //we already did the sync recently, so no need to do it again
+    timeBegin();    //ensures the SNTP client is running
+    if (!sysInfo->isSysStatus(SysStatus::Ntp)) {
+        //no sync acknowledged yet (or it was lost) - same path as the retry timer: acknowledge a sync if there is one, schedule a retry otherwise
+        timeSetupCheck();
+        return;
     }
-    const bool result = timeService.syncTimeNTP();
-    if (result) {
-        const TimeSync tSync {.localMillis = static_cast<ulong>(timeService.syncLocalTimeMillis()), .unixMillis=timeService.syncUTCTimeMillis() };
-        timeSyncs.push(tSync);
-        log_info(F("NTP sync success; current time %s"), TimeFormat::asStringMs(nowMillis()).c_str());
-        updateLoggingTimebase();
-    } else
-        log_warn(F("No NTP; Current time %s."), TimeFormat::asStringMs(nowMillis()).c_str());
-    result ? sysInfo->setSysStatus(SysStatus::Ntp) : sysInfo->resetSysStatus(SysStatus::Ntp);
-    log_info(F("System status: %#hX"), sysInfo->getSysStatus());
 
-    // if we did not have NTP sync before, react to the current attempt result - if failed, schedule a timer to try again; if succeeded, notify the alarm task for setup
-    if (!bHadNtpSync) {
-        if (result)
-            enqueueAlarmSetup();
-        else {
-            log_warn(F("Time NTP sync was never acquired. Trying again soon. System status: %#hX"), sysInfo->getSysStatus());
-            startTimeSetupTimer();
-            return;
-        }
+    if (!timeSynchronized()) {
+        sysInfo->resetSysStatus(SysStatus::Ntp);
+        log_warn(F("Last NTP sync %s is too old (%lld s ago, limit %lld s) - NTP considered lost. Current time %s. System status: %#hX"),
+            TimeFormat::asString(timeService.lastSyncUTC(), false).c_str(), static_cast<long long>(timeService.lastSyncAge()), static_cast<long long>(NTP_STALE_SECS),
+            TimeFormat::asStringMs(nowMillis()).c_str(), sysInfo->getSysStatus());
+        startTimeSetupTimer();
+        return;
     }
+    log_info(F("NTP in sync - %lu syncs since boot, last at %s UTC (%lld s ago); current time %s"), static_cast<unsigned long>(timeService.syncCount()),
+        TimeFormat::asString(timeService.lastSyncUTC(), false).c_str(), static_cast<long long>(timeService.lastSyncAge()), TimeFormat::asStringMs(nowMillis()).c_str());
+    updateLoggingTimebase();
 
     //check for a DST transition
     const time_t nixTime = now();
@@ -420,19 +413,6 @@ void timeUpdate() {
         log_info(F("Time DST status changed to %s [offset %d] - current time %s"), dst ? "ON" : "OFF", timeService.timezone()->getOffset(nixTime),
             TimeFormat::asString(nixTime).c_str());
 #endif
-    }
-    if (timeSyncs.size() > 1) {
-        //log the current drift
-        const auto fromSync = timeSyncs.end()[-2];
-        const auto toSync = timeSyncs.back();
-        if (const int driftMs = getDrift(fromSync, toSync); abs(driftMs) > SECS_PER_HOUR * 1000) {
-            log_warn(F("Drift between %s and %s (%lld ms) is too high (%d ms; threshold is 1 hr) - no adjustments made to time base"), TimeFormat::asStringMs(fromSync.unixMillis).c_str(),
-                TimeFormat::asStringMs(toSync.unixMillis).c_str(), toSync.unixMillis-fromSync.unixMillis, driftMs);
-        } else {
-            timeService.addDrift(-driftMs); //adjust for the drift
-            log_info(F("Current drift between %s and %s (%lld ms) measured as %d ms - time base adjusted"), TimeFormat::asStringMs(fromSync.unixMillis).c_str(),
-                TimeFormat::asStringMs(toSync.unixMillis).c_str(), toSync.unixMillis-fromSync.unixMillis, driftMs);
-        }
     }
 }
 
@@ -461,8 +441,8 @@ void commSetup() {
         return;
     }
 
-    //time update event - sync - repeat every 17h
-    if (TimerHandle_t thSync = xTimerCreate("timeUpdate", pdMS_TO_TICKS(17 * 3600 * 1000), pdTRUE, &tmrTimeUpdateId, enqueueTimeUpdate); thSync == nullptr)
+    //time update event - housekeeping of time status (NTP flag, DST), repeat every hour; the NTP sync itself is done by the lwIP SNTP client
+    if (TimerHandle_t thSync = xTimerCreate("timeUpdate", pdMS_TO_TICKS(3600 * 1000), pdTRUE, &tmrTimeUpdateId, enqueueTimeUpdate); thSync == nullptr)
         log_error(F("Cannot create timeUpdate timer - Ignored."));
     else if (xTimerStart(thSync, 0) != pdPASS)
         log_error(F("Cannot start the timeUpdate timer - Ignored."));

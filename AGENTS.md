@@ -24,7 +24,8 @@
 * Framework: arduino-pico, fork https://github.com/danluca/arduino-pico (branch `feat/stable`) of https://github.com/earlephilhower/arduino-pico, locally at ~/.platformio/packages/framework-arduinopico
   * FreeRTOS kernel (SMP, heap_4)
 * Libraries: FastLED (pinned 3.10.3), ArduinoJson, StreamUtils, framework libraries (WiFi, HTTPClient, LEAmDNS, PicoOTA, LittleFS), local libraries under `lib/` (REST web server, filesystem task, scheduler, time, logging, utils)
-* WiFi: Infineon CYW43439 (802.11b/g/n, 2.4GHz) on-board, through the arduino-pico `WiFi` library and lwIP (options in `include/lwipopts.h`)
+* WiFi: Infineon CYW43439 (802.11b/g/n, 2.4GHz) on-board, through the arduino-pico `WiFi` library and lwIP
+  * lwIP is the framework's precompiled `lib/rp2350/liblwip.a`; its options (heap and pool sizes, TCP, SNTP) come from the framework's `include/lwipopts.h`, which is the master. The project's `include/lwipopts.h` only mirrors the options its own sources see and cannot change the sizes
   * IP addresses are assigned by DHCP; the router reserves a fixed address per board MAC (Dev 192.168.0.75, Tree 192.168.0.182 – see `scripts/boards.ps1`)
 * Boards: `Dev` (BOARD_ID 1, "Xmas2350", 66 px WS2812B) and `Tree` (BOARD_ID 2, "FXPine", 1000 px WS2811) – see `include/config.h`
 * Secrets: `include/secrets.h` is git-ignored (template `include/secrets.h.example`) – WiFi credentials and the upload token `FW_AUTH_TOKEN`; never commit secrets

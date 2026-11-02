@@ -17,7 +17,7 @@ sources:
 | `FilesystemTask` | 1.0.0 | Dan Luca | Serializes all LittleFS access through one FS task. Provides `SyncFsImpl` with `readFile`, `writeFile`, `writeFileAsync`, `appendFile`, `list`, `sha256`, `mkdir`, `remove`. See [filesystem layout](/persistence/filesystem-layout.md) |
 | `PicoLog` | 1.0.0 | Dan Luca | `log_debug/info/warn/error/write` macros feeding a ring buffer that the SRL task streams to serial. The macros compile to nothing unless `LOGGING_ENABLED=1` |
 | `SchedulerExt` | 0.4.4.1 | Based on the mbed `Scheduler` | `Scheduler.startTask(&TaskDef)` with separate setup and loop functions, core affinity and priority (`vTaskDelay(1)` after each loop call); also `suspendAllTasks()` |
-| `TimeLib` | 1.0.0 | Combines Paul Stoffregen's Time, Jack Christensen's Timezone and an NTP client | `TimeService`, `Timezone`, `TimeFormat`, `CoreTimeCalc`, `NTPClient`, `now()` |
+| `TimeLib` | 1.0.0 | Paul Stoffregen's Time helpers over the platform clock | `TimeService` (system clock, lwIP SNTP control and sync status), `Timezone` (POSIX TZ string through the C library), `TimeFormat`, `CoreTimeCalc`, `now()`. See [time sync](/scheduling/time-sync.md) |
 | `RestWebServer` | 2.0.0 | arduino-pico `WebServer` (Ivan Grokhotkov, Earle Philhower), ported | One-client HTTP server over the framework `WiFi` classes. Supports raw upload handlers with a transfer heartbeat, and static serving from flash maps |
 | `Utils` | 1.0.0 | Dan Luca | `FixedQueue` (bounded FIFO used for history, time syncs, reboots and recipients), `CircularBuffer`, `StringUtils` |
 

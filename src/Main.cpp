@@ -181,7 +181,7 @@ void setup() {
 
     wifi_setup();           // blocking until we get WiFi
     taskDelay(2500);    // let the WiFi settle
-    timeSetup();
+    timeSetup(NTP_BOOT_WAIT_MS);    // starts NTP (lwIP SNTP client, sets the system clock) and waits for the first sync; the retry timer follows up if it does not come in time
     commSetup();
     web::server_setup();
 

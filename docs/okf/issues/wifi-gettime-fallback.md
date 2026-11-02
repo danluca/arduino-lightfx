@@ -36,7 +36,9 @@ In the framework's `WiFiClass`, `getTime()` is `return millis();`.[^wifi] That v
 
 * At boot, when the NTP server (`192.168.0.58` with `LOCAL_NTP_SERVER`) does not answer.
 * On every 60-second retry (`timeSetupCheck` → `timeSetup`) until NTP succeeds, so the clock jumps again on each retry.[^comms]
-* Not after a later re-sync failure: `timeUpdate` clears `Ntp` but does not call `handleNTPFailure`, so a board that once had good time keeps its clock.
+* Not after a later NTP loss: `timeUpdate` clears `Ntp` but does not call `handleNTPFailure`, so a board that once had good time keeps its clock.
+
+Since the time library moved to the lwIP SNTP client and the system clock (see [time sync](/scheduling/time-sync.md)), this code path has no clock-setting call at all: `handleNTPFailure()` only logs and clears the flag.
 
 # Impact
 

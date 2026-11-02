@@ -26,7 +26,7 @@ sources:
 | `Setup1` | 0x0002 | CORE1 `setup1()` finishes | never |
 | `Filesystem` | 0x0004 | LittleFS mounted through `SyncFsImpl` | never |
 | `Wifi` | 0x0008 | Wi-Fi connected, or `wifi_check` passes | `wifi_check` fails (not connected, no gateway ping, or RSSI < −75 dBm), or `wifi_reconnect` |
-| `Ntp` | 0x0010 | NTP time obtained | an NTP sync fails |
+| `Ntp` | 0x0010 | the lwIP SNTP client has set the clock (acknowledged by `timeSetup`) | the last sync is older than 36 h (`timeUpdate`), or `handleNTPFailure` |
 | `Dst` | 0x0020 | Central Time is in DST | DST ends |
 | `Diag` | 0x0040 | ADC and calibration ready (`deviceSetup`) | never |
 

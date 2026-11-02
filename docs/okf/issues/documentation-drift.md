@@ -34,7 +34,7 @@ Commit `6d11a87` added this bundle and "aligned documentation with code". The bu
 
 **Fixed**: AGENTS.md, README.md, `.github/copilot-instructions.md`, `.claude/instructions.md`, the `update.ps1`/`ota_upgrade.ps1`/`seriallog.ps1` headers, `scripts/synthetic/README.md`, the `config.h` `IP_ADDR` comments, the `handleNTPFailure`/`timeSetup`/`setWiFiInfo` comments, and `logSystemInfo()` (it called `rp2040_rom_version()`, which broke every `LOGGING_ENABLED` build; it now calls `rp2350_rom_version()`).
 
-**Still open**: the `library.json` metadata, `include/lwipopts.h`, `docs/debugging.md` and the remaining code comments in the second table. The tables below record the original findings.
+**Still open**: the `library.json` metadata, `docs/debugging.md` and the remaining code comments in the second table. `include/lwipopts.h` was trimmed and documented as secondary to the framework's file (see [framework customizations](/build/framework-customizations.md)). The tables below record the original findings.
 
 # Project docs
 
@@ -49,7 +49,7 @@ Commit `6d11a87` added this bundle and "aligned documentation with code". The bu
 | `docs/debugging.md`, `docs/Controller_*` | Nano RP2040 Connect debugging and circuit | Not applicable as written. See [hardware debugging](/build/hardware-debugging.md) and [controller board](/hardware/controller-circuit.md) |
 | `lib/RestWebServer/library.json` | Derived "to work with WiFiNINA and avoid pulling in the lwip layer" | Runs on the framework `WiFi`/lwIP classes |
 | `lib/TimeLib/library.json` | "not yet updated for RP2350" | Used on the RP2350 |
-| `include/lwipopts.h` | `MEM_SIZE` comment: "for RP2350's 256KB heap" | 192 KB FreeRTOS heap; 520 KB SRAM |
+| `include/lwipopts.h` | `MEM_SIZE` 32 KB and larger pools, "for RP2350's 256KB heap" | Fixed: the sizes never took effect (the framework's precompiled `liblwip.a` uses its own 16 KB heap and pools); the file now keeps only the options the project sources see, and says so |
 
 # Code comments and identifiers
 

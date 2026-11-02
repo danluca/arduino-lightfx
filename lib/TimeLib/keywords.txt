@@ -6,9 +6,7 @@
 # Datatypes (KEYWORD1)
 #######################################
 
-NTPClient	KEYWORD1
 time_t	KEYWORD1
-TimeChangeRule	KEYWORD1
 Timezone	KEYWORD1
 TimeService	KEYWORD1
 
@@ -16,21 +14,19 @@ TimeService	KEYWORD1
 # Methods and Functions (KEYWORD2)
 #######################################
 
-begin	KEYWORD2
-end	KEYWORD2
+beginNTP	KEYWORD2
+endNTP	KEYWORD2
+isNtpRunning	KEYWORD2
+isSynchronized	KEYWORD2
+waitSynchronized	KEYWORD2
+syncCount	KEYWORD2
+lastSyncUTC	KEYWORD2
+lastSyncAge	KEYWORD2
 setTime	KEYWORD2
-setDrift	KEYWORD2
-addDrift	KEYWORD2
 applyTimezone	KEYWORD2
-timeStatus	KEYWORD2
-syncTimeNTP	KEYWORD2
-setSyncInterval	KEYWORD2
-syncLocalTimeMillis	KEYWORD2
-syncUTCTimeMillis	KEYWORD2
 breakTime	KEYWORD2
 makeTime	KEYWORD2
-setPoolServerName	KEYWORD2
-setRandomPort   KEYWORD2
+utcFromRtcMillis	KEYWORD2
 now	KEYWORD2
 nowMillis	KEYWORD2
 utcNow	KEYWORD2

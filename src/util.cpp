@@ -12,9 +12,6 @@
 #include "log.h"
 #include "constants.hpp"
 
-
-FixedQueue<TimeSync, 8> timeSyncs;
-
 /**
  * Adapted from the article https://rheingoldheavy.com/better-arduino-random-values/
  * <p>Not fast, timed at 64 ms on Arduino Uno allegedly</p>

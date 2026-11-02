@@ -28,31 +28,50 @@
 */
 
 #include <Arduino.h>
+#include <atomic>
 #include <cinttypes>
+#include <sys/time.h>
+#include <WiFi.h>
 #include "TimeService.h"
 #include "Timezone.h"
 #include "TimeLib.h"
-#include "PicoLog.h"
-#include <WiFi.h>
-#ifdef PICO_RP2040
-#include <hardware/rtc.h>
-#include "pico/util/datetime.h"
-#endif
 
-//TODO: ? (this is default implementation already in the platform code)
-// time_t pico_mktime(struct tm *tm) {
-  // return mktime(tm);
-// }
-
-/**
- * Default implementation for getSystemLocalClock prototype
- * @return milliseconds since boot
- */
-time_t defaultPlatformBootTimeMillis() {
-  return millis();
-}
+// The framework's system clock hook (cores/rp2040/posix.cpp) - sets the clock behind gettimeofday(). The lwIP SNTP client calls it through
+// the wrap below (linker option -Wl,--wrap=__setSystemTime in platformio.ini), so the framework implementation is __real___setSystemTime.
+extern "C" void __real___setSystemTime(unsigned long long sec, unsigned long usec);
 
 constexpr uint8_t monthDays[] = {31,28,31,30,31,30,31,31,30,31,30,31}; // API starts months from 1, this array starts from 0
+
+// SNTP state - written from the lwIP context (the sync hook below), read from any task
+static std::atomic<bool> ntpRunning {false};
+static std::atomic<uint32_t> ntpSyncCount {0};
+static std::atomic<uint32_t> ntpRejectedCount {0};
+static std::atomic<uint32_t> ntpLastSyncUtc {0};    // unix seconds fit 32 bits until 2106
+
+/**
+ * Replaces __setSystemTime for the lwIP SNTP client (SNTP_SET_SYSTEM_TIME_US), which calls it every time it receives a time from the server;
+ * the linker redirects the references with -Wl,--wrap=__setSystemTime.
+ * Runs in the lwIP context - keep it short, no logging, no blocking calls.
+ * Sets the system clock only when the time is within the valid range.
+ * @param sec seconds since 1/1/1970
+ * @param usec microseconds
+ */
+extern "C" void __wrap___setSystemTime(const unsigned long long sec, const unsigned long usec) {
+    if (sec < static_cast<unsigned long long>(TIME_VALID_MIN) || sec > static_cast<unsigned long long>(TIME_VALID_MAX)) {
+        ntpRejectedCount.fetch_add(1);
+        return;
+    }
+    __real___setSystemTime(sec, usec);
+    ntpLastSyncUtc.store(static_cast<uint32_t>(sec));
+    ntpSyncCount.fetch_add(1);
+}
+
+/**
+ * Milliseconds since boot, 64 bits (millis() wraps after 49 days)
+ */
+static time_t bootMillis() {
+  return static_cast<time_t>(to_us_since_boot(get_absolute_time()) / 1000ULL);
+}
 
 // the hour now
 int hour() {
@@ -152,7 +171,7 @@ int dayOfYear(const time_t t) {
 /**
  * Break the given local time_t into time components
  * See https://en.cppreference.com/w/c/chrono/tm.html for time elements values/ranges
- * @param timeInput time input to convert - seconds since 1/1/1970
+ * @param timeInput time input to convert - local seconds since 1/1/1970
  * @param tmItems the time structure to fill broken time fields into
  */
 void TimeService::breakTime(const time_t &timeInput, tmElements_t &tmItems) const {
@@ -205,76 +224,55 @@ time_t utcNow() {
  */
 time_t nowMillis() {
   const time_t utcMillis = utcNowMillis();
-  const time_t offsetMillis = timeService.tz->getOffset(utcMillis / 1000, false) * 1000;
+  const time_t offsetMillis = static_cast<time_t>(timeService.timezone()->getOffset(utcMillis / 1000, false)) * 1000;
   return utcMillis + offsetMillis;
 }
 
 /**
- * Calculates the current UTC time in milliseconds.
- * It computes the value based on the system clock, the synchronization offsets,
- * and the drift adjustment.
+ * The current UTC time in milliseconds, read from the system clock (kept in sync by the lwIP SNTP client).
+ * Until the first sync, the system clock counts from the epoch at boot.
  *
  * @return The current UTC time in milliseconds since January 1, 1970.
  */
 time_t utcNowMillis() {
-  return timeService.utcFromRtcMillis(timeService.getLocalClockMillisFunc());
+  timeval tv{};
+  gettimeofday(&tv, nullptr);
+  return static_cast<time_t>(tv.tv_sec) * 1000 + tv.tv_usec / 1000;
 }
 
 /**
- * Converts the given RTC timestamp in milliseconds to UTC time in milliseconds.
- * @param rtcMillis A reference to the time in milliseconds, as retrieved from the RTC.
+ * Converts the given boot-relative timestamp in milliseconds to UTC time in milliseconds.
+ * The system clock is boot-relative plus a delta that only changes when the clock is set, so the translation
+ * is the current delta - correct for timestamps captured since the last clock change (e.g. before the first sync).
+ * @param rtcMillis milliseconds since boot
  * @return The corresponding UTC time in milliseconds since January 1, 1970.
  */
 time_t TimeService::utcFromRtcMillis(const time_t &rtcMillis) const {
-  return (rtcMillis - syncLocalMillis) + syncUnixMillis + drift;
+  return rtcMillis + (utcNowMillis() - bootMillis());
 }
 
 /**
- * Converts the given real-time clock (RTC) time in milliseconds since the epoch
- * to local time accounting for timezone offsets.
+ * Converts the given boot-relative timestamp in milliseconds to local time in milliseconds, accounting for timezone offsets.
  *
- * @param rtcMillis A reference to the time_t value representing RTC milliseconds since the epoch.
+ * @param rtcMillis milliseconds since boot
  * @return The equivalent local time as time_t in milliseconds since the epoch.
  */
 time_t TimeService::localFromRtcMillis(const time_t &rtcMillis) const {
-  // similar logic with nowMillis
   const time_t utcMillis = utcFromRtcMillis(rtcMillis);
-  const time_t offsetMillis = tz->getOffset(utcMillis / 1000, false) * 1000;
+  const time_t offsetMillis = static_cast<time_t>(tz->getOffset(utcMillis / 1000, false)) * 1000;
   return utcMillis + offsetMillis;
 }
 
 /**
- * Sets the current time from a UTC value
+ * Sets the system clock from a UTC value
  * @param t current UTC time to set - seconds since 1/1/1970
  */
 void TimeService::setTime(const time_t t) {
-  const time_t sysClock = getLocalClockMillisFunc();
-  syncLocalMillis = sysClock;
-  syncUnixMillis = t * 1000;  //we store the absolute time in milliseconds
-#ifdef PICO_RP2040
-  tmElements_t tm{};
-  breakTime(t, tm);
-  datetime_t dt {};
-  rtc_get_datetime(&dt);
-  const int16_t fullYear = static_cast<int16_t>(tm.tm_year + TM_EPOCH_YEAR);
-  const bool timeNeedsUpdate = dt.year != fullYear || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
-                          dt.hour != tm.tm_hour || dt.min != tm.tm_min; //tolerate 1 min drift
-
-  if (timeNeedsUpdate) {
-    dt.year = fullYear;
-    dt.month = static_cast<int8_t>(tm.tm_mon+1);
-    dt.day = static_cast<int8_t>(tm.tm_mday);
-    dt.hour = static_cast<int8_t>(tm.tm_hour);
-    dt.min = static_cast<int8_t>(tm.tm_min);
-    dt.sec = static_cast<int8_t>(tm.tm_sec);
-    rtc_set_datetime(&dt);
-  }
-#endif
-
+  __real___setSystemTime(static_cast<unsigned long long>(t), 0);    // a manual set is not an NTP sync - bypasses the SNTP hook
 }
 
 /**
- * Sets the current time to the value built from individual elements
+ * Sets the system clock to the value built from individual elements
  * Note: Generally, no validity checks are performed on the input data
  * @param hr the hour of the day - 0-23
  * @param min the minute of the hour - 0-59
@@ -295,147 +293,72 @@ time_t TimeService::setTime(const uint16_t hr, const uint16_t min, const uint16_
   tm.tm_sec = sec;
   tm.tm_offset = offset;
   const time_t t = makeTime(tm);
-  //inlined the setTime(time_t) to avoid a redundant time break for RP2040
-  const time_t sysClock = getLocalClockMillisFunc();
-  syncLocalMillis = sysClock;
-  syncUnixMillis = t * 1000;  //we store the absolute time in milliseconds
-#ifdef PICO_RP2040
-  datetime_t dt{};
-  rtc_get_datetime(&dt);
-  const int16_t fullYear = static_cast<int16_t>(tm.tm_year + TM_EPOCH_YEAR);
-  const bool timeNeedsUpdate = dt.year != fullYear || dt.month != (tm.tm_mon+1) || dt.day != tm.tm_mday ||
-                          dt.hour != tm.tm_hour || dt.min != tm.tm_min; // tolerate 1 min drift
-
-  if (timeNeedsUpdate) {
-    dt.year = fullYear;
-    dt.month = static_cast<int8_t>(tm.tm_mon+1);
-    dt.day = static_cast<int8_t>(tm.tm_mday);
-    dt.hour = static_cast<int8_t>(tm.tm_hour);
-    dt.min = static_cast<int8_t>(tm.tm_min);
-    dt.sec = static_cast<int8_t>(tm.tm_sec);
-    rtc_set_datetime(&dt);
-  }
-#endif
+  setTime(t);
   return t;
 }
 
 /**
- * Increments the drift offset with the millisecond value provided
- * @param adjustment time drift adjustment in milliseconds
- * @return previous drift value
- */
-time_t TimeService::addDrift(const long adjustment) {
-  const time_t prevDrift = drift;
-  drift += adjustment;
-  return prevDrift;
-}
-
-/**
- * Set the drift offset to the millisecond value provided
- * @param adjustment time drift adjustment in milliseconds
- * @return previous drift value
- */
-time_t TimeService::setDrift(const long adjustment) {
-  const time_t prevDrift = drift;
-  drift = adjustment;
-  return prevDrift;
-}
-
-/**
- *
- * @param tZone the new timezone rule to apply
+ * Sets the time zone for local time and installs it in the C library.
+ * @param tZone the new timezone to apply - must outlive the time service (use a static/global object)
  */
 void TimeService::applyTimezone(Timezone &tZone) {
+  tZone.apply();
   tz = &tZone;
 }
 
-TimeService::TimeService(getSystemLocalClock platformTime) {
-  if (platformTime == nullptr) {
-    platformTime = defaultPlatformBootTimeMillis;
-  }
-  getLocalClockMillisFunc = platformTime;
-  syncLocalMillis = 0;
-  syncUnixMillis = 0;
-  drift = 0;
-  tz = &utcZone;
+bool TimeService::beginNTP(const IPAddress &server) {
+  if (!server.isSet())
+    return false;
+  if (!ntpRunning.exchange(true))
+    NTP.begin(server);
+  return true;
 }
 
-TimeService::TimeService(UDP& udp, getSystemLocalClock platformTime): ntpClient(udp) {
-  if (platformTime == nullptr) {
-    platformTime = defaultPlatformBootTimeMillis;
-  }
-  getLocalClockMillisFunc = platformTime;
-  syncLocalMillis = 0;
-  syncUnixMillis = 0;
-  drift = 0;
-  tz = &utcZone;
-}
-
-TimeService::TimeService(UDP& udp, const char* poolServerName, getSystemLocalClock platformTime): ntpClient(udp, poolServerName) {
-  if (platformTime == nullptr) {
-    platformTime = defaultPlatformBootTimeMillis;
-  }
-  getLocalClockMillisFunc = platformTime;
-  syncLocalMillis = 0;
-  syncUnixMillis = 0;
-  drift = 0;
-  tz = &utcZone;
-}
-
-TimeService::TimeService(UDP& udp, const IPAddress &poolServerIP, getSystemLocalClock platformTime): ntpClient(udp, poolServerIP) {
-  if (platformTime == nullptr)
-    platformTime = defaultPlatformBootTimeMillis;
-  getLocalClockMillisFunc = platformTime;
-  syncLocalMillis = 0;
-  syncUnixMillis = 0;
-  drift = 0;
-  tz = &utcZone;
-}
-
-void TimeService::begin(UDP* udp) {
-    ntpClient.begin(udp);
-#ifdef PICO_RP2040
-  if (!rtc_running())
-    rtc_init();
-#endif
-}
-
-void TimeService::setNTPServer(const char *poolServerName) {
-  ntpClient.setPoolServerName(poolServerName);
-}
-
-void TimeService::setNTPServer(const IPAddress &poolServerIP) {
-  ntpClient.setPoolServerIP(poolServerIP);
-}
-
-/**
- * If the NTP time sync is due, perform NTP time synchronization
- * @return whether the NTP sync was successful and decoded valid time
- */
-bool TimeService::syncTimeNTP() {
-#ifdef LOCAL_NTP_SERVER
-  //when using a local network NTP server, we can favor it over WiFi time due to its local availability.
-  //in some networks, the WiFi module is not able to reach the default NTP server pool, hence prompting for a local NTP server
-  time_t epochTime = 0;
-  int delay = 0; //milliseconds delay in processing the time data received; accounts for network lag
-  const bool success = ntpClient.update(epochTime, delay);
-  if (success) {
-    setTime(epochTime);
-    syncLocalMillis -= delay; //the sys millis is set to now in the call above, adjust it with the delay reported by the NTP service
-  }
-  return success;
-#else
-  // leverage the WiFi time - in the case of leveraging the global NTP server pool, the WiFi module would also succeed in getting time from NTP
-  if (const time_t epochTime = WiFi.getTime(); epochTime > 0) {
-    setTime(epochTime);
+bool TimeService::beginNTP(const char *serverName) {
+  if (ntpRunning.load())
     return true;
-  }
-  return false;
-#endif
+  IPAddress addr;
+  if (!::hostByName(serverName, addr))
+    return false;
+  return beginNTP(addr);
 }
 
-void TimeService::end() {
-  ntpClient.end();
+void TimeService::endNTP() {
+  if (ntpRunning.exchange(false))
+    sntp_stop();
+}
+
+bool TimeService::isNtpRunning() const {
+  return ntpRunning.load();
+}
+
+bool TimeService::isSynchronized() const {
+  return ntpSyncCount.load() > 0;
+}
+
+bool TimeService::waitSynchronized(const uint32_t timeoutMs) const {
+  const uint32_t start = millis();
+  while (!isSynchronized() && (millis() - start) < timeoutMs)
+    delay(100);
+  return isSynchronized();
+}
+
+uint32_t TimeService::syncCount() const {
+  return ntpSyncCount.load();
+}
+
+time_t TimeService::lastSyncUTC() const {
+  return static_cast<time_t>(ntpLastSyncUtc.load());
+}
+
+time_t TimeService::lastSyncAge() const {
+  if (ntpSyncCount.load() == 0)
+    return -1;
+  return utcNow() - lastSyncUTC();
+}
+
+uint32_t TimeService::rejectedCount() const {
+  return ntpRejectedCount.load();
 }
 
 // Timezone-aware versions of time component functions

@@ -1,81 +1,70 @@
-/*----------------------------------------------------------------------*
- * Arduino Timezone Library                                             *
- * Jack Christensen Mar 2012                                            *
- *                                                                      *
- * Arduino Timezone Library Copyright (C) 2018,2025 by Jack Christensen and  *
- * licensed under GNU GPL v3.0, https://www.gnu.org/licenses/gpl.html   *
- *----------------------------------------------------------------------*/
+// MIT License
+//
+// Copyright (c) by Dan Luca. All rights reserved.
+//
 #pragma once
 #ifndef TIMEZONE_H_INCLUDED
 #define TIMEZONE_H_INCLUDED
 #include <CoreTimeCalc.h>
-#include <fixed_queue.h>
 #include "TimeDef.h"
-
-// convenient constants for TimeChangeRules
-enum week_t:uint8_t {Last, First, Second, Third, Fourth};
-enum dow_t:uint8_t {Sun=0, Mon, Tue, Wed, Thu, Fri, Sat};
-enum month_t:uint8_t {Jan=0, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec};
-
-// structure to describe rules for when daylight/summer-time begins, or when standard time begins.
-struct TimeChangeRule {
-    char name[6];      // short name, five chars max
-    week_t week;      // First, Second, Third, Fourth, or Last week of the month
-    dow_t dow;       // day of week, 0=Sun, 1=Mon, ... 6=Sat
-    month_t month;     // 0=Jan, 1=Feb, ... 11=Dec
-    uint8_t hour;      // 0-23
-    int offsetMin;        // offset from UTC in minutes (more user-friendly)
-};
-struct dstTransitions {
-    time_t m_dstUTC{};        // dst start for the given year, given in UTC (seconds)
-    time_t m_stdUTC{};        // std time start for given year, given in UTC (seconds)
-    time_t m_dstLoc{};        // dst start for the given year, given in local time (seconds)
-    time_t m_stdLoc{};        // std time start for given year, given in local time (seconds)
-    uint m_year{};            // year of the update
-};
 
 /**
  * @class Timezone
- * @brief Represents a time zone, including rules for daylight saving time (DST) and standard time.
+ * @brief A time zone defined by a POSIX TZ rule string (e.g. "CST6CDT,M3.2.0,M11.1.0"), resolved by the C library.
  *
- * The Timezone class provides thread-safe methods to handle time conversions, determine whether a time
- * is in DST or standard time, and to manage time zone rules.
+ * The standard C library (newlib) owns the zone rules: the TZ string is installed once with apply() (setenv + tzset) and the
+ * conversions use localtime_r()/mktime(), which newlib guards with its retargeted locks (safe across tasks and cores).
+ * The framework ships the POSIX strings for all IANA zones in <TZ.h> (TZ_America_Chicago and so on).
+ *
+ * Limitations (by design, this is an embedded device): one standard offset and at most one DST rule per zone - no historical
+ * rule changes, and rule changes need a firmware update. Only one zone can be applied at a time - the C library keeps the zone
+ * in a process-wide variable. A zone created without a POSIX rule is plain UTC and never touches the C library state.
  */
 class Timezone {
-    public:
-        Timezone(const TimeChangeRule &dstStart, const TimeChangeRule &stdStart, const char *name);
-        Timezone(const TimeChangeRule &stdTime, const char *name);
-        [[nodiscard]] time_t toLocal(const time_t &utc);
-        [[nodiscard]] time_t toUTC(const time_t &local);
-        [[nodiscard]] bool isDST(const time_t &time, bool bLocal = true);
-        void updateZoneInfo(tmElements_t &tm, const time_t &time);
-        /** The full IANA time zone name */
-        [[nodiscard]] const char *getName() const { return m_name; }
-        /** The short zone name for the given local time_t */
-        [[nodiscard]] const char *getShort(const time_t local) { return isDST(local) ? m_dst.name : m_std.name; }
-        /** The Daylight Savings Time short zone name */
-        [[nodiscard]] const char *getDSTShort() const { return m_dst.name; }
-        /** The Standard Time short zone name */
-        [[nodiscard]] const char *getSTDShort() const { return m_std.name; }
-        /** daylight savings time offset from UTC in seconds (standard unit) */
-        [[nodiscard]] int getDSTOffset() const { return m_dst.offsetMin*static_cast<int>(SECS_PER_MIN); }
-        /** standard time offset from UTC in seconds (standard unit) */
-        [[nodiscard]] int getSTDOffset() const { return m_std.offsetMin*static_cast<int>(SECS_PER_MIN); }
-        /** local time_t offset from UTC in seconds (standard unit) */
-        [[nodiscard]] int getOffset(const time_t time, const bool bLocal=true) { return (isDST(time, bLocal) ? m_dst.offsetMin : m_std.offsetMin)*static_cast<int>(SECS_PER_MIN); }
-        /** Whether this time zone observes DST */
-        [[nodiscard]] bool isDSTObserved() const { return m_dst.offsetMin != m_std.offsetMin; }
+public:
+    /**
+     * @param name the IANA zone name, for display (e.g. "America/Chicago")
+     * @param posixTz the POSIX TZ rule (e.g. TZ_America_Chicago from TZ.h); nullptr or empty means UTC
+     */
+    explicit Timezone(const char *name, const char *posixTz = nullptr);
 
-    protected:
-        void calcTimeChanges(int year);
-        const dstTransitions* getTransitions(int year);
+    /** Installs this zone as the C library local zone (setenv TZ + tzset). Call before the tasks that use local time are started. */
+    void apply() const;
 
-    private:
-        char m_name[33]{};        // name of the timezone, e.g. "America/New_York", max 32 chars
-        const TimeChangeRule m_dst;     // rule for the start of dst or summer-time for any year
-        const TimeChangeRule m_std;     // rule for start of standard time for any year
-        mutex_t mutex;
-        FixedQueue<dstTransitions, 5> currentTransitions{};   // current DST transitions for the last 5 years inquired
+    /** Convert the given UTC time to local time (standard or daylight time, as appropriate) */
+    [[nodiscard]] time_t toLocal(const time_t &utc) const;
+    /**
+     * Convert the given local time to UTC. Local times inside the DST gap resolve per the C library mktime rules, and
+     * the repeated hour of the DST-to-standard transition resolves to the first occurrence - avoid relying on those instants.
+     */
+    [[nodiscard]] time_t toUTC(const time_t &local) const;
+    /** Whether the given time falls in daylight saving time */
+    [[nodiscard]] bool isDST(const time_t &time, bool bLocal = true) const;
+    /** Offset from UTC in seconds for the given time (daylight or standard, as appropriate) */
+    [[nodiscard]] int getOffset(const time_t &time, bool bLocal = true) const;
+    /** Updates the zone name, offset and dst fields of the time elements structure; the tm fields must hold the broken down *local* time */
+    void updateZoneInfo(tmElements_t &tm, const time_t &localTime) const;
+
+    /** The IANA time zone name */
+    [[nodiscard]] const char *getName() const { return m_name; }
+    /** The POSIX TZ rule string; empty for UTC */
+    [[nodiscard]] const char *getPosixTz() const { return m_posixTz; }
+    /** Whether this zone is UTC (no rule) */
+    [[nodiscard]] bool isUtc() const { return m_posixTz[0] == '\0'; }
+    /** The short zone name (abbreviation) in effect at the given time, e.g. CST or CDT */
+    [[nodiscard]] const char *getShort(const time_t &time, bool bLocal = true) const;
+
+private:
+    struct Resolved {
+        int offset;         // seconds east of UTC
+        bool dst;
+        const char *abbr;
+    };
+    [[nodiscard]] Resolved resolveUTC(const time_t &utc) const;
+    [[nodiscard]] Resolved resolveLocal(const time_t &local) const;
+
+    char m_name[33]{};          // IANA name of the timezone, e.g. "America/New_York", max 32 chars
+    char m_posixTz[64]{};       // POSIX TZ rule; the C library keeps its own copy in the environment
 };
 
 extern Timezone utcZone;

@@ -32,7 +32,7 @@ Short, actionable guidance to help an AI coding agent be immediately productive 
 
 - Integration & external deps:
     - FastLED for LED control (see `include/` and `src/*` effects).
-    - ArduinoJson, StreamUtils (`platformio.ini` `lib_deps`); Arduino-Pico core libraries `WiFi` (CYW43439 + lwIP, options in `include/lwipopts.h`), `HTTPClient`, `LEAmDNS`, `PicoOTA`, LittleFS; local libraries under `lib/`.
+    - ArduinoJson, StreamUtils (`platformio.ini` `lib_deps`); Arduino-Pico core libraries `WiFi` (CYW43439 + the framework's precompiled lwIP - the framework's `include/lwipopts.h` is the master; the project's `include/lwipopts.h` only mirrors the options its sources see and cannot change sizes), `HTTPClient`, `LEAmDNS`, `PicoOTA`, LittleFS; local libraries under `lib/`.
     - Debugging uses the `rp2350-dbg` env with a Raspberry Pi Debug Probe; `docs/debugging.md` was written for the RP2040 board and is only partially applicable.
 
 - Typical investigation entry points (examples):

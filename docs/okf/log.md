@@ -1,5 +1,17 @@
 # Bundle Update Log
 
+## 2026-10-29 (lwIP options)
+* **Changed in code** (working tree, uncommitted): `include/lwipopts.h` was trimmed to the options the project sources see through the lwIP headers (platform hooks and feature switches that shape the lwIP structures); the sizing, TCP and SNTP options were removed. A header comment states that the framework's `include/lwipopts.h` is the master, that `lib/rp2350/liblwip.a` is precompiled, and which settings cannot be changed from the project. `LWIP_ASSERT_CORE_LOCKED` and `LWIP_NETIF_TX_SINGLE_PBUF` were added to match the framework values.
+* **Finding**: the firmware runs on the framework's lwIP sizes (16 KB heap, 24 pbufs, 5 TCP and 7 UDP PCBs), read from the `rp2350-rel` ELF symbol sizes. The earlier 32 KB heap and larger pools in the project file never took effect. The macros the project sees match the framework's for every remaining option.
+* **Updated concepts**: [framework customizations](/build/framework-customizations.md), [memory model](/architecture/memory-model.md), [Wi-Fi and mDNS](/network/wifi-and-mdns.md), [time sync](/scheduling/time-sync.md), [overview](/overview.md), [documentation drift](/issues/documentation-drift.md). AGENTS.md, README.md and `.github/copilot-instructions.md` were corrected as well.
+* **Verified**: `rp2350-rel` builds. Not tested on hardware.
+
+## 2026-10-27 (standard time management)
+* **Changed in code** (working tree, uncommitted): the custom NTP client, the drift correction and the hard-coded zone rules in `lib/TimeLib` were replaced by platform primitives. The system clock is set by the lwIP SNTP client (one server, 12 h poll, `SNTP_UPDATE_DELAY` and `-Wl,--wrap=__setSystemTime` in `platformio.ini`); local time uses the POSIX `TZ_America_Chicago` string from the framework's `TZ.h` through newlib. `timeUpdate` is now an hourly housekeeping task. The `/status.json` drift fields were replaced by `syncCount`, `syncRejected`, `lastSync` and `lastSyncAge`, and the web UI shows the last sync.
+* **Updated concepts**: [time sync](/scheduling/time-sync.md), [software timers](/architecture/software-timers.md), [memory model](/architecture/memory-model.md), [system status flags](/architecture/system-status-flags.md), [framework customizations](/build/framework-customizations.md), [local libraries](/build/local-libraries.md), [REST API](/network/rest-api.md), [Wi-Fi time fallback](/issues/wifi-gettime-fallback.md).
+* **Finding**: the framework's lwIP is precompiled with its own `lwipopts.h`, so SNTP settings in `include/lwipopts.h` do not reach it. (The buffer and pool sizes were checked afterwards - see the 2026-10-29 entry.)
+* **Verified**: `rp2350-rel` builds; the compiled SNTP object holds the 12 h interval and its clock-set call goes through the wrap. Not tested on hardware.
+
 ## 2026-10-03 (fixes after review)
 * **Fixed in code** (working tree after `6d11a87`, uncommitted): [Wi-Fi time fallback](/issues/wifi-gettime-fallback.md), [static IP config unused](/issues/static-ip-config-unused.md) (Dev reservation is 192.168.0.75), [audio remnants](/issues/audio-remnants.md), and the `rp2040_rom_version()` and missing `stringutils.h` errors that broke `LOGGING_ENABLED` builds.
 * **Fixed in docs**: AGENTS.md, README.md, `.github/copilot-instructions.md`, `.claude/instructions.md`, script headers and `scripts/synthetic/README.md` now describe the Plasma 2350 W. [Documentation drift](/issues/documentation-drift.md) is now mitigated.

@@ -223,17 +223,10 @@ void web::handleGetStatus(WebClient &client) {
     time["zone"] = timeService.timezone()->getName();
     time["zoneShort"] = timeService.timezone()->getShort(curTime);
     time[csHoliday] = holidayToString(currentHoliday()); //time derived holiday
-    time["syncSize"] = timeSyncs.size();
-    time["averageDrift"] = getAverageTimeDrift();
-    time["lastDrift"] = getLastTimeDrift();
-    time["totalDrift"] = getTotalDrift();
-    time["currentDrift"] = timeService.getDrift();
-    const auto syncs = time["syncs"].to<JsonArray>();
-    for (const auto &[localMillis, unixMillis]: timeSyncs) {
-        auto jts = syncs.add<JsonObject>();
-        jts["localMillis"] = localMillis;
-        jts["unixMillis"] = unixMillis;
-    }
+    time["syncCount"] = timeService.syncCount();   //SNTP syncs accepted since boot
+    time["syncRejected"] = timeService.rejectedCount();   //SNTP replies rejected as outside the valid time range
+    time["lastSync"] = timeService.lastSyncUTC();   //UTC unix time of the last SNTP sync; 0 if none
+    time["lastSyncAge"] = timeService.lastSyncAge();   //seconds since the last SNTP sync; -1 if none
     const auto alarms = time["alarms"].to<JsonArray>();
     for (const auto &al: getScheduledAlarmsCopy()) {
         auto jal = alarms.add<JsonObject>();
