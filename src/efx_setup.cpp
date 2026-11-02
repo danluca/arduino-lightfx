@@ -11,6 +11,7 @@
 #include "task_msg.h"
 #include "stringutils.h"
 #include "constants.hpp"
+#include "mesh_fx_session.h"
 #include <hardware/watchdog.h>
 
 //~ Global variables definition
@@ -35,6 +36,7 @@ volatile uint8_t dotBpm = 30;
 volatile uint16_t hueDiff = 256;
 std::atomic<bool> stripBrightnessLocked = false;
 static bool fxStateDirty = false;  // set when FX state needs persisting; coalesces saves to one per fx_run iteration
+static MeshFxSession meshFxSession;
 
 static_assert(FRAME_SIZE < NUM_PIXELS, "FRAME_SIZE must not exceed NUM_PIXELS");
 static_assert(FRAME_SIZE > 10, "FRAME_SIZE must be at least 10 pixels");
@@ -107,9 +109,10 @@ void readFxState() {
 
 void saveFxState() {
     JsonDocument doc;
+    const bool meshActive = meshFxSession.active();
     doc[csRandomSeed] = random16_get_seed();
-    doc[csAutoFxRoll] = fxRegistry.isAutoRoll();
-    doc[csCurFx] = fxRegistry.curEffectPos();
+    doc[csAutoFxRoll] = meshActive ? meshFxSession.previousAutoRoll() : fxRegistry.isAutoRoll();
+    doc[csCurFx] = meshActive ? meshFxSession.previousEffect() : fxRegistry.curEffectPos();
     doc[csStripBrightness] = stripBrightness.load();
     doc[csColorTheme] = holidayToString(paletteFactory.getHoliday());
     doc[csAutoColorAdjust] = paletteFactory.isAuto();
@@ -246,8 +249,28 @@ void fx_run() {
     FxActionMessage msg{};
     if (pdTRUE == xQueueReceive(fxQueue, &msg, 0)) {
         switch (msg.action) {
-            case AUTO_FX: fxRegistry.autoRoll(static_cast<bool>(msg.data)); break;
-            case MANUAL_FX: fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data)); break;
+            case AUTO_FX:
+                meshFxSession.clear();
+                fxRegistry.autoRoll(static_cast<bool>(msg.data));
+                break;
+            case MANUAL_FX:
+                meshFxSession.clear();
+                fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data));
+                break;
+            case MESH_FX_UPDATE:
+                (void)meshFxSession.begin(fxRegistry.effectPosToRestore(), fxRegistry.isAutoRoll());
+                fxRegistry.autoRoll(false);
+                fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data));
+                break;
+            case MESH_FX_RESTORE:
+                if (meshFxSession.active()) {
+                    const uint16_t previousEffect = meshFxSession.previousEffect();
+                    const bool previousAutoRoll = meshFxSession.previousAutoRoll();
+                    meshFxSession.clear();
+                    fxRegistry.autoRoll(previousAutoRoll);
+                    fxRegistry.restoreEffectPos(previousEffect);
+                }
+                break;
             case COLOR_THEME: paletteFactory.setHoliday(static_cast<Holiday>(msg.data)); break;
             case SLEEP_ENABLED: fxRegistry.enableSleep(static_cast<bool>(msg.data)); break;
             case SLEEP_STATE: fxRegistry.setSleepState(static_cast<bool>(msg.data)); break;

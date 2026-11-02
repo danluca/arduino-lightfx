@@ -7,6 +7,8 @@
 #include <ArduinoJson.h>
 #include <RestWebServer.h>
 
+#define WL_STREAM_BUFFER_SIZE (1024u)
+
 namespace web {
     extern WebServer server;
     extern bool server_handlers_configured;

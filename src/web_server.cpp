@@ -18,6 +18,7 @@
 #include "stringutils.h"
 #include "task_msg.h"
 #include "HealthMonitor.h"
+#include "mesh_fx_session.h"
 #include "index_html.h"
 #include "pixel_css.h"
 #include "pixel_js.h"
@@ -54,11 +55,15 @@ static constexpr uint16_t serverPort = 80;
 static auto mdnsStatus = false;
 #endif
 
-#define WL_STREAM_BUFFER_SIZE   (1024u)
-
 String masterBoardName;
 WebServer web::server;
 bool web::server_handlers_configured = false;
+
+static MeshFxActivity masterControlActivity;
+static IPAddress masterControlIp;
+static uint32_t lastRestoreQueueFailureMs = 0;
+
+static constexpr uint32_t masterRestoreRetryIntervalMs = 5UL * 1000UL;
 
 /**
  * @brief A map that associates file paths with their corresponding in-memory resources for serving static content.
@@ -80,6 +85,64 @@ static const std::map<std::string, const char *> inFlashResources PROGMEM = {
     {"/stats.js", stats_js},
     {"/stats.html", stats_html}
 };
+
+/**
+ * Determines whether the `/fx` request was made by another LightFX board that is a master
+ * @param request `/fx` PUT web request
+ * @param doc the JSON document from `/fx` request
+ * @return whether the request came from a master board
+ */
+static bool isMasterFxUpdate(const WebRequest &request, const JsonDocument &doc) {
+    const String userAgent = request.header(kHeaderUserAgent);
+    return userAgent.startsWith(kUaBoardPrefix) && doc[strEffect].is<uint16_t>() &&
+        doc[csAuto].is<bool>() && !doc[csAuto].as<bool>() &&
+        doc[csBroadcast].is<bool>() && !doc[csBroadcast].as<bool>() &&
+        doc["source"].is<String>() && doc["source"].as<String>().length() > 0;
+}
+
+/**
+ * Resets the master control variables
+ */
+static void clearMasterControl() {
+    masterControlActivity.clear();
+    masterControlIp = IPAddress();
+    masterBoardName = "";
+    lastRestoreQueueFailureMs = 0;
+}
+
+/**
+ * Updates the master control variables with information from the master board
+ * @param masterIp the IP address of the master board
+ * @param masterName name of the master board
+ */
+static void recordMasterControl(const IPAddress &masterIp, const String &masterName) {
+    masterControlActivity.record(millis());
+    masterControlIp = masterIp;
+    masterBoardName = masterName;
+    log_info(F("Mesh FX control received from %s (%s)"), masterBoardName.c_str(), masterControlIp.toString().c_str());
+}
+
+/**
+ * Checks whether the timeout of master control has been reached (in which case signals the reset to previous mode)
+ */
+static void checkMasterControlTimeout() {
+    if (!masterControlActivity.active())
+        return;
+
+    const uint32_t nowMs = millis();
+    constexpr uint32_t timeoutMs = MESH_CONTROL_TIMEOUT_MINUTES * 60UL * 1000UL;
+    if (masterControlActivity.timedOut(nowMs, timeoutMs)) {
+        constexpr FxActionMessage msg{.action = MESH_FX_RESTORE, .data = 0};
+        if (xQueueSend(fxQueue, &msg, 0) == pdPASS) {
+            log_warn(F("Mesh master %s (%s) has not sent an FX update for %u minutes; restoring local FX state"),
+                masterBoardName.c_str(), masterControlIp.toString().c_str(), static_cast<unsigned>(MESH_CONTROL_TIMEOUT_MINUTES));
+            clearMasterControl();
+        } else if (lastRestoreQueueFailureMs == 0 || nowMs - lastRestoreQueueFailureMs >= masterRestoreRetryIntervalMs) {
+            log_error(F("Failed to queue mesh FX restoration; retrying while the FX queue is full"));
+            lastRestoreQueueFailureMs = nowMs;
+        }
+    }
+}
 
 /**
  * Adds the current date as an HTTP header for the current outgoing response
@@ -310,37 +373,59 @@ void web::handlePutConfig(WebClient &client) {
     JsonDocument resp;
     const auto upd = resp["updates"].to<JsonObject>();
     BaseType_t qResult = pdTRUE;
-    // Effect change requests may be ignored based on compile-time flag and origin
-    if (doc[csAuto].is<bool>()) {
+    const bool boardFxSync = isMasterFxUpdate(req, doc);
 #if IGNORE_WEB_EFFECT_CHANGES == 1
-        if (!isUi) {
-            log_warn(F("Ignoring AUTO_FX change from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
-        } else
+    const bool masterFxSync = boardFxSync && isUi;
+#else
+    const bool masterFxSync = boardFxSync;
 #endif
-        {
-            const bool autoAdvance = doc[csAuto].as<bool>();
-            const FxActionMessage msg = {AUTO_FX, autoAdvance};
-            if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
-                log_error(F("Error sending AUTO_FX message to FX queue with value %d - error %ld"), autoAdvance, qResult);
-            upd[csAuto] = autoAdvance;
-        }
-    }
-    if (doc[strEffect].is<uint16_t>()) {
-#if IGNORE_WEB_EFFECT_CHANGES == 1
-        if (!isUi) {
-            log_warn(F("Ignoring MANUAL_FX change from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
-            resp["talkToHand"] = true;
-        } else
-#endif
-        {
-            const auto nextFx = doc[strEffect].as<uint16_t>();
-            const FxActionMessage msg = {MANUAL_FX, nextFx};
-            if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
-                log_error(F("Error sending MANUAL_FX message to FX queue with value %d - error %ld"), nextFx, qResult);
+
+    if (masterFxSync) {
+        const auto nextFx = doc[strEffect].as<uint16_t>();
+        const FxActionMessage msg{MESH_FX_UPDATE, nextFx};
+        if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
+            log_error(F("Error sending MESH_FX_UPDATE message to FX queue with value %hu - error %ld"), nextFx, qResult);
+        else {
+            recordMasterControl(client.remoteIP(), doc["source"].as<String>());
+            upd[csAuto] = false;
             upd[strEffect] = nextFx;
-            if (doc["source"].is<String>()) {
-                const auto source = doc["source"].as<String>();
-                masterBoardName = source;
+        }
+    } else if (boardFxSync) {
+        log_warn(F("Ignoring master FX sync from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
+        resp["talkToHand"] = true;
+    } else {
+        // Effect change requests may be ignored based on compile-time flag and origin
+        if (doc[csAuto].is<bool>()) {
+#if IGNORE_WEB_EFFECT_CHANGES == 1
+            if (!isUi) {
+                log_warn(F("Ignoring AUTO_FX change from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
+            } else
+#endif
+            {
+                const bool autoAdvance = doc[csAuto].as<bool>();
+                const FxActionMessage msg = {AUTO_FX, autoAdvance};
+                if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
+                    log_error(F("Error sending AUTO_FX message to FX queue with value %d - error %ld"), autoAdvance, qResult);
+                else if (masterControlActivity.active())
+                    clearMasterControl();
+                upd[csAuto] = autoAdvance;
+            }
+        }
+        if (doc[strEffect].is<uint16_t>()) {
+#if IGNORE_WEB_EFFECT_CHANGES == 1
+            if (!isUi) {
+                log_warn(F("Ignoring MANUAL_FX change from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
+                resp["talkToHand"] = true;
+            } else
+#endif
+            {
+                const auto nextFx = doc[strEffect].as<uint16_t>();
+                const FxActionMessage msg = {MANUAL_FX, nextFx};
+                if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
+                    log_error(F("Error sending MANUAL_FX message to FX queue with value %d - error %ld"), nextFx, qResult);
+                else if (masterControlActivity.active())
+                    clearMasterControl();
+                upd[strEffect] = nextFx;
             }
         }
     }
@@ -812,6 +897,7 @@ void web::server_setup() {
  */
 void web::webserver() {
     server.handleClient();
+    checkMasterControlTimeout();
 #if MDNS_ENABLED==1
     if (server.state() == HTTPServer::IDLE)
         mdnsStatus = MDNS.update();

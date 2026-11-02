@@ -41,20 +41,23 @@ uint16_t EffectRegistry::nextEffectPos(const uint16_t efx) {
     return lastEffectIndex;
 }
 
-uint16_t EffectRegistry::nextEffectPos() {
-    if (!autoSwitch || sleepState)
-        return desiredEffectIndex;
-    desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
-    //increment past the sleep effect or an undesired effect for this holiday, if landed on it
-    const Holiday holiday = paletteFactory.getHoliday();
-    while (desiredEffectIndex == sleepEffectIndex || !effectInfos[desiredEffectIndex]->effectiveSelectionWeight(holiday))
-        desiredEffectIndex = inc(desiredEffectIndex, 1, effectsCount);
-    transitionEffect();
-    return lastEffectIndex;
-}
-
 uint16_t EffectRegistry::curEffectPos() const {
     return desiredEffectIndex;
+}
+
+uint16_t EffectRegistry::effectPosToRestore() const {
+    return sleepState ? beforeSleepEffectIndex : desiredEffectIndex;
+}
+
+void EffectRegistry::restoreEffectPos(const uint16_t efx) {
+    if (effectsCount == 0)
+        return;
+    const uint16_t restoreIndex = capu(efx, effectsCount - 1);
+    if (sleepState) {
+        beforeSleepEffectIndex = restoreIndex;
+        nextEffectPos(sleepEffectIndex);
+    } else
+        nextEffectPos(restoreIndex);
 }
 
 uint16_t EffectRegistry::nextRandomEffectPos() {

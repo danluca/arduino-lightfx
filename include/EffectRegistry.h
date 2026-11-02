@@ -38,6 +38,8 @@ public:
     uint16_t nextEffectPos(const char* id);
 
     [[nodiscard]] uint16_t curEffectPos() const;
+    [[nodiscard]] uint16_t effectPosToRestore() const;
+    void restoreEffectPos(uint16_t efx);
 
     uint16_t nextRandomEffectPos();
 
