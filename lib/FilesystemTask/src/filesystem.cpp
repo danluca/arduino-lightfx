@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include <FreeRTOS.h>
@@ -33,8 +33,8 @@ static auto rootDir = FS_PATH_SEPARATOR;
 void fsExecute();
 void fsInit();
 
-// filesystem task definition - priority is overwritten during setup, see SynchronizedFS::begin
-TaskDef fsDef {fsInit, fsExecute, 1536, "FS", 255, CORE_0};
+// Filesystem priority is set one above the caller in SynchronizedFS::begin.
+static TaskDef fsDef {.setup = fsInit, .loop = fsExecute, .stackSize = 1536, .threadName = "FS", .priority = 255, .core = CORE_0};
 
 /**
  * Structure of filesystem function arguments - the filesystem task receives a pointer to this structure in the
@@ -47,6 +47,13 @@ struct fsOperationData {
     size_t size=0;
     bool ownsContent=false;
 };
+static constexpr bool canRaiseFilesystemPriority(const UBaseType_t callerPriority) {
+    return callerPriority < configMAX_PRIORITIES - 1;
+}
+
+static_assert(canRaiseFilesystemPriority(TaskPriorityPolicy::Base), "The normal filesystem caller priority must be raisable");
+static_assert(!canRaiseFilesystemPriority(configMAX_PRIORITIES - 1), "The highest caller priority must be rejected for filesystem startup");
+
 
 /**
  * Structure of the message sent to the filesystem task - internal use only
@@ -382,11 +389,29 @@ bool SynchronizedFS::begin() {
  * This method can be called from any task
  */
 bool SynchronizedFS::begin(FS &fs) {
+    const UBaseType_t callerPriority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle());
+    if (!canRaiseFilesystemPriority(callerPriority)) {
+        log_error(F("Cannot start filesystem task: caller priority %u cannot be raised within the FreeRTOS priority range"), callerPriority);
+        return false;
+    }
+
     fsPtr = &fs;
     queue = xQueueCreate(32, sizeof(fsTaskMessage*));
-    //mirror the priority of the calling task - the filesystem task is intended to have the same priority
-    fsDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle())+1;
+    if (queue == nullptr) {
+        fsPtr = nullptr;
+        log_error(F("Cannot start filesystem task: failed to allocate its request queue"));
+        return false;
+    }
+    // Keep the filesystem worker one priority above its caller.
+    fsDef.priority = static_cast<uint8_t>(callerPriority + 1);
     fsTask = Scheduler.startTask(&fsDef);
+    if (fsTask == nullptr) {
+        vQueueDelete(queue);
+        queue = nullptr;
+        fsPtr = nullptr;
+        log_error(F("Cannot start filesystem task: scheduler could not create the task"));
+        return false;
+    }
     TaskStatus_t tStat;
     vTaskGetTaskInfo(fsTask->getTaskHandle(), &tStat, pdFALSE, eReady);
     log_info(F("Filesystem task [%s] - priority %d - has been setup id %u. Events are dispatching."), tStat.pcTaskName, tStat.uxCurrentPriority, tStat.xTaskNumber);

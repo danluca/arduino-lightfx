@@ -22,6 +22,24 @@
 #include <task.h>
 #include <deque>
 
+namespace TaskPriorityPolicy {
+    inline constexpr UBaseType_t Base = configMAX_PRIORITIES / 2;
+    inline constexpr UBaseType_t Fx = Base + 1;
+    inline constexpr UBaseType_t Mic = Base - 1;
+    inline constexpr UBaseType_t Alarm = Base - 1;
+    inline constexpr UBaseType_t SerialLogger = Base - 2;
+    inline constexpr UBaseType_t FrameworkReservedFloor = configMAX_PRIORITIES - 2;
+
+    static_assert(configMAX_PRIORITIES >= 7, "FreeRTOS priority count is too small for the application priority policy");
+    static_assert(configMAX_PRIORITIES < 256, "TaskDef priority must reserve an 8-bit inherit-priority sentinel");
+    static_assert(SerialLogger > 0 && Alarm > 0 && Base > 0 && Fx < configMAX_PRIORITIES,
+                  "Application task priorities must be valid FreeRTOS priorities");
+    static_assert(SerialLogger < Alarm && Alarm < Base && Base < Fx,
+                  "Application task priorities must preserve their intended ordering");
+    static_assert(Fx < FrameworkReservedFloor,
+                  "Application task priorities must remain below framework-reserved high priorities");
+}
+
 extern "C" {
     typedef void (*NoArgTask)();
     typedef void (*VoidArgTask)(void *);
@@ -36,9 +54,9 @@ enum CoreAffinity:uint8_t {
 struct TaskDef {
     NoArgTask setup{};                  // setup function pointer (called once), may be null
     NoArgTask loop{};                   // loop function pointer (called repeatedly indefinitely), cannot be null
-    const uint32_t stackSize {1024};    // stack size in bytes to allocate to the new thread (default 1024)
+    const uint32_t stackSize {1024};    // FreeRTOS stack depth in words to allocate to the new thread (default 1024)
     const char* threadName {};          // custom thread name provided optionally; if not provided thread name is built generically using "Thd N" pattern
-    uint8_t priority {1};              // the task priority - must be between 1 and configMAX_PRIORITIES-1; the IDLE task has priority 0; value >= configMAX_PRIORITIES means inherit from launching task
+    uint8_t priority {1};              // valid priorities are 1..configMAX_PRIORITIES-1; values >= configMAX_PRIORITIES inherit the launching task's priority
     CoreAffinity core {CORE_0};         // which core to run on - default to main core (0)
 };
 

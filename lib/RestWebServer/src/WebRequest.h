@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #ifndef WEBREQUEST_H
@@ -27,7 +27,7 @@ enum HTTPRawStatus { RAW_START, RAW_WRITE, RAW_END, RAW_ABORTED };
 #define HTTP_MAX_POST_DATA_LENGTH 4096
 #endif
 
-typedef struct {
+typedef struct HTTPUpload {
     HTTPUploadStatus status {UPLOAD_FILE_START};
     String  filename;
     String  name;
@@ -37,7 +37,7 @@ typedef struct {
     uint8_t buf[HTTP_UPLOAD_BUFLEN] {};
 } HTTPUpload;
 
-typedef struct {
+typedef struct HTTPRaw {
     HTTPRawStatus status {RAW_START};
     size_t  totalSize {0};   // content size
     size_t  currentSize {0}; // size of data currently in buf

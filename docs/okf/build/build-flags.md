@@ -30,8 +30,8 @@ Common settings: `board = nanorp2040connect`, `board_build.core = earlephilhower
 |---|---|---|
 | `PIO_FRAMEWORK_ARDUINO_ENABLE_FREERTOS` | set | FreeRTOS SMP under arduino-pico |
 | `PIO_FRAMEWORK_ARDUINO_ENABLE_RTTI` | set | RTTI (needed by `std::variant`/`std::function` usage) |
-| `configMAX_PRIORITIES` | 12 | Task priority range |
-| `configTIMER_QUEUE_LENGTH` | 24 | Room for 14+ software timers' commands |
+| `configMAX_PRIORITIES` | 32 (both environments) | FreeRTOS priority range; app task priorities are derived from its midpoint |
+| `configTIMER_QUEUE_LENGTH` | 24 | Room for the 14 software timers' commands |
 | `configRECORD_STACK_HIGH_ADDRESS` | 1 | Stack stats |
 | `configRUN_TIME_COUNTER_TYPE` | `uint64_t` | Per-task CPU % in `/tasks.json` |
 | `configTOTAL_HEAP_SIZE` | 144 KB | See [memory model](/architecture/memory-model.md) |
@@ -51,6 +51,13 @@ Common settings: `board = nanorp2040connect`, `board_build.core = earlephilhower
 | `PLATFORMIO_LINKER_MAP` (env var) | script `-map` | Adds `-Wl,-Map,<path>` |
 
 The comment in `platformio.ini` suggests adding `-w` to silence warnings temporarily, then removing it after library or major changes.[^pio][^util]
+
+# Scheduler priorities
+
+The application priority policy uses `base = configMAX_PRIORITIES / 2`: CORE0 and CORE1 start at `base`, FX uses `base + 1`, ALM and CORE0 after setup use `base - 1`, SRL uses `base - 2`, and FS remains one level above its caller (normally `base + 1`). At 32 levels these are 16, 17, 15, 14 and 17; at 12 levels they remain 6, 7, 5, 4 and 7 respectively. Compile-time checks keep these values valid and below the framework's highest two priorities.
+
+The installed `framework-arduinopico` local definitions use `max/2` for CORE0/CORE1, `max-1` for the flash-coordination tasks, `max-2` for both LWIP and USB, and `configTIMER_TASK_PRIORITY=2` for Tmr Svc. At 32 levels that is 16, 31, 30, and 2. The package still defaults to 8 if not overridden; the announced upcoming revision is not present and its exact LWIP/USB priorities remain unverified.
+
 
 [^pio]: platformio.ini
 [^util]: scripts/util.ps1 (prepEnvironment)

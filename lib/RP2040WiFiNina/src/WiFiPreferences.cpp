@@ -282,14 +282,14 @@ size_t Preferences::getString(const char* key, char* value, const size_t maxLen)
 }
 
 String Preferences::getString(const char* key, const String defaultValue) {
-    size_t len = getBytesLength(key);
+    const size_t len = getBytesLength(key);
     char *str = new char[len+1];
 
     getString(key, str, len+1);
     str[len] = '\0';
 
     String res(str);
-    delete str;
+    delete[] str;
     str = nullptr;
 
     return res;
