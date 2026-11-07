@@ -33,7 +33,7 @@ Common settings: `platform = maxgerhardt/platform-raspberrypi`, `board = pimoron
 |---|---|---|
 | `PIO_FRAMEWORK_ARDUINO_ENABLE_FREERTOS` | set | FreeRTOS SMP under arduino-pico |
 | `PIO_FRAMEWORK_ARDUINO_ENABLE_RTTI` | set | RTTI (needed by `std::variant`/`std::function` usage) |
-| `configMAX_PRIORITIES` | 12 | Task priority range |
+| `configMAX_PRIORITIES` | 32 (both environments) | FreeRTOS priority range; app task priorities are derived from its midpoint |
 | `configTIMER_QUEUE_LENGTH` | 24 | Room for the 14 software timers' commands |
 | `configRECORD_STACK_HIGH_ADDRESS` | 1 | Stack stats |
 | `configRUN_TIME_COUNTER_TYPE` | `uint64_t` | Per-task CPU % in `/tasks.json` |
@@ -55,6 +55,13 @@ Common settings: `platform = maxgerhardt/platform-raspberrypi`, `board = pimoron
 | `DIAG_CORE_HEARTBEATS`, `DIAG_WDT_PING_CORE0` | 1 (`constants.hpp`) | Temporary toggles from the watchdog investigation. `DIAG_CORE_HEARTBEATS` adds the CORE0/CORE1 heartbeat registers to the system info log; `DIAG_WDT_PING_CORE0` is not read anywhere |
 
 There is no `build_unflags` and no `FASTLED_LEAN_AND_MEAN` on this board; those belong to the RP2040 line, which strips lwIP and CYW43. The comment in `platformio.ini` suggests adding `-w` to silence warnings temporarily, then removing it after library or major changes.[^pio][^util][^board]
+
+# Scheduler priorities
+
+The application priority policy uses `base = configMAX_PRIORITIES / 2`: CORE0 and CORE1 start at `base`, FX uses `base + 1`, ALM and CORE0 after setup use `base - 1`, SRL uses `base - 2`, and FS remains one level above its caller (normally `base + 1`). At 32 levels these are 16, 17, 15, 14 and 17; at 12 levels they remain 6, 7, 5, 4 and 7 respectively. Compile-time checks keep these values valid and below the framework's highest two priorities.
+
+The installed `framework-arduinopico` local definitions use `max/2` for CORE0/CORE1, `max-1` for the flash-coordination tasks, `max-2` for both LWIP and USB, and `configTIMER_TASK_PRIORITY=2` for Tmr Svc. At 32 levels that is 16, 31, 30, and 2. The package still defaults to 8 if not overridden; the announced upcoming revision is not present and its exact LWIP/USB priorities remain unverified.
+
 
 [^pio]: platformio.ini
 [^board]: boards/pimoroni_plasma2350w.json

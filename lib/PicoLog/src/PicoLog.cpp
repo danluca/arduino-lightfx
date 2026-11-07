@@ -45,7 +45,7 @@ void flushData() {
     Log.flush();
 }
 
-TaskDef tdStream {.setup = nullptr, .loop = flushData, .stackSize = 1024, .threadName = "SRL", .priority = 4, .core = CORE_ALL};
+TaskDef tdStream {.setup = nullptr, .loop = flushData, .stackSize = 1024, .threadName = "SRL", .priority = TaskPriorityPolicy::SerialLogger, .core = CORE_ALL};
 
 
 /**

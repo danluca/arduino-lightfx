@@ -22,6 +22,23 @@
 #include <task.h>
 #include <deque>
 
+namespace TaskPriorityPolicy {
+    inline constexpr UBaseType_t Base = configMAX_PRIORITIES / 2;
+    inline constexpr UBaseType_t Fx = Base + 1;
+    inline constexpr UBaseType_t Alarm = Base - 1;
+    inline constexpr UBaseType_t SerialLogger = Base - 2;
+    inline constexpr UBaseType_t FrameworkReservedFloor = configMAX_PRIORITIES - 2;
+
+    static_assert(configMAX_PRIORITIES >= 7, "FreeRTOS priority count is too small for the application priority policy");
+    static_assert(configMAX_PRIORITIES <= 256, "TaskDef priority cannot represent the configured FreeRTOS priorities");
+    static_assert(SerialLogger > 0 && Alarm > 0 && Base > 0 && Fx < configMAX_PRIORITIES,
+                  "Application task priorities must be valid FreeRTOS priorities");
+    static_assert(SerialLogger < Alarm && Alarm < Base && Base < Fx,
+                  "Application task priorities must preserve their intended ordering");
+    static_assert(Fx < FrameworkReservedFloor,
+                  "Application task priorities must remain below framework-reserved high priorities");
+}
+
 extern "C" {
     typedef void (*NoArgTask)();
     typedef void (*VoidArgTask)(void *);

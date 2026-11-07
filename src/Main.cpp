@@ -25,32 +25,30 @@
 /**
  * TASK ALLOCATIONS
  * First Core
- *   - CORE0 (default task - setup, loop) - Web and communications, lowered priority (5)
- *   - ALM - alarm processing and some misc actions (lowered priority - 5)
- *   - FS - filesystem interaction (raised priority from calling task - 7)
- *   - IdleCore0 - default kernel tasks (high priority - 11), used to stop temporarily first core
- * NOTE: The USB task is bound to first core (high priority - 10), however, the task is disabled in release mode.
+ *   - CORE0 (default task - setup, loop) - Web and communications, starts at configMAX_PRIORITIES / 2 and is lowered by one after setup
+ *   - ALM - alarm processing and miscellaneous actions, configMAX_PRIORITIES / 2 - 1
+ *   - FS - filesystem interaction, one level above its caller (normally configMAX_PRIORITIES / 2 + 1)
+ *   - IdleCore0 - framework flash-coordination task, configMAX_PRIORITIES - 1
+ *   - USB - framework task on core 0 at configMAX_PRIORITIES - 2 when enabled; disabled in release mode
  *
  * Second Core
- *   - CORE1 (default task - setup1, loop1) - Diag - diagnostic tasks, interaction with I2C devices, regular priority (6)
- *   - FX - light effects (raised priority - 7)
- *   - IdleCore1 - default kernel task (high priority - 11), used to stop temporarily second core
+ *   - CORE1 (default task - setup1, loop1) - diagnostics, configMAX_PRIORITIES / 2
+ *   - FX - light effects, configMAX_PRIORITIES / 2 + 1
+ *   - IdleCore1 - framework flash-coordination task, configMAX_PRIORITIES - 1
  *
- * Following tasks run on either core (core affinity 0xFFFFFFFF):
- *   - SRL - serial logging, priority (4); below all app tasks, drains during web/ALM yield gaps
- *   - IDLE0, IDLE1, Tmr Svc
- * CORE0, CORE1 tasks are created with a default 1024 bytes of stack, fixed size
- * There seem to be this odd coupling between FX and Mic tasks, if both are enabled they need to be on the same core.
- * I've had success running both on either CORE0 or CORE1, but not on different cores.
- * On the other hand, the WiFi using WiFiNINA library seems to only work well on CORE0.
+ * Other relevant tasks:
+ *   - SRL - serial logging on either core (affinity 0xFFFFFFFF), configMAX_PRIORITIES / 2 - 2
+ *   - LWIP - framework task on core 0 at configMAX_PRIORITIES - 2
+ *   - IDLE0, IDLE1, Tmr Svc - framework idle and timer-service tasks
+ * TaskDef stack sizes are FreeRTOS stack depths in words; CORE0 and CORE1 use 3072 words each.
  */
 
 static void alarm_misc_begin();
 static void alarm_misc_run();
 [[maybe_unused]] static void logTaskProbe();
-//task definitions for effects and mic processing - these tasks have the same priority as the main task, hence using 255 for priority value; see Scheduler.startTask
-constexpr TaskDef fxTasks {.setup = fx_setup, .loop = fx_run, .stackSize = 1536, .threadName = csFxTask, .priority = 7, .core = CORE_1};
-constexpr TaskDef alarmTasks {.setup = alarm_misc_begin, .loop = alarm_misc_run, .stackSize = 1536, .threadName = "ALM", .priority = 5, .core = CORE_0};
+// FX stays above CORE1; ALM matches CORE0 after CORE0's setup-time priority reduction.
+constexpr TaskDef fxTasks {.setup = fx_setup, .loop = fx_run, .stackSize = 1536, .threadName = csFxTask, .priority = TaskPriorityPolicy::Fx, .core = CORE_1};
+constexpr TaskDef alarmTasks {.setup = alarm_misc_begin, .loop = alarm_misc_run, .stackSize = 1536, .threadName = "ALM", .priority = TaskPriorityPolicy::Alarm, .core = CORE_0};
 bool core1_separate_stack = true;
 
 /**
@@ -155,8 +153,7 @@ static void logTaskProbe() {
 //===First core tasks===
 /**
  * Core 0 Setup LED strip and global data structures
- * NOTE: Core 0 task (setup and loop) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico/cores/rp2040/freertos/freertos-main.cpp#startFreeRTOS)
- * NOTE: Manual updates to the pico framework code changed the stack size to 2048 bytes; this is how the code is compiled
+ * CORE0's stack depth is configured as 3072 words (12 KiB) by configCORE0_TASK_STACK_DEPTH.
  */
 void setup() {
     taskDelay(2000);    //safety delay
@@ -234,11 +231,8 @@ void loop() {
 //===Second core tasks===
 /**
  * Core 1 Setup communication and diagnostic tasks
- * NOTE: Core 1 task (setup1 and loop1) is created with 1024 bytes stack memory - fixed value (see framework-arduinopico/cores/rp2040/freertos/freertos-main.cpp#__core0 function - CORE1 task is launched by CORE0)
- * NOTE: Manual updates to the pico framework code changed the stack size to 2048 bytes; this is how the code is compiled
- * NOTE: Keeping this task priority to default (same as FX task) allows both of these to round-robin. RPi RP2350 boards don't have devices attached to I2C bus.
- * Since FX task owns the watchdog, round-robin is much desirable as to avoid tasks starving each other.
- * Priority inversion risk: If FX task held a resource CORE1 needed, CORE1 would block waiting for a lower-priority task
+ * CORE1's stack depth is configured as 3072 words (12 KiB) by configCORE1_TASK_STACK_DEPTH.
+ * CORE1 runs at the framework midpoint; FX is one level higher and yields for one tick after each loop iteration.
  */
 void setup1() {
     //wait for the main core to notify us that the core components are ready (filesystem, logging, secure element), not interested in the notification value

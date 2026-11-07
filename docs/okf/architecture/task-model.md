@@ -26,27 +26,34 @@ sources:
 
 # Tasks
 
-Stack sizes are FreeRTOS stack depths, counted in **words** (`StackType_t` is `uint32_t` on this port), so 1536 means 6 KB.
+Stack sizes are FreeRTOS stack depths, counted in **words** (`StackType_t` is `uint32_t` on this port), so 1536 means 6 KiB.
+In the priority expressions below, `max` means `configMAX_PRIORITIES`.
 
-| Task | Core | Priority | Stack (words) | Entry points | Responsibility |
+| Task | Core | Priority (12 / 32 levels) | Stack (words) | Entry points | Responsibility |
 |---|---|---|---|---|---|
-| CORE0 | 0 | 6, lowered to 5 at the end of setup | 3072 (`configCORE0_TASK_STACK_DEPTH`) | `setup` / `loop` | Web server, comms queue (`bcQueue`) dispatch, OTA trigger |
-| ALM | 0 | 5 | 1536 | `alarm_misc_begin` / `alarm_misc_run` | Alarm setup and checks, saving sys info, holiday updates (`almQueue`) |
-| FS | 0 | 7 (caller's priority + 1, created while CORE0 is still at 6) | 1536 | `lib/FilesystemTask` | Serializes all LittleFS access (LittleFS is not thread-safe) |
-| CORE1 | 1 | 6 | 3072 (`configCORE1_TASK_STACK_DEPTH`) | `setup1` / `loop1` | Diagnostics (`diagQueue`): CPU temperature, voltage, entropy, FX heartbeat, task snapshots |
-| Fx | 1 | 7 | 1536 | `fx_setup` / `fx_run` | Effect rendering, `fxQueue` dispatch, watchdog ownership |
-| SRL | any | 4 | 1024 | `lib/PicoLog` | Streams the log ring buffer to serial. Below all app tasks, so it drains during their idle gaps |
-| Tmr Svc, IDLE0/1, IdleCore0/1 | any | kernel | kernel | — | FreeRTOS timer service and idle tasks |
+| CORE0 | 0 | `max/2` = 6 / 16; lowered to `max/2 - 1` = 5 / 15 after setup | 3072 (`configCORE0_TASK_STACK_DEPTH`) | `setup` / `loop` | Web server, comms queue (`bcQueue`) dispatch, OTA trigger |
+| ALM | 0 | `max/2 - 1` = 5 / 15 | 1536 | `alarm_misc_begin` / `alarm_misc_run` | Alarm setup and checks, saving sys info, holiday updates (`almQueue`) |
+| FS | 0 | Caller + 1; normally `max/2 + 1` = 7 / 17 | 1536 | `lib/FilesystemTask` | Serializes all LittleFS access (LittleFS is not thread-safe) |
+| CORE1 | 1 | `max/2` = 6 / 16 | 3072 (`configCORE1_TASK_STACK_DEPTH`) | `setup1` / `loop1` | Diagnostics (`diagQueue`): CPU temperature, voltage, entropy, FX heartbeat, task snapshots |
+| FX | 1 | `max/2 + 1` = 7 / 17 | 1536 | `fx_setup` / `fx_run` | Effect rendering, `fxQueue` dispatch, watchdog ownership |
+| SRL | any | `max/2 - 2` = 4 / 14 | 1024 | `lib/PicoLog` | Streams the log ring buffer to serial, below the application workers |
+| Tmr Svc | any | `configTIMER_TASK_PRIORITY` = 2 / 2 | framework | FreeRTOS | Software timer callbacks |
+| IDLE0/1 | each core | 0 / 0 | framework | FreeRTOS | Kernel idle tasks |
+| IdleCore0/1 | each core | `max - 1` = 11 / 31 | framework | Framework | Coordinate flash operations on the other core |
+| LWIP | 0 | `max - 2` = 10 / 30 | framework | Framework | Serialize lwIP operations |
+| USB | 0 | `max - 2` = 10 / 30 | framework | Framework | USB service task; omitted in release builds |
 
-The framework creates the CORE0 and CORE1 tasks at `configMAX_PRIORITIES / 2` = 6. ALM and Fx priorities come from the `TaskDef` constants in `Main.cpp`; `configMAX_PRIORITIES=12`.[^main][^pio][^fs][^log]
+Both PlatformIO environments set `configMAX_PRIORITIES=32`. The application formulas are relative to the framework midpoint, and retain the prior ordering when built at 12 levels. The FS task remains one above its caller and rejects a caller priority that would produce the scheduler's inherit-caller sentinel.[^main][^pio][^fs][^log]
+
+The locally installed framework and the upstream `feat/stable` branch both resolve to `40409287c9988bfc18e86d4b324431386a99a33e`. In that revision, CORE0/CORE1 use `max/2`, flash-coordination tasks use `max-1`, LWIP and USB each use `max-2`, and the timer service uses priority 2. The announced upcoming scheduler revision is not available at this commit, so its task priorities remain unverified. The extra ready-list storage and timing effects of 32 levels require measurement; they are not assumed to be a no-op.
 
 There is **no Mic task**: the Plasma 2350 W has no microphone.
 
 # Rules that come from experience
 
-* **Network work stays on CORE0.** The web server, comms, NTP, mDNS and pings all run on the CORE0 task, so network state needs no locks. The `Main.cpp` header still cites the WiFiNINA driver as the reason; that comment comes from the RP2040 code line.
+* **Network work stays on CORE0.** The web server, comms, NTP, mDNS and pings all run on the CORE0 task, so network state needs no locks; lwIP operations are serialized by the framework's CORE0-affined task.
 * **Web server and comms run in the same task on purpose.** `loop()` calls `webserver()` and then `commRun()` one after the other. Because only one task ever touches `fxBroadcastRecipients`, it needs no locks.[^main]
-* **FX outranks CORE1 but yields.** FX (7) is above CORE1 (6) on core 1. `SchedulerExt` calls `vTaskDelay(1)` after every `fx_run()`, which gives CORE1 its time slot.[^sched] The `setup1()` comment that says the two share a priority and round-robin is out of date.
+* **FX outranks CORE1 but yields.** FX is one level above CORE1 on core 1. `SchedulerExt` calls `vTaskDelay(1)` after every `fx_run()`, allowing lower-priority CORE1 to run while FX is delayed.[^sched]
 * **Each long-lived worker blocks on its own queue.** ALM and CORE1 block with `portMAX_DELAY`. FX and CORE0 poll with timeout 0 inside their loops.
 * **CORE0 must keep checking in.** Long blocking work on CORE0 (Wi-Fi connect, gateway pings, client scans, raw uploads) calls `HealthMonitor::checkIn(HEALTH_CORE0)`. More than 15 s without a check-in (120 s during an OTA upload) stops the watchdog feed. See [watchdog and health](/architecture/watchdog-and-health.md).
 * **Release builds disable the USB task** (`PIO_FRAMEWORK_ARDUINO_NO_USB` is added by `scripts/util.ps1` when neither `-log` nor `-dbg` is given).

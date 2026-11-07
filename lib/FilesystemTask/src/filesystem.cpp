@@ -35,10 +35,17 @@ static auto rootDir = FS_PATH_SEPARATOR;
 void fsExecute();
 void fsInit();
 
-// filesystem task definition - priority is overwritten during setup, see SynchronizedFS::begin
+// Filesystem priority is set one above the caller in SynchronizedFS::begin.
 static TaskDef fsDef {.setup = fsInit, .loop = fsExecute, .stackSize = 1536, .threadName = "FS", .priority = 255, .core = CORE_0};
 
 namespace {
+    constexpr bool canRaiseFilesystemPriority(const UBaseType_t callerPriority) {
+        return callerPriority < configMAX_PRIORITIES - 1;
+    }
+
+    static_assert(canRaiseFilesystemPriority(TaskPriorityPolicy::Base), "The normal filesystem caller priority must be raisable");
+    static_assert(!canRaiseFilesystemPriority(configMAX_PRIORITIES - 1), "The highest caller priority must be rejected for filesystem startup");
+
     enum class FsPayloadKind : uint8_t { NONE, STRING, BYTES, FILE_INFO_LIST, FILE_INFO, FS_STAT, };
 
     struct FsPayload {
@@ -545,10 +552,16 @@ bool SynchronizedFS::begin() {
  * This method can be called from any task
  */
 bool SynchronizedFS::begin(FS &fs) {
+    const UBaseType_t callerPriority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle());
+    if (!canRaiseFilesystemPriority(callerPriority)) {
+        log_error(F("Cannot start filesystem task: caller priority %u cannot be raised within the FreeRTOS priority range"), callerPriority);
+        return false;
+    }
+
     fsPtr = &fs;
     queue = xQueueCreate(kFsRequestPoolSize, sizeof(FsRequest *));
-    //mirror the priority of the calling task - the filesystem task is intended to have the same priority
-    fsDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle())+1;
+    // Keep the filesystem task one level above its caller.
+    fsDef.priority = static_cast<uint8_t>(callerPriority + 1);
     fsTask = Scheduler.startTask(&fsDef);
     TaskStatus_t tStat;
     vTaskGetTaskInfo(fsTask->getTaskHandle(), &tStat, pdFALSE, eReady);
