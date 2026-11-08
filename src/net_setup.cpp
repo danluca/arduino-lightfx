@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright (c) by Dan Luca. All rights reserved
 //
 #include "net_setup.h"
 #include <algorithm>
@@ -13,6 +13,7 @@
 #include "log.h"
 #include "stringutils.h"
 #include "web_server.h"
+#include "board_config.h"
 #if MDNS_ENABLED==1
 #include <LightMDNS.hpp>
 WiFiUDP* mUdp = nullptr;  // mDNS UDP instance
@@ -24,7 +25,6 @@ MDNS* mdns = nullptr;
 // using namespace colTheme;
 constexpr auto ssid = WF_SSID;
 constexpr auto pass = WF_PSW;
-constexpr auto hostname = DEVICE_NAME_PREFIX DEVICE_NAME;
 constexpr auto service_type = "lucasfx";
 constexpr auto service_protocol = "tcp";
 
@@ -53,13 +53,17 @@ static mutex_t discBoardsMutex;
 static std::vector<DiscoveredBoard> discoveredBoards;
 #endif
 
-bool wifi_connect() {
+static bool wifi_connect() {
     uint8_t wifiStatus = WiFi.status();
     if (wifiStatus == WL_CONNECTED) return true;
 
-    //static IP address - such that we can have a known location for config page
-    WiFi.config({IP_ADDR}, {IP_DNS}, {IP_GW}, {IP_SUBNET});
-    WiFi.setHostname(hostname);
+    const BoardConfiguration &configuration = activeBoardConfiguration();
+    if (!configuration.useDhcp())
+        WiFi.config(configuration.ip, {IP_DNS}, {IP_GW}, {IP_SUBNET});
+    String hostname(DEVICE_NAME_PREFIX);
+    hostname.concat(sysInfo->getDeviceName());
+    hostname.toLowerCase();
+    WiFi.setHostname(hostname.c_str());
     log_info(F("Connecting to WiFI '%s' starting from status %hhu..."), ssid, wifiStatus);  // print the network name (SSID);
     // attempt to connect to WiFi network:
     WiFi.setTimeout(7500);     // default timeout is 15 seconds - see WiFiClass.h
@@ -79,14 +83,13 @@ bool wifi_connect() {
             log_info(F("WiFi connected after %lu ms!"), millis() - startAttemptTime);
     }
     sysInfo->setSysStatus(SysStatus::Wifi);
+    printSuccessfulWifiStatus();  // populate the assigned DHCP address before using the gateway
     if (const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress()); resPing >= 0)
         log_info(F("Connected to WiFi after %d tries. Gateway ping successful: %d ms"), attCount, resPing);
     else
         log_warn(F("Connected to WiFi after %d tries. Failed pinging the gateway (ping result %d) - will retry later"), attCount, resPing);
-    printSuccessfulWifiStatus();  // you're connected now, so print out the status
-
 #if MDNS_ENABLED==1
-    // setup mDNS - to resolve this board's address as 'lightfx-dev.local' or 'lightfx-fx01.local'
+    // setup mDNS to resolve this board's address using its configured name
     String dnsHostname(hostname);
     dnsHostname.toLowerCase();
     String lightfxSvcName(dnsHostname);
@@ -95,7 +98,7 @@ bool wifi_connect() {
     mdns = new MDNS(*mUdp);
     mdns->begin();      //this should not be needed - implementation is a no-op
 
-    MDNS::Status mdnsStatus = mdns->start({IP_ADDR}, dnsHostname);
+    MDNS::Status mdnsStatus = mdns->start(sysInfo->refIpAddress(), dnsHostname);
     log_info(F("mDNS start status: %d (%s)"), mdnsStatus, MDNS::toString(mdnsStatus).c_str());
 
     if (mdnsStatus == MDNS::Status::Success) {
@@ -140,7 +143,7 @@ bool wifi_setup() {
  * WiFi connection check
  * @return true if all is ok, false if connection unusable
  */
-bool wifi_check() {
+static bool wifi_check() {
     uint8_t wifiStatus = WiFi.status();
     bool secondTry = false;
     if (wifiStatus != WL_CONNECTED) {
@@ -181,7 +184,7 @@ bool wifi_check() {
  * Watch out: https://github.com/arduino/nina-fw/issues/63 - after WiFi reconnect, the server seems to stop working (returns disconnected clients?)
  * Should we invoke a board reset instead? (NVIC_SystemReset)
  */
-void wifi_reconnect() {
+static void wifi_reconnect() {
     log_debug(F("wifi_reconnect: start"));
     sysInfo->resetSysStatus(SysStatus::Wifi);
     log_debug(F("wifi_reconnect: stopping web server"));

@@ -20,6 +20,7 @@
 #include "web_server.h"
 #include "ota_upgrade.h"
 #include "HealthMonitor.h"
+#include "board_config.h"
 #include "hardware/watchdog.h"
 #include "constants.hpp"
 
@@ -45,7 +46,7 @@
  * TaskDef stack sizes are FreeRTOS stack depths in words; CORE0 and CORE1 use 2048 words (8 KiB) each.
  */
 
-void web_run();
+static void web_run();
 static void alarm_misc_begin();
 static void alarm_misc_run();
 [[maybe_unused]] static void logTaskProbe();
@@ -130,7 +131,7 @@ void web_run() {
     commRun();
 }
 
-void filesystem_setup() {
+static void filesystem_setup() {
     SyncFsImpl.begin(LittleFS);
     log_info(F("Filesystem setup completed"));
     sysInfo->setSysStatus(SysStatus::Filesystem);
@@ -178,7 +179,18 @@ void setup() {
 
     RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
 
+    const String boardUid = rp2040.getChipID();
+    const bool knownBoard = selectBoardConfiguration(boardUid.c_str());
+    const BoardConfiguration &configuration = activeBoardConfiguration();
+    if (knownBoard)
+        log_info(F("Known board UID %s selected profile %s: %hu pixels, frame %hu, %s IP"), boardUid.c_str(), configuration.deviceName,
+                 configuration.numPixels, configuration.frameSize, configuration.useDhcp() ? "DHCP" : "static");
+    else
+        log_warn(F("Unrecognized board UID %s; using safe defaults (DHCP, %hu pixels, brightness %hu)"), boardUid.c_str(),
+                 configuration.numPixels, configuration.brightness);
+
     sysInfo = new SysInfo();    //system information object built once per run
+    sysInfo->fillBoardId();
     filesystem_setup();
     sysInfo->begin();
 

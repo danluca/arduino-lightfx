@@ -26,7 +26,7 @@ sources:
 
 # Supply voltage
 
-`SYS_VOLTAGE` every 34 s: A0 through the board-specific divider (`VCC_DIV_R4/R5`) against the measured 3V3 rail. Reported as `vcc` in `/status.json`.
+`SYS_VOLTAGE` every 34 s: A0 through the selected board profile's divider (`vccDivR4`/`vccDivR5`) against its measured 3V3 rail (`mv3_3`). Reported as `vcc` in `/status.json`.
 
 # Secure element and entropy
 

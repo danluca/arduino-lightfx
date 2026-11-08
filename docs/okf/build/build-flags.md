@@ -43,7 +43,6 @@ Common settings: `board = nanorp2040connect`, `board_build.core = earlephilhower
 | `PICO_CYW43_SUPPORTED` | 0 | No CYW43 (the Nano uses NINA). The CYW43/lwIP flags are also unflagged |
 | `FASTLED_LEAN_AND_MEAN` | 1 | Smaller FastLED |
 | `__TM_GMTOFF`, `__TM_ZONE` | `tm_offset`, `tm_zone` | Adds time zone fields to `struct tm` |
-| `BOARD_ID` | 1/2/3 (script) | Selects the per-board config. See [boards](/hardware/boards-and-config.md) |
 | `LOGGING_ENABLED` | 1 (script `-log`, dbg env) | Enables `log_*` macros (otherwise they compile to nothing) and the `diagInfo` timer |
 | `IGNORE_WEB_EFFECT_CHANGES` | 1 (script `-ignoreBroadcast`) | Meant to ignore non-UI effect, auto and broadcast changes. **Does not compile today**. See [ignore-web-flag compile error](/issues/ignore-web-flag-compile-error.md) |
 | `PIO_FRAMEWORK_ARDUINO_NO_USB` | script, when neither `-log` nor `-dbg` | Removes the USB stack and serial |

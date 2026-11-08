@@ -13,6 +13,7 @@
 #include "version.h"
 #include "constants.hpp"
 #include "log.h"
+#include "board_config.h"
 #include "stringutils.h"
 #if LOGGING_ENABLED == 1
 #include <stringutils.h>
@@ -342,7 +343,7 @@ void logSystemInfo() {
     if (!Log.isEnabled(INFO))
         return;
     log_info(sysInfoFmt, rp2040_rom_version(), RP2040::f_cpu()/1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
-               sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), DEVICE_NAME, sysInfo->getBuildVersion().c_str(), sysInfo->getBuildTime().c_str(),
+               sysInfo->getBoardId().c_str(), BOARD_NAME, sysInfo->getMacAddress().c_str(), sysInfo->getDeviceName().c_str(), sysInfo->getBuildVersion().c_str(), sysInfo->getBuildTime().c_str(),
                sysInfo->get_flash_capacity());
     log_info(F("System reset reason %s"), resetReasonToString(rp2040.getResetReason()));
     const uint32_t resetMarker = watchdog_hw->scratch[kResetMarkerScratchIndex];
@@ -426,8 +427,9 @@ void logSystemState() {
 }
 
 // SysInfo
-SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildTime(BUILD_TIME), scmBranch(GIT_BRANCH),
-                     ipAddress({IP_ADDR}), ipGateway({IP_GW}) {
+SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(activeBoardConfiguration().deviceName), buildVersion(BUILD_VERSION), buildTime(BUILD_TIME), scmBranch(GIT_BRANCH),
+                     ipAddress(activeBoardConfiguration().useDhcp() ? IPAddress(0, 0, 0, 0) : activeBoardConfiguration().ip),
+                     ipGateway(activeBoardConfiguration().useDhcp() ? IPAddress(0, 0, 0, 0) : IPAddress(IP_GW)) {
     boardId.reserve(BUF_ID_SIZE);       // flash unique ID in hex, \0 terminator
     secElemId.reserve(BUF_ID_SIZE);     // 18 from ECCX08Class::serialNumber() implementation
     macAddress.reserve(BUF_ID_SIZE);    // 6 (WL_MAC_ADDR_LENGTH) groups of 2 hex digits and ':' separator, includes \0 terminator
@@ -447,6 +449,10 @@ SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(DEVICE_NAME), buildVersio
  */
 void SysInfo::fillBoardId() {
     boardId = rp2040.getChipID();
+    if (strcmp(deviceName.c_str(), safeBoardConfiguration().deviceName) == 0) {
+        const size_t suffixLength = min<size_t>(6, boardId.length());
+        deviceName = String("New-") + boardId.substring(boardId.length() - suffixLength);
+    }
     cpuFrequency = RP2040::f_cpu();
 #if defined(PICO_RP2350)
     cpuModel = "RP2350";
@@ -543,8 +549,10 @@ void SysInfo::transformWatchdogReboots(const std::function<time_t(time_t)>& tran
 void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     ssid = wifi.SSID();
     wifiFwVersion = nina::WiFiClass::firmwareVersion();
-    // strIpAddress = wifi.localIP().toString();
-    // strGatewayIpAddress = wifi.gatewayIP().toString();
+    if (activeBoardConfiguration().useDhcp()) {
+        ipAddress = wifi.localIP();
+        ipGateway = wifi.gatewayIP();
+    }
     strIpAddress = ipAddress.toString();
     strGatewayIpAddress = ipGateway.toString();
 
@@ -705,7 +713,7 @@ void readSysInfo() {
         //const fields
         const String bldVersion = doc[csBuildVersion];
         const String brdName = doc[csBoardName];
-        const String devName = doc[csDeviceName] | DEVICE_NAME;
+        const String devName = sysInfo->deviceName;
         const String bldTime = doc[csBuildTime];
         const auto gitBranch = doc[csScmBranch].as<String>();
         if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {
@@ -714,7 +722,6 @@ void readSysInfo() {
                 sysInfo->addWatchdogReboot(i.as<time_t>());
         } else
             log_warn(F("Build version change detected - previous watchdog reboot timestamps %s have been discarded"), doc[csWdReboots].as<String>().c_str());
-        sysInfo->boardId = doc[csBoardId].as<String>();
         sysInfo->secElemId = doc[csSecElemId].as<String>();
         sysInfo->macAddress = doc[csMacAddress].as<String>();
         sysInfo->wifiFwVersion = doc[csWifiFwVersion].as<String>();

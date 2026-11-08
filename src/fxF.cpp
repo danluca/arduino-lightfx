@@ -344,6 +344,13 @@ bool EyeBlink::isActive() const {
 // FxF4
 void FxF4::setup() {
     LedEffect::setup();
+    bounceCurve = fx::effectScratchWords(0, upLim);
+    if (!bounceCurve) {
+        log_error(F("FxF4 cannot acquire %hu scratch words"), upLim);
+        return;
+    }
+    for (uint16_t x = 0; x < bounceCurve.size; x++)
+        bounceCurve.data[x] = easeOutBounce(x, upLim - 1);
     hue = 0;
     hueDiff = 11;
     curPos = 0;
@@ -355,6 +362,8 @@ void FxF4::setup() {
 }
 
 void FxF4::run() {
+    if (!bounceCurve)
+        return;
     EVERY_N_MILLISECONDS_I(fxf4Timer, 50) {
         switch (fxState) {
             case Bounce:
@@ -371,11 +380,13 @@ void FxF4::run() {
                     tpl = frame(ofs, ofs+tpl.size()-1);
                     delta--;
                 } else {
-                    const uint16_t easePos = bouncyCurve[dist++];
-                    if (dist > upLim) {
+                    if (dist >= upLim) {
                         fxState = Reduce;
                         delta = dotSize-1;
-                    } else if (easePos > 0) {
+                        break;
+                    }
+                    const uint16_t easePos = bounceCurve.data[dist++];
+                    if (easePos > 0) {
                         //skip the 0 values of the bouncy curve
                         delta = asub(easePos, curPos);  //for the current frame size, delta doesn't go above 5. For larger sizes,  the max is 6.
                         dirFwd = easePos > curPos;
@@ -446,11 +457,9 @@ void FxF4::offsetBounce(const CRGB &feed) const {
     }
 }
 
-FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(frame(0, (tpl.size() + wiggleRoom)/ 2 - 1)), set2(frame(tpl.size() + wiggleRoom - 1, (tpl.size() + wiggleRoom)/2)) {
+FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(frame(0, (tpl.size() + wiggleRoom)/ 2 - 1)), set2(frame(tpl.size() + wiggleRoom - 1, (tpl.size() + wiggleRoom)/2)),
+               upLim((tpl.size() + dotSize + wiggleRoom) / 2) {
     ofs = wiggleRoom/2;
-    for (uint16_t x = 0; x < upLim; x++)
-        bouncyCurve[x] = easeOutBounce(x, upLim - 1);
-
 }
 
 bool FxF4::windDown() {

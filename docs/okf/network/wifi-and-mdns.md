@@ -19,12 +19,12 @@ sources:
 
 * **Driver:** a local copy of WiFiNINA (`lib/RP2040WiFiNina`, synced with 2.0.1). It is used instead of lwIP/CYW43; `build_unflags` removes the `CYW43_LWIP`/`LWIP_*` defines to save memory.
 * **Credentials:** `include/secrets.h` (git-ignored; template `include/secrets.h.example`) must define `WF_SSID` and `WF_PSW`, plus the upload token `FW_AUTH_TOKEN`.
-* **Addressing:** static IP per board (`IP_ADDR`). The gateway and DNS are `192.168.0.1` with mask `/24`. Hostname: `lightfx-<DEVICE_NAME>`.[^config]
+* **Addressing:** configured boards use the static address in their UID profile; unknown boards use DHCP. Static profiles use gateway and DNS `192.168.0.1` with mask `/24`. Hostname: `lightfx-<DEVICE_NAME>`; mDNS advertises the assigned address.[^config]
 * **Power:** `WiFi.lowPowerMode()`. The web server is not the board's main job.
 
 # Connect
 
-`wifi_connect()` runs `WiFi.config(...)`, then loops `WiFi.begin` with a 30-second wait per attempt (`setTimeout(7500)`), calling `disconnect()` between attempts until it connects. It then sets `SysStatus::Wifi`, pings the gateway, logs the SSID, IP, MAC and RSSI, and starts mDNS. `checkFirmwareVersion()` warns when the NINA firmware is older than `WIFI_FIRMWARE_LATEST_VERSION`. Update it with `scripts/nina_fw_update.ps1`.[^net]
+`wifi_connect()` configures a static address only for known profiles; unknown UIDs use DHCP. It then loops `WiFi.begin` with a 30-second wait per attempt (`setTimeout(7500)`), calling `disconnect()` between attempts until it connects. It then sets `SysStatus::Wifi`, pings the gateway, logs the SSID, IP, MAC and RSSI, and starts mDNS. `checkFirmwareVersion()` warns when the NINA firmware is older than `WIFI_FIRMWARE_LATEST_VERSION`. Update it with `scripts/nina_fw_update.ps1`.[^net]
 
 # Health check: `wifi_ensure` (every 7 min, CORE0)
 

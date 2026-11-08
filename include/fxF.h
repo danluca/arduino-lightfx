@@ -99,11 +99,11 @@ namespace FxF {
         enum FxState {Bounce, Reduce, Flash};
         static constexpr uint8_t dotSize = 4;
         static constexpr uint8_t wiggleRoom = 10;   //how many pixels variance for the bouncy point
-        static constexpr uint16_t upLim = (FRAME_SIZE + dotSize + wiggleRoom)/2;
         FxState fxState;
         CRGBSet set1, set2;
         int16_t ofs;
-        uint16_t bouncyCurve[upLim]{};     //must be equal with (FRAME_SIZE+dotSize)/2
+        uint16_t upLim{};
+        ScratchView<uint16_t> bounceCurve{};
         void offsetBounce(const CRGB &feed) const;
     };
 

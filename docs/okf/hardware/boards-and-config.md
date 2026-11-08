@@ -1,7 +1,7 @@
 ---
 type: Configuration
 title: Boards and configuration
-description: Per-board compile-time configuration selected with BOARD_ID (1 Dev, 2 FX01 house, 3 FX02 office), covering pixel counts, frame sizes, static IPs, measured voltages and LED wiring.
+description: Per-board runtime configuration selected from a bundled UID table, covering pixel counts, frame sizes, network identity, measured voltages and LED wiring.
 tags: [config, boards, hardware, deployment]
 status: stable
 generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T22:20:00Z }
@@ -17,15 +17,14 @@ sources:
 
 # Boards
 
-`BOARD_ID` defaults to 1. The build scripts set it through `PLATFORMIO_BUILD_FLAGS=-DBOARD_ID=<id>` based on `-board`.[^boards]
+The firmware selects hardware settings at boot from the static UID table in `src/board_config.cpp`; `-board` in the build/update scripts only selects a deployment target. All profiles use the same physical Nano RP2040 Connect target.
 
-| `-board` | `BOARD_ID` | `DEVICE_NAME` | IP | `NUM_PIXELS` | `FRAME_SIZE` | Installation |
-|---|---:|---|---|---:|---:|---|
-| Dev | 1 | `Dev-Office` | 192.168.0.10 | 170 | 76 | Development board, office window edge (166 px) |
-| FX01 | 2 | `FX01-House` | 192.168.0.11 | 320 | 68 | House edge (300 px measured, plus a reserve) |
-| FX02 | 3 | `FX02-Office` | 192.168.0.12 | 170 | 76 | Spare and office controller |
+| UID | `DEVICE_NAME` | IP mode | `NUM_PIXELS` | `FRAME_SIZE` | Calibration |
+|---|---|---|---:|---:|---|
+| `E034C6063295681A` | `FX02-Office` | DHCP | 170 | 76 | 3262 mV; R4/R5 19890/3302 Ω |
+| `5034C60632956818` | `Dev-Office` | DHCP | 170 | 76 | 3262 mV; R4/R5 21950/3304 Ω |
 
-`PIXEL_BUFFER_SPACE = 4 × FRAME_SIZE` for every board. Each board also defines its measured 3V3 rail (`V3_3`, `MV3_3`) and the A0 voltage divider resistors (`VCC_DIV_R4`, `VCC_DIV_R5`), which are used for supply voltage readings.[^config]
+The unknown-board fallback is named from the last six UID characters and uses DHCP, 32 pixels, a 12-pixel frame, conservative 3300 mV and R4/R5 20000/3300 Ω calibration, and a 16/255 brightness cap. The FX01 UID has not yet been recorded, so that board currently uses these safe defaults. LED output and effect scratch buffers are allocated to the selected geometry at startup; CPU temperature calibration saved with a different `mv3_3` reference is discarded.
 
 # Shared settings
 
@@ -34,7 +33,7 @@ sources:
 | `LED_PIN` | 25 (D2 on the Nano RP2040 Connect) |
 | `CHIPSET` / `COLOR_ORDER` | `WS2811` / `BRG` |
 | `BRIGHTNESS` | 255 (the global FastLED brightness; time-of-day dimming is applied through `stripBrightness`) |
-| `MAX_NUM_PIXELS` | 1024 (about 330 ft of strip; going beyond that needs a memory and timing review) |
+| Supported geometry | At most 320 LEDs and a 76-pixel frame (operational limits, not preallocated array capacities) |
 | Gateway / DNS | 192.168.0.1 |
 | `STATIC_BROADCAST_CLIENTS` | 10, 11, 12 |
 | `NTP_SERVER_IP` | 192.168.0.58 (when `LOCAL_NTP_SERVER` is defined) |
@@ -43,8 +42,8 @@ sources:
 
 # Adding a board
 
-1. Add a `#if BOARD_ID == 4` block to `config.h` with every per-board macro.
-2. Add the board to `$boardMap` in `scripts/boards.ps1` and to the `ValidateSet` of `build.ps1`, `update.ps1`, `ota_upgrade.ps1`, `status.ps1`, `files.ps1` and `upload_audio_seed.ps1`.
+1. Record the board’s `rp2040.getChipID()` value and add a validated entry to `boardConfigurations` in `src/board_config.cpp`.
+2. Add its logical name and target address to `$boardMap` in `scripts/boards.ps1` and to the relevant script `ValidateSet` lists.
 3. Add its last IP octet to `STATIC_BROADCAST_CLIENTS` if it should take part in [broadcast](/network/multi-board-broadcast.md).
 
 [^config]: include/config.h

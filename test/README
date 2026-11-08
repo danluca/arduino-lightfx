@@ -16,3 +16,10 @@ The mesh session state has a host-side test. On a machine with a C++17 compiler,
 g++ -std=c++17 -Iinclude test/host/test_mesh_fx_session.cpp -o test_mesh_fx_session
 ./test_mesh_fx_session
 ```
+
+Board UID selection, runtime buffer sizing, and allocation rollback have a host-side test:
+
+```sh
+g++ -std=c++17 -Iinclude src/board_config.cpp test/host/test_board_config.cpp -o test_board_config
+./test_board_config
+```

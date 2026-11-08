@@ -12,6 +12,8 @@
 #include "constants.hpp"
 #include "mesh_fx_session.h"
 #include <hardware/watchdog.h>
+#include <new>
+#include <atomic>
 
 //~ Global variables definition
 using namespace fx;
@@ -38,34 +40,93 @@ std::atomic<uint16_t> totalAudioBumps = 0;
 std::atomic<bool> stripBrightnessLocked = false;
 static MeshFxSession meshFxSession;
 
-static_assert(FRAME_SIZE < NUM_PIXELS, "FRAME_SIZE must not exceed NUM_PIXELS");
-static_assert(FRAME_SIZE > 10, "FRAME_SIZE must be at least 10 pixels");
-static_assert(PIXEL_BUFFER_SPACE > FRAME_SIZE * 3, "PIXEL_BUFFER_SPACE must be at least 3 times the FRAME_SIZE");
-
 //~ fx namespace variables (keep these as single-task FX access)
 namespace fx {
-    CRGB leds[NUM_PIXELS];                                    //the main LEDs array of CRGB type
-    CRGBSet ledSet(leds, NUM_PIXELS);                     //the entire leds CRGB array as a CRGBSet
-    CRGBSet tpl(leds, FRAME_SIZE);                        //array length, indexes go from 0 to length-1
-    CRGBSet others(leds, tpl.size(), NUM_PIXELS-1);  //start and end indexes are inclusive
-    CRGBArray<PIXEL_BUFFER_SPACE> frame;                      //side LED buffer for preparing/saving state/etc. with main LEDs array
+    CRGB *leds = nullptr;
+    uint16_t *stripShuffleIndex = nullptr;
     CRGBPalette16 palette;
     CRGBPalette16 targetPalette;
     OpMode mode = Chase;
-    uint16_t stripShuffleIndex[NUM_PIXELS];
     int32_t dist = 1;
     bool dirFwd = true;
     EffectTransition transEffect;
 }
 
+namespace {
+    CRGB emptyPixel{};
+
+    class LedBufferOwner {
+    public:
+        LedBufferOwner() : ledSet(&emptyPixel, 0), tpl(&emptyPixel, 0), others(&emptyPixel, 0), frame(&emptyPixel, 0) {}
+
+        bool initialize(const BoardConfiguration &configuration) {
+            if (initialized || !storage.allocate(configuration))
+                return false;
+
+            ledSet.~CRGBSet();
+            tpl.~CRGBSet();
+            others.~CRGBSet();
+            frame.~CRGBSet();
+            new (&ledSet) CRGBSet(storage.leds.get(), static_cast<int>(storage.sizes.ledPixels));
+            new (&tpl) CRGBSet(storage.leds.get(), configuration.frameSize);
+            new (&others) CRGBSet(storage.leds.get(), configuration.frameSize, configuration.numPixels - 1);
+            new (&frame) CRGBSet(storage.frame.get(), static_cast<int>(storage.sizes.framePixels));
+            initialized = true;
+            return true;
+        }
+
+        BoardBufferStorage<CRGB> storage;
+        CRGBSet ledSet;
+        CRGBSet tpl;
+        CRGBSet others;
+        CRGBSet frame;
+
+    private:
+        bool initialized = false;
+    };
+
+    LedBufferOwner boardBuffers;
+}
+
+namespace fx {
+    CRGBSet &ledSet = boardBuffers.ledSet;
+    CRGBSet &tpl = boardBuffers.tpl;
+    CRGBSet &others = boardBuffers.others;
+    CRGBSet &frame = boardBuffers.frame;
+
+    ScratchView<uint16_t> effectScratchWords(const size_t offset, const size_t count) {
+        return boardBuffers.storage.scratchWordView(offset, count);
+    }
+
+    ScratchView<uint8_t> effectScratchBytes(const size_t offset, const size_t count) {
+        return boardBuffers.storage.scratchByteView(offset, count);
+    }
+}
+
+static std::atomic<bool> ledBuffersReady{false};
+
 //~ Support functions -----------------
 /**
  * Setup the strip LED lights to be controlled by FastLED library
  */
-void ledStripInit() {
+bool ledStripInit() {
+    if (ledBuffersReady.load(std::memory_order_acquire))
+        return false;
+    ledBuffersReady.store(false, std::memory_order_release);
+    const BoardConfiguration &configuration = activeBoardConfiguration();
+    if (!boardBuffers.initialize(configuration)) {
+        log_error(F("Cannot allocate LED/effect buffers for %hu pixels and frame size %hu; LEDs remain disabled"),
+                  configuration.numPixels, configuration.frameSize);
+        return false;
+    }
+
+    leds = boardBuffers.storage.leds.get();
+    stripShuffleIndex = boardBuffers.storage.shuffleIndexes.get();
     CFastLED::addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
-    FastLED.setBrightness(BRIGHTNESS);
+    FastLED.setBrightness(activeBoardConfiguration().maxBrightness);
     FastLED.clear(true);
+    ledBuffersReady.store(true, std::memory_order_release);
+    return true;
 }
 
 void readFxState() {
@@ -79,12 +140,15 @@ void readFxState() {
         const bool autoAdvance = doc[csAutoFxRoll].as<bool>();
         fxRegistry.autoRoll(autoAdvance);
 
-        const uint16_t seed = doc[csRandomSeed].as<uint16_t>();
+        const auto seed = doc[csRandomSeed].as<uint16_t>();
         random16_add_entropy(seed);
 
-        const uint16_t fx = doc[csCurFx].as<uint16_t>();
+        const auto fx = doc[csCurFx].as<uint16_t>();
 
-        stripBrightness = doc[csStripBrightness].as<uint8_t>();
+        const auto savedBrightness = doc[csStripBrightness].as<uint8_t>();
+        stripBrightness = limitBrightness(activeBoardConfiguration(), savedBrightness);
+        if (savedBrightness != stripBrightness)
+            log_warn(F("Stored strip brightness %u exceeds this board's limit %u; limiting output"), savedBrightness, stripBrightness.load());
 
         audioBumpThreshold = doc[csAudioThreshold].as<uint16_t>();
         const auto savedHoliday = doc[csColorTheme].as<String>();
@@ -140,7 +204,7 @@ void resetGlobals() {
     //flushing to strip may cause a short blink if called mid-effect
     const bool flushStrip = sysInfo->isSysStatus(SysStatus::Ntp) && !fxRegistry.isAsleep();
     FastLED.clear(flushStrip);
-    FastLED.setBrightness(BRIGHTNESS);
+    FastLED.setBrightness(activeBoardConfiguration().maxBrightness);
     frame.fill_solid(BKG);
 
     palette = paletteFactory.mainPalette();
@@ -167,7 +231,9 @@ void resetGlobals() {
 
 //Setup all effects -------------------
 void fx_setup() {
-    ledStripInit();
+    stripBrightness = activeBoardConfiguration().brightness;
+    if (!ledStripInit())
+        return;
     //instantiate effect categories
     for (const auto x : categorySetup)
         x();
@@ -239,7 +305,7 @@ void checkAudioAndBumpEffect() {
 
 void updateBrightness() {
     const uint8_t oldBrightness = stripBrightness;
-    stripBrightness = adjustStripBrightness();
+    stripBrightness = limitBrightness(activeBoardConfiguration(), adjustStripBrightness());
     if (oldBrightness != stripBrightness) {
         log_info(F("Strip brightness updated from %d to %d"), oldBrightness, stripBrightness.load());
     }
@@ -257,6 +323,13 @@ void fx_run() {
     static bool isFirmwareUpgrading = false;
     HealthMonitor::checkIn(HEALTH_FX);
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageEnter;
+
+    if (!ledBuffersReady.load(std::memory_order_acquire)) {
+        HealthMonitor::update(7000, 3000);
+        watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;
+        vTaskDelay(pdMS_TO_TICKS(100));
+        return;
+    }
 
     FxActionMessage msg{};
     if (pdTRUE == xQueueReceive(fxQueue, &msg, 0)) {
@@ -290,7 +363,7 @@ void fx_run() {
             case STRIP_BRIGHTNESS: {
                 const auto br = static_cast<uint8_t>(msg.data);
                 stripBrightnessLocked = br > 0;
-                stripBrightness = stripBrightnessLocked ? br : adjustStripBrightness();
+                stripBrightness = limitBrightness(activeBoardConfiguration(), stripBrightnessLocked ? br : adjustStripBrightness());
                 break;
             }
             default:
