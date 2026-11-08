@@ -778,6 +778,7 @@ size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
     f.close();
+#if LOGGING_ENABLED == 1
     //get the current last write timestamp - note that stat function does not make the distinction between creation and last access time in LittleFS; we'll use file API
     // FSStat fstat{};
     // fsPtr->stat(fname, &fstat);
@@ -786,6 +787,7 @@ size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
     f.close();
 
     log_info(F("File %s - %zu bytes - has been saved at %s"), fname, fSize, TimeFormat::asString(lastWrite).c_str());
+#endif
     log_debug(F("Saved file %s content [%zu]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
@@ -795,11 +797,15 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const String *s) const {
     File f = fsPtr->open(fname, "a");
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
+#if LOGGING_ENABLED == 1
     const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
     const size_t totalSize = f.size();
+#endif
     f.close();
 
+#if LOGGING_ENABLED == 1
     log_info(F("File %s - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, TimeFormat::asString(lastWrite).c_str());
+#endif
     log_debug(F("Appended file %s content [%zu]: %s"), fname, fSize, s->c_str());
     return fSize;
 }
@@ -809,11 +815,15 @@ size_t SynchronizedFS::prvAppendFile(const char *fname, const uint8_t *buffer, c
     File f = fsPtr->open(fname, "a");
     f.setTimeCallback(now);
     fSize = f.write(buffer, size);
+#if LOGGING_ENABLED == 1
     const time_t lastWrite = f.getLastWrite();  //get the current last write timestamp
     const size_t totalSize = f.size();
+#endif
     f.close();
 
+#if LOGGING_ENABLED == 1
     log_info(F("File %s (binary) - size increased by %zu bytes to %zu bytes - has been saved at %s"), fname, fSize, totalSize, TimeFormat::asString(lastWrite).c_str());
+#endif
     log_debug(F("Appended file %s binary content %zu bytes"), fname, fSize);    //this is superfluous, perhaps logging binary content in hex would be helpful but quite a bit of overhead on flip side
     return fSize;
 }
@@ -913,21 +923,29 @@ bool SynchronizedFS::prvSha256(const char *path, String *sha256) const {
         log_error(F("File %s does not exist, no SHA256 hash calculated"), path);
         return false;
     }
+#if LOGGING_ENABLED == 1
     const ulong start = millis();
+#endif
     File f = fsPtr->open(path, "r");
     if (f.isDirectory()) {
         log_error(F("File %s is a directory, no SHA-256 hash calculated"), path);
         return false;
     }
     br_sha256_context* ctx = sha256_init();
+#if LOGGING_ENABLED == 1
     size_t fSize = 0;
+#endif
     uint8_t buf[FILE_BUF_SIZE]{};
     while (const size_t charsRead = f.read(buf, FILE_BUF_SIZE)) {
         sha256_update(ctx, buf, charsRead);
+#if LOGGING_ENABLED == 1
         fSize += charsRead;
+#endif
     }
     f.close();
     *sha256 = sha256_final(ctx);
+#if LOGGING_ENABLED == 1
     log_info(F("Read %d bytes from %s file, SHA-256 %s computed in %ldms"), fSize, path, sha256->c_str(), millis() - start);
+#endif
     return true;
 }

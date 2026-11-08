@@ -39,7 +39,9 @@ static uint16_t tmrRndEntropyId = 10;
 static uint16_t tmrSysTempId = 11;
 static uint16_t tmrSysVoltageId = 12;
 static uint16_t tmrSaveSysInfoId = 13;
+#if LOGGING_ENABLED == 1
 static uint16_t tmrDiagInfoId = 14;
+#endif
 static uint16_t tmrFxHeartbeatId = 15;
 
 // declarations ahead
@@ -163,8 +165,10 @@ void diagSetup() {
     deviceSetup();
     // diagDef.priority = uxTaskPriorityGet(xTaskGetCurrentTaskHandle()) + 1;
     // diagTask = Scheduler.startTask(&diagDef);
+#if LOGGING_ENABLED == 1
     const TaskHandle_t diagTask = xTaskGetCurrentTaskHandle();
     log_info(F("Diagnostic thread [%s] - priority %lu - has been setup. Events are dispatching."), pcTaskGetName(diagTask), uxTaskPriorityGet(diagTask));
+#endif
 }
 
 /**
@@ -565,7 +569,7 @@ void saveCalibrationInfo() {
     serializeCalibrationParams(calibCpuTemp, cbparams);
     auto str = new String();    //larger temporary string, put it on the heap
     str->reserve(measureJson(doc));
-    const size_t sz = serializeJson(doc, *str);
+    [[maybe_unused]] const size_t sz = serializeJson(doc, *str);
     if (SyncFsImpl.writeFile(calibFileName, str))
         log_info(F("Successfully saved CPU temp calibration information file %s [%zd bytes]"), calibFileName, sz);
     else

@@ -475,17 +475,15 @@ void web::handlePutConfig(WebClient &client) {
                 upd[csBroadcast] = syncMode;
         }
     }
-    uint16_t curFxPos = 0;
-    bool autoRoll = false;
-    bool sleepEnabled = false;
-    curFxPos = fxRegistry.curEffectPos();
-    autoRoll = fxRegistry.isAutoRoll();
-    sleepEnabled = fxRegistry.isSleepEnabled();
+#if LOGGING_ENABLED == 1
+    const uint16_t curFxPos = fxRegistry.curEffectPos();
+    const bool autoRoll = fxRegistry.isAutoRoll();
+    const bool sleepEnabled = fxRegistry.isSleepEnabled();
     const Holiday holiday = paletteFactory.getHoliday();
-
     log_info(F("FX: Current config updated effect %hu, autoswitch %s, sleep %s, holiday %s, brightness %hu, brightness adjustment %s"),
         curFxPos, StringUtils::asString(autoRoll), StringUtils::asString(sleepEnabled),
         holidayToString(holiday), stripBrightness.load(), stripBrightnessLocked?"fixed":"automatic");
+#endif
 
     //main status and headers
     resp["status"] = qResult == pdTRUE;
@@ -536,7 +534,7 @@ void web::handleGetTasks(WebClient &client) {
  * Special web request handler for resources not found on this server
  */
 void web::handleNotFound(WebClient &client) {
-    const size_t sz = client.send(404, mime::mimeTable[mime::txt].mimeType, msgRequestNotMapped);
+    [[maybe_unused]] const size_t sz = client.send(404, mime::mimeTable[mime::txt].mimeType, msgRequestNotMapped);
     log_info(F("Handler handleNotFound invoked for %s, response size %zu bytes"), client.request().uri().c_str(), sz);
 }
 
@@ -587,7 +585,7 @@ void handleFWImageUpload(WebClient &client) {
                     client.send(200, mime::mimeTable[mime::txt].mimeType, R"({"status": "OK"})");
                     log_info(F("FW upload and storage %s (size read %zu bytes) succeeded - sha-256 actual: %s"), fwData->fileName.c_str(), raw.totalSize, sha256.c_str());
                     if (const TaskHandle_t core0Handle = xTaskGetHandle(csCORE0)) {
-                        const BaseType_t fwNotif = xTaskNotify(core0Handle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
+                        [[maybe_unused]] const BaseType_t fwNotif = xTaskNotify(core0Handle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
                         log_info(F("CORE0 task has been notified of FW image upload complete, notification status %d"), fwNotif);
                     }
                 } else {

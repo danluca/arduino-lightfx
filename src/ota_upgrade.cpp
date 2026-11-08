@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include "ota_upgrade.h"
@@ -47,7 +47,7 @@ bool upgrade_check() {
  */
 void notifyFx() {
     if (const TaskHandle_t fxHandle = xTaskGetHandle(csFxTask)) {
-        const BaseType_t fwNotif = xTaskNotify(fxHandle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
+        [[maybe_unused]] const BaseType_t fwNotif = xTaskNotify(fxHandle, OTA_UPGRADE_NOTIFY, eSetValueWithOverwrite);
         log_info(F("FX task has been notified of FW upgrade starting, notification status %d"), fwNotif);
     } else
         log_warn(F("FX task not found - unable to notify about FW upgrade"));

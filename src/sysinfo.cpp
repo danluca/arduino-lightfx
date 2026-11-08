@@ -39,9 +39,11 @@ constexpr CRGB CLR_SETUP_ERROR = CRGB::Red;
 unsigned long prevStatTime = 0;
 unsigned long prevIdleTime = 0;
 SysInfo *sysInfo;
+#if LOGGING_ENABLED == 1
 static TaskStatus_t *prevLogTaskStatusArray = nullptr;
 static TaskStatus_t *curLogTaskStatusArray = nullptr;
 static UBaseType_t prevLogTaskStatusArraySize = 0;
+#endif
 static TaskStatus_t *prevJsonTaskStatusArray = nullptr;
 static TaskStatus_t *curJsonTaskStatusArray = nullptr;
 static UBaseType_t prevJsonTaskStatusArraySize = 0;
@@ -69,6 +71,7 @@ TaskStatus_t* findTaskStatus(TaskStatus_t* taskStatusArray, const UBaseType_t ar
     return nullptr;
 }
 
+#if LOGGING_ENABLED == 1
 static int compareTasksByNumber(const void* a, const void* b) {
     const auto* taskA = static_cast<const TaskStatus_t*>(a);
     const auto* taskB = static_cast<const TaskStatus_t*>(b);
@@ -80,6 +83,7 @@ static bool isIdleTaskName(const char *taskName) {
         return false;
     return strstr(taskName, "Idle") != nullptr || strstr(taskName, "IDLE") != nullptr;
 }
+#endif
 
 /**
  * Logs detailed information about FreeRTOS task statistics and heap usage.
@@ -556,9 +560,11 @@ void SysInfo::setWiFiInfo(nina::WiFiClass &wifi) {
     strIpAddress = ipAddress.toString();
     strGatewayIpAddress = ipGateway.toString();
 
+#if LOGGING_ENABLED == 1
     const IPAddress dns1 = wifi.dnsIP(0);
     const IPAddress dns2 = wifi.dnsIP(1);
     log_info(F("WiFi DNS servers: %s, %s"), dns1.toString().c_str(), dns2.toString().c_str());
+#endif
 
     //MAC address - Formats the MAC address into the character buffer provided; space for 20 chars is needed (includes nul terminator)
     uint8_t mac[WL_MAC_ADDR_LENGTH];
@@ -732,7 +738,7 @@ void readSysInfo() {
         sysInfo->stackSize = doc[csStackSize];
         sysInfo->freeStack = doc[csFreeStack];
         //do not override the current status (in progress of populating) with the last run status
-        const auto lastStatus = doc[csStatus].as<uint16_t>();
+        [[maybe_unused]] const auto lastStatus = doc[csStatus].as<uint16_t>();
         log_info(F("System Information restored from %s [%d bytes]: boardName=%s, deviceName=%s, buildVersion=%s, buildTime=%s, scmBranch=%s, boardId=%s, secElemId=%s, macAddress=%s, status=%#hhX (last %#hhX), IP=%s, Gateway=%s"),
                    sysFileName, sysSize, brdName.c_str(), devName.c_str(), bldVersion.c_str(), bldTime.c_str(), gitBranch.c_str(), sysInfo->boardId.c_str(), sysInfo->secElemId.c_str(), sysInfo->macAddress.c_str(), sysInfo->status,
                    lastStatus, sysInfo->strIpAddress.c_str(), sysInfo->strGatewayIpAddress.c_str());

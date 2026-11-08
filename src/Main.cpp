@@ -180,7 +180,8 @@ void setup() {
     RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
 
     const String boardUid = rp2040.getChipID();
-    const bool knownBoard = selectBoardConfiguration(boardUid.c_str());
+    [[maybe_unused]] const bool knownBoard = selectBoardConfiguration(boardUid.c_str());
+#if LOGGING_ENABLED == 1
     const BoardConfiguration &configuration = activeBoardConfiguration();
     if (knownBoard)
         log_info(F("Known board UID %s selected profile %s: %hu pixels, frame %hu, %s IP"), boardUid.c_str(), configuration.deviceName,
@@ -188,6 +189,7 @@ void setup() {
     else
         log_warn(F("Unrecognized board UID %s; using safe defaults (DHCP, %hu pixels, brightness %hu)"), boardUid.c_str(),
                  configuration.numPixels, configuration.brightness);
+#endif
 
     sysInfo = new SysInfo();    //system information object built once per run
     sysInfo->fillBoardId();
@@ -202,7 +204,7 @@ void setup() {
     secElement_setup();
 
     const TaskHandle_t core1 = xTaskGetHandle(csCORE1);    //retrieve a task handle for the second core
-    const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
+    [[maybe_unused]] const BaseType_t c1Fx = xTaskNotify(core1, 1, eSetValueWithOverwrite);    //notify the second core that it can start running FX
     log_info(F("Basic components ok - CORE1 notified of starting FX %d. System status: %#hX"), c1Fx, sysInfo->getSysStatus());
 
     wifi_setup();           // blocking until we get WiFi
@@ -212,7 +214,7 @@ void setup() {
     web::server_setup();
 
     // notifies Core1 to start processing tasks that need WiFi
-    const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
+    [[maybe_unused]] const BaseType_t c1NtfStatus = xTaskNotify(core1, 2, eSetValueWithOverwrite);
 
     watchdogSetup();
     HealthMonitor::init();

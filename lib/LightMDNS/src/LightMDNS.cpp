@@ -621,9 +621,14 @@ MDNS::Status MDNS::process() {
 #endif
 
         const auto msgTimeout = millis() + 50;     //hard-coded 500ms of processing mDNS messages
+#if LOGGING_ENABLED == 1
         auto count = 0;
-        while ((status = _messageRecv()) == Status::Success && millis() < msgTimeout)  //limit the time to handle dns messages
+#endif
+        while ((status = _messageRecv()) == Status::Success && millis() < msgTimeout) {  //limit the time to handle dns messages
+#if LOGGING_ENABLED == 1
             count++;
+#endif
+        }
 
         if (status == Status::NameConflict)
             return _conflicted();

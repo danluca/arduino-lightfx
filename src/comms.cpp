@@ -203,8 +203,6 @@ void enqueueScanClients(TimerHandle_t xTimer) {
  */
 void scanClients() {
 #if MDNS_ENABLED == 1
-    const auto selfAddr = sysInfo->refIpAddress();
-
     // 1. Remove clients that are no longer discovered and don't respond to ping
     auto it = fxBroadcastRecipients.begin();
     while (it != fxBroadcastRecipients.end()) {

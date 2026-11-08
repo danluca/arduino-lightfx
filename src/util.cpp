@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include <ArduinoECCX08.h>
 #include "utility/ECCX08DefaultTLSConfig.h"
@@ -130,7 +130,7 @@ bool secElement_setup() {
         return false;
     }
     sysInfo->setSecureElementId(ECCX08.serialNumber());
-    const char* eccSerial = sysInfo->getSecureElementId().c_str();
+    [[maybe_unused]] const char* eccSerial = sysInfo->getSecureElementId().c_str();
     if (!ECCX08.locked()) {
         log_warn(F("The ECCX08 s/n %s on your board is not locked - proceeding with default TLS configuration locking."), eccSerial);
         if (!ECCX08.writeConfiguration(ECCX08_DEFAULT_TLS_CONFIG)) {

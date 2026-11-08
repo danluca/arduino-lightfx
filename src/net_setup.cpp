@@ -67,7 +67,7 @@ static bool wifi_connect() {
     log_info(F("Connecting to WiFI '%s' starting from status %hhu..."), ssid, wifiStatus);  // print the network name (SSID);
     // attempt to connect to WiFi network:
     WiFi.setTimeout(7500);     // default timeout is 15 seconds - see WiFiClass.h
-    uint attCount = 1;
+    [[maybe_unused]] uint attCount = 1;
     while (wifiStatus != WL_CONNECTED) {
         const unsigned long startAttemptTime = millis();
         wifiStatus = WiFi.begin(ssid, pass);
@@ -145,7 +145,7 @@ bool wifi_setup() {
  */
 static bool wifi_check() {
     uint8_t wifiStatus = WiFi.status();
-    bool secondTry = false;
+    [[maybe_unused]] bool secondTry = false;
     if (wifiStatus != WL_CONNECTED) {
         secondTry = true;
         taskDelay(100);    //wait a bit before checking again to avoid transient states
@@ -167,7 +167,9 @@ static bool wifi_check() {
         taskDelay(100);  // Brief delay between attempts to avoid transient states
     }
     const int32_t rssi = WiFi.RSSI();
+#if LOGGING_ENABLED == 1
     const uint8_t wifiBars = barSignalLevel(rssi);
+#endif
     if ((gwPingTime < 0) || (rssi < -75)) {
         sysInfo->resetSysStatus(SysStatus::Wifi);
         //we either cannot ping the router or the signal strength is 2 bars and under - reconnect for a better signal
@@ -239,8 +241,10 @@ void printSuccessfulWifiStatus() {
     log_info(F("MAC Address %s"), sysInfo->getMacAddress().c_str());
 
     // print the received signal strength:
+#if LOGGING_ENABLED == 1
     int32_t rssi = WiFi.RSSI();
     log_info(F("Signal strength (RSSI) %d dBm; %hhu bars"), rssi, barSignalLevel(rssi));
+#endif
 
     // print where to go in a browser:
     log_info(F("Home page available at http://%s"), sysInfo->getIpAddress().c_str());
