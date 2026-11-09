@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef DNSSECTION_H
@@ -142,12 +142,6 @@ static constexpr DNSSection operator|(const DNSSection a, const DNSSection b) {
 }
 static constexpr DNSSection operator&(const DNSSection a, const DNSSection b) {
     return static_cast<DNSSection>(static_cast<int>(a) & static_cast<int>(b));
-}
-static DNSSection getSection(const size_t i, const size_t qd, const size_t an, const size_t ns) {
-    if (i < qd) return DNSSection::Query;
-    if (i < an) return DNSSection::Answer;
-    if (i < ns) return DNSSection::Authority;
-    return DNSSection::Additional;
 }
 __attribute__((unused)) static const char* getSectionName(const DNSSection section) {
     switch (section) {

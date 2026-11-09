@@ -57,7 +57,7 @@ public:
     
     static void spiSlaveDeselect();
     
-    static char spiTransfer(volatile char data);
+    static char spiTransfer(char data);
 
     static void waitForSlaveReady(bool feed_watchdog = false);
 

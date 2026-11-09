@@ -147,7 +147,7 @@ void SpiDrv::spiSlaveDeselect() {
 }
 
 
-char SpiDrv::spiTransfer(const volatile char data) {
+char SpiDrv::spiTransfer(const char data) {
     const char result = SPIWIFI.transfer(data);
     DELAY_TRANSFER();
 

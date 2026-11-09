@@ -48,7 +48,6 @@ uint8_t barSignalLevel(const int32_t rssi) {
 }
 
 #if MDNS_ENABLED==1
-static mutex_t discBoardsMutex;
 // Storage for discovered boards - by itself is not thread-safe
 static std::vector<DiscoveredBoard> discoveredBoards;
 #endif

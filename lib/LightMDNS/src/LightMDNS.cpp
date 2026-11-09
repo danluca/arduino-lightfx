@@ -48,6 +48,12 @@ static uint32_t configureTTL(const DNSRecordUniqueness uniqueness, const MDNS::T
     return ttl == 0 ? 0 : (uniqueness == DNSRecordUniqueness::Shared ? std::min(ttl, ttls.shared_max) : ttl);
 }
 
+static DNSSection getSection(const size_t i, const size_t qd, const size_t an, const size_t ns) {
+    if (i < qd) return DNSSection::Query;
+    if (i < an) return DNSSection::Answer;
+    if (i < ns) return DNSSection::Authority;
+    return DNSSection::Additional;
+}
 // -----------------------------------------------------------------------------------------------
 
 __attribute__((unused)) static String parseDNSType(const uint16_t type) {
