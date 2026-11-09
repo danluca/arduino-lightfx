@@ -1,7 +1,7 @@
 ---
 type: Architecture
 title: Memory model
-description: The 192 KB heap_4 FreeRTOS heap next to the newlib and lwIP heaps, the static LED buffers, and the coding patterns used to keep fragmentation and leaks down.
+description: The 192 KB heap_4 FreeRTOS heap next to the newlib and lwIP heaps, the board-sized LED buffers, and the coding patterns used to keep fragmentation and leaks down.
 tags: [memory, heap, freertos, fragmentation, lwip]
 status: stable
 generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
@@ -39,9 +39,9 @@ Other points:
 * **Visibility:** `GET /tasks.json` → `heap` reports `totalHeap`, `freeHeap`, `usedHeap`, `minHeap` (the lowest free amount ever), `maxHeapBlock`, `minHeapBlock` and `freeBlocks` from `vPortGetHeapStats`, plus `stackPointer`, `freeStack`, `psramSize`, `psramHeapTotal/Free/Used` (0 on the Plasma 2350 W, which has no PSRAM) and `logMinBufferSpace`. The web stats page shows the same data.[^sysinfo]
 * There are no malloc wrappers. Heap figures come only from FreeRTOS.
 
-# Static buffers (not on the heap)
+# Board-sized LED and effect buffers
 
-Declared in the `fx` namespace in `efx_setup.cpp`. Only the FX task touches them.[^efx]
+The FX task allocates its LED storage once in `ledStripInit()` after the UID-selected board configuration is available. `BoardBufferStorage` owns the allocations with `std::unique_ptr` custom deleters; all arrays are committed together only after every allocation succeeds. The buffers use checked C `malloc`/`free`, so a null return is recoverable and does not invoke the FreeRTOS `pvPortMalloc` failure hook that reboots the board. FastLED views are published only after the complete allocation succeeds.[^efx]
 
 | Symbol | Size | Purpose |
 |---|---|---|
@@ -49,10 +49,13 @@ Declared in the `fx` namespace in `efx_setup.cpp`. Only the FX task touches them
 | `ledSet` | view | All of `leds` as a `CRGBSet` |
 | `tpl` | view, `FRAME_SIZE` | The template, or first frame, of the strip |
 | `others` | view, `FRAME_SIZE..NUM_PIXELS-1` | The rest of the strip. Many effects draw into `tpl` and then call `replicateSet(tpl, others)` |
-| `frame` | `PIXEL_BUFFER_SPACE` (4×`FRAME_SIZE`) | Scratch buffer for effects |
-| `stripShuffleIndex[NUM_PIXELS]` | 2 B × `NUM_PIXELS` | Random permutation used by spot effects and transitions |
+| `frame` | 3 B × 4 × `frameSize` | Effect scratch buffer; four frames cover the largest current effect view |
+| `stripShuffleIndex` | 2 B × `numPixels` | Random permutation used by spot effects and transitions |
+| Effect scratch | 2 B × `numPixels` | Generic scratch region available to effects as checked, offset byte or 16-bit views; currently shared by FxF4’s easing curve and FxJ2’s two trail arrays |
 
 Compile-time guards: `10 < FRAME_SIZE < NUM_PIXELS` and `PIXEL_BUFFER_SPACE > 3×FRAME_SIZE`. `MAX_NUM_PIXELS` is 1024, and the Tree board already uses 1000.
+
+`LedBufferOwner` owns all board-sized storage and its FastLED views. It initializes those views once after successful allocation and rejects reinitialization, so FastLED never retains a pointer into moved or freed LED storage. Effect scratch reserves one aligned 16-bit word per strip pixel; effects request bounded word or byte views during setup. FxF4 uses a word view for its easing curve, while FxJ2 requests two adjacent byte views for trail intensity and color. The registry’s FX-task-only lifecycle deletes the active effect before constructing the next, which is the exclusivity guarantee for this shared region.
 
 # Patterns used to limit fragmentation and leaks
 

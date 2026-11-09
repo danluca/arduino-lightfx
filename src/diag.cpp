@@ -17,6 +17,8 @@
 #include "constants.hpp"
 #include "task_msg.h"
 #include "log.h"
+#include "board_config.h"
+#if LOGGING_ENABLED == 1
 #include "stringutils.h"
 
 #define DIAG_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
@@ -77,6 +79,8 @@ void deviceSetup() {
     adc_setup();
 
     sysInfo->fillBoardId();
+
+    calibCpuTemp.ref33 = activeBoardConfiguration().mv3_3;
 
     readCalibrationInfo();
 
@@ -321,8 +325,8 @@ void buildCalParams() {
     const float adcRange = (float)calibTempMeasurements.max.adcRaw - (float)calibTempMeasurements.min.adcRaw;
     const float tempRange = calibTempMeasurements.min.value - calibTempMeasurements.max.value;
     calibCpuTemp.refTemp = calibTempMeasurements.ref.value;
-    calibCpuTemp.vtref = (float)calibTempMeasurements.ref.adcRaw * (float)CalibrationParams::ref33 / maxAdc;
-    calibCpuTemp.slope = adcRange * (float)CalibrationParams::ref33 / maxAdc / tempRange;
+    calibCpuTemp.vtref = (float)calibTempMeasurements.ref.adcRaw * (float)calibCpuTemp.ref33 / maxAdc;
+    calibCpuTemp.slope = adcRange * (float)calibCpuTemp.ref33 / maxAdc / tempRange;
     calibCpuTemp.refDelta = fabs(tempRange);
     calibCpuTemp.time = calibTempMeasurements.ref.time;
 }
@@ -369,8 +373,9 @@ Measurement controllerVoltage() {
     for (uint x = 0; x < avgSize; x++)
         valSum += analogRead(A0);
     log_info(F("Voltage %d average reading: %d"), avgSize, valSum/avgSize);
-    valSum = valSum*MV3_3/avgSize;
-    valSum = valSum/VCC_DIV_R5*(VCC_DIV_R5+VCC_DIV_R4)/maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
+    const BoardConfiguration &configuration = activeBoardConfiguration();
+    valSum = valSum * configuration.mv3_3 / avgSize;
+    valSum = valSum / configuration.vccDivR5 * (configuration.vccDivR5 + configuration.vccDivR4) / maxAdc;  //watch out not to exceed uint range, these are large numbers. operations order tuned to avoid overflow
     return Measurement {static_cast<float>(valSum)/1000.0f, now(), Volts};
 }
 
@@ -390,7 +395,7 @@ MeasurementPair chipTemperature() {
     adc_select_input(curAdc);   //restore the ADC input selection
     log_debug(F("Internal temperature value: %u; average reading: %u"), avgSize, valSum/avgSize);
     const uint adcRaw = valSum/avgSize;
-    const auto tV = static_cast<float>(valSum)*MV3_3/avgSize/maxAdc;   //voltage in mV
+    const auto tV = static_cast<float>(valSum) * calibCpuTemp.ref33 / avgSize / maxAdc;   //voltage in mV
     MeasurementPair result;
     if (calibCpuTemp.isValid()) {
         //per RP2040 documentation - datasheet, section 12.4.6 Temperature Sensor, page 1069 - the formula is 27 - (ADC_Voltage - 0.706)/0.001721
@@ -462,7 +467,7 @@ static void deserializeCalibrationMeasurement(CalibrationMeasurement& obj, JsonO
  * @param json receiving JSON object
  */
 static void serializeCalibrationParams(const CalibrationParams& obj, JsonObject& json) {
-    json["ref33"] = CalibrationParams::ref33;
+    json["ref33"] = obj.ref33;
     json["refTemp"] = obj.refTemp;
     json["vtref"] = obj.vtref;
     json["slope"] = obj.slope;
@@ -476,7 +481,6 @@ static void serializeCalibrationParams(const CalibrationParams& obj, JsonObject&
  * @param json JSON object containing data to deserialize
  */
 static void deserializeCalibrationParams(CalibrationParams& obj, JsonObject& json) {
-    //obj.ref33 = json["ref33"];
     obj.refTemp = json["refTemp"];
     obj.vtref = json["vtref"];
     obj.slope = json["slope"];
@@ -501,7 +505,14 @@ void readCalibrationInfo() {
         auto msmt = doc["measurements"].as<JsonObject>();
         deserializeCalibrationMeasurement(calibTempMeasurements, msmt);
         auto cbparams = doc["calibParams"].as<JsonObject>();
-        deserializeCalibrationParams(calibCpuTemp, cbparams);
+        const uint16_t savedRef33 = cbparams["ref33"] | 0;
+        if (savedRef33 == calibCpuTemp.ref33)
+            deserializeCalibrationParams(calibCpuTemp, cbparams);
+        else {
+            calibTempMeasurements.reset();
+            calibCpuTemp.reset();
+            log_warn(F("Discarding CPU temperature calibration with reference voltage %u mV; current board reference is %u mV"), savedRef33, calibCpuTemp.ref33);
+        }
         log_info(F("CPU temp calibration Information restored from %s [%d bytes]: min %.2f 'C, max %.2f 'C; params: tempRange=%.2f, refTemp=%.2f, VTref=%f, slope=%f, time=%s"),
                    calibFileName, calibSize, calibTempMeasurements.min.value, calibTempMeasurements.max.value, calibCpuTemp.refDelta, calibCpuTemp.refTemp, calibCpuTemp.vtref,
                    calibCpuTemp.slope, TimeFormat::asString(calibCpuTemp.time).c_str());
@@ -512,6 +523,7 @@ void readCalibrationInfo() {
         calibTempMeasurements.ref.value = 23.33f;
         calibTempMeasurements.ref.time = 1762027200;    //epoch time of local 2025-11-01 15:00:00 CDT
         calibTempMeasurements.ref.adcRaw = 746;
+        calibCpuTemp.ref33 = activeBoardConfiguration().mv3_3;
         calibCpuTemp.refDelta = 0.0f;
         calibCpuTemp.refTemp = 23.33f;
         calibCpuTemp.vtref = 598.0f;

@@ -10,6 +10,7 @@
 #include "LedEffect.h"
 #include "EffectRegistry.h"
 #include "config.h"
+#include "board_buffers.h"
 #include "global.h"
 #include "PaletteFactory.h"
 #include "constants.hpp"
@@ -37,12 +38,14 @@ extern std::atomic<uint16_t> curPos;
 extern String masterBoardName;
 
 namespace fx {
-    extern CRGB leds[NUM_PIXELS];
-    extern CRGBArray<PIXEL_BUFFER_SPACE> frame;
-    extern CRGBSet tpl;
-    extern CRGBSet others;
-    extern CRGBSet ledSet;
-    extern uint16_t stripShuffleIndex[NUM_PIXELS];
+    extern CRGB *leds;
+    extern CRGBSet &frame;
+    extern CRGBSet &tpl;
+    extern CRGBSet &others;
+    extern CRGBSet &ledSet;
+    ScratchView<uint16_t> effectScratchWords(size_t offset, size_t count);
+    ScratchView<uint8_t> effectScratchBytes(size_t offset, size_t count);
+    extern uint16_t *stripShuffleIndex;
     extern CRGBPalette16 palette;
     extern CRGBPalette16 targetPalette;
     extern OpMode mode;
@@ -51,9 +54,9 @@ namespace fx {
 }
 
 #define EFFECT_FACTORY(EffectClass) \
-    []() -> LedEffect* { return new EffectClass(); }
+    ([]() -> LedEffect* { return new EffectClass(); })
 
-void ledStripInit();
+bool ledStripInit();
 void resetGlobals();
 void saveFxState();
 void readFxState();

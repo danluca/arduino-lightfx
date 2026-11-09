@@ -13,7 +13,7 @@
 #include "log.h"
 #include "stringutils.h"
 #include "web_server.h"
-#include "HealthMonitor.h"
+#include "board_config.h"
 #if MDNS_ENABLED==1
 #include <LEAmDNS.h>
 #endif
@@ -23,7 +23,6 @@
 // using namespace colTheme;
 constexpr auto ssid = WF_SSID;
 constexpr auto pass = WF_PSW;
-constexpr auto hostname = DEVICE_NAME_PREFIX DEVICE_NAME;
 constexpr auto service_type = "lucasfx";
 constexpr auto service_protocol = "tcp";
 
@@ -138,9 +137,14 @@ void hostServiceCallback(const char *p_pcServiceName, const MDNSResponder::hMDNS
 bool wifi_connect() {
     uint8_t wifiStatus = WiFi.status();
     if (wifiStatus == WL_CONNECTED) return true;
-    //IP address is assigned by DHCP - the router reserves a fixed address per board MAC (see IP_ADDR in config.h and scripts/boards.ps1)
-    // WiFi.config({IP_ADDR});
-    WiFi.setHostname(hostname);
+
+    const BoardConfiguration &configuration = activeBoardConfiguration();
+    if (!configuration.useDhcp())
+        WiFi.config(configuration.ip, {IP_DNS}, {IP_GW}, {IP_SUBNET});
+    String hostname(DEVICE_NAME_PREFIX);
+    hostname.concat(sysInfo->getDeviceName());
+    hostname.toLowerCase();
+    WiFi.setHostname(hostname.c_str());
     log_info(F("Connecting to WiFI '%s' starting from status %hhu..."), ssid, wifiStatus);  // print the network name (SSID);
     // attempt to connect to WiFi network:
     WiFi.setTimeout(7500);     // default timeout is 15 seconds - see WiFiClass.h
@@ -163,13 +167,13 @@ bool wifi_connect() {
     }
 
     sysInfo->setSysStatus(SysStatus::Wifi);
-    printSuccessfulWifiStatus();  // we're connected now - capture the DHCP assigned addresses (needed for the gateway ping below) and print out the status
+    printSuccessfulWifiStatus();  // populate the assigned DHCP address before using the gateway
     if (const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress()); resPing >= 0)
         log_info(F("Connected to WiFi after %d tries. Gateway ping successful: %d ms"), attCount, resPing);
     else
         log_warn(F("Connected to WiFi after %d tries. Failed pinging the gateway (ping result %d) - will retry later"), attCount, resPing);
 #if MDNS_ENABLED==1
-    // setup mDNS - to resolve this board's address as 'lightfx-xmas2350.local' or 'lightfx-fxpine.local'
+    // setup mDNS to resolve this board's address using its configured name
     String dnsHostname(hostname);
     dnsHostname.toLowerCase();
     const bool mdnsStatus = MDNS.begin(dnsHostname);
@@ -255,7 +259,7 @@ bool wifi_check() {
 /**
  * Similar with wifi_connect, but with some preamble cleanup
  */
-void wifi_reconnect() {
+static void wifi_reconnect() {
     log_debug(F("wifi_reconnect: start"));
     sysInfo->resetSysStatus(SysStatus::Wifi);
     log_debug(F("wifi_reconnect: stopping web server"));

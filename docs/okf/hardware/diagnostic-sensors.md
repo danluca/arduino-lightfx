@@ -28,7 +28,7 @@ The Plasma 2350 W has **no IMU, no ECC608 secure element and no microphone**. Th
 
 # Supply voltage
 
-`SYS_VOLTAGE` every 34 s: 8 reads of A0 through the board-specific divider (`VCC_DIV_R4/R5`) against the measured 3V3 rail (`MV3_3`). Reported as `vcc` (`current`, `min`, `max`) in `/status.json`. See [controller board](/hardware/controller-circuit.md) for the caveat about the divider.
+`SYS_VOLTAGE` every 34 s: A0 through the selected board profile's divider (`vccDivR4`/`vccDivR5`) against its measured 3V3 rail (`mv3_3`). Reported as `vcc` in `/status.json`.
 
 # Entropy
 

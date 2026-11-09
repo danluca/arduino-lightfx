@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #pragma once
@@ -89,13 +89,13 @@ struct CalibrationMeasurement {
 };
 
 struct CalibrationParams {
-    static constexpr uint ref33 = MV3_3;     //line V3.3 voltage in milliVolts
+    uint16_t ref33; //line V3.3 voltage in milliVolts
     float refTemp;  //reference temperature in degrees Celsius
     float vtref;    //ADC voltage reading at refTemp temperature - in milliVolts
     float slope;    //voltage slope - in mV/C
     float refDelta; //the amount of temperature variation that was used for last calibration; meaningful only if valid is true
     time_t time;    //last calibration time; also used to determine whether this params set is valid
-    CalibrationParams(): refTemp(0.0f), vtref(0.0f), slope(0.0f), refDelta(0.0f), time(0) {};
+    CalibrationParams(): ref33(0), refTemp(0.0f), vtref(0.0f), slope(0.0f), refDelta(0.0f), time(0) {};
     [[nodiscard]] bool isValid() const { return time > 0; }
 
     void reset() {

@@ -31,7 +31,7 @@ sources:
 
 # Connect
 
-`wifi_connect()` sets the hostname, then loops `WiFi.begin` with a 30-second wait per attempt (`setTimeout(7500)`), checking in with the health monitor every 500 ms and calling `disconnect()` between attempts, until it connects. It then sets `SysStatus::Wifi`, records SSID, IP, gateway, DNS and MAC in `SysInfo`, pings the gateway, and starts mDNS.[^net]
+`wifi_connect()` configures a static address only for known profiles; unknown UIDs use DHCP. It then loops `WiFi.begin` with a 30-second wait per attempt (`setTimeout(7500)`), checking in with the health monitor every 500 ms and calling `disconnect()` between attempts, until it connects. It then sets `SysStatus::Wifi`, records SSID, IP, gateway, DNS and MAC in `SysInfo`, pings the gateway, and starts mDNS.[^net]
 
 `checkFirmwareVersion()` is a leftover from the NINA line: on the CYW43 both the reported firmware version and `WIFI_FIRMWARE_LATEST_VERSION` are the Pico SDK version string, so the check never warns.
 

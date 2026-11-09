@@ -632,7 +632,8 @@ void FxI4::run() {
 }
 
 // FXI5 - Shoreline waves: approaching swell, shore whitecaps, and backwash
-FxI5::FxI5() : LedEffect(fxi5Desc), frame(leds, frameSize), rest(leds, frameSize, NUM_PIXELS-1) {
+FxI5::FxI5() : LedEffect(fxi5Desc), frame(leds, min<uint16_t>(frameSize, FRAME_SIZE)),
+               rest(leds, min<uint16_t>(frameSize, FRAME_SIZE), NUM_PIXELS-1) {
 }
 
 void FxI5::setup() {

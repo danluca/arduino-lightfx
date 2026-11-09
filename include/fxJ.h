@@ -64,12 +64,12 @@ namespace FxJ {
         void merge();
 
         Drop drops[maxDrops]{};
-        uint8_t wet[FRAME_SIZE]{};      // wet trail intensity left behind by sliding drops
-        uint8_t wetIdx[FRAME_SIZE]{};   // palette color index of the wet trail
         CRGB bgColor;
         uint8_t bpm{};                  // rain intensity cycle - drizzle to shower
         uint8_t tick{};
         bool dirRight{};
+        ScratchView<uint8_t> wetTrail{};
+        ScratchView<uint8_t> wetTrailColors{};
     };
 }
 #endif //ARDUINO_LIGHTFX_FXJ_H

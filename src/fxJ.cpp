@@ -133,12 +133,19 @@ FxJ2::FxJ2() : LedEffect(fxj2Desc) {}
 
 void FxJ2::setup() {
     LedEffect::setup();
+    wetTrail = fx::effectScratchBytes(0, tpl.size());
+    wetTrailColors = fx::effectScratchBytes(tpl.size(), tpl.size());
+    if (!wetTrail || !wetTrailColors) {
+        log_error(F("FxJ2 cannot acquire %hu scratch bytes per trail"), tpl.size());
+        return;
+    }
     dirRight = random8() & 1;
     bpm = random8(1, 4);
     bgColor = ColorFromPalette(targetPalette, random8(), 6, LINEARBLEND);
     for (auto &d : drops)
         d.pos256 = -1;
-    memset(wet, 0, sizeof(wet));
+    memset(wetTrail.data, 0, wetTrail.size);
+    memset(wetTrailColors.data, 0, wetTrailColors.size);
     tpl.fill_solid(bgColor);
 }
 
@@ -183,6 +190,8 @@ void FxJ2::merge() {
 }
 
 void FxJ2::run() {
+    if (!wetTrail || !wetTrailColors)
+        return;
     EVERY_N_MILLIS_I(j2Timer, 25) {
         ++tick;
         const uint16_t size = tpl.size();
@@ -219,7 +228,11 @@ void FxJ2::run() {
             }
             // sliding - drops run faster along an already wet path and stall less often on it
             const auto idx = static_cast<uint16_t>(d.pos256 >> 8);
-            const bool onWet = wet[idx] > 32;
+            if (idx >= size) {
+                d.pos256 = -1;
+                continue;
+            }
+            const bool onWet = wetTrail.data[idx] > 32;
             const int32_t terminal = d.mass * (onWet ? 18 : 12);
             d.vel256 = min(d.vel256 + 1 + d.mass / 2, terminal);
             if (random8() < (onWet ? 3 : 10)) {
@@ -230,13 +243,17 @@ void FxJ2::run() {
             }
             d.pos256 -= d.vel256;
             if (d.pos256 < 0) {
-                wet[0] = qadd8(wet[0], 40);    // drop reaches the bottom of the window
+                wetTrail.data[0] = qadd8(wetTrail.data[0], 40);    // drop reaches the bottom of the window
                 continue;
             }
             const auto nIdx = static_cast<uint16_t>(d.pos256 >> 8);
             if (nIdx != idx) {
-                wet[nIdx] = max<uint8_t>(wet[nIdx], 40 + d.mass * 15);
-                wetIdx[nIdx] = d.colorIdx;
+                if (nIdx >= size) {
+                    d.pos256 = -1;
+                    continue;
+                }
+                wetTrail.data[nIdx] = max<uint8_t>(wetTrail.data[nIdx], 40 + d.mass * 15);
+                wetTrailColors.data[nIdx] = d.colorIdx;
                 // the drop leaves some of its water behind on the trail, until it is too small to slide
                 if (random8() < 6 && --d.mass < 2) {
                     d.mass = 1;
@@ -250,11 +267,11 @@ void FxJ2::run() {
         // render - glass background, wet trails, then the drops themselves
         wframe.fill_solid(bgColor);
         for (uint16_t i = 0; i < size; i++) {
-            if (wet[i] == 0)
+            if (wetTrail.data[i] == 0)
                 continue;
-            wframe[i] += ColorFromPalette(palette, wetIdx[i], wet[i], LINEARBLEND);
+            wFrame[i] += ColorFromPalette(palette, wetTrailColors.data[i], wetTrail.data[i], LINEARBLEND);
             if (tick & 0x01)
-                wet[i]--;
+                wetTrail.data[i]--;
         }
 
         // anti-aliased draw across the two pixels straddling the position
@@ -284,9 +301,10 @@ void FxJ2::run() {
             if (d.flash > 0) {
                 const auto idx = static_cast<uint16_t>(d.pos256 >> 8);
                 const uint8_t side = d.flash / 4;
-                wframe[idx] += CRGB(d.flash, d.flash, d.flash);
-                if (idx > 0)
-                    wframe[idx - 1] += CRGB(side, side, side);
+                if (idx < size)
+                    wFrame[idx] += CRGB(d.flash, d.flash, d.flash);
+                if (idx > 0 && idx < size)
+                    wFrame[idx - 1] += CRGB(side, side, side);
                 if (idx + 1 < size)
                     wframe[idx + 1] += CRGB(side, side, side);
                 d.flash = qsub8(d.flash, 40);

@@ -48,7 +48,7 @@ struct CRGB;
  */
 class SysInfo {
     const String boardName;
-    const String deviceName;
+    String deviceName;
     const String buildVersion;          // includes the commit sha
     const String buildTime;
     const String scmBranch;

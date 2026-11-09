@@ -46,7 +46,6 @@ Common settings: `platform = maxgerhardt/platform-raspberrypi`, `board = pimoron
 | `PICO_CYW43_SUPPORTED`, `CYW43_PIN_WL_DYNAMIC` | 1 (board file) | Enables the CYW43439 Wi-Fi driver |
 | `ARDUINO_PIMORONI_PLASMA2350`, `ARDUINO_PIMORONI_PLASMA2350W`, `ARDUINO_ARCH_RP2040` | set (board file) | Board and architecture selection. `ARDUINO_ARCH_RP2040` is the arduino-pico architecture name for both chips |
 | `__TM_GMTOFF`, `__TM_ZONE` | `tm_offset`, `tm_zone` | Adds time zone fields to `struct tm` |
-| `BOARD_ID` | 1/2 (script); default 2 in `config.h` | Selects the per-board config. See [boards](/hardware/boards-and-config.md) |
 | `LOGGING_ENABLED` | 1 (script `-log`, dbg env) | Enables `log_*` macros (otherwise they compile to nothing) and the `diagInfo` timer |
 | `IGNORE_WEB_EFFECT_CHANGES` | 1 (script `-ignoreBroadcast`) | Ignores non-UI effect, auto and broadcast changes |
 | `PIO_FRAMEWORK_ARDUINO_NO_USB` | script, when neither `-log` nor `-dbg` | Removes the USB stack and serial |

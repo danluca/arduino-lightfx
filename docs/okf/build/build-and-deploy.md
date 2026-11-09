@@ -39,9 +39,9 @@ sources:
 ./build.ps1 -ignoreBroadcast      # IGNORE_WEB_EFFECT_CHANGES=1
 ```
 
-`build.ps1` accepts `-board Dev` or `-board Tree`. It sets `PLATFORMIO_BUILD_FLAGS` (`-DBOARD_ID=…`, plus `-DLOGGING_ENABLED=1`, `-DIGNORE_WEB_EFFECT_CHANGES=1` or `-DPIO_FRAMEWORK_ARDUINO_NO_USB` as needed), records a transcript in `logs/build-<board>.log`, and runs `pio run -e <env>`. It also prints the commit of the arduino-pico framework it builds against.[^build][^util]
+`build.ps1` does not bake `-board` into the firmware. At boot, the image selects configuration by flash UID from `src/board_config.cpp`; `-board` remains useful for selecting the OTA/serial target. The script sets only optional build flags such as logging, records a transcript in `logs/build-<board>.log`, and runs `pio run -e <env>`.[^build][^util]
 
-Plain PlatformIO: `pio run -e rp2350-rel`. Without the scripts, `BOARD_ID` falls back to **2 (Tree)**, the default in `config.h`. Set `PLATFORMIO_BUILD_FLAGS=-DBOARD_ID=1` for Dev. `scripts/pio_build.py` adds `GIT_COMMIT`, `GIT_COMMIT_SHORT`, `GIT_BRANCH` and `BUILD_TIME` automatically.
+Plain PlatformIO: `pio run -e rp2350-rel`. No board-specific build flag is needed. A single image can serve all configured UIDs, but unknown UIDs use the safe fallback until their UID and settings are added to the bundled table. `scripts/pio_build.py` adds `GIT_COMMIT`, `GIT_COMMIT_SHORT`, `GIT_BRANCH` and `BUILD_TIME` automatically.
 
 **Release builds without `-log` have no USB serial at all** (`PIO_FRAMEWORK_ARDUINO_NO_USB`). Use `-log` or `-dbg` when you need a console. Without USB, the 1200-baud touch that PlatformIO uses to reboot into the bootloader also stops working; see the flash table below.
 

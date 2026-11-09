@@ -75,12 +75,15 @@ function prepEnvironment([string]$board, [bool]$log, [bool]$ignoreBroadcast, [bo
     #ensureHeap4Strategy
     #prepCoreStackSize(3072) # set core stack size to 3KB to increase stack sizes for CORE tasks, default is 1024 bytes
 
-    $boardId = (Get-BoardByName $board).Id
-    $env:PLATFORMIO_BUILD_FLAGS = "-DBOARD_ID=$boardId"
+    # Validate that the requested logical board is known, but don't bake its profile into firmware.
+    $null = Get-BoardByName $board
+    $env:PLATFORMIO_BUILD_FLAGS = ""
     Remove-Item Env:PLATFORMIO_LINKER_MAP -ErrorAction SilentlyContinue
 
     if ($log) {
         $env:PLATFORMIO_BUILD_FLAGS += " -DLOGGING_ENABLED=1"
+        # enable floating point formatting/printing in log statements
+        $env:PLATFORMIO_BUILD_FLAGS += " -Wl,-u,_printf_float"
     }
     if ($ignoreBroadcast) {
         $env:PLATFORMIO_BUILD_FLAGS += " -DIGNORE_WEB_EFFECT_CHANGES=1"
