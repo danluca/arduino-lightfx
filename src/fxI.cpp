@@ -965,11 +965,13 @@ void FxI6::run() {
 
         // Draw ball with small trail
         const CRGB ballClr = ColorFromPalette(palette, ballHue, 220, LINEARBLEND);
-        // trail
-        if (ballPos > laneStart) nblend(tpl[ballPos - 1], ballClr, 80);
-        if (ballPos > laneStart + 1) nblend(tpl[ballPos - 2], ballClr, 40);
-        // head
-        tpl[ballPos] = ballClr;
+        if (ballPos <= laneEnd) {
+            // trail
+            if (ballPos > laneStart) nblend(tpl[ballPos - 1], ballClr, 80);
+            if (ballPos > laneStart + 1) nblend(tpl[ballPos - 2], ballClr, 40);
+            // head
+            tpl[ballPos] = ballClr;
+        }
 
         // Move ball and handle collisions
         const uint16_t prevPos = ballPos;

@@ -483,7 +483,6 @@ void web::handlePutConfig(WebClient &client) {
     log_info(F("FX: Current config updated effect %hu, autoswitch %s, sleep %s, holiday %s, brightness %hu, brightness adjustment %s"),
         curFxPos, StringUtils::asString(autoRoll), StringUtils::asString(sleepEnabled),
         holidayToString(holiday), stripBrightness.load(), stripBrightnessLocked?"fixed":"automatic");
-#endif
 
     //main status and headers
     resp["status"] = qResult == pdTRUE;

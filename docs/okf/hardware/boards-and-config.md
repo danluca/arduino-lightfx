@@ -20,24 +20,23 @@ sources:
 
 # Boards
 
-The firmware selects hardware settings at boot from the static UID table in `src/board_config.cpp`; `-board` in the build/update scripts only selects a deployment target. All profiles use the same physical Nano RP2040 Connect target.
+The firmware selects hardware settings at boot from the UID table in `src/board_config.cpp`; `-board` in the build/update scripts only selects a deployment target. Dev and Tree use different LED protocols, and the actual flash UIDs still need to be recorded in the profile slots.
 
-| UID | `DEVICE_NAME` | IP mode | `NUM_PIXELS` | `FRAME_SIZE` | Calibration |
-|---|---|---|---:|---:|---|
-| Dev | 1 | `Xmas2350` | `WS2812B` / `BGR` | 66 | 22 | 10 m Pimoroni LED star wire on the Christmas tree: 6 strands, 22 px per pair of strands |
-| Tree | 2 | `FXPine` | `WS2811` / `RGB` | 1000 | 75 | Blue pine tree lighting (900 px measured, plus a reserve) |
-| `5034C60632956818` | `Dev-Office` | DHCP | 170 | 76 | 3262 mV; R4/R5 21950/3304 Ω |
+| UID slot | Device name | IP mode | LED chipset / order | Pixels | Frame | Calibration |
+|---|---|---|---|---:|---:|---|
+| `LIGHTFX_DEV_BOARD_UID` (`SET_DEV_UID`) | `Xmas2350` | DHCP | `WS2812B` / `BGR` | 66 | 22 | 3317 mV; R4/R5 22000/4700 Ω; 10 m Pimoroni LED star wire |
+| `LIGHTFX_TREE_BOARD_UID` (`SET_TREE_UID`) | `FXPine` | DHCP | `WS2811` / `RGB` | 1000 | 75 | 3317 mV; R4/R5 22000/4700 Ω; blue pine tree lighting |
 
-The unknown-board fallback is named from the last six UID characters and uses DHCP, 32 pixels, a 12-pixel frame, conservative 3300 mV and R4/R5 20000/3300 Ω calibration, and a 16/255 brightness cap. The FX01 UID has not yet been recorded, so that board currently uses these safe defaults. LED output and effect scratch buffers are allocated to the selected geometry at startup; CPU temperature calibration saved with a different `mv3_3` reference is discarded.
+Replace both placeholder UID strings with the boards' actual flash UIDs before deployment. Until configured, those boards safely use the unknown-board profile. Unknown UIDs get the hostname identity `New-` plus their last six UID characters, DHCP, 32 pixels, a 14-pixel frame, conservative 3300 mV and R4/R5 20000/3300 Ω calibration, and a 16/255 brightness cap. LED output and effect scratch buffers are allocated to the selected geometry at startup; geometries must provide at least 14 frame pixels and two frames must fit within the strip. CPU temperature calibration saved with a different `mv3_3` reference is discarded.
 
 # Addresses
 
-| `-board` | `IP_ADDR` in `config.h` | Address in `scripts/boards.ps1` | mDNS host |
-|---|---|---|---|
-| Dev | 192.168.0.75 | 192.168.0.75 | `lightfx-xmas2350.local` |
-| Tree | 192.168.0.182 | 192.168.0.182 | `lightfx-fxpine.local` |
+| `-board` | DHCP reservation | mDNS host when UID is configured |
+|---|---|---|
+| Dev | 192.168.0.75 | `lightfx-xmas2350.local` |
+| Tree | 192.168.0.182 | `lightfx-fxpine.local` |
 
-The boards use **DHCP** with a router reservation per MAC; `IP_ADDR` is not applied to the interface and only serves as the default until Wi-Fi reports the real address. The scripts talk to the `boards.ps1` address (and `scripts/upload_audio_seed.sh` to the Dev address), so keep `config.h`, `boards.ps1` and the router reservations in step.
+Both profiles use **DHCP** with a router reservation per MAC; no static address is applied by the firmware. Until the UIDs are configured, their runtime mDNS names use the `lightfx-new-<last-six-uid-characters>.local` form. The scripts talk to the `boards.ps1` reservation address (and `scripts/upload_audio_seed.sh` to the Dev address), so keep the script entries and router reservations in step.
 
 # Shared settings
 
@@ -55,7 +54,7 @@ The boards use **DHCP** with a router reservation per MAC; `IP_ADDR` is not appl
 
 # Adding a board
 
-1. Record the board’s `rp2040.getChipID()` value and add a validated entry to `boardConfigurations` in `src/board_config.cpp`.
+1. Record the board’s `rp2040.getChipID()` value and replace the matching `LIGHTFX_*_BOARD_UID` placeholder in `src/board_config.cpp`; set the board's name, geometry, chipset, color order and calibration there.
 2. Add its logical name and target address to `$boardMap` in `scripts/boards.ps1` and to the relevant script `ValidateSet` lists.
 3. Add its last IP octet to `STATIC_BROADCAST_CLIENTS` if it should take part in [broadcast](/network/multi-board-broadcast.md).
 

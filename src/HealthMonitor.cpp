@@ -48,20 +48,16 @@ void HealthMonitor::checkIn(const HealthBit bit) {
         case HEALTH_FX:    lastCheckInMs[2].store(nowMs, std::memory_order_relaxed); lastCheckIns[2] = nowMs; watchdog_hw->scratch[kFxHeartbeatScratchIndex] = nowMs; break;
         default: break;
     }
-    uint32_t diffs[3];
-    for (int i = 0; i < 3; i++) {
-        diffs[i] = nowMs - lastCheckIns[i];
-    }
-
     if (const uint32_t wdleft = watchdog_get_time_remaining_ms(); wdleft < watchdogLowWatermarkMs) {
-        // static uint32_t lastWarnMs = 0;
-        if (nowMs - lastWarnMs > warnIntervalMs) {
+        if (uint32_t warningNowMs; claimCheckInWarning(warningNowMs)) {
+            uint32_t diffs[3];
+            for (int i = 0; i < 3; i++) diffs[i] = warningNowMs - lastCheckIns[i];
 #if LOGGING_ENABLED == 1
             log_warn(F("HealthMonitor-C: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu, watchdog remaining: %lu"),
-                diffs[0], diffs[1], diffs[2], nowMs, wdleft);
+                diffs[0], diffs[1], diffs[2], warningNowMs, wdleft);
             logTaskStats();
 #endif
-            lastWarnMs = nowMs;
+            lastCheckInWarnMs.store(warningNowMs, std::memory_order_relaxed);
             saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], false);
         }
     }
@@ -86,14 +82,10 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
     if (!initialized.load(std::memory_order_acquire))
         return;
 
-    uint32_t lastCheckIns[3];
-    for (int i = 0; i < 3; i++)
-        lastCheckIns[i] = lastCheckInMs[i].load(std::memory_order_relaxed);
-
     const uint32_t nowMs = millis();
     bool allHealthy = true;
+
     uint32_t diffs[3];
-    
     for (int i = 0; i < 3; i++) {
         // in odd race conditions, the check-in time may be in the future from nowMs (1ms observed)
         const uint32_t checkInMs = lastCheckInMs[i].load(std::memory_order_relaxed);
@@ -116,26 +108,24 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
     if (allHealthy) {
         watchdog_update();
         if (diffs[0] > warnMs || diffs[1] > warnMs || diffs[2] > warnMs) {
-            // static uint32_t lastWarnMs = 0;
-            if (nowMs - lastWarnMs > warnIntervalMs) {
+            if (uint32_t warningNowMs; claimCheckInWarning(warningNowMs)) {
 #if LOGGING_ENABLED == 1
                 log_warn(F("HealthMonitor-U: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
-                    diffs[0], diffs[1], diffs[2], nowMs);
+                    diffs[0], diffs[1], diffs[2], warningNowMs);
                 logTaskStats();
 #endif
-                lastWarnMs = nowMs;
+                lastCheckInWarnMs.store(warningNowMs, std::memory_order_relaxed);
                 //saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], false);
             }
         }
     } else {
-        // static uint32_t lastLogMs = 0;
-        if (nowMs - lastWarnMs > warnIntervalMs) {
+        if (uint32_t warningNowMs; claimCheckInWarning(warningNowMs)) {
 #if LOGGING_ENABLED == 1
             log_error(F("HealthMonitor-U: Task(s) STALLED! STOPS PINGING WATCHDOG. [C0:%lu, C1:%lu, FX:%lu] now:%lu, watchdog remaining: %lu"),
-                diffs[0], diffs[1], diffs[2], nowMs, watchdog_get_time_remaining_ms());
+                diffs[0], diffs[1], diffs[2], warningNowMs, watchdog_get_time_remaining_ms());
             logTaskStats();
 #endif
-            lastWarnMs = nowMs;
+            lastCheckInWarnMs.store(warningNowMs, std::memory_order_relaxed);
             saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], true);
         }
     }

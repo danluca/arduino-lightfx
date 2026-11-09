@@ -105,6 +105,35 @@ namespace fx {
 
 static std::atomic<bool> ledBuffersReady{false};
 
+template<template<uint8_t DATA_PIN, EOrder RGB_ORDER> class chipset, EOrder colorOrder>
+static void registerLedController(CRGB *ledArray, const uint16_t pixelCount) {
+    CFastLED::addLeds<chipset, LED_PIN, colorOrder>(ledArray, pixelCount).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
+}
+
+static bool registerLedController(CRGB *ledArray, const BoardConfiguration &configuration) {
+    switch (configuration.ledChipset) {
+        case LedChipset::WS2811:
+            switch (configuration.colorOrder) {
+                case LedColorOrder::RGB: registerLedController<WS2811, RGB>(ledArray, configuration.numPixels); return true;
+                case LedColorOrder::BGR: registerLedController<WS2811, BGR>(ledArray, configuration.numPixels); return true;
+                default:
+                    log_error("Unsupported color order for WS2811 chipset: %hhd; NO LED controller registered", configuration.colorOrder);
+                    break;
+            }
+            break;
+        case LedChipset::WS2812B:
+            switch (configuration.colorOrder) {
+                case LedColorOrder::RGB: registerLedController<WS2812B, RGB>(ledArray, configuration.numPixels); return true;
+                case LedColorOrder::BGR: registerLedController<WS2812B, BGR>(ledArray, configuration.numPixels); return true;
+                default:
+                    log_error("Unsupported color order for WS2812B chipset: %hhd; NO LED controller registered", configuration.colorOrder);
+                    break;
+            }
+            break;
+    }
+    return false;
+}
+
 //~ Support functions -----------------
 /**
  * Setup the strip LED lights to be controlled by FastLED library
@@ -122,7 +151,10 @@ bool ledStripInit() {
 
     leds = boardBuffers.storage.leds.get();
     stripShuffleIndex = boardBuffers.storage.shuffleIndexes.get();
-    CFastLED::addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_PIXELS).setCorrection(TypicalSMD5050).setTemperature(Tungsten100W);
+    if (!registerLedController(leds, configuration)) {
+        log_error(F("Unsupported LED chipset or color order in board profile %s"), configuration.deviceName);
+        return false;
+    }
     FastLED.setBrightness(activeBoardConfiguration().maxBrightness);
     FastLED.clear(true);
     ledBuffersReady.store(true, std::memory_order_release);
@@ -279,7 +311,7 @@ constexpr CRGB UPGRADE_COLOR_5 = CRGB::Black;
 constexpr uint8_t BRIGHTNESS_CHECK_INTERVAL_SECONDS = 30;
 constexpr uint8_t EFFECT_SWITCH_INTERVAL_MINUTES = 7;
 
-void displayFirmwareUpgradePattern() {
+static void displayFirmwareUpgradePattern() {
     tpl(0, 4) = UPGRADE_COLOR_1;
     tpl(5, 7) = UPGRADE_COLOR_2;
     tpl[8] = UPGRADE_COLOR_3;
@@ -292,7 +324,7 @@ void displayFirmwareUpgradePattern() {
     FastLED.show(stripBrightness);
 }
 
-void updateBrightness() {
+static void updateBrightness() {
     const uint8_t oldBrightness = stripBrightness.load();
     stripBrightness = limitBrightness(activeBoardConfiguration(), adjustStripBrightness());
     if (oldBrightness != stripBrightness.load()) {
@@ -300,7 +332,7 @@ void updateBrightness() {
     }
 }
 
-void switchToRandomEffect() {
+static void switchToRandomEffect() {
     log_info(F("Attempting switching effect to a new random one"));
     fxRegistry.nextRandomEffectPos();
     shuffleIndexes(stripShuffleIndex, NUM_PIXELS);

@@ -1023,8 +1023,11 @@ size_t SynchronizedFS::prvWriteFile(const char *fname, const String *s) const {
     }
     f.setTimeCallback(now);
     fSize = f.write(s->c_str(), s->length());
-    [[maybe_unused]] const time_t lastWrite = f.getLastWrite();
     f.close();
+    if (fSize != s->length()) {
+        log_error(F("Write size mismatch for %s: expected %zu bytes, wrote %zu bytes - possible FS corruption or write failure"), fname, s->length(), fSize);
+        return 0;
+    }
 #if LOGGING_ENABLED == 1
     //get the current last write timestamp - note that stat function does not make the distinction between creation and last access time in LittleFS; we'll use file API
     // FSStat fstat{};

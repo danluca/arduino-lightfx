@@ -2,35 +2,43 @@
 // Copyright by Dan Luca. All rights reserved
 //
 #include "board_config.h"
+#include <cstdio>
+#include <cstring>
+
+#ifndef LIGHTFX_DEV_BOARD_UID
+#define LIGHTFX_DEV_BOARD_UID "SET_DEV_UID"
+#endif
+
+#ifndef LIGHTFX_TREE_BOARD_UID
+#define LIGHTFX_TREE_BOARD_UID "SET_TREE_UID"
+#endif
 
 namespace {
     constexpr BoardConfiguration safeConfiguration {
-        .uid = nullptr, .deviceName = "TBD", .numPixels = 32, .frameSize = 12, .mv3_3 = 3300, .vccDivR4 = 20000, .vccDivR5 = 3300,
-        .ip = {0,0,0,0}, .brightness = 160, .maxBrightness = 190
+        .uid = nullptr, .deviceName = "TBD", .numPixels = 32, .frameSize = 14, .mv3_3 = 3300, .vccDivR4 = 20000, .vccDivR5 = 4700,
+        .ip = {0,0,0,0}, .brightness = 160, .maxBrightness = 190, .ledChipset = LedChipset::WS2811, .colorOrder = LedColorOrder::RGB
     };
 
     // Board settings are intentionally kept in the application image so every unit
     // can use the same firmware. Add a row when a board UID is recorded.
     constexpr BoardConfiguration boardConfigurations[] {
-        {.uid = "E034C6063295681A", .deviceName = "FX02-Office", .numPixels = 170, .frameSize = 76, .mv3_3 = 3262, .vccDivR4 = 19890, .vccDivR5 = 3302,
-         .ip={192, 168, 0, 12}, .brightness = 224, .maxBrightness = 255},
-        {.uid = "5034C60632956818", .deviceName = "Dev-Office", .numPixels = 170, .frameSize = 76, .mv3_3 = 3262, .vccDivR4 = 21950, .vccDivR5 = 3304,
-            .ip = {192, 168, 0, 10}, .brightness = 224, .maxBrightness = 255},
-        {.uid = "unknown-FX01", .deviceName = "FX01-House", .numPixels = 320, .frameSize = 68, .mv3_3 = 3242, .vccDivR4 = 21800, .vccDivR5 = 3305,
-            .ip = {192, 168, 0, 11}, .brightness = 224, .maxBrightness = 255}
+        {.uid = LIGHTFX_DEV_BOARD_UID, .deviceName = "Xmas2350", .numPixels = 66, .frameSize = 22, .mv3_3 = 3317, .vccDivR4 = 22000, .vccDivR5 = 4700,
+         .ip = {0,0,0,0}, .brightness = 224, .maxBrightness = 255, .ledChipset = LedChipset::WS2812B, .colorOrder = LedColorOrder::BGR},
+        {.uid = LIGHTFX_TREE_BOARD_UID, .deviceName = "FXPine", .numPixels = 1000, .frameSize = 75, .mv3_3 = 3317, .vccDivR4 = 22000, .vccDivR5 = 4700,
+         .ip = {0,0,0,0}, .brightness = 224, .maxBrightness = 255, .ledChipset = LedChipset::WS2811, .colorOrder = LedColorOrder::RGB}
     };
 
     const BoardConfiguration *selectedConfiguration = &safeConfiguration;
 
     bool uidEqualsIgnoreCase(const char *left, const char *right) {
-        if (left == nullptr || right == nullptr)
+        if (left == nullptr || right == nullptr || *left == '\0' || *right == '\0')
             return false;
         while (*left != '\0' && *right != '\0') {
             char a = *left++;
             char b = *right++;
-            if (a >= 'a' && a <= 'f')
+            if (a >= 'a' && a <= 'z')
                 a = static_cast<char>(a - 'a' + 'A');
-            if (b >= 'a' && b <= 'f')
+            if (b >= 'a' && b <= 'z')
                 b = static_cast<char>(b - 'a' + 'A');
             if (a != b)
                 return false;
@@ -65,7 +73,7 @@ const BoardConfiguration *findBoardConfiguration(const char *uid) {
 bool isValidBoardConfiguration(const BoardConfiguration &configuration) {
     if (configuration.numPixels == 0 || configuration.numPixels > MAX_SUPPORTED_NUM_PIXELS)
         return false;
-    if (configuration.frameSize <= 10 || configuration.frameSize >= configuration.numPixels || configuration.frameSize > MAX_SUPPORTED_FRAME_SIZE)
+    if (configuration.frameSize <= 14 || configuration.frameSize >= configuration.numPixels || configuration.frameSize > MAX_SUPPORTED_FRAME_SIZE)
         return false;
     if (configuration.mv3_3 < 2500 || configuration.mv3_3 > 3600)
         return false;
@@ -73,6 +81,13 @@ bool isValidBoardConfiguration(const BoardConfiguration &configuration) {
         configuration.vccDivR5 < 1000 || configuration.vccDivR5 > 30000)
         return false;
     if (configuration.brightness > configuration.maxBrightness)
+        return false;
+    if (configuration.ledChipset != LedChipset::WS2811 && configuration.ledChipset != LedChipset::WS2812B)
+        return false;
+    //these checks below are specific to the LED strips we use - so far BTF WS2811 (12V) and WS2812B (5V)
+    if (configuration.ledChipset == LedChipset::WS2811 && configuration.colorOrder != LedColorOrder::RGB)
+        return false;
+    if (configuration.ledChipset == LedChipset::WS2812B && configuration.colorOrder != LedColorOrder::BGR)
         return false;
     return true;
 }
@@ -87,6 +102,6 @@ bool selectBoardConfiguration(const char *uid) {
         selectedConfiguration = &safeConfiguration;
         return false;
     }
-    selectedConfiguration = configuration;
-    return true;
+        selectedConfiguration = configuration;
+        return true;
 }

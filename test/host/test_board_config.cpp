@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
+#include <cstring>
 #include "board_buffers.h"
 #include "board_config.h"
 
@@ -29,56 +30,72 @@ int main() {
     size_t count = 0;
     const BoardConfiguration *configurations = knownBoardConfigurations(count);
     assert(configurations != nullptr);
-    assert(count > 0);
+    assert(count == 2);
     for (size_t i = 0; i < count; ++i)
         assert(isValidBoardConfiguration(configurations[i]));
 
-    const BoardConfiguration *fx02 = findBoardConfiguration("E034C6063295681A");
-    assert(fx02 != nullptr);
-    assert(findBoardConfiguration("e034c6063295681a") == fx02);
-    assert(fx02->numPixels == 170);
-    assert(fx02->frameSize == 76);
-    assert(fx02->useDhcp);
-    assert(limitBrightness(*fx02, 200) == 200);
-    assert(limitBrightness(*fx02, 255) == 255);
+    const BoardConfiguration *dev = findBoardConfiguration("SET_DEV_UID");
+    const BoardConfiguration *tree = findBoardConfiguration("SET_TREE_UID");
+    assert(dev != nullptr);
+    assert(tree != nullptr);
+    assert(findBoardConfiguration("set_dev_uid") == dev);
+    assert(dev->numPixels == 66);
+    assert(dev->frameSize == 22);
+    assert(dev->ledChipset == LedChipset::WS2812B);
+    assert(dev->colorOrder == LedColorOrder::BGR);
+    assert(dev->useDhcp());
+    assert(tree->numPixels == 1000);
+    assert(tree->frameSize == 75);
+    assert(tree->ledChipset == LedChipset::WS2811);
+    assert(tree->colorOrder == LedColorOrder::RGB);
+    assert(tree->useDhcp());
+    assert(limitBrightness(*dev, 200) == 200);
+    assert(limitBrightness(*dev, 255) == 255);
     assert(findBoardConfiguration(nullptr) == nullptr);
     assert(findBoardConfiguration("unknown") == nullptr);
 
-    assert(selectBoardConfiguration("E034C6063295681A"));
-    assert(&activeBoardConfiguration() == fx02);
-    assert(!selectBoardConfiguration("unknown"));
-    assert(&activeBoardConfiguration() == &safeBoardConfiguration());
-    assert(activeBoardConfiguration().useDhcp);
+    assert(selectBoardConfiguration("SET_DEV_UID"));
+    assert(&activeBoardConfiguration() == dev);
+    assert(selectBoardConfiguration("SET_TREE_UID"));
+    assert(&activeBoardConfiguration() == tree);
+    assert(!selectBoardConfiguration("UID0123456789"));
+    assert(&activeBoardConfiguration() != &safeBoardConfiguration());
+    assert(activeBoardConfiguration().useDhcp());
+    assert(std::strcmp(activeBoardConfiguration().deviceName, "New-456789") == 0);
     assert(activeBoardConfiguration().numPixels == 32);
-    assert(activeBoardConfiguration().frameSize == 12);
+    assert(activeBoardConfiguration().frameSize == 14);
     assert(activeBoardConfiguration().brightness == 16);
     assert(limitBrightness(activeBoardConfiguration(), 255) == 16);
     assert(limitBrightness(activeBoardConfiguration(), 8) == 8);
     assert(isValidBoardConfiguration(safeBoardConfiguration()));
     assert(!selectBoardConfiguration(nullptr));
+    assert(std::strcmp(activeBoardConfiguration().deviceName, "New-000000") == 0);
 
     RuntimeBufferSizes sizes{};
-    assert(runtimeBufferSizes(*fx02, sizes));
-    assert(sizes.ledPixels == 170);
-    assert(sizes.framePixels == 304);
-    assert(sizes.shuffleIndexes == 170);
-    assert(sizes.scratchWords == 170);
+    assert(runtimeBufferSizes(*dev, sizes));
+    assert(sizes.ledPixels == 66);
+    assert(sizes.framePixels == 88);
+    assert(sizes.shuffleIndexes == 66);
+    assert(sizes.scratchWords == 66);
+    assert(runtimeBufferSizes(*tree, sizes));
+    assert(sizes.ledPixels == 1000);
+    assert(sizes.framePixels == 300);
     assert(runtimeBufferSizes(safeBoardConfiguration(), sizes));
     assert(sizes.ledPixels == 32);
-    assert(sizes.framePixels == 48);
+    assert(sizes.framePixels == 56);
     assert(sizes.shuffleIndexes == 32);
     assert(sizes.scratchWords == 32);
 
-    BoardConfiguration nearLimit = *fx02;
-    nearLimit.numPixels = 12;
-    nearLimit.frameSize = 11;
+    BoardConfiguration nearLimit = *dev;
+    nearLimit.numPixels = 28;
+    nearLimit.frameSize = 14;
     assert(isValidBoardConfiguration(nearLimit));
     assert(runtimeBufferSizes(nearLimit, sizes));
     assert(sizes.scratchWords == nearLimit.numPixels);
     assert((nearLimit.frameSize + 14) / 2 <= sizes.scratchWords);
     assert(nearLimit.frameSize * 2 <= sizes.scratchWords * sizeof(uint16_t));
 
-    BoardConfiguration largest = *fx02;
+    BoardConfiguration largest = *dev;
     largest.numPixels = MAX_SUPPORTED_NUM_PIXELS;
     largest.frameSize = MAX_SUPPORTED_FRAME_SIZE;
     assert(isValidBoardConfiguration(largest));
@@ -90,11 +107,11 @@ int main() {
         BoardBufferStorage<uint32_t> buffers;
         assert(!buffers.scratchWordView(0, 1));
         assert(!buffers.scratchByteView(0, 1));
-        assert(buffers.allocate(*fx02, testAllocate, testFree));
+        assert(buffers.allocate(*dev, testAllocate, testFree));
         const uint32_t *const originalLeds = buffers.leds.get();
         const size_t originalAllocationCount = liveAllocations;
         assert(originalAllocationCount == 4);
-        assert(buffers.sizes.ledPixels == 170);
+        assert(buffers.sizes.ledPixels == 66);
         const auto allScratchBytes = buffers.scratchByteView(0, buffers.sizes.scratchWords * sizeof(uint16_t));
         assert(allScratchBytes);
         assert(allScratchBytes.size == buffers.sizes.scratchWords * sizeof(uint16_t));
@@ -108,12 +125,12 @@ int main() {
         assert(!buffers.scratchWordView(buffers.sizes.scratchWords - 1, 2));
         assert(!buffers.scratchWordView(buffers.sizes.scratchWords + 1, 0));
 
-        const auto wetTrail = buffers.scratchByteView(0, fx02->frameSize);
-        const auto wetTrailColors = buffers.scratchByteView(fx02->frameSize, fx02->frameSize);
+        const auto wetTrail = buffers.scratchByteView(0, dev->frameSize);
+        const auto wetTrailColors = buffers.scratchByteView(dev->frameSize, dev->frameSize);
         assert(wetTrail && wetTrailColors);
-        assert(wetTrail.size == fx02->frameSize);
+        assert(wetTrail.size == dev->frameSize);
         assert(wetTrailColors.data == wetTrail.data + wetTrail.size);
-        assert(wetTrailColors.size == fx02->frameSize);
+        assert(wetTrailColors.size == dev->frameSize);
         assert(!buffers.scratchByteView(allScratchBytes.size - 1, 2));
         assert(!buffers.scratchByteView(allScratchBytes.size + 1, 0));
 
@@ -122,19 +139,19 @@ int main() {
         wetTrail.data[0] = 0x5a;
         assert(allScratchBytes.data[0] == 0x5a);
         wetTrailColors.data[0] = 0xa5;
-        assert(allScratchBytes.data[fx02->frameSize] == 0xa5);
+        assert(allScratchBytes.data[dev->frameSize] == 0xa5);
 
         for (size_t failOffset = 1; failOffset <= 4; ++failOffset) {
             failAllocationAt = allocationAttempts + failOffset;
             assert(!buffers.allocate(safeBoardConfiguration(), testAllocate, testFree));
             assert(buffers.leds.get() == originalLeds);
-            assert(buffers.sizes.ledPixels == 170);
+            assert(buffers.sizes.ledPixels == 66);
             assert(liveAllocations == originalAllocationCount);
         }
         failAllocationAt = 0;
         assert(buffers.allocate(safeBoardConfiguration(), testAllocate, testFree));
         assert(buffers.sizes.ledPixels == 32);
-        assert(buffers.sizes.framePixels == 48);
+        assert(buffers.sizes.framePixels == 56);
         assert(buffers.sizes.scratchWords == 32);
         assert(liveAllocations == originalAllocationCount);
 
@@ -151,30 +168,34 @@ int main() {
     }
     assert(liveAllocations == 0);
 
-    BoardConfiguration invalid = *fx02;
+    BoardConfiguration invalid = *dev;
     invalid.numPixels = MAX_SUPPORTED_NUM_PIXELS + 1;
     assert(!isValidBoardConfiguration(invalid));
-    invalid = *fx02;
+    invalid = *dev;
     invalid.frameSize = MAX_SUPPORTED_FRAME_SIZE + 1;
     assert(!isValidBoardConfiguration(invalid));
-    invalid = *fx02;
-    invalid.frameSize = 10;
+    invalid = *dev;
+    invalid.frameSize = 13;
     assert(!isValidBoardConfiguration(invalid));
-    invalid = *fx02;
-    invalid.frameSize = invalid.numPixels;
+    invalid = *dev;
+    invalid.numPixels = 27;
+    invalid.frameSize = 14;
     assert(!isValidBoardConfiguration(invalid));
-    invalid = *fx02;
+    invalid = *dev;
     invalid.numPixels = 0;
     assert(!isValidBoardConfiguration(invalid));
-    invalid = *fx02;
+    invalid = *dev;
     invalid.vccDivR4 = 0;
     assert(!isValidBoardConfiguration(invalid));
-    invalid = *fx02;
-    invalid.ip[3] = 0;
-    assert(!isValidBoardConfiguration(invalid));
-    invalid = *fx02;
+    invalid = *dev;
     invalid.maxBrightness = 100;
     invalid.brightness = 101;
+    assert(!isValidBoardConfiguration(invalid));
+    invalid = *dev;
+    invalid.ledChipset = static_cast<LedChipset>(255);
+    assert(!isValidBoardConfiguration(invalid));
+    invalid = *dev;
+    invalid.colorOrder = static_cast<LedColorOrder>(255);
     assert(!isValidBoardConfiguration(invalid));
     return 0;
 }

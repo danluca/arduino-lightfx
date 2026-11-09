@@ -10,6 +10,22 @@
 constexpr uint16_t MAX_SUPPORTED_NUM_PIXELS = 1024;
 constexpr uint16_t MAX_SUPPORTED_FRAME_SIZE = 256;
 
+// for all possible chipset configurations, please see FastLED.h; we only support WS2811 and WS2812B
+enum class LedChipset : uint8_t {
+    WS2811,
+    WS2812B
+};
+
+// matches EOrder in FastLED's eorder.h
+enum class LedColorOrder : uint8_t {
+    RGB,
+    RBG,
+    GRB,
+    GBR,
+    BRG,
+    BGR
+};
+
 struct BoardConfiguration {
     const char *uid;
     const char *deviceName;
@@ -21,6 +37,8 @@ struct BoardConfiguration {
     uint8_t ip[4];
     uint8_t brightness;
     uint8_t maxBrightness;
+    LedChipset ledChipset;
+    LedColorOrder colorOrder;
     [[nodiscard]] bool useDhcp() const noexcept {
         return ip[0] == 0 && ip[1] == 0 && ip[2] == 0 && ip[3] == 0;
     }

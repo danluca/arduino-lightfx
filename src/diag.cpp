@@ -20,6 +20,7 @@
 #include "board_config.h"
 #if LOGGING_ENABLED == 1
 #include "stringutils.h"
+#endif
 
 #define DIAG_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 
@@ -151,7 +152,6 @@ void diagSetup() {
     // diagTask = Scheduler.startTask(&diagDef);
     [[maybe_unused]] const TaskHandle_t diagTask = xTaskGetCurrentTaskHandle();
     log_info(F("Diagnostic thread [%s] - priority %lu - has been setup. Events are dispatching."), pcTaskGetName(diagTask), uxTaskPriorityGet(diagTask));
-#endif
 }
 
 /**

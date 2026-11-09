@@ -8,6 +8,15 @@
 using namespace FxA;
 using namespace colTheme;
 
+namespace {
+    uint8_t flickerBrightness() {
+        const uint8_t current = stripBrightness.load();
+        if (current <= 32)
+            return current;
+        return random8(32, current);
+    }
+}
+
 //~ Effect description strings stored in flash
 static const EffectInfo fxa1Desc = {.factory = EFFECT_FACTORY(FxA1), .desc = {.id = "FXA1", .description = "Multiple Tetris segments"}, .selectionWeight = 3};
 static const EffectInfo fxa2Desc = {.factory = EFFECT_FACTORY(FxA2), .desc = {.id = "FXA2", .description = "Randomly sized and spaced segments moving on entire strip"}, .selectionWeight = 10};
@@ -95,7 +104,7 @@ void FxA1::run() {
         replicateSet(tpl, others);
 
         if (paletteFactory.getHoliday() == Halloween)
-            FastLED.show(random8(32, stripBrightness)); //add a flicker
+            FastLED.show(flickerBrightness()); //add a flicker
         else
             FastLED.show(stripBrightness);
 
@@ -166,7 +175,7 @@ void FxA2::run() {
         }
         replicateSet(tpl, others);
         if (paletteFactory.getHoliday() == Halloween)
-            FastLED.show(random8(32, stripBrightness)); //add a flicker
+            FastLED.show(flickerBrightness()); //add a flicker
         else
             FastLED.show(stripBrightness);
         incr(curPos, 1, tpl.size());
@@ -231,7 +240,7 @@ void FxA3::run() {
             shiftLeft(tpl, curPos < szSegment ? dot[curPos] : BKG);
         replicateSet(tpl, others);
         if (paletteFactory.isHolidayLimitedHue())
-            FastLED.show(random8(32, stripBrightness)); //add a flicker
+            FastLED.show(flickerBrightness()); //add a flicker
         else
             FastLED.show(stripBrightness);
 
@@ -293,7 +302,7 @@ void FxA4::run() {
         }
         replicateSet(tpl, others);
         if (paletteFactory.getHoliday() == Halloween)
-            FastLED.show(random8(32, stripBrightness)); //add a flicker
+            FastLED.show(flickerBrightness()); //add a flicker
         else
             FastLED.show(stripBrightness);
 

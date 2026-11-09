@@ -147,7 +147,7 @@ void SysInfoPersistence::read() {
 
         const String bldVersion = doc[csBuildVersion];
         const String brdName = doc[csBoardName];
-        const String devName = doc[csDeviceName] | DEVICE_NAME;
+        const String devName = doc[csDeviceName] | activeBoardConfiguration().deviceName;
         const String bldTime = doc[csBuildTime];
         const auto gitBranch = doc[csScmBranch].as<String>();
         if (bldVersion.equals(sysInfo->buildVersion) && doc[csWdReboots].is<JsonArray>()) {

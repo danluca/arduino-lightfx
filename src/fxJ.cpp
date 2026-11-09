@@ -269,7 +269,7 @@ void FxJ2::run() {
         for (uint16_t i = 0; i < size; i++) {
             if (wetTrail.data[i] == 0)
                 continue;
-            wFrame[i] += ColorFromPalette(palette, wetTrailColors.data[i], wetTrail.data[i], LINEARBLEND);
+            wframe[i] += ColorFromPalette(palette, wetTrailColors.data[i], wetTrail.data[i], LINEARBLEND);
             if (tick & 0x01)
                 wetTrail.data[i]--;
         }
@@ -302,9 +302,9 @@ void FxJ2::run() {
                 const auto idx = static_cast<uint16_t>(d.pos256 >> 8);
                 const uint8_t side = d.flash / 4;
                 if (idx < size)
-                    wFrame[idx] += CRGB(d.flash, d.flash, d.flash);
+                    wframe[idx] += CRGB(d.flash, d.flash, d.flash);
                 if (idx > 0 && idx < size)
-                    wFrame[idx - 1] += CRGB(side, side, side);
+                    wframe[idx - 1] += CRGB(side, side, side);
                 if (idx + 1 < size)
                     wframe[idx + 1] += CRGB(side, side, side);
                 d.flash = qsub8(d.flash, 40);

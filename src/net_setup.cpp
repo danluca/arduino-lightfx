@@ -14,6 +14,7 @@
 #include "stringutils.h"
 #include "web_server.h"
 #include "board_config.h"
+#include "HealthMonitor.h"
 #if MDNS_ENABLED==1
 #include <LEAmDNS.h>
 #endif
@@ -134,7 +135,7 @@ void hostServiceCallback(const char *p_pcServiceName, const MDNSResponder::hMDNS
  * Blocking function until Wi-Fi connection succeeds.
  * @return true when connection succeeds; otherwise blocks
  */
-bool wifi_connect() {
+static bool wifi_connect() {
     uint8_t wifiStatus = WiFi.status();
     if (wifiStatus == WL_CONNECTED) return true;
 
@@ -168,10 +169,13 @@ bool wifi_connect() {
 
     sysInfo->setSysStatus(SysStatus::Wifi);
     printSuccessfulWifiStatus();  // populate the assigned DHCP address before using the gateway
-    if (const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress()); resPing >= 0)
+    const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress());
+#if LOGGING_ENABLED==1
+    if (resPing >= 0)
         log_info(F("Connected to WiFi after %d tries. Gateway ping successful: %d ms"), attCount, resPing);
     else
         log_warn(F("Connected to WiFi after %d tries. Failed pinging the gateway (ping result %d) - will retry later"), attCount, resPing);
+#endif
 #if MDNS_ENABLED==1
     // setup mDNS to resolve this board's address using its configured name
     String dnsHostname(hostname);
@@ -225,7 +229,7 @@ bool wifi_setup() {
  * WiFi connection check
  * @return true if all is ok, false if connection unusable
  */
-bool wifi_check() {
+static bool wifi_check() {
     if (WiFi.status() != WL_CONNECTED) {
         sysInfo->resetSysStatus(SysStatus::Wifi);
         log_warn(F("WiFi Connection lost"));
@@ -314,7 +318,6 @@ void printSuccessfulWifiStatus() {
     // print the received signal strength:
     [[maybe_unused]] int32_t rssi = WiFi.RSSI();
     log_info(F("Signal strength (RSSI) %d dBm; %hhu bars"), rssi, barSignalLevel(rssi));
-#endif
 
     // print where to go in a browser:
     log_info(F("Home page available at http://%s"), sysInfo->getIpAddress().c_str());

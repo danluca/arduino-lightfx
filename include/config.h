@@ -7,10 +7,6 @@
 // the PWM pin dedicated for LED control - see the schematics as well as packages\framework-arduinopico\variants\pimoroni_plasma2350\pins_arduino.h
 #define LED_PIN PIN_NEOPIXEL
 
-// LED chipset info
-#define COLOR_ORDER BGR
-#define CHIPSET     WS2812B
-
 #include "board_config.h"
 
 // Active geometry is selected at boot from the bundled UID configuration table.

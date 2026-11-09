@@ -13,8 +13,9 @@ constexpr size_t kBufIdSize = 20;
 
 } // namespace
 
-SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(DEVICE_NAME), buildVersion(BUILD_VERSION), buildTime(BUILD_TIME), scmBranch(GIT_BRANCH),
-                     ipAddress({IP_ADDR}), ipGateway({IP_GW}) {
+SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(activeBoardConfiguration().deviceName), buildVersion(BUILD_VERSION), buildTime(BUILD_TIME), scmBranch(GIT_BRANCH),
+                     ipAddress(activeBoardConfiguration().useDhcp() ? IPAddress(0, 0, 0, 0) : activeBoardConfiguration().ip),
+                     ipGateway(activeBoardConfiguration().useDhcp() ? IPAddress(0, 0, 0, 0) : IPAddress(IP_GW)) {
     boardId.reserve(kBufIdSize);
     secElemId.reserve(kBufIdSize);
     macAddress.reserve(kBufIdSize);
@@ -35,6 +36,10 @@ SysInfo::SysInfo() : boardName(BOARD_NAME), deviceName(DEVICE_NAME), buildVersio
  */
 void SysInfo::fillBoardId() {
     boardId = rp2040.getChipID();
+    if (strcmp(deviceName.c_str(), safeBoardConfiguration().deviceName) == 0) {
+        const size_t suffixLength = min<size_t>(6, boardId.length());
+        deviceName = String("New-") + boardId.substring(boardId.length() - suffixLength);
+    }
     cpuFrequency = RP2040::f_cpu();
 #if defined(PICO_RP2350)
     cpuModel = "RP2350";

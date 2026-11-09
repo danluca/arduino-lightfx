@@ -169,7 +169,7 @@ void FxH1::Fire2012WithPalette(uint8_t xFire) {
 
     // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
     if (random8() < SPARKING) {
-        const uint8_t y = random8(7);
+        const uint8_t y = random8(7);   //this assumes that a fire size is at least 7; ensured by the isValidBoardConfiguration() where frame size is asserted as min 14 (a fire is half the size of the frame)
         hMap[y][xFire] = qadd8(hMap[y][xFire], random8(160, 255));
     }
 
@@ -667,7 +667,7 @@ void FxH6::run() {
         CRGBSet segment = ledSet(0, frameSize*2-1);
         segment(frameSize, frameSize*2-1) = -window;    //mirror the window into the upper half of the segment
         replicateSet(segment, rest);
-        FastLED.show(brightness);
+        FastLED.show(stripBrightness);
 
         //activate more sparks if needed, in random mode; in pattern mode all sparks are active, hence the check below is always false
         if (activeSparks.size() < 2)
