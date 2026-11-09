@@ -151,6 +151,7 @@ void diagSetup() {
     // diagTask = Scheduler.startTask(&diagDef);
     [[maybe_unused]] const TaskHandle_t diagTask = xTaskGetCurrentTaskHandle();
     log_info(F("Diagnostic thread [%s] - priority %lu - has been setup. Events are dispatching."), pcTaskGetName(diagTask), uxTaskPriorityGet(diagTask));
+#endif
 }
 
 /**

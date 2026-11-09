@@ -56,11 +56,13 @@ static HTTPMethod httpMethodFromName(const char* httpName) {
  * @param method HTTPMethod to convert to a (name) string
  * @return name of the HTTP method to use in logging
  */
-[[maybe_unused]] static const char* httpMethodToString(const HTTPMethod method) {
+#if LOGGING_ENABLED == 1
+static const char* httpMethodToString(const HTTPMethod method) {
     if (method >= httpMethodsCount)
         return "HTTP UNKNOWN";
     return httpMethodStr[method];
 }
+#endif
 
 /**
  * Initializes the Web Server's client wrapper for current request
@@ -431,11 +433,15 @@ void WebClient::_parseHttpHeaders() {
                 header->key = headerName;
                 header->value = headerValue;
                 _request->_headers.push_back(header);
+#if LOGGING_ENABLED == 1
                 hdCollected = true;
+#endif
                 break;
             }
         }
+#if LOGGING_ENABLED == 1
         log_debug(F("%s%s: %s"), hdCollected ? "" : "!", headerName.c_str(), headerValue.c_str());
+#endif
 
         if (headerName.equalsIgnoreCase(Content_Type)) {
             if (headerValue.startsWith(F("multipart/"))) {

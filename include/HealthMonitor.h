@@ -55,6 +55,6 @@ public:
 
 private:
     static std::atomic<uint32_t> lastCheckInMs[3]; // For CORE0, CORE1, FX
-    static std::atomic<uint32_t> healthStatus;
+    static std::atomic<bool> initialized;
     static std::atomic<bool> otaMode;
 };

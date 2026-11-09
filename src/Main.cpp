@@ -164,7 +164,8 @@ void setup() {
     // RP2040::enableDoubleResetBootloader();   //that's just a good idea overall
 
     const String boardUid = rp2040.getChipID();
-    const bool knownBoard = selectBoardConfiguration(boardUid.c_str());
+    [[maybe_unused]] const bool knownBoard = selectBoardConfiguration(boardUid.c_str());
+#if LOGGING_ENABLED == 1
     const BoardConfiguration &configuration = activeBoardConfiguration();
     if (knownBoard)
         log_info(F("Known board UID %s selected profile %s: %hu pixels, frame %hu, %s IP"), boardUid.c_str(), configuration.deviceName,
@@ -172,6 +173,7 @@ void setup() {
     else
         log_warn(F("Unrecognized board UID %s; using safe defaults (DHCP, %hu pixels, brightness %hu)"), boardUid.c_str(),
                  configuration.numPixels, configuration.brightness);
+#endif
 
     sysInfo = new SysInfo();    //system information object built once per run
     sysInfo->fillBoardId();

@@ -314,6 +314,7 @@ void printSuccessfulWifiStatus() {
     // print the received signal strength:
     [[maybe_unused]] int32_t rssi = WiFi.RSSI();
     log_info(F("Signal strength (RSSI) %d dBm; %hhu bars"), rssi, barSignalLevel(rssi));
+#endif
 
     // print where to go in a browser:
     log_info(F("Home page available at http://%s"), sysInfo->getIpAddress().c_str());
