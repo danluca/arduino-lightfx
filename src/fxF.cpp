@@ -368,7 +368,12 @@ void FxF4::run() {
         switch (fxState) {
             case Bounce:
                 if (delta > 0) {
-                    const CRGB feed = curPos > dotSize ? BKG : ColorFromPalette(palette, hue+=hueDiff, brightness, LINEARBLEND);
+                    CRGB feed = BKG;
+                    if (curPos <= dotSize) {
+                        const auto nextHue = static_cast<uint8_t>(hue + hueDiff);
+                        hue = nextHue;
+                        feed = ColorFromPalette(palette, nextHue, brightness, LINEARBLEND);
+                    }
                     if (dirFwd) {
                         shiftRight(set1, feed);
                         curPos++;
@@ -378,7 +383,7 @@ void FxF4::run() {
                     }
                     set2 = set1;
                     tpl = frame(ofs, ofs+tpl.size()-1);
-                    delta--;
+                    delta = static_cast<uint8_t>(delta - 1);
                 } else {
                     if (dist >= upLim) {
                         fxState = Reduce;
@@ -399,7 +404,7 @@ void FxF4::run() {
                     shiftRight(set1, BKG);
                     set2 = set1;
                     tpl = frame(ofs, ofs+tpl.size()-1);
-                    delta--;
+                    delta = static_cast<uint8_t>(delta - 1);
                 } else {
                     fxState = Flash;
                     delta = 1;  //1 time cycle for flash
@@ -409,7 +414,7 @@ void FxF4::run() {
                 if (delta > 0) {
                     set1[set1.size()-1] = set2[set2.size() - 1] = CRGB::White;
                     tpl = frame(ofs, ofs+tpl.size()-1);
-                    delta--;
+                    delta = static_cast<uint8_t>(delta - 1);
                     fxf4Timer.setPeriod(10);
                 } else {
                     //turn off flash pixels

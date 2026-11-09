@@ -209,7 +209,8 @@ void resetGlobals() {
     targetPalette = paletteFactory.secondaryPalette();
     mode = Chase;
     brightness = 224;
-    colorIndex = lastColorIndex = 0;
+    lastColorIndex = 0;
+    colorIndex = 0;
     curPos = 0;
     speed = 100;
     fade = 8;
