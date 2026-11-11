@@ -5,24 +5,20 @@
 #include <cstdio>
 #include <cstring>
 
-#ifndef LIGHTFX_DEV_BOARD_UID
-#define LIGHTFX_DEV_BOARD_UID "SET_DEV_UID"
-#endif
-
 #ifndef LIGHTFX_TREE_BOARD_UID
 #define LIGHTFX_TREE_BOARD_UID "SET_TREE_UID"
 #endif
 
 namespace {
     constexpr BoardConfiguration safeConfiguration {
-        .uid = nullptr, .deviceName = "TBD", .numPixels = 32, .frameSize = 14, .mv3_3 = 3300, .vccDivR4 = 20000, .vccDivR5 = 4700,
+        .uid = nullptr, .deviceName = "TBD", .numPixels = 32, .frameSize = 16, .mv3_3 = 3300, .vccDivR4 = 20000, .vccDivR5 = 4700,
         .ip = {0,0,0,0}, .brightness = 160, .maxBrightness = 190, .ledChipset = LedChipset::WS2811, .colorOrder = LedColorOrder::RGB
     };
 
     // Board settings are intentionally kept in the application image so every unit
     // can use the same firmware. Add a row when a board UID is recorded.
     constexpr BoardConfiguration boardConfigurations[] {
-        {.uid = LIGHTFX_DEV_BOARD_UID, .deviceName = "Xmas2350", .numPixels = 66, .frameSize = 22, .mv3_3 = 3317, .vccDivR4 = 22000, .vccDivR5 = 4700,
+        {.uid = "DEB8609F71125183", .deviceName = "Xmas2350", .numPixels = 66, .frameSize = 22, .mv3_3 = 3317, .vccDivR4 = 22000, .vccDivR5 = 4700,
          .ip = {0,0,0,0}, .brightness = 224, .maxBrightness = 255, .ledChipset = LedChipset::WS2812B, .colorOrder = LedColorOrder::BGR},
         {.uid = LIGHTFX_TREE_BOARD_UID, .deviceName = "FXPine", .numPixels = 1000, .frameSize = 75, .mv3_3 = 3317, .vccDivR4 = 22000, .vccDivR5 = 4700,
          .ip = {0,0,0,0}, .brightness = 224, .maxBrightness = 255, .ledChipset = LedChipset::WS2811, .colorOrder = LedColorOrder::RGB}
