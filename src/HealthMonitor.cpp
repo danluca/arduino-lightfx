@@ -18,13 +18,10 @@ static std::atomic<uint32_t> lastCheckInWarnMs{0};
 
 static bool claimCheckInWarning(uint32_t &nowMs) {
     uint32_t previousWarnMs = lastCheckInWarnMs.load(std::memory_order_relaxed);
-    while (true) {
-        nowMs = millis();
-        if (nowMs - previousWarnMs <= warnIntervalMs)
-            return false;
-        if (lastCheckInWarnMs.compare_exchange_weak(previousWarnMs, nowMs, std::memory_order_relaxed, std::memory_order_relaxed))
-            return true;
-    }
+    nowMs = millis();
+    if (nowMs - previousWarnMs <= warnIntervalMs)
+        return false;
+    return lastCheckInWarnMs.compare_exchange_strong( previousWarnMs, nowMs, std::memory_order_relaxed, std::memory_order_relaxed);
 }
 
 void HealthMonitor::init() {
@@ -57,7 +54,6 @@ void HealthMonitor::checkIn(const HealthBit bit) {
                 diffs[0], diffs[1], diffs[2], warningNowMs, wdleft);
             logTaskStats();
 #endif
-            lastCheckInWarnMs.store(warningNowMs, std::memory_order_relaxed);
             saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], false);
         }
     }
@@ -114,7 +110,6 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
                     diffs[0], diffs[1], diffs[2], warningNowMs);
                 logTaskStats();
 #endif
-                lastCheckInWarnMs.store(warningNowMs, std::memory_order_relaxed);
                 //saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], false);
             }
         }
@@ -125,7 +120,6 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
                 diffs[0], diffs[1], diffs[2], warningNowMs, watchdog_get_time_remaining_ms());
             logTaskStats();
 #endif
-            lastCheckInWarnMs.store(warningNowMs, std::memory_order_relaxed);
             saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], true);
         }
     }
