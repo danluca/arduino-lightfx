@@ -23,14 +23,14 @@ namespace {
     const BoardConfiguration *selectedConfiguration = &safeConfiguration;
 
     bool uidEqualsIgnoreCase(const char *left, const char *right) {
-        if (left == nullptr || right == nullptr)
+        if (left == nullptr || right == nullptr || *left == '\0' || *right == '\0')
             return false;
         while (*left != '\0' && *right != '\0') {
             char a = *left++;
             char b = *right++;
-            if (a >= 'a' && a <= 'f')
+            if (a >= 'a' && a <= 'z')
                 a = static_cast<char>(a - 'a' + 'A');
-            if (b >= 'a' && b <= 'f')
+            if (b >= 'a' && b <= 'z')
                 b = static_cast<char>(b - 'a' + 'A');
             if (a != b)
                 return false;

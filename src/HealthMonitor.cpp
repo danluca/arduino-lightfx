@@ -6,6 +6,7 @@
 #include <hardware/watchdog.h>
 #include "constants.hpp"
 #include "log.h"
+#include "sysinfo.h"
 
 std::atomic<uint32_t> HealthMonitor::lastCheckInMs[3] = {0, 0, 0};
 std::atomic<bool> HealthMonitor::initialized{false};
@@ -15,13 +16,10 @@ static std::atomic<uint32_t> lastCheckInWarnMs{0};
 
 static bool claimCheckInWarning(uint32_t &nowMs) {
     uint32_t previousWarnMs = lastCheckInWarnMs.load(std::memory_order_relaxed);
-    while (true) {
-        nowMs = millis();
-        if (nowMs - previousWarnMs <= warnIntervalMs)
-            return false;
-        if (lastCheckInWarnMs.compare_exchange_weak(previousWarnMs, nowMs, std::memory_order_relaxed, std::memory_order_relaxed))
-            return true;
-    }
+    nowMs = millis();
+    if (nowMs - previousWarnMs <= warnIntervalMs)
+        return false;
+    return lastCheckInWarnMs.compare_exchange_strong( previousWarnMs, nowMs, std::memory_order_relaxed, std::memory_order_relaxed);
 }
 
 void HealthMonitor::init() {
@@ -86,19 +84,18 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
     if (allHealthy) {
         watchdog_update();
         if (diffs[0] > warnMs || diffs[1] > warnMs || diffs[2] > warnMs) {
-            static uint32_t lastWarnMs = 0;
-            if (nowMs - lastWarnMs > warnIntervalMs) {
+            if (uint32_t warningNowMs; claimCheckInWarning(warningNowMs)) {
                 log_warn(F("HealthMonitor-U: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                     diffs[0], diffs[1], diffs[2], nowMs);
-                lastWarnMs = nowMs;
             }
         }
     } else {
-        static uint32_t lastLogMs = 0;
-        if (nowMs - lastLogMs > warnIntervalMs) {
+        if (uint32_t warningNowMs; claimCheckInWarning(warningNowMs)) {
+#if LOGGING_ENABLED == 1
             log_error(F("HealthMonitor-U: Task(s) STALLED! STOPS PINGING WATCHDOG. [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                 diffs[0], diffs[1], diffs[2], nowMs);
-            lastLogMs = nowMs;
+            logTaskStats();
+#endif
         }
     }
 }
