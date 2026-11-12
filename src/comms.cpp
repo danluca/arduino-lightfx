@@ -298,12 +298,10 @@ void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
 
     if (const int status = client.PUT(buf); status > 0) {
         String response = client.getString();
-#if LOGGING_ENABLED == 1
         if (status / 100 == 2)
             log_info(F("Successful sync FX %hu with client %s: %d response status\nBody: %s"), fxIndex, board->ip.toString().c_str(), status, response.c_str());
         else
             log_error(F("Failed to sync FX %hu to client %s: %d response status"), fxIndex, board->ip.toString().c_str(), status);
-#endif
         //process the JSON body
         JsonDocument doc;
         if (const DeserializationError error = deserializeJson(doc, response)) {
@@ -409,10 +407,8 @@ void timeUpdate() {
     const time_t nixTime = now();
     if (const bool dst = timeService.timezone()->isDST(nixTime); dst != sysInfo->isSysStatus(SysStatus::Dst)) {
         dst ? sysInfo->setSysStatus(SysStatus::Dst) : sysInfo->resetSysStatus(SysStatus::Dst);
-#if LOGGING_ENABLED == 1
         log_info(F("Time DST status changed to %s [offset %d] - current time %s"), dst ? "ON" : "OFF", timeService.timezone()->getOffset(nixTime),
             TimeFormat::asString(nixTime).c_str());
-#endif
     }
 }
 

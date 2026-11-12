@@ -103,13 +103,11 @@ void serviceQueryCallback(const MDNSResponder::MDNSServiceInfo& service, MDNSRes
  *    false means the name is already in use by another device
  */
 void hostProbeCallback(const char *p_pcDomainName, bool p_bProbeResult) {
-#if LOGGING_ENABLED == 1
     if (p_bProbeResult) {
         log_info(F("mDNS host - successfully claimed host domain %s"), p_pcDomainName ? p_pcDomainName : strNR);
     } else {
         log_error(F("mDNS host - failed to claim host domain %s"), p_pcDomainName ? p_pcDomainName : strNR);
     }
-#endif
 }
 
 /**
@@ -120,13 +118,11 @@ void hostProbeCallback(const char *p_pcDomainName, bool p_bProbeResult) {
  *    false means the name is already in use by another device
  */
 void hostServiceCallback(const char *p_pcServiceName, const MDNSResponder::hMDNSService p_hMDNSService, bool p_bProbeResult) {
-#if LOGGING_ENABLED == 1
     if (p_bProbeResult) {
         log_info(F("mDNS service - successfully claimed service %s (handle: %p)"), p_pcServiceName ? p_pcServiceName : strNR, p_hMDNSService);
     } else {
         log_error(F("mDNS service - failed to claim service %s (handle: %p)"), p_pcServiceName ? p_pcServiceName : strNR, p_hMDNSService);
     }
-#endif
 }
 
 #endif
@@ -170,12 +166,10 @@ static bool wifi_connect() {
     sysInfo->setSysStatus(SysStatus::Wifi);
     printSuccessfulWifiStatus();  // populate the assigned DHCP address before using the gateway
     const int resPing = WiFi.ping(sysInfo->refGatewayIpAddress());
-#if LOGGING_ENABLED==1
     if (resPing >= 0)
         log_info(F("Connected to WiFi after %d tries. Gateway ping successful: %d ms"), attCount, resPing);
     else
         log_warn(F("Connected to WiFi after %d tries. Failed pinging the gateway (ping result %d) - will retry later"), attCount, resPing);
-#endif
 #if MDNS_ENABLED==1
     // setup mDNS to resolve this board's address using its configured name
     String dnsHostname(hostname);

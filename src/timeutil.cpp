@@ -20,7 +20,6 @@ Timezone centralTime("America/Chicago", TZ_America_Chicago);
 TimeService timeService;
 
 void updateLoggingTimebase() {
-#if LOGGING_ENABLED == 1
     const time_t currentTime = nowMillis();
     const time_t currentMillis = millis();
     // if the log is off by more than 5 minutes, adjust it
@@ -33,7 +32,6 @@ void updateLoggingTimebase() {
     } else
         log_info(F("Logging timebase offset not updated - log time %s is within 5 minutes of current time %s"),
             TimeFormat::asStringMs(timeLog, false).c_str(), TimeFormat::asStringMs(currentTime).c_str());
-#endif
 }
 
 /**
@@ -42,7 +40,6 @@ void updateLoggingTimebase() {
  * @param holiday current holiday
  */
 void logTimeStatus(const time_t curTime, const Holiday& holiday) {
-#if LOGGING_ENABLED == 1
     const bool isDaylightSavings = timeService.timezone()->isDST(curTime);
     const char* const savingsType = isDaylightSavings ? "Daylight Savings" : "Standard";
     const int offset = timeService.timezone()->getOffset(curTime);
@@ -54,7 +51,6 @@ void logTimeStatus(const time_t curTime, const Holiday& holiday) {
     log_info(F("Current time %s (holiday adjusted to %s); system status %#hX"), strTime.c_str(), holidayToString(holiday), sysInfo->getSysStatus());
     log_info(F("Time Sync: %lu SNTP syncs (%lu rejected), last sync at UTC %s (%lld s ago)"), static_cast<unsigned long>(timeService.syncCount()),
         static_cast<unsigned long>(timeService.rejectedCount()), TimeFormat::asString(timeService.lastSyncUTC(), false).c_str(), static_cast<long long>(timeService.lastSyncAge()));
-#endif
 }
 
 /**

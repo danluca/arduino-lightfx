@@ -102,9 +102,7 @@ uint countTodayAlarms(const AlarmType alType, const time_t refTime) {
 void scheduleDay(const time_t time) {
     const time_t startDay = previousMidnight(time);
 
-#if LOGGING_ENABLED == 1
     const uint8_t curAlarmCount = scheduledAlarms.size();
-#endif
     uint alarmCount = countUpcomingAlarms(WAKEUP, time);
     if (alarmCount < 1) {
         //add wake-up alarm for today (if we have not passed it) or tomorrow (if we did)
@@ -121,19 +119,15 @@ void scheduleDay(const time_t time) {
         else
             scheduledAlarms.push_back(new AlarmData{.value=bedTime + SECS_PER_DAY, .type=BEDTIME, .onEventHandler=bedtime});
     }
-#if LOGGING_ENABLED == 1    
     log_info(F("Scheduled %zu new alarms for Day %s"), scheduledAlarms.size() - curAlarmCount, TimeFormat::asString(time).c_str());
-#endif    
 }
 
 /**
  * Logs the alarms to the console - info level. Must be called with almMutex held.
  */
 void logAlarms() {
-#if LOGGING_ENABLED == 1
     for (const auto &al : scheduledAlarms)
         log_info(F("Alarm %p type %d scheduled for %s; handler %p"), al, al->type, TimeFormat::asString(al->value).c_str(), al->onEventHandler);
-#endif
 }
 
 /**
