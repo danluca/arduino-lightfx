@@ -1,5 +1,5 @@
 //
-// Copyright 2023,2024,2025,2026 by Dan Luca. All rights reserved
+// Copyright by Dan Luca. All rights reserved
 //
 #ifndef LIGHTFX_LOG_H
 #define LIGHTFX_LOG_H
@@ -11,5 +11,6 @@
 #include <PicoLog.h>
 
 void log_setup();
+void saveRebootCrashLog();
 
 #endif //LIGHTFX_LOG_H

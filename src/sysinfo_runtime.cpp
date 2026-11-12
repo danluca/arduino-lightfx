@@ -9,12 +9,9 @@
 #include "config.h"
 #include "constants.hpp"
 #include "log.h"
+#include "stringutils.h"
 #include "sysinfo_internal.h"
 #include "timeutil.h"
-
-#if LOGGING_ENABLED == 1
-#include <stringutils.h>
-#endif
 
 namespace {
 
@@ -23,13 +20,11 @@ constexpr unsigned long kTaskSnapshotIntervalMs = 5000ul;
 constexpr unsigned long kTaskSnapshotMaxAgeMs = kTaskSnapshotIntervalMs * 2;
 constexpr unsigned long kTaskSnapshotForceMinIntervalMs = 10000ul;
 
-#if LOGGING_ENABLED == 1
 constexpr auto heapStackInfoFmt = "-->\nAPP HEAP/STACK INFO\n  Stack     :: ptr=%#X;\n  Heap      :: size=%zu used=%zu free=%zu lowest=%zu block max/min/free=%zu/%zu/%zu\n";
 constexpr auto heapPSRAMInfoFmt = "  PSRAM Heap:: PSRAM=%zu size=%d (free=%d used=%d)\n";
 constexpr auto newlibHeapInfoFmt = "NEWLIB/OS HEAP INFO\n  Heap      :: size=%zu used=%zu free=%zu usage=%.1f%% \n";
 constexpr auto fmtTaskInfo = "%-10s\t%s\t%u%c\t%-6u  %-4u\t0x%02x  %-12llu  %.2f %%\n";
 constexpr auto fmtTotalCPULoad = "\nTotal CPU Load:    %.2f %% / %.2f s\n";
-#endif
 
 /**
  * Checks if task runtime snapshot is fresh based on age - threshold configured by kTaskSnapshotMaxAgeMs
@@ -54,6 +49,54 @@ int compareTasksByNumber(const void *a, const void *b) {
 }
 
 TaskRuntimeMonitor g_taskRuntimeMonitor{};
+
+/**
+ * Checks heap and task stack metrics against warning thresholds to catch impending exhaustion or fragmentation.
+ * Rate-limited to avoid log flooding.
+ * @param snapshot task runtime snapshot
+ */
+void checkAnomalies(const TaskRuntimeSnapshot &snapshot) {
+    static unsigned long lastHeapWarnMs = 0;
+    static unsigned long lastBlockWarnMs = 0;
+    static unsigned long lastStackWarnMs = 0;
+    const unsigned long nowMs = millis();
+
+    constexpr size_t kMinFreeHeapThreshold = 20480;       // 20 KB
+    constexpr size_t kMinLargestBlockThreshold = 10240;   // 10 KB
+    constexpr UBaseType_t kMinStackHighWaterWords = 64;   // 64 words = 256 bytes
+    constexpr unsigned long kWarnThrottleMs = 60000;      // Warn at most once per minute
+
+    if (snapshot.heapStats.xAvailableHeapSpaceInBytes < kMinFreeHeapThreshold) {
+        if (nowMs - lastHeapWarnMs >= kWarnThrottleMs) {
+            lastHeapWarnMs = nowMs;
+            log_warn(F("LOW HEAP: Free heap space %zu bytes (threshold %zu bytes)"),
+                snapshot.heapStats.xAvailableHeapSpaceInBytes, kMinFreeHeapThreshold);
+        }
+    } else {
+        lastHeapWarnMs = 0;
+    }
+
+    if (snapshot.heapStats.xSizeOfLargestFreeBlockInBytes < kMinLargestBlockThreshold) {
+        if (nowMs - lastBlockWarnMs >= kWarnThrottleMs) {
+            lastBlockWarnMs = nowMs;
+            log_warn(F("HEAP FRAGMENTATION: Largest free block %zu bytes (threshold %zu bytes, total free %zu)"),
+                snapshot.heapStats.xSizeOfLargestFreeBlockInBytes, kMinLargestBlockThreshold, snapshot.heapStats.xAvailableHeapSpaceInBytes);
+        }
+    } else {
+        lastBlockWarnMs = 0;
+    }
+
+    for (const auto &taskStatus : snapshot.tasks) {
+        if (taskStatus.usStackHighWaterMark < kMinStackHighWaterWords) {
+            if (nowMs - lastStackWarnMs >= kWarnThrottleMs) {
+                lastStackWarnMs = nowMs;
+                log_warn(F("LOW STACK: Task '%s' stack high water mark %u words (%u bytes remaining)"),
+                    taskStatus.pcTaskName, static_cast<unsigned>(taskStatus.usStackHighWaterMark),
+                    static_cast<unsigned>(taskStatus.usStackHighWaterMark * sizeof(StackType_t)));
+            }
+        }
+    }
+}
 
 } // namespace
 
@@ -231,6 +274,7 @@ bool TaskRuntimeMonitor::capture(const bool force) {
     history_.current = std::move(snapshot);
     if (force)
         history_.lastForcedCaptureMs = history_.current.capturedAtMs;
+    checkAnomalies(history_.current);
     return true;
 }
 
@@ -264,7 +308,6 @@ bool captureTaskRuntimeSnapshot(const bool force) {
  * overhead does not impact the system performance significantly.
  */
 void logTaskStats() {
-#if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
 
@@ -303,7 +346,6 @@ void logTaskStats() {
     log_write(INFO, buf);
     logHeapStats();
     log_info(F("Minimum log buffer free space %zu bytes"), Log.getMinFreeSpace());
-#endif
 }
 
 /**
@@ -345,7 +387,6 @@ void logTaskSummary() {
  * Log Heap memory allocation stats
  */
 void logHeapStats() {
-#if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
 
@@ -365,7 +406,6 @@ void logHeapStats() {
     StringUtils::append(strHeapInfo, heapPSRAMInfoFmt, rp2040.getPSRAMSize(), rp2040.getTotalPSRAMHeap(), rp2040.getFreePSRAMHeap(), rp2040.getUsedPSRAMHeap());
 #endif
     log_info(F("%s"), strHeapInfo.c_str());
-#endif
 }
 
 /**

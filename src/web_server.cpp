@@ -856,6 +856,42 @@ void handleGetFiles(WebClient &client) {
 }
 
 /**
+ * Web request handler - GET /log and GET /status/log.txt.
+ * Streams the in-memory rolling RAM log buffer.
+ * Optional query parameter `clear=1` resets the buffer.
+ */
+void handleGetLog(WebClient &client) {
+    dateHeader(client);
+    client.addResponseHeader(hdCacheControl, hdCacheJson);
+
+    if (client.request().hasArg("clear")) {
+        Log.clearBuffer();
+        client.send(200, mime::mimeTable[mime::txt].mimeType, "Log buffer cleared\n");
+        log_info(F("Log buffer cleared via HTTP request"));
+        return;
+    }
+
+    const size_t total = Log.getBufferSize();
+    if (total == 0) {
+        client.send(200, mime::mimeTable[mime::txt].mimeType, "");
+        return;
+    }
+
+    client.sendHeaders(200, mime::mimeTable[mime::txt].mimeType, total);
+    constexpr size_t CHUNK_SIZE = HTTP_DOWNLOAD_UNIT_SIZE;
+    char chunk[CHUNK_SIZE];
+    size_t offset = 0;
+    while (offset < total) {
+        const size_t toRead = (total - offset) < CHUNK_SIZE ? (total - offset) : CHUNK_SIZE;
+        const size_t read = Log.readBuffer(offset, chunk, toRead);
+        if (read == 0) break;
+        client.sendContent(chunk, read);
+        offset += read;
+    }
+    log_info(F("Handler handleGetLog invoked for %s, response size %zu bytes"), client.request().uri().c_str(), total);
+}
+
+/**
  * Configures the web server with specific dynamic and static request handlers
  * This method can be called again upon WiFi reconnecting
  */
@@ -871,6 +907,8 @@ void web::server_setup() {
         server.on("/config.json", HTTP_GET, handleGetConfig);
         server.serveStatic("/health.json", SyncFsImpl, healthEventFileName, nullptr, hdCacheJson);
         server.on("/status.json", HTTP_GET, handleGetStatus);
+        server.on("/log", HTTP_GET, handleGetLog);
+        server.on("/status/log.txt", HTTP_GET, handleGetLog);
         server.on("/fx", HTTP_PUT, handlePutConfig);
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
         // Filesystem listing (confined to /ext)

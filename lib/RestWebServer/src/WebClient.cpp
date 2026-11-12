@@ -56,13 +56,11 @@ static HTTPMethod httpMethodFromName(const char* httpName) {
  * @param method HTTPMethod to convert to a (name) string
  * @return name of the HTTP method to use in logging
  */
-#if LOGGING_ENABLED == 1
 static const char* httpMethodToString(const HTTPMethod method) {
     if (method >= httpMethodsCount)
         return "HTTP UNKNOWN";
     return httpMethodStr[method];
 }
-#endif
 
 /**
  * Initializes the Web Server's client wrapper for current request

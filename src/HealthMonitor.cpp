@@ -49,11 +49,9 @@ void HealthMonitor::checkIn(const HealthBit bit) {
         if (uint32_t warningNowMs; claimCheckInWarning(warningNowMs)) {
             uint32_t diffs[3];
             for (int i = 0; i < 3; i++) diffs[i] = warningNowMs - lastCheckIns[i];
-#if LOGGING_ENABLED == 1
             log_warn(F("HealthMonitor-C: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu, watchdog remaining: %lu"),
                 diffs[0], diffs[1], diffs[2], warningNowMs, wdleft);
             logTaskStats();
-#endif
             saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], false);
         }
     }
@@ -105,21 +103,17 @@ void HealthMonitor::update(const uint32_t timeoutMs, const uint32_t warnMs) {
         watchdog_update();
         if (diffs[0] > warnMs || diffs[1] > warnMs || diffs[2] > warnMs) {
             if (uint32_t warningNowMs; claimCheckInWarning(warningNowMs)) {
-#if LOGGING_ENABLED == 1
                 log_warn(F("HealthMonitor-U: Task(s) slow! [C0:%lu, C1:%lu, FX:%lu] now:%lu"),
                     diffs[0], diffs[1], diffs[2], warningNowMs);
                 logTaskStats();
-#endif
                 //saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], false);
             }
         }
     } else {
         if (uint32_t warningNowMs; claimCheckInWarning(warningNowMs)) {
-#if LOGGING_ENABLED == 1
             log_error(F("HealthMonitor-U: Task(s) STALLED! STOPS PINGING WATCHDOG. [C0:%lu, C1:%lu, FX:%lu] now:%lu, watchdog remaining: %lu"),
                 diffs[0], diffs[1], diffs[2], warningNowMs, watchdog_get_time_remaining_ms());
             logTaskStats();
-#endif
             saveSlownessHealthEvent(diffs[0], diffs[1], diffs[2], true);
         }
     }

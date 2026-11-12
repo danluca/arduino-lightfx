@@ -18,9 +18,7 @@
 #include "task_msg.h"
 #include "log.h"
 #include "board_config.h"
-#if LOGGING_ENABLED == 1
 #include "stringutils.h"
-#endif
 
 #define DIAG_QUEUE_TIMEOUT  0     //enqueuing timeout - 0 per https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/05-Software-timers/01-Software-timers
 
@@ -636,7 +634,6 @@ void checkFxHeartbeat() {
     if (!fxStallReported && (nowMs - heartbeatMs) > fxStallWarnMs) {
         fxStallReported = true;
         watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerFxStall;
-#if LOGGING_ENABLED == 1
         log_warn(F("FX heartbeat stalled for %lu ms - capturing task stats"), static_cast<unsigned long>(nowMs - heartbeatMs));
         log_warn(F("Watchdog remaining %u ms"), watchdog_get_time_remaining_ms());
         if (const TaskHandle_t fxHandle = xTaskGetHandle(csFxTask); fxHandle != nullptr) {
@@ -652,8 +649,6 @@ void checkFxHeartbeat() {
             log_warn(F("CORE1 task handle not found at stall"));
         }
         logTaskStats();
-#endif
-
     }
 }
 

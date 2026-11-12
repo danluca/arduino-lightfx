@@ -8,6 +8,9 @@
 #define SECS_PER_HOUR ((time_t)(3600UL))
 #define SECS_PER_DAY  ((time_t)(SECS_PER_HOUR * 24UL))
 
+// log buffer stored in uninitialized RAM to facilitate log survival after warm boot
+__attribute__((section(".uninitialized_ram"))) static RamLogBuffer s_ramLog;
+
 PicoLog Log;
 TaskWrapper *twStream;
 
@@ -18,26 +21,53 @@ static constexpr char fmtTaskPriorityRegular[] PROGMEM = " [C%u-%s-%lu]";
 static constexpr char logLevelTags[] PROGMEM = "SFEWIDT";    //NOTE this string must be as long as LogLevel enum!
 static constexpr char fmtLevel[] PROGMEM = " %c: ";
 
+PicoLog::PicoLog() {
+    mutex_init(&m_mutex);
+    m_initialized = true;
+}
+
+void PicoLog::init() {
+    if (!m_initialized) {
+        mutex_init(&m_mutex);
+        m_initialized = true;
+    }
+}
+
 /**
- * Flushes the log data queue by processing and outputting all queued log messages.
- * If the log queue is empty, delays execution briefly to allow for log gathering.
+ * Flushes newly written log bytes to the Serial stream without erasing the in-memory circular buffer.
+ * If the log queue has no new bytes, delays execution briefly.
  */
 void PicoLog::flush() {
-    if (m_queue.empty()) {
+    if (!isStreamingEnabled()) {
         vTaskDelay(pdMS_TO_TICKS(250));
         return;
     }
-    const size_t logSize = m_queue.size();
-    size_t expected = m_maxBufferSize.load(std::memory_order_relaxed);
-    while (logSize > expected && !m_maxBufferSize.compare_exchange_weak(expected, logSize, std::memory_order_relaxed))
-        ;
-    while (!m_queue.empty()) {
-        char buf[RAW_WRITE_CHUNK_SIZE]{0};
-        const size_t sz = min(m_queue.size(), static_cast<size_t>(RAW_WRITE_CHUNK_SIZE - 1));
-        m_queue.pop_front(buf, sz);
-        buf[sz] = '\0';
-        m_stream->write(buf, sz);
+
+    char buf[RAW_WRITE_CHUNK_SIZE];
+    size_t toWrite = 0;
+    {
+        CoreMutex coreMutex(&m_mutex);
+        if (s_ramLog.isValid() && s_ramLog.count > 0) {
+            const uint32_t total = s_ramLog.totalWritten;
+            const uint32_t count = s_ramLog.count;
+            if (m_serialReadPos + count < total) {
+                m_serialReadPos = total - count;
+            }
+            if (m_serialReadPos < total) {
+                const uint32_t unstreamed = total - m_serialReadPos;
+                const size_t offset = static_cast<size_t>(m_serialReadPos - (total - count));
+                const size_t requested = (unstreamed < RAW_WRITE_CHUNK_SIZE) ? static_cast<size_t>(unstreamed) : RAW_WRITE_CHUNK_SIZE;
+                toWrite = s_ramLog.read(offset, buf, requested);
+                m_serialReadPos += static_cast<uint32_t>(toWrite);
+            }
+        }
     }
+
+    if (toWrite == 0) {
+        vTaskDelay(pdMS_TO_TICKS(250));
+        return;
+    }
+    m_stream->write(buf, toWrite);
     m_stream->flush();
 }
 
@@ -47,14 +77,14 @@ void flushData() {
 
 TaskDef tdStream {.setup = nullptr, .loop = flushData, .stackSize = 1024, .threadName = "SRL", .priority = TaskPriorityPolicy::SerialLogger, .core = CORE_ALL};
 
-
 /**
- * Configures the logger using the Serial object. The Serial objects can be null, in which case the logger will be disabled.
- * If needed to be enabled, this function must be called *after* Serial initialization
+ * Configures the logger using the Serial object. The Serial object can be null, in which case the logger
+ * logs exclusively to the in-memory circular buffer.
  * @param serial pointer to the Serial object
  * @param level logging level
  */
 void PicoLog::begin(SerialUSB *serial, const LogLevel level) {
+    init();
     m_level = level;
     if (serial && (*serial))
         m_stream = serial;
@@ -66,18 +96,117 @@ void PicoLog::begin(SerialUSB *serial, const LogLevel level) {
     }
 }
 
+/**
+ * Gets the amount of free space in the log buffer
+ * @return amount of free space in the log buffer
+ */
+size_t PicoLog::getMinFreeSpace() const {
+    CoreMutex coreMutex(&m_mutex);
+    if (!s_ramLog.isValid()) return LOG_BUFFER_SIZE;
+    return (s_ramLog.count >= LOG_BUFFER_SIZE) ? 0 : (LOG_BUFFER_SIZE - s_ramLog.count);
+}
+
+/**
+ * Checks whether there is a valid crash log in the log buffer
+ * @return whether there is a valid crash log in the log buffer
+ */
+bool PicoLog::hasValidCrashLog() const {
+    CoreMutex coreMutex(&m_mutex);
+    return s_ramLog.isValid() && s_ramLog.count > 0;
+}
+
+/**
+ * Snapshot the crash log into the provided string
+ * @param dest where to store the crash log
+ */
+void PicoLog::snapshotCrashLog(String &dest) {
+    CoreMutex coreMutex(&m_mutex);
+    if (s_ramLog.isValid()) {
+        s_ramLog.extract(dest);
+    }
+    s_ramLog.init();
+    m_serialReadPos = 0;
+}
+
+/**
+ * Re-initialize the log buffer. Clears the log buffer and resets the serial read position.
+ */
+void PicoLog::resetBuffer() {
+    CoreMutex coreMutex(&m_mutex);
+    s_ramLog.init();
+    m_serialReadPos = 0;
+}
+
+/**
+ * Clears the log buffer. Same effect as resetBuffer().
+ */
+void PicoLog::clearBuffer() {
+    CoreMutex coreMutex(&m_mutex);
+    s_ramLog.clear();
+    m_serialReadPos = 0;
+}
+
+/**
+ * Get the size of the log buffer.
+ * @return size of the log buffer
+ */
+size_t PicoLog::getBufferSize() const {
+    CoreMutex coreMutex(&m_mutex);
+    return s_ramLog.isValid() ? s_ramLog.count : 0;
+}
+
+/**
+ * Read data from the log buffer.
+ * @param offset offset from the beginning of the log buffer
+ * @param dest destination buffer
+ * @param maxLen maximum number of bytes to read
+ * @return number of bytes read
+ */
+size_t PicoLog::readBuffer(const size_t offset, char *dest, const size_t maxLen) const {
+    CoreMutex coreMutex(&m_mutex);
+    return s_ramLog.read(offset, dest, maxLen);
+}
+
+/**
+ * Extract the log data from the buffer and store it in a String.
+ * @param dest String to store the extracted log data
+ */
+void PicoLog::extractLog(String &dest) const {
+    CoreMutex coreMutex(&m_mutex);
+    s_ramLog.extract(dest);
+}
+
+/**
+ * Write a log message to the buffer. Length is determined by strlen(data).
+ * @param level log level
+ * @param data log message
+ * @return number of bytes written
+ */
 size_t PicoLog::write(const LogLevel level, const char *data) {
     if (!isEnabled(level) || data == nullptr)
         return 0;
     return write(level, data, strlen(data));
 }
 
+/**
+ * Write a log message to the buffer.
+ * @param level log level
+ * @param data log message
+ * @param len length of the log message
+ * @return number of bytes written
+ */
 size_t PicoLog::write(const LogLevel level, const char *data, const size_t len) {
     if (!isEnabled(level) || data == nullptr || len == 0)
         return 0;
     return writeRaw(level, data, len);
 }
 
+/**
+ * Write a log message to the buffer.
+ * @param level log level
+ * @param data log message
+ * @return number of bytes written
+ */
 size_t PicoLog::write(const LogLevel level, const __FlashStringHelper *data) {
     if (!isEnabled(level) || data == nullptr)
         return 0;
@@ -85,23 +214,25 @@ size_t PicoLog::write(const LogLevel level, const __FlashStringHelper *data) {
     return writeRaw(level, raw.c_str(), raw.length());
 }
 
+/**
+ * Write raw data to the log buffer.
+ * @param level log level
+ * @param data data to write
+ * @param len number of bytes to write
+ * @return number of bytes written
+ */
 size_t PicoLog::writeRaw(const LogLevel level, const char *data, const size_t len) {
     if (!isEnabled(level) || data == nullptr || len == 0)
         return 0;
 
 #if LOG_BYPASS_BUFFER
-    if (!isStreamingEnabled()) return 0;
-    m_stream->write(reinterpret_cast<const uint8_t *>(data), len);
-    return len;
-#else
-    size_t written = 0;
-    while (written < len) {
-        const size_t chunk = min(len - written, RAW_WRITE_CHUNK_SIZE);
-        m_queue.push_back(data + written, chunk);
-        written += chunk;
-    }
-    return written;
+    if (isStreamingEnabled())
+        m_stream->write(reinterpret_cast<const uint8_t *>(data), len);
 #endif
+
+    CoreMutex coreMutex(&m_mutex);
+    s_ramLog.write(data, len);
+    return len;
 }
 
 /**
@@ -166,14 +297,17 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
     // Ensure we don't write past our buffer; clamp sz to actual capacity
     if (const size_t maxWritable = (heapUsed ? needed : STACK_CAP) - 1; sz > maxWritable) sz = maxWritable;
 
-    buf[sz] = '\n'; //new line ending - no null terminator as we control exactly the number of characters written into the m_queue or output stream
+    buf[sz] = '\n'; //new line ending - no null terminator as we control exactly the number of characters written into the circular buffer
 
 #if LOG_BYPASS_BUFFER
     if (isStreamingEnabled())
         m_stream->write(buf, sz + 1);
-#else
-    m_queue.push_back(buf, sz + 1);
 #endif
+
+    {
+        CoreMutex coreMutex(&m_mutex);
+        s_ramLog.write(buf, sz + 1);
+    }
 
     if (heapUsed) delete[] buf;
 
@@ -182,11 +316,9 @@ size_t PicoLog::print(const LogLevel level, const char *format, va_list args) {
 
 /**
  * Appends current timestamp into the provided char array.
- * NOTE: the provided char buffer must have space for ~20 chars for the timestamp. Caller's responsibility.
- * WARNING: risk of buffer overflow, no checks are made for whether writing the timestamp goes beyond the char array boundaries
- * This is acceptable as this is a private method, solely invoked from another private method \code print\endcode. While not ideal,
- * keeps the code simpler by avoiding checks and passing size arguments.
  * @param msg char array to append timestamp to
+ * @param capacity capacity of the msg buffer
+ * @param millisValue timestamp value in milliseconds
  * @return size of the data appended
  */
 size_t PicoLog::printTimestamp(char *msg, const size_t capacity, const time_t millisValue) const {
@@ -215,11 +347,8 @@ size_t PicoLog::printTimestamp(char *msg, const size_t capacity, const time_t mi
 
 /**
  * Appends the current thread information into the provided string
- * NOTE: the provided char buffer must have space for ~20 chars for the thread info. Caller's responsibility.
- * WARNING: risk of buffer overflow, no checks are made for whether writing the thread info goes beyond the char array boundaries
- * This is acceptable as this is a private method, solely invoked from another private method \code print\endcode. While not ideal,
- * keeps the code simpler by avoiding checks and passing size arguments.
  * @param msg string to append thread info to
+ * @param capacity capacity of msg buffer
  * @param taskStatus the task status already populated
  * @return size of data appended
  */
@@ -243,12 +372,9 @@ size_t PicoLog::printThread(char *msg, const size_t capacity, const TaskStatus_t
 
 /**
  * Appends the logging level designation to the string provided
- * NOTE: the provided char buffer must have space for ~4 chars for the log level. Caller's responsibility.
- * WARNING: risk of buffer overflow, no checks are made for whether writing the log level goes beyond the char array boundaries
- * This is acceptable as this is a private method, solely invoked from another private method \code print\endcode. While not ideal,
- * keeps the code simpler by avoiding checks and passing size arguments.
  * @param level logging level to print
  * @param msg string to append level information to
+ * @param capacity capacity of msg buffer
  * @return size of data appended
  */
 size_t PicoLog::printLevel(const LogLevel level, char *msg, const size_t capacity) {

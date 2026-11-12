@@ -40,6 +40,10 @@ void saveSysInfo();
 void saveSlownessHealthEvent(uint32_t c0Diff, uint32_t c1Diff, uint32_t fxDiff, bool isStall);
 void saveRebootHealthEvent();
 const char *taskStatusToString(eTaskState state);
+const char *resetReasonToString(RP2040::resetReason_t reason);
+const char *resetMarkerToString(uint32_t marker);
+const char *fxStageToString(uint32_t stage);
+const char *fsBlockedActionToString(uint8_t action);
 
 struct CRGB;
 

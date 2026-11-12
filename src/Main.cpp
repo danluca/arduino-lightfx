@@ -178,6 +178,7 @@ void setup() {
     sysInfo = new SysInfo();    //system information object built once per run
     sysInfo->fillBoardId();
     filesystem_setup();
+    saveRebootCrashLog();
     sysInfo->begin();
 
     task_msg_setup();

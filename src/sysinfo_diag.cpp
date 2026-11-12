@@ -14,7 +14,8 @@ namespace {
 constexpr auto unknown = "N/A";
 constexpr auto sysInfoFmt = "SYSTEM INFO\n  CPU ROM %d [%.1f MHz] CORE %d\n  FreeRTOS version %s\n  Arduino PICO version %s [SDK %s]\n  Board UID 0x%s name '%s'\n  MAC Address %s\n  Device name %s build version %s at %s\n  Flash size %u";
 
-#if LOGGING_ENABLED == 1
+} // namespace
+
 const char *resetReasonToString(const RP2040::resetReason_t reason) {
     switch (reason) {
         case RP2040::UNKNOWN_RESET: return unknown;
@@ -79,9 +80,6 @@ const char *fsBlockedActionToString(const uint8_t action) {
         default: return "UNKNOWN";
     }
 }
-#endif
-
-} // namespace
 
 /**
  * Logs detailed system information for debugging and diagnostic purposes.
@@ -94,7 +92,6 @@ const char *fsBlockedActionToString(const uint8_t action) {
  * - System reset reason with detailed status codes
  */
 void logSystemInfo() {
-#if LOGGING_ENABLED == 1
     if (!Log.isEnabled(INFO))
         return;
     log_info(sysInfoFmt, rp2350_rom_version(), RP2040::f_cpu() / 1000000.0, RP2040::cpuid(), tskKERNEL_VERSION_NUMBER, ARDUINO_PICO_VERSION_STR, PICO_SDK_VERSION_STRING,
@@ -163,7 +160,7 @@ void logSystemInfo() {
     log_info(F("  Stack limits CORE0:         __StackLimit  = %#X; __StackTop = %#X; __StackBottom = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackTop, (uint32_t)&__StackBottom);
     log_info(F("  Stack limits CORE1:         __StackLimit  = %#X; __StackTop = %#X; __StackBottom = %#X"), (uint32_t)&__StackLimit, (uint32_t)&__StackOneTop, (uint32_t)&__StackOneBottom);
     log_info(F("  Scratch RAM start:    __scratch_x_start__ = %#X; __scratch_y_start__ = %#X"), __scratch_x_source__, __scratch_y_source__);
-#endif
+    logHeapStats();
 }
 
 /**

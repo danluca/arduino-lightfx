@@ -31,6 +31,7 @@ sources:
 | GET | `/status.json` | Live status (see below) |
 | GET | `/health.json` | `/status/health_event.json`: last reboot reason and last slowness or stall event. See [watchdog and health](/architecture/watchdog-and-health.md) |
 | GET | `/tasks.json` | Heap stats, per-task stats from the 10-second snapshot (state, priorities, stack high-water mark, core affinity, CPU %), board name, UID and firmware version |
+| GET | `/log`, `/status/log.txt` | Streams the in-memory 32 KB rolling log buffer (`text/plain`). `?clear=1` clears the buffer |
 | GET | `/files.json?path=/x` | LittleFS directory listing. Paths containing `..` are rejected |
 | PUT | `/fx` | Change settings (see below) |
 | POST | `/fw` | Firmware upload. See [OTA firmware upgrade](/network/ota-firmware-upgrade.md) |

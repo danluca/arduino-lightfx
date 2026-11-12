@@ -11,8 +11,9 @@
 #define LOG_BYPASS_BUFFER false
 #endif
 
-#if LOGGING_ENABLED == 1
 #include "logPico.h"
+
+#if LOGGING_ENABLED == 1
 #define log_debug Log.debug
 #define log_info Log.info
 #define log_warn Log.warn
@@ -20,10 +21,10 @@
 #define log_write Log.write
 #else
 #define log_debug(...)
-#define log_info(...)
-#define log_warn(...)
-#define log_error(...)
-#define log_write(...)
+#define log_info Log.info
+#define log_warn Log.warn
+#define log_error Log.error
+#define log_write Log.write
 #endif
 
 #endif
