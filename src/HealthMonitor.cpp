@@ -16,6 +16,11 @@ static constexpr uint16_t warnIntervalMs = 1000;
 static constexpr uint16_t watchdogLowWatermarkMs = 2000;
 static std::atomic<uint32_t> lastCheckInWarnMs{0};
 
+/**
+ * Throttles slowness and stall warning logs using atomic compare-exchange.
+ * @param[out] nowMs populated with current millis() timestamp on call
+ * @return true if the warning claim succeeded and should be logged, false if throttled
+ */
 static bool claimCheckInWarning(uint32_t &nowMs) {
     uint32_t previousWarnMs = lastCheckInWarnMs.load(std::memory_order_relaxed);
     nowMs = millis();

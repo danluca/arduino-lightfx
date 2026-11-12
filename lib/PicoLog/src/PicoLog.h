@@ -14,16 +14,26 @@
 #include "logPico.h"
 
 #if LOGGING_ENABLED == 1
+/** Emits a debug log message when logging is enabled. */
 #define log_debug Log.debug
+/** Emits an informational log message. */
 #define log_info Log.info
+/** Emits a warning log message. */
 #define log_warn Log.warn
+/** Emits an error log message. */
 #define log_error Log.error
+/** Writes raw data directly to log. */
 #define log_write Log.write
 #else
+/** Debug logging is compiled out when logging is disabled. */
 #define log_debug(...)
+/** Emits an informational log message to circular RAM buffer. */
 #define log_info Log.info
+/** Emits a warning log message to circular RAM buffer. */
 #define log_warn Log.warn
+/** Emits an error log message to circular RAM buffer. */
 #define log_error Log.error
+/** Writes raw data directly to circular RAM buffer. */
 #define log_write Log.write
 #endif
 

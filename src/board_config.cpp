@@ -10,6 +10,7 @@
 #endif
 
 namespace {
+    /** Fallback configuration applied when no board UID matches or configuration is invalid. */
     constexpr BoardConfiguration safeConfiguration {
         .uid = nullptr, .deviceName = "TBD", .numPixels = 32, .frameSize = 16, .mv3_3 = 3300, .vccDivR4 = 20000, .vccDivR5 = 4700,
         .ip = {0,0,0,0}, .brightness = 160, .maxBrightness = 190, .ledChipset = LedChipset::WS2811, .colorOrder = LedColorOrder::RGB
@@ -17,6 +18,7 @@ namespace {
 
     // Board settings are intentionally kept in the application image so every unit
     // can use the same firmware. Add a row when a board UID is recorded.
+    /** Statically registered hardware board profiles. */
     constexpr BoardConfiguration boardConfigurations[] {
         {.uid = "DEB8609F71125183", .deviceName = "Xmas2350", .numPixels = 66, .frameSize = 22, .mv3_3 = 3317, .vccDivR4 = 22000, .vccDivR5 = 4700,
          .ip = {0,0,0,0}, .brightness = 224, .maxBrightness = 255, .ledChipset = LedChipset::WS2812B, .colorOrder = LedColorOrder::BGR},
@@ -26,6 +28,12 @@ namespace {
 
     const BoardConfiguration *selectedConfiguration = &safeConfiguration;
 
+    /**
+     * Performs a case-insensitive string equality comparison for hex UID strings.
+     * @param left first null-terminated string
+     * @param right second null-terminated string
+     * @return true if strings match case-insensitively, false otherwise
+     */
     bool uidEqualsIgnoreCase(const char *left, const char *right) {
         if (left == nullptr || right == nullptr || *left == '\0' || *right == '\0')
             return false;

@@ -12,6 +12,7 @@
 #include <vector>
 #include <algorithm>
 
+/** Pre-reboot crash log extracted from RAM during early boot before filesystem mount. */
 static std::unique_ptr<String> g_crashLogSnapshot;
 
 void log_setup() {
