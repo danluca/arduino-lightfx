@@ -18,9 +18,24 @@ static constexpr HolidayWeight fxj2HolidayWeights[] = {
 };
 static const EffectInfo fxj2Desc = {.factory = EFFECT_FACTORY(FxJ2), .desc = {.id = "FXJ2", .description = "Rain on a window"}, .selectionWeight = 20, HOLIDAY_WEIGHTS(fxj2HolidayWeights)};
 
+static constexpr HolidayWeight fxj3HolidayWeights[] = {
+    {.holiday = MemorialDay, .weight = 16},
+    {.holiday = IndependenceDay, .weight = 16}
+};
+static const EffectInfo fxj3Desc = {.factory = EFFECT_FACTORY(FxJ3), .desc = {.id = "FXJ3", .description = "1D Wave Equation - Fluid water ripple"}, .selectionWeight = 16, HOLIDAY_WEIGHTS(fxj3HolidayWeights)};
+
+static constexpr HolidayWeight fxj4HolidayWeights[] = {
+    {.holiday = Party, .weight = 24},
+    {.holiday = IndependenceDay, .weight = 30},
+    {.holiday = NewYear, .weight = 28}
+};
+static const EffectInfo fxj4Desc = {.factory = EFFECT_FACTORY(FxJ4), .desc = {.id = "FXJ4", .description = "Meteor shower with thermal sparks"}, .selectionWeight = 18, HOLIDAY_WEIGHTS(fxj4HolidayWeights)};
+
 void FxJ::fxRegister() {
     fxRegistry.registerEffect(&fxj1Desc);
     fxRegistry.registerEffect(&fxj2Desc);
+    fxRegistry.registerEffect(&fxj3Desc);
+    fxRegistry.registerEffect(&fxj4Desc);
 }
 
 // FXJ1 - Popcorn
@@ -314,6 +329,228 @@ void FxJ2::run() {
         replicateMirrorSet(wFrame, others, dirRight);
         FastLED.show(stripBrightness);
         j2Timer.setPeriod(random16(20, 64));
+    }
+}
+
+// FXJ3 - 1D Wave Equation (Fluid Ripples / Plucked String)
+FxJ3::FxJ3() : LedEffect(fxj3Desc) {}
+
+void FxJ3::setup() {
+    LedEffect::setup();
+    heightView = effectScratchBytes(0, tpl.size());
+    velView = effectScratchBytes(tpl.size(), tpl.size());
+    if (heightView)
+        memset(heightView.data, 0, heightView.size);
+    if (velView)
+        memset(velView.data, 0, velView.size);
+
+    dropChance = random8(18, 40);
+    colorBase = random8();
+    bgColor = ColorFromPalette(targetPalette, random8(), 4, LINEARBLEND);
+    tpl.fill_solid(bgColor);
+}
+
+void FxJ3::injectDrop() {
+    if (!heightView || tpl.size() < 3)
+        return;
+    const auto *h = reinterpret_cast<int8_t *>(heightView.data);
+    const auto pos = random16(1, tpl.size() - 1);
+    const int8_t impact = (random8() & 1) ? static_cast<int8_t>(random8(80, 127)) : static_cast<int8_t>(-static_cast<int8_t>(random8(80, 127)));
+    auto *mutableH = const_cast<int8_t *>(h);
+    mutableH[pos] = impact;
+    if (pos > 0)
+        mutableH[pos - 1] = impact / 2;
+    if (pos + 1 < tpl.size())
+        mutableH[pos + 1] = impact / 2;
+}
+
+void FxJ3::run() {
+    if (!heightView || !velView)
+        return;
+
+    EVERY_N_MILLIS_I(j3Timer, 20) {
+        const uint16_t size = tpl.size();
+        auto *h = reinterpret_cast<int8_t *>(heightView.data);
+        auto *v = reinterpret_cast<int8_t *>(velView.data);
+
+        if (random8() < dropChance)
+            injectDrop();
+
+        // 1D discrete wave equation update
+        for (uint16_t i = 1; i + 1 < size; ++i) {
+            const int16_t force = (static_cast<int16_t>(h[i - 1]) + static_cast<int16_t>(h[i + 1]) - (static_cast<int16_t>(h[i]) << 1)) / 4;
+            const int16_t newV = (static_cast<int16_t>(v[i]) + force) * 251 / 256;
+            v[i] = static_cast<int8_t>(constrain(newV, -127, 127));
+        }
+
+        // Boundary reflection with damping
+        v[0] = static_cast<int8_t>(constrain(((static_cast<int16_t>(v[0]) + (static_cast<int16_t>(h[1]) - static_cast<int16_t>(h[0])) / 4) * 251 / 256), -127, 127));
+        v[size - 1] = static_cast<int8_t>(constrain(((static_cast<int16_t>(v[size - 1]) + (static_cast<int16_t>(h[size - 2]) - static_cast<int16_t>(h[size - 1])) / 4) * 251 / 256), -127, 127));
+
+        for (uint16_t i = 0; i < size; ++i) {
+            const int16_t newH = static_cast<int16_t>(h[i]) + (static_cast<int16_t>(v[i]) >> 1);
+            h[i] = static_cast<int8_t>(constrain(newH, -127, 127));
+        }
+
+        // Render wave displacement and slope reflection
+        tpl.fill_solid(bgColor);
+        for (uint16_t i = 0; i < size; ++i) {
+            const int16_t disp = abs(static_cast<int16_t>(h[i]));
+            int16_t slope = 0;
+            if (i > 0 && i + 1 < size)
+                slope = abs(static_cast<int16_t>(h[i + 1]) - static_cast<int16_t>(h[i - 1]));
+
+            const uint8_t bri = qadd8(static_cast<uint8_t>(disp * 2), static_cast<uint8_t>(slope * 2));
+            if (bri > 6) {
+                const uint8_t cIdx = colorBase + static_cast<uint8_t>(h[i] + 128);
+                tpl[i] += ColorFromPalette(palette, cIdx, bri, LINEARBLEND);
+            }
+        }
+
+        colorBase++;
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+}
+
+// FXJ4 - Meteor Shower with Thermal Sparks
+FxJ4::FxJ4() : LedEffect(fxj4Desc) {}
+
+void FxJ4::setup() {
+    LedEffect::setup();
+    heatTrail = effectScratchBytes(0, tpl.size());
+    heatColors = effectScratchBytes(tpl.size(), tpl.size());
+    if (heatTrail)
+        memset(heatTrail.data, 0, heatTrail.size);
+    if (heatColors)
+        memset(heatColors.data, 0, heatColors.size);
+
+    dirRight = random8() & 1;
+    spawnChance = random8(16, 36);
+    bgColor = ColorFromPalette(targetPalette, random8(), 4, LINEARBLEND);
+    for (auto &m : meteors)
+        m.pos256 = -1;
+    for (auto &s : sparks)
+        s.pos256 = -1;
+
+    tpl.fill_solid(bgColor);
+}
+
+void FxJ4::spawnMeteor() {
+    for (auto &m : meteors) {
+        if (m.pos256 < 0) {
+            m.pos256 = dirRight ? 0 : (static_cast<int32_t>(tpl.size() - 1) << 8);
+            const int32_t speedMag = static_cast<int32_t>(random8(120, 240)) * (tpl.size() > 100 ? 3 : 2);
+            m.vel256 = dirRight ? speedMag : -speedMag;
+            m.colorIdx = random8();
+            m.trailHeat = random8(190, 255);
+            m.decay = random8(220, 245);
+            break;
+        }
+    }
+}
+
+void FxJ4::spawnSpark(const int32_t pos256, const int32_t vel256, const uint8_t colorIdx) {
+    for (auto &s : sparks) {
+        if (s.pos256 < 0) {
+            s.pos256 = pos256;
+            const int32_t kickback = (dirRight ? -1 : 1) * static_cast<int32_t>(random8(20, 80));
+            s.vel256 = vel256 / 4 + kickback;
+            s.colorIdx = colorIdx + random8(24);
+            s.bri = random8(160, 255);
+            s.decay = random8(14, 32);
+            break;
+        }
+    }
+}
+
+void FxJ4::run() {
+    if (!heatTrail || !heatColors)
+        return;
+
+    EVERY_N_MILLIS_I(j4Timer, 20) {
+        const uint16_t size = tpl.size();
+
+        // Cool the thermal heat trail
+        for (uint16_t i = 0; i < size; ++i)
+            heatTrail.data[i] = scale8(heatTrail.data[i], 242);
+
+        if (random8() < spawnChance)
+            spawnMeteor();
+
+        // Update meteors
+        for (auto &m : meteors) {
+            if (m.pos256 < 0)
+                continue;
+
+            m.pos256 += m.vel256;
+            const auto idx = static_cast<int32_t>(m.pos256 >> 8);
+            if (idx < 0 || idx >= size) {
+                m.pos256 = -1;
+                continue;
+            }
+
+            // Leave thermal glow in trail
+            heatTrail.data[idx] = max<uint8_t>(heatTrail.data[idx], m.trailHeat);
+            heatColors.data[idx] = m.colorIdx;
+
+            // Shed micro-sparks behind head
+            if (random8() < 90)
+                spawnSpark(m.pos256, m.vel256, m.colorIdx);
+        }
+
+        // Update sparks
+        for (auto &s : sparks) {
+            if (s.pos256 < 0)
+                continue;
+
+            s.pos256 += s.vel256;
+            s.bri = qsub8(s.bri, s.decay);
+            const auto idx = static_cast<int32_t>(s.pos256 >> 8);
+            if (idx < 0 || idx >= size || s.bri < 8) {
+                s.pos256 = -1;
+            }
+        }
+
+        // Render base background and heat trail
+        tpl.fill_solid(bgColor);
+        for (uint16_t i = 0; i < size; ++i) {
+            if (heatTrail.data[i] > 2)
+                tpl[i] += ColorFromPalette(palette, heatColors.data[i], heatTrail.data[i], LINEARBLEND);
+        }
+
+        // Anti-aliased draw lambda
+        auto draw = [&](const int32_t pos256, const CRGB &col) {
+            const auto idx = static_cast<uint16_t>(pos256 >> 8);
+            const auto frac = static_cast<uint8_t>(pos256 & 0xFF);
+            if (idx < size) {
+                CRGB c = col; c.nscale8_video(255 - frac);
+                tpl[idx] += c;
+            }
+            if (idx + 1 < size) {
+                CRGB c = col; c.nscale8_video(frac);
+                tpl[idx + 1] += c;
+            }
+        };
+
+        // Render sparks
+        for (const auto &s : sparks) {
+            if (s.pos256 < 0)
+                continue;
+            const CRGB col = ColorFromPalette(palette, s.colorIdx, s.bri, LINEARBLEND);
+            draw(s.pos256, col);
+        }
+
+        // Render meteor heads
+        for (const auto &m : meteors) {
+            if (m.pos256 < 0)
+                continue;
+            const CRGB headCol = CRGB::White;
+            draw(m.pos256, headCol);
+        }
+
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
     }
 }
 
