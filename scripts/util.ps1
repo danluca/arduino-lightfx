@@ -6,8 +6,8 @@ $relEnv = "rp2350-rel"
 $dbgEnv = "rp2350-dbg"
 
 # platformio ArduinoPico package paths
-$coreFreeRTOSPath = Join-Path -Path $HOME/.platformio/packages -ChildPath "framework-arduinopico" "cores/rp2040/freertos"
-$kernelFreeRTOSPath = Join-Path -Path $HOME/.platformio/packages -ChildPath "framework-arduinopico" "FreeRTOS-Kernel" "portable/MemMang"
+$coreFreeRTOSPath = "$HOME/.platformio/packages/framework-arduinopico/cores/rp2040/freertos"
+$kernelFreeRTOSPath = "$HOME/.platformio/packages/framework-arduinopico/FreeRTOS-Kernel/portable/MemMang"
 
 #######################################
 ## Functions

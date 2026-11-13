@@ -1,7 +1,7 @@
 ---
 type: Catalog
 title: Effect catalog
-description: All 50 registered effects, with registry index, ID, description, source file, default random-selection weight and holiday weight overrides.
+description: All 56 registered effects, with registry index, ID, description, source file, default random-selection weight and holiday weight overrides.
 tags: [effects, catalog, weights, holidays]
 status: stable
 generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
@@ -17,7 +17,7 @@ sources:
 
 # Catalog
 
-The registry index comes from the registration order: categories A, B, C, D, E, F, H, I, J, K (`categorySetup[]`), and within each file the order of the `registerEffect` calls. Category K (`fxK.cpp`) registers nothing. A weight of 0 means the effect is never picked at random, but it can still be chosen manually.[^efx][^fxsrc]
+The registry index comes from the registration order: categories A, B, C, D, E, F, H, I, J, K (`categorySetup[]`), and within each file the order of the `registerEffect` calls. A weight of 0 means the effect is never picked at random, but it can still be chosen manually.[^efx][^fxsrc]
 
 | # | ID | Description | Default weight | Holiday overrides |
 |---:|---|---|---:|---|
@@ -71,6 +71,12 @@ The registry index comes from the registration order: categories A, B, C, D, E, 
 | 47 | FXI6 | Bowling alley | 9 | — |
 | 48 | FXJ1 | Popcorn (port of WS2812FX Popcorn by Keith Lord, MIT) | 16 | — |
 | 49 | FXJ2 | Rain on a window (inspired by WS2812FX Rain, MIT) | 20 | Halloween 36, Valentine 0, Christmas 0 |
+| 50 | FXJ3 | 1D Wave Equation - Fluid water ripple | 16 | Memorial 16, Independence 16 |
+| 51 | FXJ4 | Meteor shower with thermal sparks | 18 | Party 24, Independence 30, NewYear 28 |
+| 52 | FXK1 | Aurora Borealis | 20 | Christmas 30, NewYear 25, Valentine 15 |
+| 53 | FXK2 | 1D Cellular Automata | 15 | Party 20, Halloween 20 |
+| 54 | FXK3 | Organic Heartbeat | 16 | Valentine 45, Halloween 25 |
+| 55 | FXK4 | N-Body Gravitational Attractors | 18 | Party 24, NewYear 24 |
 
 The effect code is identical to the RP2040 code line, so indexes, IDs and weights match across both. That keeps [broadcast](/network/multi-board-broadcast.md) between an RP2040 and an RP2350 board consistent, as long as both run the same registration order.
 
@@ -102,8 +108,8 @@ Computed from the table above. Totals exclude FXA6.
 | F | `fxF.h/.cpp` | Halloween breathe and eyes, bouncy segments, fireworks |
 | H | `fxH.h/.cpp` | Fire2012, TwinkleFox, sparkles |
 | I | `fxI.h/.cpp` | Ping pong, Pacifica, bouncy ball, VU meter (seed-file driven), shore waves, bowling |
-| J | `fxJ.h/.cpp` | Popcorn, rain (newest, 2026-10) |
-| K | `fxK.h/.cpp` | Empty placeholder |
+| J | `fxJ.h/.cpp` | Popcorn, rain, 1D wave equation, meteor shower with thermal sparks |
+| K | `fxK.h/.cpp` | Aurora borealis, 1D cellular automata, organic heartbeat, N-body gravitational attractors |
 
 [^fxsrc]: src/fxA.cpp … src/fxK.cpp (EffectInfo declarations and fxRegister)
 [^efx]: src/efx_setup.cpp (categorySetup order)

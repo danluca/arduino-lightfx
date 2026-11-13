@@ -71,5 +71,60 @@ namespace FxJ {
         ScratchView<uint8_t> wetTrail{};
         ScratchView<uint8_t> wetTrailColors{};
     };
+
+    // FXJ3: 1D Wave Equation - physical wave propagation, reflection, damping and interference along the strand
+    class FxJ3 : public LedEffect {
+    public:
+        FxJ3();
+        void setup() override;
+        void run() override;
+
+    private:
+        ScratchView<uint8_t> heightView{};
+        ScratchView<uint8_t> velView{};
+        uint8_t dropChance{};
+        uint8_t colorBase{};
+        CRGB bgColor;
+        void injectDrop();
+    };
+
+    // FXJ4: Meteor Shower with Thermal Sparks - sub-pixel anti-aliased meteors shedding decaying heat trails and micro-sparks
+    class FxJ4 : public LedEffect {
+    public:
+        FxJ4();
+        void setup() override;
+        void run() override;
+
+    private:
+        static constexpr uint8_t maxMeteors = 6;
+        static constexpr uint8_t maxSparks = 16;
+
+        struct Meteor {
+            int32_t pos256;      // position * 256; negative means inactive
+            int32_t vel256;      // velocity * 256 per tick
+            uint8_t colorIdx;    // palette index
+            uint8_t trailHeat;   // heat injected into trail
+            uint8_t decay;       // trail decay speed
+        };
+
+        struct Spark {
+            int32_t pos256;      // position * 256; negative means inactive
+            int32_t vel256;      // velocity * 256
+            uint8_t colorIdx;
+            uint8_t bri;         // current brightness
+            uint8_t decay;       // fade rate per tick
+        };
+
+        void spawnMeteor();
+        void spawnSpark(int32_t pos256, int32_t vel256, uint8_t colorIdx);
+
+        Meteor meteors[maxMeteors]{};
+        Spark sparks[maxSparks]{};
+        ScratchView<uint8_t> heatTrail{};
+        ScratchView<uint8_t> heatColors{};
+        CRGB bgColor;
+        uint8_t spawnChance{};
+        bool dirRight{};
+    };
 }
 #endif //ARDUINO_LIGHTFX_FXJ_H
