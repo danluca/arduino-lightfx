@@ -120,7 +120,7 @@ function Get-FrameworkArduinoPicoShortCommit() {
 }
 
 function Get-BoardEnvName([bool]$dbg) {
-    return $dbg ? $dbgEnv : $relEnv
+    if ($dbg) { return $dbgEnv } else { return $relEnv }
 }
 
 function Clean([bool]$dbg) {

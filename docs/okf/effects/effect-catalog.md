@@ -1,7 +1,7 @@
 ---
 type: Catalog
 title: Effect catalog
-description: All 56 registered effects, with registry index, ID, description, source file, default random-selection weight and holiday weight overrides.
+description: All 60 registered effects, with registry index, ID, description, source file, default random-selection weight and holiday weight overrides.
 tags: [effects, catalog, weights, holidays]
 status: stable
 generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
@@ -77,6 +77,10 @@ The registry index comes from the registration order: categories A, B, C, D, E, 
 | 53 | FXK2 | 1D Cellular Automata | 15 | Party 20, Halloween 20 |
 | 54 | FXK3 | Organic Heartbeat | 16 | Valentine 45, Halloween 25 |
 | 55 | FXK4 | N-Body Gravitational Attractors | 18 | Party 24, NewYear 24 |
+| 56 | FXK5 | Thermal Diffusion / Heat Shimmer | 16 | Thanksgiving 35, Halloween 30, Christmas 20 |
+| 57 | FXK6 | Distributed Candle Clusters | 18 | Christmas 45, Thanksgiving 40, Valentine 30, Halloween 20 |
+| 58 | FXK7 | Prismatic Caustics | 18 | Memorial 20, Independence 20, Party 18 |
+| 59 | FXK8 | Neural Synapse Pulse | 17 | Party 25, Halloween 28, NewYear 22 |
 
 The effect code is identical to the RP2040 code line, so indexes, IDs and weights match across both. That keeps [broadcast](/network/multi-board-broadcast.md) between an RP2040 and an RP2350 board consistent, as long as both run the same registration order.
 
@@ -109,7 +113,7 @@ Computed from the table above. Totals exclude FXA6.
 | H | `fxH.h/.cpp` | Fire2012, TwinkleFox, sparkles |
 | I | `fxI.h/.cpp` | Ping pong, Pacifica, bouncy ball, VU meter (seed-file driven), shore waves, bowling |
 | J | `fxJ.h/.cpp` | Popcorn, rain, 1D wave equation, meteor shower with thermal sparks |
-| K | `fxK.h/.cpp` | Aurora borealis, 1D cellular automata, organic heartbeat, N-body gravitational attractors |
+| K | `fxK.h/.cpp` | Aurora borealis, 1D cellular automata, organic heartbeat, N-body gravitational attractors, thermal diffusion, distributed candle clusters, prismatic caustics, neural synapse |
 
 [^fxsrc]: src/fxA.cpp … src/fxK.cpp (EffectInfo declarations and fxRegister)
 [^efx]: src/efx_setup.cpp (categorySetup order)

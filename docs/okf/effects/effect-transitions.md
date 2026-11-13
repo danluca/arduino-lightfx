@@ -1,7 +1,7 @@
 ---
 type: Architecture
 title: Effect transitions
-description: EffectTransition (transEffect) has six turn-off animations, with direction variants, that play during an effect's WindDown state.
+description: EffectTransition (transEffect) has eleven turn-off animations, with direction variants, that play during an effect's WindDown state.
 tags: [effects, transitions, winddown]
 status: stable
 generated: { by: claude_code/claude-opus-5-5, at: 2026-10-03T23:45:00Z }
@@ -31,8 +31,13 @@ sources:
 | 3 | `offSplit` | Blends the two halves to black, from the center outward or from the ends inward | outward / inward |
 | 4 | `offRandomBars` | Splits the strip into random 3–9 px bars and spreads black across each one | right / left |
 | 5 | `offHalfWipe` | Shifts the two halves inward or outward | inward / outward |
+| 6 | `offThermalEmberAsh` | Cools pixels thermally from active colors into ember red/orange and dying charcoal ash | slow / fast cooling |
+| 7 | `offGravitationalImplosion` | Accelerates pixels towards center singularity or strip boundaries with gravitational collapse | inward / outward |
+| 8 | `offSparkleEvaporation` | Dissolves pixels through energetic boiling sparkle flashes and exponential decay | white / chromatic sparkles |
+| 9 | `offVenetianShutter` | Multi-slat venetian blades or iris apertures closing synchronously across the strip | inward iris / directional wipe |
+| 10 | `offHarmonicWaveDamping` | Applies damped spatial harmonic wave attenuation nodes decaying to stillness | traveling / standing nodes |
 
-Most variants poll `isAnyLedOn` every 500–720 ms to decide when they are done. `offSplit` and `offRandomBars` decide from their own progress.[^trans]
+Most variants poll `isAnyLedOn` or track step progress to decide when they are done. `offSplit`, `offRandomBars`, `offGravitationalImplosion`, `offVenetianShutter`, and `offHarmonicWaveDamping` decide from their own progress.[^trans]
 
 # Notes
 
