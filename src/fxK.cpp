@@ -539,16 +539,18 @@ void FxK5::run() {
 // FXK6 - Distributed Candle / Multi-Flame Cluster
 FxK6::FxK6() : LedEffect(fxk6Desc) {}
 
-void FxK6::initCandle(Candle &c, const uint16_t base, const uint8_t maxH) {
+void FxK6::initCandle(Candle &c, const uint16_t base, const uint8_t minH, const uint8_t maxH) {
     c.basePos = base;
+    c.minHeight = minH;
     c.maxHeight = maxH;
-    // Varied starting initial heights: some candles start tall, some medium, some short
-    c.height256 = static_cast<uint16_t>(random8(1, maxH + 1)) << 8;
+    // Varied starting initial heights bounded between proportional minimum and maximum
+    c.height256 = static_cast<uint16_t>(random8(minH, maxH + 1)) << 8;
     // Slow, realistic wax burn-down rate
     c.burnRate = random8(1, 3);
     memset(c.flameHeat, 0, sizeof(c.flameHeat));
     c.flameHeat[0] = random8(160, 240);
     c.draftPhase = random16();
+    c.stubFrames = 0;
     c.flareCountdown = 0;
 }
 
@@ -574,24 +576,32 @@ void FxK6::setup() {
 
     const uint16_t spacing = size / activeCandles;
     for (uint8_t i = 0; i < activeCandles; ++i) {
-        const uint16_t base = i * spacing + (spacing > 6 ? random8(1, spacing / 5) : 0);
-        const uint8_t maxH = constrain(static_cast<uint8_t>(spacing / 4), static_cast<uint8_t>(3), static_cast<uint8_t>(8));
-        initCandle(candles[i], base, maxH);
+        const uint16_t base = i * spacing;
+        const uint16_t nextBase = (i + 1 < activeCandles) ? ((i + 1) * spacing) : size;
+        const uint16_t availableSpace = nextBase > base ? (nextBase - base) : spacing;
+
+        // Ensure at least 3 pixels gap between the top of the flame (flameCells) and next candle base
+        const uint8_t maxH = availableSpace > (flameCells + 3) ? static_cast<uint8_t>(availableSpace - flameCells - 3) : 1;
+        // Minimum initial candle length is a proportional factor of candle spacing / frame size
+        const uint8_t minH = constrain(static_cast<uint8_t>(availableSpace / 4), static_cast<uint8_t>(2), maxH);
+        initCandle(candles[i], base, minH, maxH);
     }
     tpl.fill_solid(BKG);
 }
 
 void FxK6::run() {
     // Slower burn-down progression clock
-    EVERY_N_MILLIS(250) {
+    EVERY_N_MILLIS(125) {
         for (uint8_t i = 0; i < activeCandles; ++i) {
             Candle &c = candles[i];
             if (c.flareCountdown == 0) {
-                if (c.height256 > c.burnRate) {
+                // If above 1 pixel wax body, burn down
+                if (c.height256 > (1 << 8) + c.burnRate) {
                     c.height256 -= c.burnRate;
-                } else {
-                    c.height256 = 0;
-                    c.flareCountdown = 45; // ~1.3s reignition ember flare
+                } else if (c.height256 > (1 << 8)) {
+                    // Reached 1 pixel body: clamp and start 1-pixel dwell countdown
+                    c.height256 = (1 << 8);
+                    c.stubFrames = random8(30, 60); // dwell at 1 pixel for ~1-2 seconds
                 }
             }
         }
@@ -612,12 +622,25 @@ void FxK6::run() {
                     tpl[c.basePos] = ColorFromPalette(palette, 160, flareBri, LINEARBLEND) + CRGB(30, 10, 0);
                 }
                 if (c.flareCountdown == 0) {
-                    // Relight candle with a fresh height and new individual burn rate
-                    c.height256 = static_cast<uint16_t>(c.maxHeight) << 8;
+                    // Relight candle with a fresh height bounded between minHeight and maxHeight
+                    c.height256 = static_cast<uint16_t>(random8(c.minHeight, c.maxHeight + 1)) << 8;
                     c.burnRate = random8(1, 3);
                     c.flameHeat[0] = 220;
+                    c.stubFrames = 0;
                 }
                 continue;
+            }
+
+            // If candle has reached 1 pixel body, count down its 1-pixel dwell frames before respawning
+            if ((c.height256 >> 8) <= 1) {
+                if (c.stubFrames > 0) {
+                    c.stubFrames--;
+                } else {
+                    // 1-pixel dwell completed: start reignition flare
+                    c.flareCountdown = 45; // ~1.3s reignition ember flare
+                    c.height256 = 0;
+                    continue;
+                }
             }
 
             // Convective multi-cell flame physics (FXH1 Fire2012 style)

@@ -128,18 +128,20 @@ namespace FxK {
 
         struct Candle {
             uint16_t basePos;       // base pixel index on strip
+            uint8_t minHeight;      // minimum wax height in pixels
             uint8_t maxHeight;      // starting max wax height in pixels
             uint16_t height256;     // current wax height * 256
             uint8_t burnRate;       // consumption rate per burn step
             uint8_t flameHeat[flameCells]; // convective flame heat map (FXH1 style)
             uint16_t draftPhase;    // air draft turbulence phase
+            uint8_t stubFrames;     // dwell frames remaining while body is 1 pixel
             uint8_t flareCountdown; // re-ignition flare timer
         };
 
         Candle candles[maxCandles]{};
         uint8_t activeCandles{};
         uint8_t colorBase{};
-        void initCandle(Candle &c, uint16_t base, uint8_t maxH);
+        void initCandle(Candle &c, uint16_t base, uint8_t minH, uint8_t maxH);
     };
 
     // FXK7: Prismatic Caustics - refracted light web with constructive focal peaks and prismatic chromatic dispersion
