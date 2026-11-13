@@ -369,7 +369,7 @@ void FxJ3::run() {
     if (!heightView || !velView)
         return;
 
-    EVERY_N_MILLIS_I(j3Timer, 20) {
+    EVERY_N_MILLIS_I(j3Timer, 30) {
         const uint16_t size = tpl.size();
         auto *h = reinterpret_cast<int8_t *>(heightView.data);
         auto *v = reinterpret_cast<int8_t *>(velView.data);
@@ -469,7 +469,7 @@ void FxJ4::run() {
     if (!heatTrail || !heatColors)
         return;
 
-    EVERY_N_MILLIS_I(j4Timer, 20) {
+    EVERY_N_MILLIS_I(j4Timer, 30) {
         const uint16_t size = tpl.size();
 
         // Cool the thermal heat trail
