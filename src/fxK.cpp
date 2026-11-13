@@ -35,6 +35,35 @@ static constexpr HolidayWeight fxk4HolidayWeights[] = {
 };
 static const EffectInfo fxk4Desc = {.factory = EFFECT_FACTORY(FxK4), .desc = {.id = "FXK4", .description = "N-Body Gravitational Attractors"}, .selectionWeight = 18, HOLIDAY_WEIGHTS(fxk4HolidayWeights)};
 
+static constexpr HolidayWeight fxk5HolidayWeights[] = {
+    {.holiday = Thanksgiving, .weight = 35},
+    {.holiday = Halloween, .weight = 30},
+    {.holiday = Christmas, .weight = 20}
+};
+static const EffectInfo fxk5Desc = {.factory = EFFECT_FACTORY(FxK5), .desc = {.id = "FXK5", .description = "Thermal Diffusion / Heat Shimmer"}, .selectionWeight = 16, HOLIDAY_WEIGHTS(fxk5HolidayWeights)};
+
+static constexpr HolidayWeight fxk6HolidayWeights[] = {
+    {.holiday = Christmas, .weight = 45},
+    {.holiday = Thanksgiving, .weight = 40},
+    {.holiday = ValentineDay, .weight = 30},
+    {.holiday = Halloween, .weight = 20}
+};
+static const EffectInfo fxk6Desc = {.factory = EFFECT_FACTORY(FxK6), .desc = {.id = "FXK6", .description = "Distributed Candle Clusters"}, .selectionWeight = 18, HOLIDAY_WEIGHTS(fxk6HolidayWeights)};
+
+static constexpr HolidayWeight fxk7HolidayWeights[] = {
+    {.holiday = MemorialDay, .weight = 20},
+    {.holiday = IndependenceDay, .weight = 20},
+    {.holiday = Party, .weight = 18}
+};
+static const EffectInfo fxk7Desc = {.factory = EFFECT_FACTORY(FxK7), .desc = {.id = "FXK7", .description = "Prismatic Caustics"}, .selectionWeight = 18, HOLIDAY_WEIGHTS(fxk7HolidayWeights)};
+
+static constexpr HolidayWeight fxk8HolidayWeights[] = {
+    {.holiday = Party, .weight = 25},
+    {.holiday = Halloween, .weight = 28},
+    {.holiday = NewYear, .weight = 22}
+};
+static const EffectInfo fxk8Desc = {.factory = EFFECT_FACTORY(FxK8), .desc = {.id = "FXK8", .description = "Neural Synapse Pulse"}, .selectionWeight = 17, HOLIDAY_WEIGHTS(fxk8HolidayWeights)};
+
 const uint8_t FxK2::rules[maxRules] = {30, 90, 110, 150, 73, 18};
 
 void FxK::fxRegister() {
@@ -42,6 +71,10 @@ void FxK::fxRegister() {
     fxRegistry.registerEffect(&fxk2Desc);
     fxRegistry.registerEffect(&fxk3Desc);
     fxRegistry.registerEffect(&fxk4Desc);
+    fxRegistry.registerEffect(&fxk5Desc);
+    fxRegistry.registerEffect(&fxk6Desc);
+    fxRegistry.registerEffect(&fxk7Desc);
+    fxRegistry.registerEffect(&fxk8Desc);
 }
 
 // FXK1 - Aurora Borealis
@@ -112,9 +145,6 @@ void FxK2::seedAutomaton() {
     memset(cellAge.data, 0, cellAge.size);
 
     const uint16_t size = tpl.size();
-    if (size == 0)
-        return;
-
     cellState.data[size / 2] = 1;
     cellAge.data[size / 2] = 255;
     if (size > 60) {
@@ -418,6 +448,385 @@ void FxK4::run() {
 
             // Brilliant core
             draw(a.pos256, coreCol);
+        }
+
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+}
+
+// FXK5 - Thermal Diffusion / Heat Shimmer
+FxK5::FxK5() : LedEffect(fxk5Desc) {}
+
+void FxK5::setup() {
+    LedEffect::setup();
+    heat = effectScratchBytes(0, tpl.size());
+    heatNext = effectScratchBytes(tpl.size(), tpl.size());
+    if (heat)
+        memset(heat.data, 0, heat.size);
+    if (heatNext)
+        memset(heatNext.data, 0, heatNext.size);
+    noisePos = random16();
+    coolingRate = random8(6, 14);
+    diffusionRate = random8(60, 95);
+    colorBase = random8();
+    tpl.fill_solid(BKG);
+}
+
+void FxK5::injectHeat() {
+    const uint16_t size = tpl.size();
+    if (size == 0 || !heat)
+        return;
+
+    // Periodically spawn heat injection embers / wandering thermal hotspots
+    if (random8() < 70) {
+        const uint16_t pos = random16(size);
+        const uint8_t injection = random8(160, 255);
+        heat.data[pos] = qadd8(heat.data[pos], injection);
+        if (pos > 0)
+            heat.data[pos - 1] = qadd8(heat.data[pos - 1], injection / 2);
+        if (pos + 1 < size)
+            heat.data[pos + 1] = qadd8(heat.data[pos + 1], injection / 2);
+    }
+}
+
+void FxK5::run() {
+    if (!heat || !heatNext)
+        return;
+
+    EVERY_N_MILLIS_I(k5Timer, 25) {
+        const uint16_t size = tpl.size();
+        injectHeat();
+        noisePos += 24;
+        colorBase++;
+
+        // 1D discrete thermal diffusion equation with cooling dissipation
+        for (uint16_t i = 0; i < size; ++i) {
+            const uint8_t left = (i == 0) ? heat.data[i] : heat.data[i - 1];
+            const uint8_t right = (i == size - 1) ? heat.data[i] : heat.data[i + 1];
+            const int16_t diffuseFlux = static_cast<int16_t>(left) + static_cast<int16_t>(right) - (2 * static_cast<int16_t>(heat.data[i]));
+            const int16_t heatVal = static_cast<int16_t>(heat.data[i]) + ((diffuseFlux * diffusionRate) / 256);
+            const uint8_t clampedHeat = static_cast<uint8_t>(constrain(heatVal, 0, 255));
+            heatNext.data[i] = scale8(clampedHeat, 255 - coolingRate);
+        }
+
+        // Copy forward state
+        memcpy(heat.data, heatNext.data, size);
+
+        // Render with turbulent convective draft shimmer
+        for (uint16_t i = 0; i < size; ++i) {
+            const uint8_t hVal = heat.data[i];
+            if (hVal > 2) {
+                const uint8_t draft = inoise8(i * 45 + noisePos, noisePos / 2);
+                const uint8_t shimmer = qadd8(scale8(hVal, 220), scale8(draft, 35));
+                const uint8_t cIdx = colorBase + (shimmer * 160 / 255);
+                CRGB col = ColorFromPalette(palette, cIdx, shimmer, LINEARBLEND);
+                if (shimmer > 220) {
+                    const uint8_t incandescence = (shimmer - 220) * 3;
+                    col += CRGB(incandescence, incandescence, incandescence);
+                }
+                tpl[i] = col;
+            } else {
+                tpl[i] = BKG;
+            }
+        }
+
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+}
+
+// FXK6 - Distributed Candle / Multi-Flame Cluster
+FxK6::FxK6() : LedEffect(fxk6Desc) {}
+
+void FxK6::initCandle(Candle &c, const uint16_t base, const uint8_t maxH) {
+    c.basePos = base;
+    c.maxHeight = maxH;
+    // Varied starting initial heights: some candles start tall, some medium, some short
+    c.height256 = static_cast<uint16_t>(random8(1, maxH + 1)) << 8;
+    // Individual burn-down consumption rates: candles burn down at distinctly different rates
+    c.burnRate256 = random16(3, 14);
+    c.flickerNoise = random8();
+    c.flareCountdown = 0;
+}
+
+void FxK6::setup() {
+    LedEffect::setup();
+    const uint16_t size = tpl.size();
+    activeCandles = constrain(static_cast<uint8_t>(size / 8), static_cast<uint8_t>(3), maxCandles);
+    colorBase = random8();
+
+    const uint16_t spacing = size / activeCandles;
+    for (uint8_t i = 0; i < activeCandles; ++i) {
+        const uint16_t base = i * spacing + (spacing > 4 ? random8(0, spacing / 4) : 0);
+        const uint8_t maxH = constrain(static_cast<uint8_t>(spacing > 3 ? spacing - 2 : 2), static_cast<uint8_t>(2), static_cast<uint8_t>(7));
+        initCandle(candles[i], base, maxH);
+    }
+    tpl.fill_solid(BKG);
+}
+
+void FxK6::run() {
+    EVERY_N_MILLIS_I(k6Timer, 30) {
+        const uint16_t size = tpl.size();
+        tpl.fill_solid(BKG);
+        colorBase++;
+
+        for (uint8_t i = 0; i < activeCandles; ++i) {
+            Candle &c = candles[i];
+            c.flickerNoise += random8(4, 12);
+
+            if (c.flareCountdown > 0) {
+                // Candle has burned down and is reigniting with a glowing ember flare
+                c.flareCountdown--;
+                if (c.basePos < size) {
+                    const uint8_t flareBri = beatsin8(40, 140, 255);
+                    tpl[c.basePos] = ColorFromPalette(palette, colorBase + 40, flareBri, LINEARBLEND) + CRGB(40, 20, 0);
+                }
+                if (c.flareCountdown == 0) {
+                    // Relight candle with a fresh height and new individual burn rate
+                    c.height256 = static_cast<uint16_t>(c.maxHeight) << 8;
+                    c.burnRate256 = random16(3, 14);
+                }
+                continue;
+            }
+
+            // Burn wax down
+            if (c.height256 > c.burnRate256) {
+                c.height256 -= c.burnRate256;
+            } else {
+                c.height256 = 0;
+                c.flareCountdown = random8(16, 32);
+            }
+
+            const uint8_t waxH = c.height256 >> 8;
+            const uint8_t waxFrac = c.height256 & 0xFF;
+
+            // Render candle wax body
+            for (uint8_t h = 0; h < waxH; ++h) {
+                const uint16_t p = c.basePos + h;
+                if (p < size) {
+                    const uint8_t waxBri = 45 + (h * 15);
+                    tpl[p] = ColorFromPalette(palette, colorBase + 12, waxBri, LINEARBLEND);
+                }
+            }
+            // Partial top pixel
+            if (waxFrac > 0 && (c.basePos + waxH < size)) {
+                tpl[c.basePos + waxH] = ColorFromPalette(palette, colorBase + 12, scale8(60, waxFrac), LINEARBLEND);
+            }
+
+            // Render dancing flame tip at top of candle wick
+            const uint16_t wickPos = c.basePos + waxH;
+            if (wickPos < size) {
+                const uint8_t draft = inoise8(i * 1000 + c.flickerNoise * 20);
+                const uint8_t flameBri = qadd8(scale8(draft, 180), random8(40, 75));
+                const CRGB flameCol = ColorFromPalette(palette, colorBase + 36, flameBri, LINEARBLEND);
+                tpl[wickPos] += flameCol;
+                // Flame core heat
+                if (flameBri > 200) {
+                    tpl[wickPos] += CRGB(flameBri - 180, flameBri - 180, (flameBri - 180) / 2);
+                }
+                // Atmospheric thermal aura
+                if (wickPos + 1 < size) {
+                    tpl[wickPos + 1] += ColorFromPalette(palette, colorBase + 24, flameBri / 4, LINEARBLEND);
+                }
+                if (wickPos > 0) {
+                    tpl[wickPos - 1] += ColorFromPalette(palette, colorBase + 24, flameBri / 5, LINEARBLEND);
+                }
+            }
+        }
+
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+}
+
+// FXK7 - Prismatic Caustics
+FxK7::FxK7() : LedEffect(fxk7Desc) {}
+
+void FxK7::setup() {
+    LedEffect::setup();
+    phase1 = random16();
+    phase2 = random16();
+    phase3 = random16();
+    phase4 = random16();
+    colorBase = random8();
+    tpl.fill_solid(BKG);
+}
+
+void FxK7::run() {
+    EVERY_N_MILLIS_I(k7Timer, 25) {
+        const uint16_t size = tpl.size();
+        phase1 += 64;
+        phase2 += 96;
+        phase3 += 42;
+        phase4 += 128;
+        colorBase++;
+
+        auto calcWave = [&](const int32_t x) -> uint8_t {
+            const uint8_t w1 = sin8((x * 8) + (phase1 >> 8));
+            const uint8_t w2 = sin8((x * 13) - (phase2 >> 8));
+            const uint8_t w3 = sin8((x * 21) + (phase3 >> 8));
+            const uint8_t w4 = sin8((x * 5) - (phase4 >> 8));
+            const uint8_t s = (w1 + w2 + w3 + w4) / 4;
+            // Non-linear cubic focal sharpness
+            uint8_t c = scale8(s, s);
+            c = scale8(c, s);
+            return c;
+        };
+
+        for (uint16_t i = 0; i < size; ++i) {
+            const uint8_t cCenter = calcWave(i);
+            const uint8_t cRed = calcWave(i - 1);
+            const uint8_t cBlue = calcWave(i + 1);
+
+            // Base palette illumination with caustic focus
+            const uint8_t cIdx = colorBase + (cCenter / 2);
+            CRGB col = ColorFromPalette(palette, cIdx, cCenter, LINEARBLEND);
+
+            // Prismatic chromatic dispersion (RGB diffraction at refractive focal points)
+            col.r = qadd8(col.r, scale8(cRed, 80));
+            col.g = qadd8(col.g, scale8(cCenter, 60));
+            col.b = qadd8(col.b, scale8(cBlue, 110));
+
+            // Brilliant focal peak flash
+            if (cCenter > 210) {
+                const uint8_t whiteHot = (cCenter - 210) * 4;
+                col += CRGB(whiteHot, whiteHot, whiteHot);
+            }
+
+            tpl[i] = col;
+        }
+
+        replicateSet(tpl, others);
+        FastLED.show(stripBrightness);
+    }
+}
+
+// FXK8 - Neural Synapse
+FxK8::FxK8() : LedEffect(fxk8Desc) {}
+
+void FxK8::spawnSpike(const int32_t pos256, const int16_t vel256, const uint8_t colorIdx) {
+    for (auto &sp : spikes) {
+        if (!sp.active) {
+            sp.pos256 = pos256;
+            sp.vel256 = vel256;
+            sp.colorIdx = colorIdx;
+            sp.bri = 255;
+            sp.active = true;
+            return;
+        }
+    }
+}
+
+void FxK8::setup() {
+    LedEffect::setup();
+    const uint16_t size = tpl.size();
+    activeSynapses = constrain(static_cast<uint8_t>(size / 14), static_cast<uint8_t>(3), maxSynapses);
+    colorBase = random8();
+
+    const uint16_t spacing = size / (activeSynapses + 1);
+    for (uint8_t i = 0; i < activeSynapses; ++i) {
+        synapses[i].pos = (i + 1) * spacing + (spacing > 3 ? random8(0, spacing / 3) : 0);
+        if (synapses[i].pos >= size)
+            synapses[i].pos = size - 1;
+        synapses[i].activity = 0;
+        synapses[i].refractory = 0;
+    }
+
+    for (auto &sp : spikes)
+        sp.active = false;
+
+    // Seed initial action potentials
+    spawnSpike(0, 180, random8());
+    if (size > 30)
+        spawnSpike(static_cast<int32_t>(size - 1) << 8, -160, random8());
+
+    tpl.fill_solid(BKG);
+}
+
+void FxK8::run() {
+    EVERY_N_MILLIS_I(k8Timer, 25) {
+        const uint16_t size = tpl.size();
+        const int32_t maxPos256 = static_cast<int32_t>(size - 1) << 8;
+        colorBase++;
+
+        // Smooth synaptic trail decay
+        tpl.nscale8(208);
+
+        // Update synaptic nodes
+        for (uint8_t i = 0; i < activeSynapses; ++i) {
+            Synapse &syn = synapses[i];
+            if (syn.activity > 0)
+                syn.activity = scale8(syn.activity, 220);
+            if (syn.refractory > 0)
+                syn.refractory--;
+
+            // Render synaptic node glow
+            if (syn.pos < size) {
+                const uint8_t restingHum = beatsin8(18, 15, 45);
+                CRGB nodeCol = ColorFromPalette(palette, colorBase + (i * 32), restingHum, LINEARBLEND);
+                if (syn.activity > 0) {
+                    // Neurotransmitter burst flash
+                    nodeCol += ColorFromPalette(palette, colorBase + 64, syn.activity, LINEARBLEND);
+                    if (syn.activity > 180)
+                        nodeCol += CRGB(syn.activity / 2, syn.activity / 2, syn.activity / 2);
+                } else if (syn.refractory > 0) {
+                    // Hyperpolarized refractory state
+                    nodeCol += CRGB(0, 0, syn.refractory * 4);
+                }
+                tpl[syn.pos] += nodeCol;
+            }
+        }
+
+        // Count active spikes
+        uint8_t activeCount = 0;
+        for (auto &sp : spikes) {
+            if (!sp.active)
+                continue;
+            activeCount++;
+
+            // Check interaction with synaptic nodes
+            const uint16_t curPixel = sp.pos256 >> 8;
+            for (uint8_t s = 0; s < activeSynapses; ++s) {
+                Synapse &syn = synapses[s];
+                if (curPixel == syn.pos && syn.refractory == 0) {
+                    syn.activity = 255;
+                    syn.refractory = 25;
+                    // Synaptic branching: chance to trigger a reflected / daughter action potential
+                    if (random8() < 120 && activeCount < maxSpikes) {
+                        spawnSpike(sp.pos256, -sp.vel256, sp.colorIdx + 32);
+                    }
+                }
+            }
+
+            // Sub-pixel anti-aliased rendering of action potential head
+            const auto idx = static_cast<uint16_t>(sp.pos256 >> 8);
+            const auto frac = static_cast<uint8_t>(sp.pos256 & 0xFF);
+            const CRGB col = ColorFromPalette(palette, colorBase + sp.colorIdx, sp.bri, LINEARBLEND) + CRGB(80, 80, 80);
+
+            if (idx < size) {
+                CRGB c = col; c.nscale8_video(255 - frac);
+                tpl[idx] += c;
+            }
+            if (idx + 1 < size) {
+                CRGB c = col; c.nscale8_video(frac);
+                tpl[idx + 1] += c;
+            }
+
+            // Advance spike position
+            sp.pos256 += sp.vel256;
+            if (sp.pos256 < 0 || sp.pos256 > maxPos256) {
+                sp.active = false;
+            }
+        }
+
+        // Random spontaneous action potential generation at strand terminals or nodes
+        if (activeCount < 3 && random8() < 40) {
+            if (random8() < 128) {
+                spawnSpike(0, random16(140, 260), random8());
+            } else {
+                spawnSpike(maxPos256, -static_cast<int16_t>(random16(140, 260)), random8());
+            }
         }
 
         replicateSet(tpl, others);
