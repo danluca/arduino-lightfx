@@ -115,7 +115,7 @@ namespace FxK {
         void injectHeat();
     };
 
-    // FXK6: Distributed Candle / Multi-Flame Cluster - independent candles with varied initial heights, progressive burn-down rates, and flickering flames
+    // FXK6: Distributed Candle / Multi-Flame Cluster - independent candles with varied initial heights, progressive burn-down rates, and mini-Fire2012 convective flames
     class FxK6 : public LedEffect {
     public:
         FxK6();
@@ -123,13 +123,16 @@ namespace FxK {
         void run() override;
 
     private:
-        static constexpr uint8_t maxCandles = 16;
+        static constexpr uint8_t maxCandles = 8;
+        static constexpr uint8_t flameCells = 4;
+
         struct Candle {
             uint16_t basePos;       // base pixel index on strip
             uint8_t maxHeight;      // starting max wax height in pixels
             uint16_t height256;     // current wax height * 256
-            uint16_t burnRate256;   // consumption rate per step * 256
-            uint8_t flickerNoise;   // individual flame phase
+            uint8_t burnRate;       // consumption rate per burn step
+            uint8_t flameHeat[flameCells]; // convective flame heat map (FXH1 style)
+            uint16_t draftPhase;    // air draft turbulence phase
             uint8_t flareCountdown; // re-ignition flare timer
         };
 

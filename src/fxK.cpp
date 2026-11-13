@@ -544,93 +544,124 @@ void FxK6::initCandle(Candle &c, const uint16_t base, const uint8_t maxH) {
     c.maxHeight = maxH;
     // Varied starting initial heights: some candles start tall, some medium, some short
     c.height256 = static_cast<uint16_t>(random8(1, maxH + 1)) << 8;
-    // Individual burn-down consumption rates: candles burn down at distinctly different rates
-    c.burnRate256 = random16(3, 14);
-    c.flickerNoise = random8();
+    // Slow, realistic wax burn-down rate
+    c.burnRate = random8(1, 3);
+    memset(c.flameHeat, 0, sizeof(c.flameHeat));
+    c.flameHeat[0] = random8(160, 240);
+    c.draftPhase = random16();
     c.flareCountdown = 0;
 }
 
 void FxK6::setup() {
     LedEffect::setup();
     const uint16_t size = tpl.size();
-    activeCandles = constrain(static_cast<uint8_t>(size / 8), static_cast<uint8_t>(3), maxCandles);
+    // Fewer, well-spaced candles per strip for calm ambiance
+    activeCandles = constrain(static_cast<uint8_t>(size / 22), static_cast<uint8_t>(2), maxCandles);
     colorBase = random8();
+
+    switch (paletteFactory.getHoliday()) {
+        case Christmas:
+            palette = CRGBPalette16(CRGB::Black, CRGB(180, 20, 0), CRGB(255, 180, 30), CRGB(255, 255, 220));
+            break;
+        case Thanksgiving:
+        case Halloween:
+            palette = CRGBPalette16(CRGB::Black, CRGB(180, 30, 0), CRGB(255, 120, 0), CRGB(255, 220, 100));
+            break;
+        default:
+            palette = CRGBPalette16(CRGB::Black, CRGB(200, 30, 0), CRGB(255, 140, 0), CRGB(255, 240, 160));
+            break;
+    }
 
     const uint16_t spacing = size / activeCandles;
     for (uint8_t i = 0; i < activeCandles; ++i) {
-        const uint16_t base = i * spacing + (spacing > 4 ? random8(0, spacing / 4) : 0);
-        const uint8_t maxH = constrain(static_cast<uint8_t>(spacing > 3 ? spacing - 2 : 2), static_cast<uint8_t>(2), static_cast<uint8_t>(7));
+        const uint16_t base = i * spacing + (spacing > 6 ? random8(1, spacing / 5) : 0);
+        const uint8_t maxH = constrain(static_cast<uint8_t>(spacing / 4), static_cast<uint8_t>(3), static_cast<uint8_t>(8));
         initCandle(candles[i], base, maxH);
     }
     tpl.fill_solid(BKG);
 }
 
 void FxK6::run() {
+    // Slower burn-down progression clock
+    EVERY_N_MILLIS(250) {
+        for (uint8_t i = 0; i < activeCandles; ++i) {
+            Candle &c = candles[i];
+            if (c.flareCountdown == 0) {
+                if (c.height256 > c.burnRate) {
+                    c.height256 -= c.burnRate;
+                } else {
+                    c.height256 = 0;
+                    c.flareCountdown = 45; // ~1.3s reignition ember flare
+                }
+            }
+        }
+    }
+
     EVERY_N_MILLIS_I(k6Timer, 30) {
         const uint16_t size = tpl.size();
         tpl.fill_solid(BKG);
-        colorBase++;
 
         for (uint8_t i = 0; i < activeCandles; ++i) {
             Candle &c = candles[i];
-            c.flickerNoise += random8(4, 12);
 
             if (c.flareCountdown > 0) {
-                // Candle has burned down and is reigniting with a glowing ember flare
+                // Candle has burned down and is reigniting with an ember flare
                 c.flareCountdown--;
                 if (c.basePos < size) {
-                    const uint8_t flareBri = beatsin8(40, 140, 255);
-                    tpl[c.basePos] = ColorFromPalette(palette, colorBase + 40, flareBri, LINEARBLEND) + CRGB(40, 20, 0);
+                    const uint8_t flareBri = beatsin8(50, 110, 240);
+                    tpl[c.basePos] = ColorFromPalette(palette, 160, flareBri, LINEARBLEND) + CRGB(30, 10, 0);
                 }
                 if (c.flareCountdown == 0) {
                     // Relight candle with a fresh height and new individual burn rate
                     c.height256 = static_cast<uint16_t>(c.maxHeight) << 8;
-                    c.burnRate256 = random16(3, 14);
+                    c.burnRate = random8(1, 3);
+                    c.flameHeat[0] = 220;
                 }
                 continue;
             }
 
-            // Burn wax down
-            if (c.height256 > c.burnRate256) {
-                c.height256 -= c.burnRate256;
-            } else {
-                c.height256 = 0;
-                c.flareCountdown = random8(16, 32);
+            // Convective multi-cell flame physics (FXH1 Fire2012 style)
+            c.draftPhase += 16;
+
+            // Step 1: Smooth cooling across flame cells
+            for (uint8_t k = 0; k < flameCells; ++k) {
+                c.flameHeat[k] = qsub8(c.flameHeat[k], random8(14, 34));
             }
 
-            const uint8_t waxH = c.height256 >> 8;
-            const uint8_t waxFrac = c.height256 & 0xFF;
+            // Step 2: Convective upward heat drift and spatial diffusion
+            c.flameHeat[3] = (c.flameHeat[2] + c.flameHeat[1]) / 2;
+            c.flameHeat[2] = (c.flameHeat[1] + c.flameHeat[0]) / 2;
+            c.flameHeat[1] = (c.flameHeat[0] * 3 + c.flameHeat[1]) / 4;
 
-            // Render candle wax body
+            // Step 3: Spark ignition at wick base with subtle Perlin air draft modulation
+            const uint8_t draft = inoise8(i * 500 + c.draftPhase);
+            if (random8() < 175) {
+                c.flameHeat[0] = qadd8(c.flameHeat[0], random8(140, 235));
+            }
+            c.flameHeat[0] = scale8(c.flameHeat[0], 215 + (draft / 7));
+
+            // Step 4: Render wax body (steady, calming ambient beeswax glow)
+            const uint8_t waxH = c.height256 >> 8;
             for (uint8_t h = 0; h < waxH; ++h) {
                 const uint16_t p = c.basePos + h;
                 if (p < size) {
-                    const uint8_t waxBri = 45 + (h * 15);
-                    tpl[p] = ColorFromPalette(palette, colorBase + 12, waxBri, LINEARBLEND);
+                    tpl[p] = ColorFromPalette(palette, 35 + (h * 4), 28 + (h * 6), LINEARBLEND);
                 }
-            }
-            // Partial top pixel
-            if (waxFrac > 0 && (c.basePos + waxH < size)) {
-                tpl[c.basePos + waxH] = ColorFromPalette(palette, colorBase + 12, scale8(60, waxFrac), LINEARBLEND);
             }
 
-            // Render dancing flame tip at top of candle wick
-            const uint16_t wickPos = c.basePos + waxH;
-            if (wickPos < size) {
-                const uint8_t draft = inoise8(i * 1000 + c.flickerNoise * 20);
-                const uint8_t flameBri = qadd8(scale8(draft, 180), random8(40, 75));
-                const CRGB flameCol = ColorFromPalette(palette, colorBase + 36, flameBri, LINEARBLEND);
-                tpl[wickPos] += flameCol;
-                // Flame core heat
-                if (flameBri > 200) {
-                    tpl[wickPos] += CRGB(flameBri - 180, flameBri - 180, (flameBri - 180) / 2);
-                }
-                // Atmospheric thermal aura
-                if (wickPos + 1 < size) {
-                    tpl[wickPos + 1] += ColorFromPalette(palette, colorBase + 24, flameBri / 4, LINEARBLEND);
-                }
-                if (wickPos > 0) {
-                    tpl[wickPos - 1] += ColorFromPalette(palette, colorBase + 24, flameBri / 5, LINEARBLEND);
+            // Step 5: Render convective flame plume above wax
+            for (uint8_t cell = 0; cell < flameCells; ++cell) {
+                const uint16_t p = c.basePos + waxH + cell;
+                if (p < size) {
+                    const uint8_t hVal = c.flameHeat[cell];
+                    if (hVal > 15) {
+                        CRGB flameCol = ColorFromPalette(palette, scale8(hVal, 240), hVal, LINEARBLEND);
+                        if (hVal > 215) {
+                            const uint8_t whiteCore = (hVal - 215) * 3;
+                            flameCol += CRGB(whiteCore, whiteCore, whiteCore / 2);
+                        }
+                        tpl[p] += flameCol;
+                    }
                 }
             }
         }

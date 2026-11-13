@@ -4,7 +4,7 @@
 #include "transition.h"
 #include "efx_setup.h"
 
-// EffectTransition - we have 5 distinct off effects
+// EffectTransition - we have 11 distinct off effects
 
 void EffectTransition::resetRandomBars() {
     randomBarSegs.clear();
@@ -26,6 +26,11 @@ bool EffectTransition::transition() {
         case 3: return offSplit(sel % 2);
         case 4: return offRandomBars(sel % 2);
         case 5: return offHalfWipe(sel % 2);
+        case 6: return offThermalEmberAsh(sel % 2);
+        case 7: return offGravitationalImplosion(sel % 2);
+        case 8: return offSparkleEvaporation(sel % 2);
+        case 9: return offVenetianShutter(sel % 2);
+        case 10: return offHarmonicWaveDamping(sel % 2);
         default:
             return offFade();
     }
@@ -43,6 +48,7 @@ void EffectTransition::prepare(const uint selector) {
     offPosIndex = 0;
     offSpotSegSize = turnOffSeq[offPosIndex];
     fade = random8(42, 110);
+    transStep = 0;
 
     if (randomBarSegs.empty())
         resetRandomBars();
@@ -199,6 +205,206 @@ bool EffectTransition::offRandomBars(bool rightDir) const {
         }
         FastLED.show(stripBrightness);
         allOff = segOff;
+    }
+    return allOff;
+}
+
+/**
+ * Turns off entire strip with a thermal cooling and ember ash decay simulation
+ * @param fastCool whether cooling happens rapidly or with a slower dying glow
+ * @return true if all leds are off, false otherwise
+ */
+bool EffectTransition::offThermalEmberAsh(bool fastCool) {
+    bool allOff = false;
+    EVERY_N_MILLIS(35) {
+        bool anyOn = false;
+        const uint8_t coolRate = fastCool ? 22 : 14;
+        for (uint16_t i = 0; i < NUM_PIXELS; ++i) {
+            CRGB &c = leds[i];
+            if (c.r == 0 && c.g == 0 && c.b == 0) continue;
+
+            // Thermal shift: cool down Blue and Green faster than Red to simulate dying coals
+            c.b = qsub8(c.b, coolRate * 2);
+            c.g = qsub8(c.g, coolRate);
+            c.r = qsub8(c.r, coolRate / 2 + random8(1, 5));
+
+            // Occasional micro-ember flare on still-glowing coals
+            if (c.r > 30 && random8() < 20) {
+                c.r = qadd8(c.r, random8(10, 35));
+            }
+
+            if (c.getLuma() < 6) {
+                c = BKG;
+            } else {
+                anyOn = true;
+            }
+        }
+
+        FastLED.show(stripBrightness);
+        transStep++;
+
+        if (!anyOn || transStep > 80) {
+            fill_solid(leds, NUM_PIXELS, BKG);
+            FastLED.show(stripBrightness);
+            allOff = true;
+        }
+    }
+    return allOff;
+}
+
+/**
+ * Turns off entire strip by collapsing pixels inward to center or outward to strip boundaries with gravitational acceleration
+ * @param outward whether collapse moves outward to ends (true) or inward to center (false)
+ * @return true if all leds are off, false otherwise
+ */
+bool EffectTransition::offGravitationalImplosion(bool outward) {
+    bool allOff = false;
+    EVERY_N_MILLIS(35) {
+        const uint16_t halfSize = NUM_PIXELS / 2;
+        // Gravity accelerates as distance closes
+        const uint16_t step = 1 + (offPosIndex / 4);
+        offPosIndex += step;
+
+        if (offPosIndex >= halfSize) {
+            fill_solid(leds, NUM_PIXELS, BKG);
+            FastLED.show(stripBrightness);
+            return true;
+        }
+
+        if (!outward) {
+            // Collapse inward towards center
+            for (uint16_t i = 0; i < offPosIndex; ++i) {
+                leds[i] = BKG;
+                if (NUM_PIXELS > 1 + i) {
+                    leds[NUM_PIXELS - 1 - i] = BKG;
+                }
+            }
+            // Suction compression and horizon fade near collapsing focal point
+            const uint16_t leftFocal = halfSize - 1 - (offPosIndex >= halfSize ? halfSize - 1 : offPosIndex);
+            const uint16_t rightFocal = halfSize + (offPosIndex >= halfSize ? halfSize - 1 : offPosIndex);
+            if (leftFocal < NUM_PIXELS) leds[leftFocal].fadeToBlackBy(35);
+            if (rightFocal < NUM_PIXELS) leds[rightFocal].fadeToBlackBy(35);
+        } else {
+            // Collapse outward towards ends (center splits and collapses to strip ends)
+            for (uint16_t i = 0; i < offPosIndex; ++i) {
+                if (halfSize >= 1 + i) leds[halfSize - 1 - i] = BKG;
+                if (halfSize + i < NUM_PIXELS) leds[halfSize + i] = BKG;
+            }
+            leds[0].fadeToBlackBy(35);
+            leds[NUM_PIXELS - 1].fadeToBlackBy(35);
+        }
+
+        FastLED.show(stripBrightness);
+    }
+    return allOff;
+}
+
+/**
+ * Turns off entire strip by evaporating active pixels through energetic sparkle bursts and progressive decay
+ * @param colorSparkle whether evaporation sparkles use palette hues or bright white flashes
+ * @return true if all leds are off, false otherwise
+ */
+bool EffectTransition::offSparkleEvaporation(bool colorSparkle) {
+    bool allOff = false;
+    EVERY_N_MILLIS(30) {
+        // Base decay across whole strip
+        CRGBSet strip(leds, NUM_PIXELS);
+        strip.fadeToBlackBy(22);
+
+        // Flash and boil off a random subset of active pixels
+        const uint8_t burstCount = constrain(static_cast<uint8_t>(NUM_PIXELS / 18), static_cast<uint8_t>(2), static_cast<uint8_t>(32));
+        for (uint8_t k = 0; k < burstCount; ++k) {
+            const uint16_t idx = random16(NUM_PIXELS);
+            if (leds[idx].getLuma() > 8) {
+                leds[idx] = colorSparkle ? ColorFromPalette(palette, random8(), 255) : CRGB(255, 255, 255);
+            }
+        }
+
+        transStep++;
+        FastLED.show(stripBrightness);
+
+        if (transStep > 45 || !isAnyLedOn(leds, NUM_PIXELS, BKG)) {
+            fill_solid(leds, NUM_PIXELS, BKG);
+            FastLED.show(stripBrightness);
+            allOff = true;
+        }
+    }
+    return allOff;
+}
+
+/**
+ * Turns off entire strip using multi-iris venetian shutter blades closing synchronously
+ * @param inward whether each iris blade closes inward from both edges (true) or wipes unidirectionally (false)
+ * @return true if all leds are off, false otherwise
+ */
+bool EffectTransition::offVenetianShutter(bool inward) {
+    bool allOff = false;
+    EVERY_N_MILLIS(40) {
+        const uint8_t slats = NUM_PIXELS > 150 ? 16 : 8;
+        const uint16_t slatWidth = (NUM_PIXELS + slats - 1) / slats;
+        const uint16_t maxProgress = inward ? ((slatWidth + 1) / 2) : slatWidth;
+
+        offPosIndex++;
+
+        for (uint8_t s = 0; s < slats; ++s) {
+            const uint16_t start = s * slatWidth;
+            const uint16_t end = (s + 1 == slats) ? NUM_PIXELS : (start + slatWidth);
+            if (start >= NUM_PIXELS) break;
+
+            if (inward) {
+                // Close from both edges of each shutter inward
+                for (uint16_t p = 0; p < offPosIndex; ++p) {
+                    if (start + p < end) leds[start + p] = BKG;
+                    if (end > 1 + p && end - 1 - p >= start) leds[end - 1 - p] = BKG;
+                }
+                // Soft shutter blade edge
+                if (start + offPosIndex < end) leds[start + offPosIndex].fadeToBlackBy(130);
+                if (end > 1 + offPosIndex && end - 1 - offPosIndex >= start) leds[end - 1 - offPosIndex].fadeToBlackBy(130);
+            } else {
+                // Wipe across slat
+                for (uint16_t p = 0; p < offPosIndex && (start + p < end); ++p) {
+                    leds[start + p] = BKG;
+                }
+                if (start + offPosIndex < end) leds[start + offPosIndex].fadeToBlackBy(130);
+            }
+        }
+
+        FastLED.show(stripBrightness);
+        if (offPosIndex >= maxProgress) {
+            fill_solid(leds, NUM_PIXELS, BKG);
+            FastLED.show(stripBrightness);
+            allOff = true;
+        }
+    }
+    return allOff;
+}
+
+/**
+ * Turns off entire strip through harmonic spatial standing/traveling wave damping
+ * @param travelingWave whether wave nodes travel across the strip (true) or damp stationary (false)
+ * @return true if all leds are off, false otherwise
+ */
+bool EffectTransition::offHarmonicWaveDamping(bool travelingWave) {
+    bool allOff = false;
+    EVERY_N_MILLIS(35) {
+        transStep++;
+        // Damping envelope decays from 255 down to 0
+        const uint8_t damping = qsub8(255, transStep * 6);
+        const uint8_t phase = travelingWave ? (transStep * 16) : 0;
+        const uint16_t spatialFreq = (65536 / NUM_PIXELS) * 3; // 3 harmonic cycles
+
+        for (uint16_t i = 0; i < NUM_PIXELS; ++i) {
+            const uint8_t wave = sin8(static_cast<uint8_t>(i * spatialFreq / 256) + phase);
+            const uint8_t localScale = scale8(wave, damping);
+            leds[i].nscale8_video(localScale);
+        }
+
+        FastLED.show(stripBrightness);
+        if (damping == 0 || transStep > 45) {
+            fill_solid(leds, NUM_PIXELS, BKG);
+            FastLED.show(stripBrightness);
+            allOff = true;
+        }
     }
     return allOff;
 }
