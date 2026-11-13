@@ -33,10 +33,11 @@ namespace FxK {
         void run() override;
 
     private:
-        static constexpr uint8_t maxRules = 4;
+        static constexpr uint8_t maxRules = 6;
         static const uint8_t rules[maxRules];
         uint8_t currentRuleIdx{};
         uint16_t genCount{};
+        uint8_t stepTimer{};
         uint8_t colorBase{};
         ScratchView<uint8_t> cellState{};
         ScratchView<uint8_t> cellAge{};
@@ -61,6 +62,8 @@ namespace FxK {
         uint8_t waveBri2{};
         uint8_t centerGlow{};
         uint8_t colorBase{};
+        int32_t pulseOrigin256{};
+        int32_t targetOrigin256{};
         bool s2Active{};
     };
 
@@ -79,7 +82,7 @@ namespace FxK {
             int32_t pos256;      // position * 256
             int32_t vel256;      // velocity * 256 per tick
             int32_t mass;        // gravitational mass
-            uint8_t colorIdx;
+            uint8_t colorOffset;
         };
 
         struct Particle {

@@ -124,6 +124,7 @@ namespace FxJ {
         ScratchView<uint8_t> heatColors{};
         CRGB bgColor;
         uint8_t spawnChance{};
+        uint16_t spawnCount{};
         bool dirRight{};
     };
 }

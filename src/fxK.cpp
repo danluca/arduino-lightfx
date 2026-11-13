@@ -35,7 +35,7 @@ static constexpr HolidayWeight fxk4HolidayWeights[] = {
 };
 static const EffectInfo fxk4Desc = {.factory = EFFECT_FACTORY(FxK4), .desc = {.id = "FXK4", .description = "N-Body Gravitational Attractors"}, .selectionWeight = 18, HOLIDAY_WEIGHTS(fxk4HolidayWeights)};
 
-const uint8_t FxK2::rules[maxRules] = {30, 90, 110, 150};
+const uint8_t FxK2::rules[maxRules] = {30, 90, 110, 150, 73, 18};
 
 void FxK::fxRegister() {
     fxRegistry.registerEffect(&fxk1Desc);
@@ -99,6 +99,7 @@ void FxK2::setup() {
     cellAge = effectScratchBytes(tpl.size(), tpl.size());
     currentRuleIdx = random8(maxRules);
     genCount = 0;
+    stepTimer = 0;
     colorBase = random8();
     seedAutomaton();
     tpl.fill_solid(BKG);
@@ -111,6 +112,9 @@ void FxK2::seedAutomaton() {
     memset(cellAge.data, 0, cellAge.size);
 
     const uint16_t size = tpl.size();
+    if (size == 0)
+        return;
+
     cellState.data[size / 2] = 1;
     cellAge.data[size / 2] = 255;
     if (size > 60) {
@@ -123,20 +127,18 @@ void FxK2::seedAutomaton() {
 
 void FxK2::stepRule() {
     const uint16_t size = tpl.size();
-    uint8_t left = cellState.data[size - 1] & 1;
+    if (size == 0)
+        return;
+    uint8_t prev = cellState.data[size - 1] & 1;
     const uint8_t rule = rules[currentRuleIdx];
 
     for (uint16_t i = 0; i < size; ++i) {
-        const uint8_t mid = cellState.data[i] & 1;
-        const uint8_t right = cellState.data[(i + 1) % size] & 1;
-        const uint8_t pattern = (left << 2) | (mid << 1) | right;
-        const uint8_t next = (rule & (1 << pattern)) ? 1 : 0;
-        left = mid;
-        cellState.data[i] = next;
-        if (next)
-            cellAge.data[i] = qadd8(cellAge.data[i], 16);
-        else
-            cellAge.data[i] = scale8(cellAge.data[i], 200);
+        const uint8_t curr = cellState.data[i] & 1;
+        const uint8_t next = cellState.data[(i + 1) % size] & 1;
+        const uint8_t pattern = (prev << 2) | (curr << 1) | next;
+        const uint8_t val = (rule & (1 << pattern)) ? 1 : 0;
+        prev = curr;
+        cellState.data[i] = val;
     }
 }
 
@@ -144,30 +146,44 @@ void FxK2::run() {
     if (!cellState || !cellAge)
         return;
 
-    EVERY_N_MILLIS_I(k2Timer, 50) {
+    EVERY_N_MILLIS_I(k2Timer, 25) {
         const uint16_t size = tpl.size();
-        stepRule();
-        genCount++;
+        stepTimer++;
+        if (stepTimer >= 6) { // Step cellular automata every ~150ms for deliberate, organic cell growth
+            stepTimer = 0;
+            stepRule();
+            genCount++;
 
-        uint16_t activeCount = 0;
+            uint16_t activeCount = 0;
+            for (uint16_t i = 0; i < size; ++i) {
+                if (cellState.data[i])
+                    activeCount++;
+            }
+
+            if (activeCount == 0 || activeCount == size || genCount > 140) {
+                currentRuleIdx = (currentRuleIdx + 1) % maxRules;
+                seedAutomaton();
+                genCount = 0;
+                colorBase += 36;
+            }
+        }
+
+        // Smooth growth and decay of cell brightness/age
         for (uint16_t i = 0; i < size; ++i) {
-            if (cellState.data[i])
-                activeCount++;
+            if (cellState.data[i]) {
+                cellAge.data[i] = qadd8(cellAge.data[i], 38);
+            } else {
+                cellAge.data[i] = scale8(cellAge.data[i], 215);
+            }
         }
 
-        if (activeCount == 0 || activeCount == size || genCount > 200) {
-            currentRuleIdx = (currentRuleIdx + 1) % maxRules;
-            seedAutomaton();
-            genCount = 0;
-            colorBase += 32;
-        }
+        colorBase++;
 
         for (uint16_t i = 0; i < size; ++i) {
             const uint8_t age = cellAge.data[i];
-            if (cellState.data[i]) {
-                tpl[i] = ColorFromPalette(palette, colorBase + age, 255, LINEARBLEND);
-            } else if (age > 4) {
-                tpl[i] = ColorFromPalette(palette, colorBase + age + 64, age, LINEARBLEND);
+            if (age > 4) {
+                const uint8_t cIdx = colorBase + (i * 256 / size) + (cellState.data[i] ? 0 : 28);
+                tpl[i] = ColorFromPalette(palette, cIdx, age, LINEARBLEND);
             } else {
                 tpl[i] = BKG;
             }
@@ -192,23 +208,39 @@ void FxK3::setup() {
     centerGlow = 0;
     colorBase = random8();
     s2Active = false;
+    const uint16_t size = tpl.size();
+    pulseOrigin256 = static_cast<int32_t>(size / 2) << 8;
+    targetOrigin256 = pulseOrigin256;
     tpl.fill_solid(BKG);
 }
 
 void FxK3::run() {
     EVERY_N_MILLIS_I(k3Timer, 30) {
         const uint16_t size = tpl.size();
-        const uint16_t center = size / 2;
+
+        // Smoothly glide pulse origin towards target position within central 2/3
+        pulseOrigin256 += (targetOrigin256 - pulseOrigin256) / 8;
+        const auto origin = static_cast<uint16_t>(constrain(pulseOrigin256 >> 8, 0, static_cast<int32_t>(size - 1)));
 
         phaseTimer++;
         switch (phase) {
             case Diastole:
-                if (phaseTimer >= 38) {
+                if (phaseTimer >= 36) {
                     phase = SystoleS1;
                     phaseTimer = 0;
                     wavePos1_256 = 0;
                     waveBri1 = 255;
                     centerGlow = 255;
+                    colorBase += 24; // Dynamic palette shift on every beat
+
+                    // Pick new pulse location within central 2/3: [size/6, 5*size/6]
+                    if (size >= 6) {
+                        const uint16_t minO = size / 6;
+                        const uint16_t maxO = (5 * size) / 6;
+                        targetOrigin256 = static_cast<int32_t>(random16(minO, maxO + 1)) << 8;
+                    } else {
+                        targetOrigin256 = static_cast<int32_t>(size / 2) << 8;
+                    }
                 }
                 break;
             case SystoleS1:
@@ -220,10 +252,9 @@ void FxK3::run() {
                     phase = SystoleS2;
                     phaseTimer = 0;
                     wavePos2_256 = 0;
-                    waveBri2 = 210;
-                    centerGlow = 220;
+                    waveBri2 = 220;
+                    centerGlow = 230;
                     s2Active = true;
-                    colorBase++;
                 }
                 break;
             case SystoleS2:
@@ -246,33 +277,35 @@ void FxK3::run() {
         centerGlow = scale8(centerGlow, 238);
 
         // Capillary relaxation
-        tpl.nscale8(232);
+        tpl.nscale8(230);
 
-        // Pacemaker center node glow
-        if (center < size)
-            tpl[center] += ColorFromPalette(palette, colorBase, centerGlow, LINEARBLEND);
-        if (center > 0)
-            tpl[center - 1] += ColorFromPalette(palette, colorBase, centerGlow / 2, LINEARBLEND);
-        if (center + 1 < size)
-            tpl[center + 1] += ColorFromPalette(palette, colorBase, centerGlow / 2, LINEARBLEND);
+        // Pacemaker center node glow with rich hot core
+        if (origin < size)
+            tpl[origin] += ColorFromPalette(palette, colorBase, centerGlow, LINEARBLEND);
+        if (origin > 0)
+            tpl[origin - 1] += ColorFromPalette(palette, colorBase + 8, centerGlow / 2, LINEARBLEND);
+        if (origin + 1 < size)
+            tpl[origin + 1] += ColorFromPalette(palette, colorBase + 8, centerGlow / 2, LINEARBLEND);
 
-        // Arterial wave 1
+        // Arterial wave 1 (S1 primary ventricular surge)
         const uint16_t w1Offset = wavePos1_256 >> 8;
-        if (w1Offset <= center + 2) {
-            if (center >= w1Offset)
-                tpl[center - w1Offset] += ColorFromPalette(palette, colorBase + 16, waveBri1, LINEARBLEND);
-            if (center + w1Offset < size)
-                tpl[center + w1Offset] += ColorFromPalette(palette, colorBase + 16, waveBri1, LINEARBLEND);
+        if (w1Offset <= size) {
+            const uint8_t w1Color = colorBase + 32 + (w1Offset * 2);
+            if (origin >= w1Offset)
+                tpl[origin - w1Offset] += ColorFromPalette(palette, w1Color, waveBri1, LINEARBLEND);
+            if (origin + w1Offset < size)
+                tpl[origin + w1Offset] += ColorFromPalette(palette, w1Color, waveBri1, LINEARBLEND);
         }
 
-        // Arterial wave 2
+        // Arterial wave 2 (S2 secondary valve closure surge with contrasting harmonic color)
         if (s2Active) {
             const uint16_t w2Offset = wavePos2_256 >> 8;
-            if (w2Offset <= center + 2) {
-                if (center >= w2Offset)
-                    tpl[center - w2Offset] += ColorFromPalette(palette, colorBase + 48, waveBri2, LINEARBLEND);
-                if (center + w2Offset < size)
-                    tpl[center + w2Offset] += ColorFromPalette(palette, colorBase + 48, waveBri2, LINEARBLEND);
+            if (w2Offset <= size) {
+                const uint8_t w2Color = colorBase + 96 + (w2Offset * 2);
+                if (origin >= w2Offset)
+                    tpl[origin - w2Offset] += ColorFromPalette(palette, w2Color, waveBri2, LINEARBLEND);
+                if (origin + w2Offset < size)
+                    tpl[origin + w2Offset] += ColorFromPalette(palette, w2Color, waveBri2, LINEARBLEND);
             }
         }
 
@@ -290,15 +323,15 @@ void FxK4::setup() {
     colorBase = random8();
 
     const uint16_t size = tpl.size();
-    attractors[0] = {.pos256 = static_cast<int32_t>((size / 4) << 8), .vel256 = 48, .mass = 120, .colorIdx = 0};
-    attractors[1] = {.pos256 = static_cast<int32_t>((3 * size / 4) << 8), .vel256 = -64, .mass = 150, .colorIdx = 85};
-    attractors[2] = {.pos256 = static_cast<int32_t>((size / 2) << 8), .vel256 = 32, .mass = 90, .colorIdx = 170};
+    attractors[0] = {.pos256 = static_cast<int32_t>((size / 4) << 8), .vel256 = 48, .mass = 120, .colorOffset = 0};
+    attractors[1] = {.pos256 = static_cast<int32_t>((3 * size / 4) << 8), .vel256 = -64, .mass = 150, .colorOffset = 85};
+    attractors[2] = {.pos256 = static_cast<int32_t>((size / 2) << 8), .vel256 = 32, .mass = 90, .colorOffset = 170};
 
     for (uint8_t i = 0; i < numParticles; ++i) {
         particles[i].pos256 = static_cast<int32_t>(random16(size) << 8);
         particles[i].vel256 = static_cast<int32_t>(random8(10, 40)) * ((i & 1) ? 1 : -1);
         particles[i].colorIdx = random8();
-        particles[i].bri = random8(180, 255);
+        particles[i].bri = random8(200, 255);
     }
 
     tpl.fill_solid(bgColor);
@@ -308,6 +341,7 @@ void FxK4::run() {
     EVERY_N_MILLIS_I(k4Timer, 30) {
         const uint16_t size = tpl.size();
         const int32_t maxPos256 = static_cast<int32_t>(size - 1) << 8;
+        colorBase++;
 
         // Update attractors
         for (auto &a : attractors) {
@@ -336,17 +370,17 @@ void FxK4::run() {
             if (p.pos256 < 0) {
                 p.pos256 = 0;
                 p.vel256 = -p.vel256 / 2;
-                p.colorIdx += random8(9);
+                p.colorIdx += random8(16, 48);
             }
             if (p.pos256 > maxPos256) {
                 p.pos256 = maxPos256;
                 p.vel256 = -p.vel256 / 2;
-                p.colorIdx += random8(5);
+                p.colorIdx += random8(16, 48);
             }
         }
 
-        // Fade previous particle trails
-        tpl.nscale8(200);
+        // Fade previous particle trails smoothly
+        tpl.nscale8(215);
 
         auto draw = [&](const int32_t pos256, const CRGB &col) {
             const auto idx = static_cast<uint16_t>(pos256 >> 8);
@@ -361,21 +395,29 @@ void FxK4::run() {
             }
         };
 
-        // Render particles
+        // Render particles with kinetic energy-driven vivid coloration
         for (const auto &p : particles) {
-            const CRGB col = ColorFromPalette(palette, p.colorIdx, p.bri, LINEARBLEND);
+            const uint8_t speedHue = static_cast<uint8_t>(min<int32_t>(abs(p.vel256), 384) * 64 / 384);
+            const uint8_t cIdx = colorBase + p.colorIdx + speedHue;
+            const CRGB col = ColorFromPalette(palette, cIdx, p.bri, LINEARBLEND);
             draw(p.pos256, col);
         }
 
-        // Render pulsating attractors
-        const uint8_t pulse = beatsin8(30, 180, 255);
+        // Render pulsating attractors with intense cores and chromatic halos
+        const uint8_t pulse = beatsin8(26, 190, 255);
         for (const auto &a : attractors) {
-            const CRGB col = ColorFromPalette(palette, a.colorIdx, pulse, LINEARBLEND);
-            draw(a.pos256, col);
+            const uint8_t aColIdx = colorBase + a.colorOffset;
+            const CRGB auraCol = ColorFromPalette(palette, aColIdx, pulse, LINEARBLEND);
+            const CRGB coreCol = ColorFromPalette(palette, aColIdx + 16, 255, LINEARBLEND);
+
+            // Halo glow
             if (a.pos256 >= 256)
-                draw(a.pos256 - 256, CRGB(col).nscale8_video(96));
+                draw(a.pos256 - 256, CRGB(auraCol).nscale8_video(110));
             if (a.pos256 + 256 <= maxPos256)
-                draw(a.pos256 + 256, CRGB(col).nscale8_video(96));
+                draw(a.pos256 + 256, CRGB(auraCol).nscale8_video(110));
+
+            // Brilliant core
+            draw(a.pos256, coreCol);
         }
 
         replicateSet(tpl, others);

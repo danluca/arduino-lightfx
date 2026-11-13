@@ -427,6 +427,7 @@ void FxJ4::setup() {
 
     dirRight = random8() & 1;
     spawnChance = random8(16, 36);
+    spawnCount = 0;
     bgColor = ColorFromPalette(targetPalette, random8(), 4, LINEARBLEND);
     for (auto &m : meteors)
         m.pos256 = -1;
@@ -437,11 +438,20 @@ void FxJ4::setup() {
 }
 
 void FxJ4::spawnMeteor() {
+    spawnCount++;
+    // Periodically switch dominant shower direction (every 10-18 meteors)
+    if (spawnCount >= 12 && (random8() < 64)) {
+        dirRight = !dirRight;
+        spawnCount = 0;
+    }
+
     for (auto &m : meteors) {
         if (m.pos256 < 0) {
-            m.pos256 = dirRight ? 0 : (static_cast<int32_t>(tpl.size() - 1) << 8);
+            // 85% follow the dominant direction, 15% rogue crossing meteors
+            const bool meteorDirRight = (random8() < 218) ? dirRight : !dirRight;
+            m.pos256 = meteorDirRight ? 0 : (static_cast<int32_t>(tpl.size() - 1) << 8);
             const int32_t speedMag = static_cast<int32_t>(random8(120, 240)) * (tpl.size() > 100 ? 3 : 2);
-            m.vel256 = dirRight ? speedMag : -speedMag;
+            m.vel256 = meteorDirRight ? speedMag : -speedMag;
             m.colorIdx = random8();
             m.trailHeat = random8(190, 255);
             m.decay = random8(220, 245);
@@ -454,7 +464,8 @@ void FxJ4::spawnSpark(const int32_t pos256, const int32_t vel256, const uint8_t 
     for (auto &s : sparks) {
         if (s.pos256 < 0) {
             s.pos256 = pos256;
-            const int32_t kickback = (dirRight ? -1 : 1) * static_cast<int32_t>(random8(20, 80));
+            const int32_t kickDir = (vel256 > 0) ? -1 : 1;
+            const int32_t kickback = kickDir * static_cast<int32_t>(random8(20, 80));
             s.vel256 = vel256 / 4 + kickback;
             s.colorIdx = colorIdx + random8(24);
             s.bri = random8(160, 255);
