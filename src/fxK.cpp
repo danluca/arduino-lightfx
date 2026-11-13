@@ -144,7 +144,7 @@ void FxK2::run() {
     if (!cellState || !cellAge)
         return;
 
-    EVERY_N_MILLIS_I(k2Timer, 40) {
+    EVERY_N_MILLIS_I(k2Timer, 50) {
         const uint16_t size = tpl.size();
         stepRule();
         genCount++;
@@ -196,7 +196,7 @@ void FxK3::setup() {
 }
 
 void FxK3::run() {
-    EVERY_N_MILLIS_I(k3Timer, 20) {
+    EVERY_N_MILLIS_I(k3Timer, 30) {
         const uint16_t size = tpl.size();
         const uint16_t center = size / 2;
 
@@ -223,6 +223,7 @@ void FxK3::run() {
                     waveBri2 = 210;
                     centerGlow = 220;
                     s2Active = true;
+                    colorBase++;
                 }
                 break;
             case SystoleS2:
@@ -304,7 +305,7 @@ void FxK4::setup() {
 }
 
 void FxK4::run() {
-    EVERY_N_MILLIS_I(k4Timer, 20) {
+    EVERY_N_MILLIS_I(k4Timer, 30) {
         const uint16_t size = tpl.size();
         const int32_t maxPos256 = static_cast<int32_t>(size - 1) << 8;
 
@@ -335,10 +336,12 @@ void FxK4::run() {
             if (p.pos256 < 0) {
                 p.pos256 = 0;
                 p.vel256 = -p.vel256 / 2;
+                p.colorIdx += random8(9);
             }
             if (p.pos256 > maxPos256) {
                 p.pos256 = maxPos256;
                 p.vel256 = -p.vel256 / 2;
+                p.colorIdx += random8(5);
             }
         }
 
