@@ -1,4 +1,4 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include "efx_setup.h"      //cheating on the includes - we need both LedEffect and efx_setup, but efx_setup includes LedEffect
 #include <variant>
@@ -43,7 +43,7 @@ static const std::map<EffectState, EffectState> nextStateMap = {
     {Cleanup, Idle}
 };
 
-LedEffect::LedEffect(const EffectInfo& identity) : state(Idle), identity(identity.desc) {
+LedEffect::LedEffect(const EffectInfo& identity) : state(Idle), identity(identity.desc), preferredTransition(identity.preferredTransition) {
     registryIndex = 0; // Will be set when factory creates the instance
 }
 

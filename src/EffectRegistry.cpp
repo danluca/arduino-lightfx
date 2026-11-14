@@ -126,7 +126,8 @@ void EffectRegistry::transitionEffect() {
         // Initialize transition effect for smooth wind-down
         ledSet.nblend(ColorFromPalette(targetPalette, random8(), 72, LINEARBLEND), 80);
         FastLED.show(stripBrightness);
-        transEffect.prepare(random8());
+        const uint16_t pref = activeEffect ? activeEffect->getPreferredTransition() : 0;
+        transEffect.prepare(pref | random8());
         postFxChangeEvent(nextEffectIndex); //post the effect change to allow receiving boards to run their transition roughly in sync
     }
 }

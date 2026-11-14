@@ -17,9 +17,9 @@ sources:
 
 # How it is used
 
-`EffectRegistry::transitionEffect()` calls `transEffect.prepare(random8())`. The default `LedEffect::windDown()` then calls `transEffect.transition()` every loop until it returns true, meaning all LEDs are off. Then the old effect cleans up and is deleted.[^reg]
+`EffectRegistry::transitionEffect()` calls `transEffect.prepare(pref | random8())` where `pref` is the active effect's `getPreferredTransition()`. The non-virtual `LedEffect::windDown()` then calls `transEffect.transition()` every loop until it returns true, meaning all LEDs are off. Then the old effect cleans up and is deleted.[^reg]
 
-`prepare(selector)` picks `sel = selector % (count*2)`. The low bit chooses a direction variant. Bits 8–15, if set, force a preferred animation, but because the registry passes a `random8()` value those bits are always 0.[^trans]
+`prepare(selector)` picks `sel = selector % (count*2)`. The low bit chooses a direction variant. Bits 8–15 (`prefFx`), if set, force a preferred animation using `SELECTOR_*` constants.[^trans]
 
 # Turn-off animations
 
@@ -36,7 +36,7 @@ Most variants poll `isAnyLedOn` every 500–720 ms to decide when they are done.
 
 # Notes
 
-* An effect can override `windDown()` for a custom exit. FXF1 does this.
+* An effect can express a transition preference via `preferredTransition` in `EffectInfo` (or `setPreferredTransition(SELECTOR_*)`) rather than overriding `windDown()`.
 * Transitions call `FastLED.show(stripBrightness)` directly. They run on whichever task drives the registry, normally FX.
 * `randomBarSegs` is generated once (on the first `prepare`) and then reused.
 

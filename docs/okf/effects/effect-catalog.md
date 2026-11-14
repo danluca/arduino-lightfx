@@ -52,7 +52,7 @@ The registry index comes from the registration order: categories A, B, C, D, E, 
 | 28 | FXE3 | sawtooth back/forth | 27 | — |
 | 29 | FXE4 | serendipitous | 36 | — |
 | 30 | FXE5 | three single color beat-waves | 42 | — |
-| 31 | FXF1 | beat wave (overrides `windDown`) | 12 | — |
+| 31 | FXF1 | beat wave | 12 | — |
 | 32 | FXF2 | Halloween breathe with various color blends | 32 | Halloween 42, Valentine 0, Christmas 0, NewYear 0 |
 | 33 | FXF3 | Eye Blink | 32 | Halloween 42, Valentine 0, Christmas 0, NewYear 0 |
 | 34 | FXF4 | Bouncy segments | 32 | Halloween 12 |

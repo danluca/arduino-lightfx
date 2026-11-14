@@ -43,9 +43,10 @@ Pass stable targets (`Running`, `Idle`). A transient target only lands the effec
 |---|---|---|
 | `run()` | yes (pure virtual) | Draw one frame. Usually wrapped in `EVERY_N_MILLISECONDS(...)`, ending with `FastLED.show(stripBrightness)` |
 | `setup()` | no | Call `LedEffect::setup()` first (it resets the globals), then set up effect-specific state and palettes |
-| `windDown()` | no | Custom fade-out. Return true when the strip is dark. `FxF1` overrides it |
 | `cleanup()` | no | Free dynamic buffers (vectors, `new` allocations) |
 | `baseConfig(JsonObject&)` | no | Add effect-specific fields to its JSON description |
+
+`windDown()` is handled centrally by `LedEffect::windDown()` calling `transEffect.transition()`. Effects can specify a transition preference via `preferredTransition` in `EffectInfo`.
 
 # Timeline macros (AT / FROM)
 

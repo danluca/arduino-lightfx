@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 
 #include "PaletteFactory.h"
@@ -142,6 +142,39 @@ static const TProgmemPalette16 *allPalettes[] = {
 };
 
 uint8_t PaletteFactory::activePaletteIndex = 0;
+
+/**
+ * Weighted Euclidean Distance between two CRGB colors
+ * Euclidean distance treats all directions equally, adding weights to account for human perception.
+ * We can make Euclidean distance match human perception by weighting the channels according to human eye sensitivity (roughly 30% Red, 59% Green, 11% Blue).
+ * @param c1 first color
+ * @param c2 second color
+ * @return perceptual distance between c1 and c2. A value of 0 means the colors are identical, while a value of 255 means the colors are maximally different.
+ *  A value under 40 indicates that the colors are perceptually very similar.
+ */
+uint8_t colTheme::perceptualDistance(const CRGB &c1, const CRGB &c2) {
+    const long dr = static_cast<long>(c1.r) - c2.r;
+    const long dg = static_cast<long>(c1.g) - c2.g;
+    const long db = static_cast<long>(c1.b) - c2.b;
+
+    // Approximate perceptual weights: R=3, G=6, B=1 (sum = 10); Max value: (3*255^2 + 6*255^2 + 1*255^2) = 650,250
+    // Divide by 10 first so max fits cleanly inside uint16_t (65,025 = 255^2)
+    const uint16_t weightedSq = ((3 * dr * dr) + (6 * dg * dg) + (1 * db * db)) / 10;
+
+    // FastLED's integer sqrt16(65025) returns 255
+    return sqrt16(weightedSq);
+}
+
+/**
+ * Weighted Euclidean Distance between two HSV colors - delegates to perceptualDistance(const CRGB&, const CRGB&)
+ * @param c1 first color
+ * @param c2 second color
+ * @return perceptual distance between c1 and c2. A value of 0 means the colors are identical, while a value of 255 means the colors are maximally different.
+ *  A value under 40 indicates that the colors are perceptually very similar.
+ */
+uint8_t colTheme::perceptualDistance(const CHSV &c1, const CHSV &c2) {
+    return perceptualDistance(CRGB(c1), CRGB(c2));
+}
 
 CRGBPalette16 PaletteFactory::mainPalette(const time_t time) {
     adjustHoliday(time);

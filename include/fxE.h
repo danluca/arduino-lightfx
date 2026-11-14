@@ -17,8 +17,6 @@ namespace FxE {
 
         void run() override;
 
-        bool windDown() override;
-
         static void twinkle();
 
         void baseConfig(JsonObject &json) const override;

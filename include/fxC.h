@@ -18,8 +18,6 @@ namespace FxC {
 
         void run() override;
 
-        bool windDown() override;
-
         void animationA();
 
         void animationB();
@@ -42,8 +40,6 @@ namespace FxC {
 
         void run() override;
 
-        bool windDown() override;
-
         void baseConfig(JsonObject &json) const override;
     };
 
@@ -54,8 +50,6 @@ namespace FxC {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
     protected:
         uint8_t frequency {10};
@@ -69,8 +63,6 @@ namespace FxC {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         void changeParams();
 
@@ -90,8 +82,6 @@ namespace FxC {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         void one_sine_pal(uint8_t clrIndex);
 

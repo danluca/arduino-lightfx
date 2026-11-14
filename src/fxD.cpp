@@ -98,10 +98,6 @@ void FxD1::ChangeMe() {
     }
 }
 
-bool FxD1::windDown() {
-    return transEffect.offSpots();
-}
-
 // Fx D2
 /**
  * dots By: John Burroughs
@@ -143,10 +139,6 @@ void FxD2::dot_beat() {
     tpl.nscale8(255-fade);                             // Fade the entire array. Or for just a few LED's, use  nscale8(&leds[2], 5, fadeVal);
 
     replicateSet(tpl, others);
-}
-
-bool FxD2::windDown() {
-    return transEffect.offWipe(true);
 }
 
 // Fx D3
@@ -243,10 +235,6 @@ void FxD4::rainbow_march() {
         tpl.nscale8(brightness);
     }
     replicateSet(tpl, others);
-}
-
-bool FxD4::windDown() {
-    return transEffect.offSpots();
 }
 
 // Fx D5
