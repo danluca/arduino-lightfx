@@ -2,6 +2,7 @@
 // Copyright (c) by Dan Luca. All rights reserved
 //
 #include "efx_setup.h"
+#include "ota_upgrade.h"
 #include "HealthMonitor.h"
 #include "sysinfo.h"
 #include "filesystem.h"
@@ -373,7 +374,7 @@ void fx_run() {
     }
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterQueue;
 
-    if (ulTaskNotifyTake(pdTRUE, 0) == OTA_UPGRADE_NOTIFY) {
+    if (!isFirmwareUpgrading && firmware_upgrade_pending()) {
         log_info(F("OTA upgrade light pattern"));
         isFirmwareUpgrading = true;
     }

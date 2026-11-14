@@ -482,7 +482,8 @@ bool WebClient::_handleRawData() {
     _rawBody->status = RAW_WRITE;
 
     while (_rawBody->totalSize < request().contentLength()) {
-        _rawBody->currentSize = _rawWifiClient.readBytes(_rawBody->buf, HTTP_RAW_BUFLEN);
+        const size_t remaining = request().contentLength() - _rawBody->totalSize;
+        _rawBody->currentSize = _rawWifiClient.readBytes(_rawBody->buf, min(remaining, static_cast<size_t>(HTTP_RAW_BUFLEN)));
         _rawBody->totalSize += _rawBody->currentSize;
         if (_rawBody->currentSize == 0) {
             _rawBody->status = RAW_ABORTED;

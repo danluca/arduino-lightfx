@@ -3,6 +3,8 @@
 
 #include <FreeRTOS.h>
 #include <LittleFS.h>
+#include <PicoOTA.h>
+#include "fs_ota.h"
 #include <queue.h>
 #include <queue>
 #include <functional>
@@ -59,7 +61,7 @@ static_assert(!canRaiseFilesystemPriority(configMAX_PRIORITIES - 1), "The highes
  * Structure of the message sent to the filesystem task - internal use only
  */
 struct fsTaskMessage {
-    enum Action:uint8_t {READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, APPEND_FILE_BIN, RENAME, DELETE, EXISTS, FORMAT, LIST_FIlES, INFO, STAT, MAKE_DIR, SHA256} event;
+    enum Action:uint8_t {READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, APPEND_FILE_BIN, RENAME, DELETE, EXISTS, FORMAT, LIST_FIlES, INFO, STAT, MAKE_DIR, SHA256, STAGE_FIRMWARE} event;
     TaskHandle_t task;
     fsOperationData* data;
 };
@@ -94,6 +96,8 @@ struct fsTaskMessage {
             return "MAKE_DIR";
         case fsTaskMessage::SHA256:
             return "SHA256";
+        case fsTaskMessage::STAGE_FIRMWARE:
+            return "STAGE_FIRMWARE";
         default:
             return "UNKNOWN";
     }
@@ -337,6 +341,12 @@ void fsExecute() {
             break;
         case fsTaskMessage::SHA256:
             success = SyncFsImpl.prvSha256(msg->data->name, msg->data->content);
+            xTaskNotify(msg->task, success, eSetValueWithOverwrite);
+            break;
+        case fsTaskMessage::STAGE_FIRMWARE:
+            success = stageOtaCommand(*SyncFsImpl.fsPtr, picoOTA, msg->data->name);
+            if (!success)
+                log_error(F("Failed to stage firmware %s"), msg->data->name);
             xTaskNotify(msg->task, success, eSetValueWithOverwrite);
             break;
         default:
@@ -706,6 +716,17 @@ String SynchronizedFS::sha256(const char *path) const {
     if (!successful)
         log_error(F("Failed to calculate SHA-256 hash for path %s (does not exist or not a file)"), path);
     return strSha2;
+}
+
+bool SynchronizedFS::stageFirmware(const char *path) const {
+    auto *args = new fsOperationData {path, nullptr, nullptr};
+    auto *msg = new fsTaskMessage{fsTaskMessage::STAGE_FIRMWARE, xTaskGetCurrentTaskHandle(), args};
+    if (xQueueSend(queue, &msg, 0) != pdTRUE) {
+        delete msg;
+        delete args;
+        return false;
+    }
+    return waitForFsCompletion(fsTaskMessage::STAGE_FIRMWARE, path, queue) != 0;
 }
 
 void SynchronizedFS::end() {

@@ -1,4 +1,4 @@
-// Copyright (c) 2024,2025 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef RP2040_LIGHTFX_EARLE_FILESYSTEM_H
@@ -64,6 +64,8 @@ public:
     bool stat(const char *path, FSStat *st) override;
     bool stat(const char *path, FileInfo *info) const;
     String sha256(const char *path) const;
+    // Close and commit the PicoOTA command on the filesystem's owning task.
+    bool stageFirmware(const char *path) const;
 
     size_t readFile(const char *fname, String *s) const;
     size_t writeFile(const char *fname, String *s) const;
