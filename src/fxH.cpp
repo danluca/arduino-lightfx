@@ -547,10 +547,6 @@ void FxH5::run() {
     }
 }
 
-bool FxH5::windDown() {
-    return LedEffect::windDown();
-}
-
 void FxH5::baseConfig(JsonObject &json) const {
     LedEffect::baseConfig(json);
 }
@@ -694,10 +690,6 @@ void FxH6::run() {
             for (const auto &s : sparks)
                 s->loop = false;    //stage == DefinedPattern; ends looping, which turns the sparks idle when they finish cycle, removing them from active sparks list
     }
-}
-
-bool FxH6::windDown() {
-    return LedEffect::windDown();
 }
 
 FxH6::~FxH6() {

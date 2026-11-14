@@ -78,6 +78,7 @@ struct EffectInfo {
     uint8_t selectionWeight{};                      //default weight for random selection; 0 excludes the effect
     const HolidayWeight* holidayWeights = nullptr;  //optional holiday specific weight overrides
     uint8_t holidayWeightsCount = 0;
+    uint16_t preferredTransition = 0;               //optional transition preference (e.g. SELECTOR_* macro)
 
     /**
      * The weight this effect has in random selection for the given holiday - the holiday override if one is defined,
@@ -116,16 +117,19 @@ public:
     bool atTC(uint32_t time);       //use with AT macro
     bool fromTC(uint32_t time);     //use with FROM macro
     void restartPerformance();
+    [[nodiscard]] uint16_t getPreferredTransition() const { return preferredTransition; }
+    void setPreferredTransition(const uint16_t pref) { preferredTransition = pref; }
 
     // Virtual methods
     virtual void baseConfig(JsonObject& json) const;
     virtual void setup();
     virtual void run() = 0;  // Pure virtual function
-    virtual bool windDown();
+    bool windDown();
     virtual void cleanup() { }  // Override in effects that need resource cleanup
     [[nodiscard]] EffectState getState() const { return state; }
 
 protected:
+    uint16_t preferredTransition = 0;
     uint32_t lastTimeCodeDoneAt = 0;
     uint32_t lastTimeCodeDoneFrom = 0;
     uint32_t timeCode = 0;

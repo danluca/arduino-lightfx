@@ -96,10 +96,6 @@ void FxE1::baseConfig(JsonObject &json) const {
     json["brightness"] = brightness;
 }
 
-bool FxE1::windDown() {
-    return transEffect.offSpots();
-}
-
 // Fx E2
 FxE2::FxE2() : LedEffect(fxe2Desc) {}
 

@@ -16,8 +16,6 @@ namespace FxD {
 
         void run() override;
 
-        bool windDown() override;
-
         void baseConfig(JsonObject &json) const override;
 
         void ChangeMe();
@@ -32,8 +30,6 @@ namespace FxD {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         void baseConfig(JsonObject &json) const override;
 
@@ -61,8 +57,6 @@ namespace FxD {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         void rainbow_march();
 

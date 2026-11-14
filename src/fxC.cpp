@@ -87,10 +87,6 @@ void FxC1::animationB() {
     }
 }
 
-bool FxC1::windDown() {
-    return transEffect.offWipe(true);
-}
-
 //Fx C2
 /**
  * blur
@@ -179,10 +175,6 @@ void FxC3::baseConfig(JsonObject &json) const {
     json["yscale"] = yscale;
 }
 
-bool FxC3::windDown() {
-    return transEffect.offSpots();
-}
-
 // Fx C4
 FxC4::FxC4() : LedEffect(fxc4Desc) {}
 
@@ -216,10 +208,6 @@ void FxC4::run() {
         }
         fxc4Timer.setPeriod(1+random8(frequency));    // speed between strikes
     }
-}
-
-bool FxC4::windDown() {
-    return true;
 }
 
 // Fx C5
@@ -282,10 +270,6 @@ void FxC5::matrix() {
     replicateSet(tpl, others);
 }
 
-bool FxC5::windDown() {
-    return transEffect.offWipe(false);
-}
-
 // Fx C6
 FxC6::FxC6() : LedEffect(fxc6Desc) {}
 
@@ -333,9 +317,5 @@ void FxC6::one_sine_pal(const uint8_t clrIndex) {
     }
     replicateSet(tpl, others);
     bgclr++;
-}
-
-bool FxC6::windDown() {
-    return transEffect.offWipe(true);
 }
 

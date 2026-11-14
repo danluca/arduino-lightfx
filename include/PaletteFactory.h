@@ -8,6 +8,9 @@
 #include "timeutil.h"
 
 namespace colTheme {
+    uint8_t perceptualDistance(const CRGB& c1, const CRGB& c2);
+    uint8_t perceptualDistance(const CHSV& c1, const CHSV& c2);
+
     class PaletteFactory {
         bool autoChangeHoliday = true;
         Holiday holiday = None;

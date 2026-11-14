@@ -543,8 +543,9 @@ void FxK6::initCandle(Candle &c, const uint16_t base, const uint8_t minH, const 
     c.maxHeight = maxH;
     // Varied starting initial heights bounded between proportional minimum and maximum
     c.height256 = static_cast<uint16_t>(random8(minH, maxH + 1)) << 8;
-    // Slow, realistic wax burn-down rate
-    c.burnRate = random8(1, 3);
+    // Faster wax burn-down rate: longest candle burns down in under one minute (~35-50s at 100ms interval)
+    const uint16_t burnTicks = random16(360, 500);
+    c.burnRate = max(static_cast<uint8_t>(2), static_cast<uint8_t>(((c.height256 > 256 ? c.height256 - 256 : 1) / burnTicks) + 1));
     memset(c.flameHeat, 0, sizeof(c.flameHeat));
     c.flameHeat[0] = random8(160, 240);
     c.draftPhase = random16();
@@ -588,8 +589,8 @@ void FxK6::setup() {
 }
 
 void FxK6::run() {
-    // Slower burn-down progression clock
-    EVERY_N_MILLIS(125) {
+    // Burn-down progression clock (~10 ticks per second)
+    EVERY_N_MILLIS(100) {
         for (uint8_t i = 0; i < activeCandles; ++i) {
             Candle &c = candles[i];
             if (c.flareCountdown == 0) {
@@ -608,6 +609,7 @@ void FxK6::run() {
     EVERY_N_MILLIS_I(k6Timer, 30) {
         const uint16_t size = tpl.size();
         tpl.fill_solid(BKG);
+        colorBase++;
 
         for (uint8_t i = 0; i < activeCandles; ++i) {
             Candle &c = candles[i];
@@ -622,7 +624,8 @@ void FxK6::run() {
                 if (c.flareCountdown == 0) {
                     // Relight candle with a fresh height bounded between minHeight and maxHeight
                     c.height256 = static_cast<uint16_t>(random8(c.minHeight, c.maxHeight + 1)) << 8;
-                    c.burnRate = random8(1, 3);
+                    const uint16_t burnTicks = random16(360, 500);
+                    c.burnRate = max(static_cast<uint8_t>(2), static_cast<uint8_t>(((c.height256 > 256 ? c.height256 - 256 : 1) / burnTicks) + 1));
                     c.flameHeat[0] = 220;
                     c.stubFrames = 0;
                 }
@@ -661,21 +664,32 @@ void FxK6::run() {
             }
             c.flameHeat[0] = scale8(c.flameHeat[0], 215 + (draft / 7));
 
-            // Step 4: Render wax body (steady, calming ambient beeswax glow)
+            // Step 4: Render wax body (steady, ambient glow following system targetPalette)
+            const uint8_t candleColorIdx = colorBase + (i * (256 / (activeCandles ? activeCandles : 1)));
+            const CRGB rawBodyColor = ColorFromPalette(targetPalette, candleColorIdx, 255, LINEARBLEND);
+
+            // Verify body color is not too close to the flame color (red/orange/amber); if so, add a visually distinctive hue offset
+            CHSV bodyHsv = toHSV(rawBodyColor);
+            uint8_t diff = bodyHsv.hue >= 16 ? (bodyHsv.hue - 16) : (16 - bodyHsv.hue);
+            if (diff > 128) diff = 256 - diff;
+            if (bodyHsv.sat >= 35 && diff < 32) {
+                bodyHsv.hue += 96;
+            }
+
             const uint8_t waxH = c.height256 >> 8;
             for (uint8_t h = 0; h < waxH; ++h) {
-                const uint16_t p = c.basePos + h;
-                if (p < size) {
-                    tpl[p] = ColorFromPalette(palette, 35 + (h * 4), 28 + (h * 6), LINEARBLEND);
+                if (const uint16_t p = c.basePos + h; p < size) {
+                    const uint8_t bri = 50 + ((h + 1) * 70 / (waxH ? waxH : 1));
+                    CHSV pixelHsv = bodyHsv;
+                    pixelHsv.val = scale8(pixelHsv.val, bri);
+                    tpl[p] = toRGB(pixelHsv);
                 }
             }
 
             // Step 5: Render convective flame plume above wax
             for (uint8_t cell = 0; cell < flameCells; ++cell) {
-                const uint16_t p = c.basePos + waxH + cell;
-                if (p < size) {
-                    const uint8_t hVal = c.flameHeat[cell];
-                    if (hVal > 15) {
+                if (const uint16_t p = c.basePos + waxH + cell; p < size) {
+                    if (const uint8_t hVal = c.flameHeat[cell]; hVal > 15) {
                         CRGB flameCol = ColorFromPalette(palette, scale8(hVal, 240), hVal, LINEARBLEND);
                         if (hVal > 215) {
                             const uint8_t whiteCore = (hVal - 215) * 3;

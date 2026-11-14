@@ -81,10 +81,6 @@ void FxF1::run() {
     }
 }
 
-bool FxF1::windDown() {
-    return transEffect.offSpots();
-}
-
 // FxF2
 FxF2::FxF2() : LedEffect(fxf2Desc), pattern(frame(0, FRAME_SIZE-1)) {
 }
@@ -140,10 +136,6 @@ void FxF2::makePattern(uint8_t hue) {
             pattern(std::min<uint16_t>(i + 14, last), std::min<uint16_t>(i + 16, last)) = CRGB::White;
     }
     loopRight(pattern, (Viewport)0, s0);
-}
-
-bool FxF2::windDown() {
-    return transEffect.offWipe(false);
 }
 
 // FxF3
@@ -230,10 +222,6 @@ Viewport FxF3::nextEyePos() {
         szGap = curGap;
     }
     return szGap > EyeBlink::size ? Viewport(posGap, posGap+szGap-EyeBlink::size) : (Viewport)0;
-}
-
-bool FxF3::windDown() {
-    return transEffect.offWipe(true);
 }
 
 /**
@@ -467,10 +455,6 @@ FxF4::FxF4() : LedEffect(fxf4Desc), fxState(Bounce), set1(frame(0, (tpl.size() +
     ofs = wiggleRoom/2;
 }
 
-bool FxF4::windDown() {
-    return transEffect.offWipe(true);
-}
-
 // FxF5 - algorithm by Carl Rosendahl, adapted from code published at https://www.anirama.com/1000leds/1d-fireworks/
 // HEAVY floating point math
 FxF5::FxF5() : LedEffect(fxf5Desc) {}
@@ -597,9 +581,5 @@ void FxF5::explode() const {
     tpl = BKG;
     replicateSet(tpl, others);
     FastLED.show(stripBrightness);
-}
-
-bool FxF5::windDown() {
-    return transEffect.offWipe(true);
 }
 

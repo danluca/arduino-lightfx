@@ -118,8 +118,6 @@ namespace FxH {
 
         void run() override;
 
-        bool windDown() override;
-
         void baseConfig(JsonObject &json) const override;
 
     private:
@@ -176,8 +174,6 @@ namespace FxH {
         void setup() override;
 
         void run() override;
-
-        bool windDown() override;
 
         ~FxH6() override;
 
