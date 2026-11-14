@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023,2024,2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #pragma once
 #ifndef ARDUINO_LIGHTFX_UTIL_H
@@ -62,5 +62,6 @@ void watchdogSetup();
 void watchdogPing();
 void taskDelay(uint32_t ms);
 void holidayUpdate();
+[[noreturn]] void reboot();
 
 #endif //ARDUINO_LIGHTFX_UTIL_H

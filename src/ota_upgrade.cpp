@@ -7,6 +7,7 @@
 #include <PicoLog.h>
 #include <PicoOTA.h>
 #include "hardware/watchdog.h"
+#include "pico/stdlib.h"
 #include "constants.hpp"
 #include "util.h"
 #include "log.h"
@@ -28,7 +29,7 @@ void handle_fw_upgrade() {
     if (upgrade_check()) {
         log_info(F("=====================================UPGRADE===================================="));
         notifyFx();     //we're starting an upgrade - set the lights on the upgrade mode
-        log_info(F("Firmware upgrade available, proceeding to disable watchdog, stop all tasks and write the command file. System will reboot and flash - see ya on the other side!"));
+        log_info(F("Firmware upgrade available, stopping tasks, staging OTA command, and rebooting. See ya on the other side!"));
         fw_upgrade();
     }
 }
@@ -54,30 +55,53 @@ void notifyFx() {
 }
 
 void fw_upgrade() {
-    taskDelay(3000);
-    //stop the watchdog
-    watchdog_disable();
+    // Allow FX task time to display the firmware upgrade light pattern
+    taskDelay(2000);
+
+    // Keep watchdog active during staging to prevent unrecoverable hangs
+    watchdog_update();
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
-        Serial.println(F(">> FWU:: Watchdog disabled"));
+        Serial.println(F(">> FWU:: Watchdog refreshed for OTA staging"));
 #endif
-    //stop all tasks
-    Scheduler.suspendAllTasks();
+
+    // Gracefully stop all application tasks managed by the scheduler so locks/mutexes are released
+    Scheduler.stopAllTasks(false);
+    taskDelay(250);
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
-        Serial.println(F(">> FWU:: All APP tasks suspended"));
+        Serial.println(F(">> FWU:: All APP tasks stopped"));
 #endif
-    //prepare the command file to flash the image
+
+    // Suspend CORE1 task to prevent concurrent flash execution or hardware access
+    if (const TaskHandle_t core1Handle = xTaskGetHandle(csCORE1)) {
+        vTaskSuspend(core1Handle);
+#ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
+        if (Serial)
+            Serial.println(F(">> FWU:: CORE1 suspended"));
+#endif
+    }
+
+    watchdog_update();
+
+    if (!LittleFS.exists(csFWImageFilename)) {
+        log_error(F(">> FWU:: Firmware image %s not found on filesystem, aborting upgrade"), csFWImageFilename);
+        reboot();
+    }
+
+    // Prepare the command file to flash the image
     picoOTA.begin();
     picoOTA.addFile(csFWImageFilename);
     picoOTA.commit();
     LittleFS.end();
 #ifndef PIO_FRAMEWORK_ARDUINO_NO_USB
     if (Serial)
-        Serial.println(F(">> FWU:: Firmware upgrade initiated, rebooting system to complete..."));
+        Serial.println(F(">> FWU:: Firmware upgrade staged, triggering hardware reboot..."));
 #endif
-    //restart the system
-    taskDelay(1000);
+
+    // Set OTA reset marker and trigger immediate hardware watchdog reboot
     watchdog_hw->scratch[kResetMarkerScratchIndex] = kResetMarkerOta;
-    rp2040.reboot();
+    watchdog_reboot(0, 0, 50);
+    while (true)
+        tight_loop_contents();
 }
