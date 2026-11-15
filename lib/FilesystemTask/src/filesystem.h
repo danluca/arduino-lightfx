@@ -53,6 +53,8 @@ public:
     bool stat(const char *path, const FSStat *st) const;
     bool stat(const char *path, const FileInfo *info) const;
     String sha256(const char *path) const;
+    // Close and commit the PicoOTA command on the filesystem's owning task.
+    bool stageFirmware(const char *path) const;
 
     size_t readFile(const char *fname, String *s) const;
     size_t writeFile(const char *fname, const String *s) const;

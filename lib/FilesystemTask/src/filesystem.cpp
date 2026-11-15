@@ -3,6 +3,8 @@
 
 #include <FreeRTOS.h>
 #include <LittleFS.h>
+#include <PicoOTA.h>
+#include "fs_ota.h"
 #include <queue.h>
 #include <queue>
 #include <functional>
@@ -75,7 +77,7 @@ namespace {
 
     struct FsRequest {
         enum class Action : uint8_t { NONE = 0, READ_FILE, WRITE_FILE, WRITE_FILE_ASYNC, APPEND_FILE, APPEND_FILE_BIN, RENAME,
-            DELETE, EXISTS, FORMAT, LIST_FILES, INFO, STAT, MAKE_DIR, SHA256 };
+            DELETE, EXISTS, FORMAT, LIST_FILES, INFO, STAT, MAKE_DIR, SHA256, STAGE_FIRMWARE };
 
         enum class PayloadStorage : uint8_t { NONE, BORROWED, REQUEST_STRING };
 
@@ -161,6 +163,7 @@ static FsRequestPool gFsRequestPool;
         case FsRequest::Action::STAT: return "STAT";
         case FsRequest::Action::MAKE_DIR: return "MAKE_DIR";
         case FsRequest::Action::SHA256: return "SHA256";
+        case FsRequest::Action::STAGE_FIRMWARE: return "STAGE_FIRMWARE";
         default: return "UNKNOWN";
     }
 }
@@ -500,6 +503,9 @@ void fsExecute() {
                 if (auto *payload = getMutablePayload<String>(*request))
                     result = SyncFsImpl.prvSha256(request->path.c_str(), payload) ? 1u : 0u;
             }
+            break;
+        case FsRequest::Action::STAGE_FIRMWARE:
+            result = stageOtaCommand(*SyncFsImpl.fsPtr, picoOTA, request->path.c_str()) ? 1u : 0u;
             break;
         default:
             log_error(F("FileSystem Event type %u not supported"), static_cast<unsigned>(request->action));
@@ -908,6 +914,27 @@ String SynchronizedFS::sha256(const char *path) const {
     } else
         log_error(F("Failed to calculate SHA-256 hash for path %s (does not exist or not a file)"), path);
     return strSha2;
+}
+
+bool SynchronizedFS::stageFirmware(const char *path) const {
+    auto *request = makeBorrowedRequest(FsRequest::Action::STAGE_FIRMWARE, xTaskGetCurrentTaskHandle(), path);
+    if (request == nullptr) {
+        log_error(F("Failed to create STAGE_FIRMWARE request to stage firmware - request pool likely full: path=%s"), path);
+        return "";
+    }
+    log_info(F("Sending STAGE_FIRMWARE message to filesystem task for path %s"), path);
+
+    bool result = false;
+    if (clearAndEnqueueFsRequest(queue, request)) {
+        if (result = waitForFsCompletion(FsRequest::Action::STAGE_FIRMWARE, path, queue); !result)
+            log_error(F("Error staging firmware for path %s - error waiting for completion"), path);
+        else {
+            log_info(F("Firmware staged successfully for path %s"), path);
+        }
+    } else
+        log_error(F("Failed to stage firmware for path %s"), path);
+
+    return result;
 }
 
 /**

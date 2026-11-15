@@ -23,3 +23,15 @@ Board UID selection, runtime buffer sizing, and allocation rollback have a host-
 g++ -std=c++17 -Iinclude src/board_config.cpp test/host/test_board_config.cpp -o test_board_config
 ./test_board_config
 ```
+
+OTA upload authorization, cleanup, short writes, staging failures, image locking,
+and reboot signalling have host-side tests using the production upload and reboot code:
+
+```sh
+g++ -std=c++17 -Wall -Wextra -Werror -Itest/host/ota_stubs -Iinclude -Ilib/FilesystemTask/src src/ota_upload.cpp src/ota_upgrade.cpp test/host/test_ota.cpp -o test_ota
+./test_ota
+```
+
+The OTA stubs provide fake files, PicoOTA commands, HTTP callbacks, and watchdog
+resets. A board test is still required to exercise WiFi, FreeRTOS scheduling,
+LittleFS flash operations, and the bootloader applying an image.
