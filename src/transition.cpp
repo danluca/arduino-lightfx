@@ -216,7 +216,7 @@ bool EffectTransition::offRandomBars(bool rightDir) const {
  */
 bool EffectTransition::offThermalEmberAsh(bool fastCool) {
     bool allOff = false;
-    EVERY_N_MILLIS(35) {
+    EVERY_N_MILLIS(60) {
         bool anyOn = false;
         const uint8_t coolRate = fastCool ? 22 : 14;
         for (uint16_t i = 0; i < NUM_PIXELS; ++i) {
@@ -259,7 +259,7 @@ bool EffectTransition::offThermalEmberAsh(bool fastCool) {
  */
 bool EffectTransition::offGravitationalImplosion(bool outward) {
     bool allOff = false;
-    EVERY_N_MILLIS(35) {
+    EVERY_N_MILLIS(50) {
         const uint16_t halfSize = NUM_PIXELS / 2;
         // Gravity accelerates as distance closes
         const uint16_t step = 1 + (offPosIndex / 4);
@@ -306,7 +306,7 @@ bool EffectTransition::offGravitationalImplosion(bool outward) {
  */
 bool EffectTransition::offSparkleEvaporation(bool colorSparkle) {
     bool allOff = false;
-    EVERY_N_MILLIS(30) {
+    EVERY_N_MILLIS(50) {
         // Base decay across whole strip
         CRGBSet strip(leds, NUM_PIXELS);
         strip.fadeToBlackBy(22);
@@ -386,7 +386,7 @@ bool EffectTransition::offVenetianShutter(bool inward) {
  */
 bool EffectTransition::offHarmonicWaveDamping(bool travelingWave) {
     bool allOff = false;
-    EVERY_N_MILLIS(35) {
+    EVERY_N_MILLIS(45) {
         transStep++;
         // Damping envelope decays from 255 down to 0
         const uint8_t damping = qsub8(255, transStep * 6);
