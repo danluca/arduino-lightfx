@@ -5,10 +5,6 @@
 #include <cstdio>
 #include <cstring>
 
-#ifndef LIGHTFX_TREE_BOARD_UID
-#define LIGHTFX_TREE_BOARD_UID "SET_TREE_UID"
-#endif
-
 namespace {
     /** Fallback configuration applied when no board UID matches or configuration is invalid. */
     constexpr BoardConfiguration safeConfiguration {
@@ -22,7 +18,7 @@ namespace {
     constexpr BoardConfiguration boardConfigurations[] {
         {.uid = "DEB8609F71125183", .deviceName = "Xmas2350", .numPixels = 66, .frameSize = 22, .mv3_3 = 3317, .vccDivR4 = 22000, .vccDivR5 = 4700,
          .ip = {0,0,0,0}, .brightness = 224, .maxBrightness = 255, .ledChipset = LedChipset::WS2812B, .colorOrder = LedColorOrder::BGR},
-        {.uid = LIGHTFX_TREE_BOARD_UID, .deviceName = "FXPine", .numPixels = 1000, .frameSize = 75, .mv3_3 = 3317, .vccDivR4 = 22000, .vccDivR5 = 4700,
+        {.uid = "2CD5A72E6E879358", .deviceName = "FXPine", .numPixels = 1000, .frameSize = 75, .mv3_3 = 3317, .vccDivR4 = 22000, .vccDivR5 = 4700,
          .ip = {0,0,0,0}, .brightness = 224, .maxBrightness = 255, .ledChipset = LedChipset::WS2811, .colorOrder = LedColorOrder::RGB}
     };
 
