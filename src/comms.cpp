@@ -293,8 +293,8 @@ void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
     hdUserAgent.concat(kUaBoardPrefix);
     hdUserAgent.concat("/");
     hdUserAgent.concat(hdUserAgentVersion);
+    client.setUserAgent(hdUserAgent);
     client.addHeader("Content-Length", String(bodyLen));
-    client.addHeader(kHeaderUserAgent, hdUserAgent);
 
     if (const int status = client.PUT(buf); status > 0) {
         String response = client.getString();
