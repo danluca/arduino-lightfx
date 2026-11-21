@@ -16,7 +16,7 @@ namespace {
          .ip={192, 168, 0, 12}, .brightness = 224, .maxBrightness = 255},
         {.uid = "5034C60632956818", .deviceName = "Dev-Office", .numPixels = 170, .frameSize = 76, .mv3_3 = 3262, .vccDivR4 = 21950, .vccDivR5 = 3304,
             .ip = {192, 168, 0, 10}, .brightness = 224, .maxBrightness = 255},
-        {.uid = "unknown-FX01", .deviceName = "FX01-House", .numPixels = 320, .frameSize = 68, .mv3_3 = 3242, .vccDivR4 = 21800, .vccDivR5 = 3305,
+        {.uid = "5034C60632696118", .deviceName = "FX01-House", .numPixels = 320, .frameSize = 68, .mv3_3 = 3242, .vccDivR4 = 21800, .vccDivR5 = 3305,
             .ip = {192, 168, 0, 11}, .brightness = 224, .maxBrightness = 255}
     };
 
