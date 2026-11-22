@@ -1,7 +1,7 @@
 #pragma once
 inline constexpr auto stats_html PROGMEM = R"~~~(
 <!--
-  ~ Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+  ~ Copyright (c) by Dan Luca. All rights reserved.
   ~
   -->
 
@@ -10,11 +10,13 @@ inline constexpr auto stats_html PROGMEM = R"~~~(
 
 <head>
     <meta charset="utf-8">
+    <meta name="firmware-version" content="__FIRMWARE_VERSION__">
     <title>Light FX Runtime Statistics</title>
-    <link href="stats.css" rel="stylesheet" type="text/css" />
+    <link href="stats.css?v=__FIRMWARE_VERSION__" rel="stylesheet" type="text/css" />
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" type="text/javascript"></script>
     <script src="https://cdn.canvasjs.com/jquery.canvasjs.min.js" type="text/javascript"></script>
-    <script src="stats.js" type="text/javascript"></script>
+    <script src="firmware.js?v=__FIRMWARE_VERSION__" type="text/javascript"></script>
+    <script src="stats.js?v=__FIRMWARE_VERSION__" type="text/javascript"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
@@ -72,4 +74,5 @@ inline constexpr auto stats_html PROGMEM = R"~~~(
 </body>
 
 </html>
+
 )~~~";

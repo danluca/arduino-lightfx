@@ -77,6 +77,7 @@ function getConfig() {
 function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
+            if (reloadForFirmwareUpdate(data)) return;
             $('#status h1').removeClass('red');
             $('#boardTemp').html(`${data.temp.board.current.toFixed(1)} °C (${(data.temp.board.current*9/5+32).toFixed(1)} °F)`);
             $('#boardRangeTemp').html(`[${data.temp.board.min.toFixed(1)} - ${data.temp.board.max.toFixed(1)}] °C`);

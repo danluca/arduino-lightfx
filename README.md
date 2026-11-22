@@ -83,6 +83,14 @@ pio device monitor
 
 4. **Access Web Interface**: Navigate to board's IP address after connection 
 
+## Web UI caching
+
+The web UI uses firmware-versioned CSS and JavaScript URLs, and HTML revalidates on
+each navigation. Open control and statistics pages automatically reload when their
+next status poll detects a different firmware build (within two minutes and one
+minute, respectively). When first upgrading from firmware that cached HTML as
+immutable, one final forced refresh may be needed to load this behavior.
+
 ## Mesh FX Control
 
 A board receiving effect broadcasts from a master recognizes the board-originated `/fx` request and saves its current effect and automatic-effect setting. Each accepted master FX update resets the follower's inactivity timer; no status polling is performed. After 20 minutes without an update, the follower restores its saved local settings. The timeout is configurable with `MESH_CONTROL_TIMEOUT_MINUTES` in `include/config.h`.

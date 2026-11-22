@@ -25,6 +25,7 @@
 #include "stats_html.h"
 #include "stats_css.h"
 #include "stats_js.h"
+#include "firmware_js.h"
 // not including this file as the regex subsystem has a large codebase and increases the flash use by ~300kB; this would be the only use of regex and there are workarounds
 // #include "uri/UriRegex.h"
 
@@ -35,6 +36,25 @@ using namespace web;
 static constexpr auto hdCacheControl = "Cache-Control";
 static constexpr auto hdCacheStatic = "public, max-age=2592000, immutable";
 static constexpr auto hdCacheJson = "no-cache, no-store";
+static constexpr auto hdCacheHtml = "no-cache";
+
+// Include build time so rebuilding an uncommitted revision also changes asset URLs.
+static const String &uiFirmwareVersion() {
+    static const String version = [] {
+        String value = GIT_COMMIT "-" BUILD_TIME;
+        value.replace(" ", "_");
+        value.replace(":", "-");
+        return value;
+    }();
+    return version;
+}
+
+static void serveUiHtml(WebClient &client, const char *html) {
+    String page(html);
+    page.replace("__FIRMWARE_VERSION__", uiFirmwareVersion());
+    client.addResponseHeader("Cache-Control", hdCacheHtml);
+    client.streamData(page, "text/html");
+}
 static constexpr auto serverAgent = "rp2040-luca/1.0.0";
 static constexpr auto hdFmtDate = "%4d-%02d-%02d %02d:%02d:%02d CST";
 static constexpr auto hdFmtContentDisposition = "inline; filename=\"%s\"";
@@ -66,21 +86,19 @@ static constexpr uint32_t masterRestoreRetryIntervalMs = 5UL * 1000UL;
  * @brief A map that associates file paths with their corresponding in-memory resources for serving static content.
  *
  * This map is stored in flash memory (PROGMEM) and contains key-value pairs where the key is the file path
- * and the value is a constant pointer to the resource content. These resources are used in the web
- * server to serve static files such as HTML, CSS, and JavaScript to clients.
+ * and the value is a constant pointer to the resource content. HTML is handled separately so it can
+ * revalidate and include the current firmware version in CSS and JavaScript URLs.
  *
  * The entries in this map represent:
- * - File paths (e.g., "/pixel.css", "/index.html") as keys.
+ * - File paths (e.g., "/pixel.css", "/pixel.js") as keys.
  * - Pointers to in-memory resources (e.g., `pixel_css`, `index_html`) as values.
  */
 static const std::map<std::string, const char *> inFlashResources PROGMEM = {
     {"/pixel.css", pixel_css},
     {"/pixel.js", pixel_js},
-    {"/index.html", index_html},
-    {"/", index_html},
+    {"/firmware.js", firmware_js},
     {"/stats.css", stats_css},
     {"/stats.js", stats_js},
-    {"/stats.html", stats_html}
 };
 
 /**
@@ -189,6 +207,7 @@ void web::handleGetStatus(WebClient &client) {
 
     // response body
     JsonDocument doc;
+    doc["firmwareVersion"] = uiFirmwareVersion();
     // System
     doc["watchdogRebootsCount"] = sysInfo->watchdogRebootsCount();
     doc["cleanBoot"] = sysInfo->isCleanBoot();
@@ -508,6 +527,7 @@ void web::handleGetTasks(WebClient &client) {
 
     // response body
     JsonDocument doc;
+    doc["firmwareVersion"] = uiFirmwareVersion();
     doc["cycles32"] = rp2040.getCycleCount();
     doc["cycles64"] = rp2040.getCycleCount64();
     doc["millis"] = millis();
@@ -766,6 +786,10 @@ void web::server_setup() {
     if (!server_handlers_configured) {
         log_info(F("Starting Web server setup"));
         server.setServerAgent(serverAgent);
+        // Register before filesystem/static handlers so stored HTML cannot shadow these pages.
+        server.on("/", HTTP_GET, [](WebClient &client) { serveUiHtml(client, index_html); });
+        server.on("/index.html", HTTP_GET, [](WebClient &client) { serveUiHtml(client, index_html); });
+        server.on("/stats.html", HTTP_GET, [](WebClient &client) { serveUiHtml(client, stats_html); });
         server.serveStatic("/", SyncFsImpl, "/status/", &inFlashResources, hdCacheStatic);
         server.serveStatic("/file", SyncFsImpl, "/", nullptr, hdCacheStatic);
         server.serveStatic("/config.json", SyncFsImpl, "/status/sysconfig.json", nullptr, hdCacheJson);

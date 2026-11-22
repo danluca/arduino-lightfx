@@ -37,6 +37,7 @@ $(() => {
 function getTasks() {
     $.getJSON("tasks.json")
         .done(function (data) {
+            if (reloadForFirmwareUpdate(data)) return;
             $('#tasks h1').removeClass('red');
             $('#curTime').html(`Time: ${data.date} ${data.time}`);
             $('#boardName').html(data.boardName);

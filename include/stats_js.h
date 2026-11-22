@@ -2,7 +2,7 @@
 inline constexpr auto stats_js PROGMEM = R"~~~(
 
 /*
- * Copyright (c) 2025 by Dan Luca. All rights reserved.
+ * Copyright (c) by Dan Luca. All rights reserved.
  *
  */
 
@@ -39,6 +39,7 @@ $(() => {
 function getTasks() {
     $.getJSON("tasks.json")
         .done(function (data) {
+            if (reloadForFirmwareUpdate(data)) return;
             $('#tasks h1').removeClass('red');
             $('#curTime').html(`Time: ${data.date} ${data.time}`);
             $('#boardName').html(data.boardName);
