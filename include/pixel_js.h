@@ -63,6 +63,7 @@ function getConfig() {
 function getStatus() {
     $.getJSON("status.json")
         .done(function (data) {
+            if (reloadForFirmwareUpdate(data)) return;
             $('#status h1').removeClass('red');
             $('#cpuTemp').html(`${data.temp.cpu.current.toFixed(1)} °C (${(data.temp.cpu.current*9/5+32).toFixed(1)} °F)`);
             $('#cpuRangeTemp').html(`[${data.temp.cpu.min.toFixed(1)} - ${data.temp.cpu.max.toFixed(1)}] °C`);
