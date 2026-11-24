@@ -2,7 +2,6 @@
 //
 
 #include <FreeRTOS.h>
-#include <ArduinoHttpClient.h>
 #include <memory>
 #include "SchedulerExt.h"
 #include "comms.h"
@@ -11,6 +10,9 @@
 #include "sysinfo.h"
 #include "util.h"
 #include "task_msg.h"
+#include "mesh_http.h"
+#include "mesh_sender.h"
+#include "broadcast_client.h"
 #if LOGGING_ENABLED == 1
 #include "stringutils.h"
 #include "log.h"
@@ -22,10 +24,9 @@ volatile BroadcastState broadcastState = Uninitialized;
 //broadcast client list, using the last byte of IP addresses - e.g., 192.168.0.10, 192.168.0.11
 static constexpr auto staticSyncClientsLSB = {STATIC_BROADCAST_CLIENTS};     //last byte of the broadcast clients IP addresses (IPv4); assumption that all IP addresses are in the same subnet
 
-static constexpr auto hdContentJson = "Content-Type: application/json";
-static constexpr auto hdConClose PROGMEM = "Connection: close";
-static constexpr auto hdUserAgentVersion = "1.0.0";
-static constexpr auto fmtFxChange = R"===({"effect":%u,"auto":false,"broadcast":false,"source":"%s"})===";
+// Owned and accessed by the web/comms task.
+BroadcastRecipients fxBroadcastRecipients;       //max 10 sync recipients, using smart pointers
+TimerHandle_t thTimeSetupTimer = nullptr;
 
 QueueHandle_t bcQueue;
 static uint16_t tmrTimeUpdateId = 20;
@@ -37,37 +38,11 @@ static uint16_t tmrScanClients = 25;
 
 //function declarations ahead
 void commInit();
-void fxBroadcast(uint16_t index);
 void timeUpdate();
 void timeSetupCheck();
 void enqueueTimeUpdate(TimerHandle_t xTimer);
 void enqueueTimeSetup(TimerHandle_t xTimer);
 void scanClients();
-
-struct BroadcastClient {
-    static constexpr uint8_t BC_ONLINE = 1 << 0;
-    static constexpr uint8_t BC_ACTIVE = 1 << 1;
-    static constexpr uint8_t BC_STATIC = 1 << 2;
-
-    IPAddress ip;
-    unsigned long lastSeenMillis = 0;
-    uint8_t flags = BC_ACTIVE;  //bitmap of flags - up to 8 boolean flags
-
-    BroadcastClient(const IPAddress &src, const uint8_t lsb) : ip(src) {
-        ip[3] = lsb;
-    }
-
-    [[nodiscard]] bool isOnline() const { return flags & BC_ONLINE; }
-    void setOnline(const bool online) { if (online) flags |= BC_ONLINE; else flags &= ~BC_ONLINE; }
-    [[nodiscard]] bool isActive() const { return flags & BC_ACTIVE; }
-    void setActive(const bool active) { if (active) flags |= BC_ACTIVE; else flags &= ~BC_ACTIVE; }
-    [[nodiscard]] bool isStatic() const { return flags & BC_STATIC; }
-    void setStatic(const bool st) { if (st) flags |= BC_STATIC; else flags &= ~BC_STATIC; }
-};
-
-// broadcast task definition - priority is overwritten during setup, see broadcastSetup
-FixedQueue<std::unique_ptr<BroadcastClient>, 10> fxBroadcastRecipients;       //max 10 sync recipients, using smart pointers
-TimerHandle_t thTimeSetupTimer = nullptr;
 
 /**
  * Preparations for broadcast effect changes - set up the recipient clients (others than self), the event posting attributes
@@ -91,6 +66,7 @@ void commInit() {
  * Receives events from the broadcast queue and executes appropriate handlers.
  */
 void commRun() {
+    serviceMeshClients();
     bcTaskMessage msg{};
     //check for a message to be received, return if we don't have any at this time
     if (pdFALSE == xQueueReceive(bcQueue, &msg, 0))
@@ -100,21 +76,20 @@ void commRun() {
     switch (msg.event) {
         case TIME_SETUP: timeSetupCheck(); break;
         case TIME_UPDATE: timeUpdate(); break;
-        case FX_SYNC: fxBroadcast(msg.data); break;
+        case FX_SYNC: break; // Latest FX state is published atomically, even if this queue fills.
         case WIFI_ENSURE: wifi_ensure(); break;
         case WIFI_TEMP: wifi_temp(); break;
         case STATUS_LED_CHECK: state_led_update(); break;
         case ENABLE_BROADCAST: {
             const bool syncMode = static_cast<bool>(msg.data);
-            const bool masterEnabled = syncMode != fxBroadcastEnabled && syncMode;
+            if (syncMode && !meshPrepareMaster()) {
+                log_warn(F("Cannot become mesh master while the FX restore queue is full"));
+                break;
+            }
             fxBroadcastEnabled = syncMode; //we need this enabled before we post the event, if we're doing that
             static constexpr FxActionMessage saveStateMsg{SAVE_STATE, 0};
             if (const BaseType_t qResult = xQueueSend(fxQueue, &saveStateMsg, 0); qResult != pdPASS)
                 log_error(F("Failed to enqueue FX SAVE_STATE message"));
-            if (masterEnabled)
-            {
-                postFxChangeEvent(fxRegistry.curEffectPos()); //we've just enabled broadcasting (this board is a master), issue a sync event to all other boards
-            }
             break;
         }
         case SCAN_CLIENTS: scanClients(); break;
@@ -135,18 +110,6 @@ void enqueueTimeUpdate(TimerHandle_t xTimer) {
     }
     // else
     //     log_info(F("Sent TIME_UPDATE event successfully to broadcast task for timer %hu [%s]"), getTimerId(xTimer), getTimerName(xTimer));
-}
-
-/**
- * Enqueues a FX_SYNC event onto the broadcast task - called from FX task.
- */
-void enqueueFxUpdate(const uint16_t index) {
-    const bcTaskMessage msg{FX_SYNC, index};
-    if (const BaseType_t qResult = xQueueSend(bcQueue, &msg, 0); qResult == pdFALSE) {
-        log_error(F("Error sending FX_SYNC message to broadcast task for FX %d - error %ld"), index, qResult);
-    }
-    // else
-    //     log_info(F("Sent FX_SYNC event successfully to broadcast task for FX %d"), index);
 }
 
 /**
@@ -199,138 +162,11 @@ void enqueueScanClients(TimerHandle_t xTimer) {
 }
 
 /**
- * Ping all clients and record which ones are online
+ * Refresh recipient discovery; mesh acknowledgments determine reachability
  */
 void scanClients() {
-#if MDNS_ENABLED == 1
-    // 1. Remove clients that are no longer discovered and don't respond to ping
-    auto it = fxBroadcastRecipients.begin();
-    while (it != fxBroadcastRecipients.end()) {
-        const IPAddress ip = (*it)->ip;
-        if (!fxBroadcastEnabled.load()) {
-            log_warn(F("FX Broadcast recipient %s NOT discovered; broadcast disabled so no ping"), ip.toString().c_str());
-            ++it;
-            continue;
-        }
-        //note one ping can take up to 7.5 seconds
-        if (const int resPing = WiFi.ping(ip); resPing >= 0) {
-            (*it)->setOnline(true);
-            (*it)->lastSeenMillis = millis();
-            log_warn(F("FX Broadcast recipient %s is still online but was not discovered by mDNS"), ip.toString().c_str());
-            ++it;
-        } else {
-            (*it)->setOnline(false);
-            if ((*it)->isStatic()) {
-                log_info(F("FX Broadcast recipient %s has not been discovered, but it's part of the static list and it won't be removed"), ip.toString().c_str());
-                ++it;
-            } else {
-                log_info(F("FX Broadcast recipient %s is no longer discovered and will be removed"), ip.toString().c_str());
-                it = fxBroadcastRecipients.erase(it);
-            }
-        }
-        taskDelay(100);
-    }
-#endif
-}
-
-/**
- * Single client update - identified through IP address
- * @param board recipient's details
- * @param fxIndex effect index to update
- */
-void clientUpdate(BroadcastClient * const board, const uint16_t fxIndex) {
-    if (!board->isOnline() || !board->isActive()) {
-        log_warn(F("Client %s is offline [%d] or disabled [%d]. Skipping FX %hu update"), board->ip.toString().c_str(), !board->isOnline(), !board->isActive(), fxIndex);
-        return;
-    }
-
-    log_info(F("Attempting to connect to online client %s for FX %hu"), board->ip.toString().c_str(), fxIndex);
-    WiFiClient wiFiClient;  //Wi-Fi client - does not need an explicit pointer for underlying WiFi class/driver
-    HttpClient client(wiFiClient, board->ip, HttpClient::kHttpPort);
-    client.setTimeout(1000);
-    client.setHttpResponseTimeout(2000);
-    //client.connectionKeepAlive();
-    client.noDefaultRequestHeaders();
-
-    char buf[64];   //size deemed enough based on fmtFxChange pattern and fxIndex values (16bit int)
-    const int written = snprintf(buf, sizeof(buf), fmtFxChange, fxIndex, sysInfo->getDeviceName().c_str());
-    const int bodyLen = written < 0 ? 0 : (static_cast<size_t>(written) >= sizeof(buf) ? static_cast<int>(sizeof(buf) - 1) : written);
-
-    String hdUserAgent;
-    hdUserAgent.concat(kHeaderUserAgent);
-    hdUserAgent.concat(": ");
-    hdUserAgent.concat(kUaBoardPrefix);
-    hdUserAgent.concat("/");
-    hdUserAgent.concat(hdUserAgentVersion);
-
-    client.beginRequest();
-    //client.put is where the connection is established
-    if (HTTP_SUCCESS == client.put("/fx")) {
-        client.sendHeader(hdContentJson);
-        client.sendHeader(hdUserAgent);
-        client.sendHeader("Content-Length", bodyLen);
-        client.sendHeader(hdConClose);
-        client.beginBody();
-        client.print(buf);
-        client.endRequest();
-
-        const int statusCode = client.responseStatusCode();
-        String response = client.responseBody();
-#if LOGGING_ENABLED == 1
-        if (statusCode / 100 == 2)
-            log_info(F("Successful sync FX %hu with client %s: %d response status\nBody: %s"), fxIndex, board->ip.toString().c_str(), statusCode, response.c_str());
-        else
-            log_error(F("Failed to sync FX %hu to client %s: %d response status"), fxIndex, board->ip.toString().c_str(), statusCode);
-#endif
-        (void)statusCode;
-        //process the JSON body
-        JsonDocument doc;
-        if (const DeserializationError error = deserializeJson(doc, response)) {
-            log_error(F("Failed to parse JSON response from client %s for FX %hu: %s"), board->ip.toString().c_str(), fxIndex, error.c_str());
-        } else {
-            const auto brdDisabled = doc["talkToHand"].is<bool>() ? doc["talkToHand"].as<bool>() : false;
-            if (brdDisabled) {
-                log_info(F("Board %s is online and reports disabled for FX sync: %d response status"), board->ip.toString().c_str(), statusCode);
-            }
-            board->setActive(!brdDisabled);
-            board->setOnline(true);
-            board->lastSeenMillis = millis();
-        }
-        doc.clear();
-    } else {
-        log_error(F("Failed to connect to client %s, FX %hu not synced"), board->ip.toString().c_str(), fxIndex);
-        board->setOnline(false);
-        board->lastSeenMillis = millis();
-    }
-    client.stop();
-    taskDelay(200);    //little break in between (multiple) client calls
-}
-
-/**
- * Effect broadcast callback
- * @param index the effect index to broadcast
- */
-void fxBroadcast(const uint16_t index) {
-    if (!sysInfo->isSysStatus(SysStatus::Wifi)) {
-        log_warn(F("WiFi was not successfully setup or is currently in process of reconnecting. Cannot perform FX  update for %d. System status: %#hX"),
-            index, sysInfo->getSysStatus());
-        return;
-    }
-    const String fxId = fxRegistry.getEffectId(index);
-    if (fxId == "unknown") {
-        log_error(F("Effect at index %d not found"), index);
-        return;
-    }
-    if (!fxBroadcastEnabled) {
-        log_warn(F("This board is not a master (FX Broadcast disabled) - will not push effect %s [%hu] to others"), fxId.c_str(), index);
-        return;
-    }
-    broadcastState = Broadcasting;
-    log_info(F("Fx change event - start broadcasting %s [%hu] to %u recipients"), fxId.c_str(), index, static_cast<unsigned>(fxBroadcastRecipients.size()));
-    for (const auto &client : fxBroadcastRecipients)
-        clientUpdate(client.get(), index);
-    log_info(F("Finished broadcasting to %u recipients - check individual log statements for status of each recipient"), static_cast<unsigned>(fxBroadcastRecipients.size()));
-    broadcastState = Waiting;
+    // Static peers are retried every announcement, including peers previously offline.
+    // Reachability comes from mesh acknowledgments rather than blocking ICMP pings.
 }
 
 /**
@@ -490,20 +326,16 @@ void postTimeSetupCheck() {
 }
 
 /**
- * Abstraction for posting an effect update event to the queue, without inner knowledge of event objects
- * <b>Note:</b> this method is called from Fx thread and the event queueing will cause the broadcast to be executed in the comms thread.
+ * Publishes the desired effect atomically; web/comms sends it without blocking the FX task.
  * @param index the effect index to post update for
  */
 void postFxChangeEvent(const uint16_t index) {
-    if (broadcastState >= Configured)
-        enqueueFxUpdate(index);
-    else
-        log_warn(F("Broadcast system is not configured yet - effect %hu cannot be synced. Broadcast enabled=%s"), index, StringUtils::asString(fxBroadcastEnabled));
+    meshPublishEffect(index);
 }
 
 void forEachActiveClientIP(const std::function<void(const arduino::IPAddress&)>& consumer) {
     for (const auto &client : fxBroadcastRecipients) {
-        if (client && client->isOnline() && client->isActive()) {
+        if (client && client->delivery.confirmed(millis())) {
             consumer(client->ip);
         }
     }

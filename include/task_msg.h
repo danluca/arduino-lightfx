@@ -22,6 +22,7 @@ enum FxAction:uint8_t {AUTO_FX, MANUAL_FX, COLOR_THEME, STRIP_BRIGHTNESS, AUDIO_
 struct FxActionMessage {
     FxAction action;
     uint32_t data;
+    uint32_t meshTicket = 0; // Zero is reserved for legacy commands.
 };
 
 enum CommAction:uint8_t {TIME_SETUP, TIME_UPDATE, FX_SYNC, WIFI_ENSURE, WIFI_TEMP, STATUS_LED_CHECK, ENABLE_BROADCAST, SCAN_CLIENTS};

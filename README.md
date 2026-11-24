@@ -93,9 +93,15 @@ immutable, one final forced refresh may be needed to load this behavior.
 
 ## Mesh FX Control
 
-A board receiving effect broadcasts from a master recognizes the board-originated `/fx` request and saves its current effect and automatic-effect setting. Each accepted master FX update resets the follower's inactivity timer; no status polling is performed. After 20 minutes without an update, the follower restores its saved local settings. The timeout is configurable with `MESH_CONTROL_TIMEOUT_MINUTES` in `include/config.h`.
+Both board families use a versioned `PUT /mesh` protocol with effect IDs, session
+and sequence identifiers, applied acknowledgments, and bounded retries. Masters
+announce state every 60 seconds even when running a fixed effect. Followers
+restore their saved local effect and auto-advance setting after three minutes
+without an announcement; local sleep scheduling stays in force.
 
-The master must continue sending FX updates more frequently than the timeout to maintain control (the current auto-roll interval is 7 minutes). Changing the effect or automatic-effect setting locally while following a master ends the mesh session without restoring over the local change. Sleep scheduling continues to apply while following and on restoration.
+Update followers before the master. Legacy `/fx` masters remain supported with
+the previous 20-minute timeout. See [HTTP mesh protocol](docs/mesh-protocol.md)
+for the wire format, task ownership, status fields, and deployment details.
 
 ## Architecture
 

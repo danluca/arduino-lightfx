@@ -23,6 +23,24 @@ g++ -std=c++17 -Iinclude test/host/test_mesh_fx_session.cpp -o test_mesh_fx_sess
 ./test_mesh_fx_session
 ```
 
+The mesh HTTP tests compile the production receiver, JSON codec, and sender
+against fake HTTP/FreeRTOS services. They exercise acknowledgments, lost replies,
+bounded retries, heartbeat expiry, queue-full recovery, stale/duplicate state,
+master restarts, sequence/timer rollover, sleep-safe snapshots, and opt-out:
+
+```sh
+g++ -std=c++17 -Wall -Wextra -Werror -Itest/host/mesh_stubs -Iinclude -I.pio/libdeps/rp2040-rel/ArduinoJson/src src/mesh_http.cpp test/host/test_mesh_http.cpp -o test_mesh_http
+./test_mesh_http
+g++ -std=c++17 -Wall -Wextra -Werror -Itest/host/mesh_stubs -Iinclude -I.pio/libdeps/rp2040-rel/ArduinoJson/src -Ilib/Utils/src src/mesh_http.cpp src/mesh_sender.cpp test/host/test_mesh_sender.cpp -o test_mesh_sender
+./test_mesh_sender
+g++ -std=c++17 -Wall -Wextra -Werror -DIGNORE_WEB_EFFECT_CHANGES=1 -Itest/host/mesh_stubs -Iinclude -I.pio/libdeps/rp2040-rel/ArduinoJson/src src/mesh_http.cpp test/host/test_mesh_http.cpp -o test_mesh_ignored
+./test_mesh_ignored
+```
+
+For RP2350, substitute `rp2350-rel` in the ArduinoJson include path. A mixed-board
+hardware run is still needed to verify radio loss, reconnection, and overnight
+restoration on actual devices.
+
 Board UID selection, runtime buffer sizing, and allocation rollback have a host-side test:
 
 ```sh

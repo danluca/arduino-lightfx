@@ -2,7 +2,40 @@
 #include <cstdint>
 #include "mesh_fx_session.h"
 
+struct Registry {
+    uint16_t effect = 12;
+    uint16_t beforeSleep = 12;
+    bool automatic = true;
+    bool asleep = false;
+    unsigned transitions = 0;
+    uint16_t effectPosToRestore() const { return asleep ? beforeSleep : effect; }
+    bool isAutoRoll() const { return automatic; }
+    void autoRoll(bool value) { automatic = value; }
+    void restoreEffectPos(uint16_t value) {
+        ++transitions;
+        if (asleep) beforeSleep = value;
+        else effect = value;
+    }
+};
+
 int main() {
+    Registry registry;
+    MeshFxSession snapshot;
+    applyMeshFxState(snapshot, registry, 24);
+    assert(!registry.automatic && registry.effect == 24);
+    applyMeshFxState(snapshot, registry, 24);
+    assert(registry.transitions == 1); // Heartbeats cannot restart the animation.
+    applyMeshFxState(snapshot, registry, 25);
+    restoreMeshFxState(snapshot, registry);
+    assert(registry.automatic && registry.effect == 12);
+    registry.asleep = true;
+    registry.effect = 0; // Sleep animation stays selected throughout the session.
+    registry.beforeSleep = 18;
+    applyMeshFxState(snapshot, registry, 24);
+    assert(registry.effect == 0 && registry.beforeSleep == 24);
+    restoreMeshFxState(snapshot, registry);
+    assert(registry.effect == 0 && registry.beforeSleep == 18 && registry.automatic);
+
     MeshFxSession session;
     assert(!session.active());
     assert(session.begin(12, true));
