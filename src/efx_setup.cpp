@@ -13,6 +13,7 @@
 #include "stringutils.h"
 #include "constants.hpp"
 #include "mesh_fx_session.h"
+#include "mesh_http.h"
 #include <hardware/watchdog.h>
 #include <new>
 #include <atomic>
@@ -358,25 +359,21 @@ void fx_run() {
         switch (msg.action) {
             case AUTO_FX:
                 meshFxSession.clear();
+                meshAppliedTicket.store(0, std::memory_order_release);
                 fxRegistry.autoRoll(static_cast<bool>(msg.data));
                 break;
             case MANUAL_FX:
                 meshFxSession.clear();
+                meshAppliedTicket.store(0, std::memory_order_release);
                 fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data));
                 break;
             case MESH_FX_UPDATE:
-                (void)meshFxSession.begin(fxRegistry.effectPosToRestore(), fxRegistry.isAutoRoll());
-                fxRegistry.autoRoll(false);
-                fxRegistry.nextEffectPos(static_cast<uint16_t>(msg.data));
+                applyMeshFxState(meshFxSession, fxRegistry, static_cast<uint16_t>(msg.data));
+                meshAppliedTicket.store(msg.meshTicket, std::memory_order_release);
                 break;
             case MESH_FX_RESTORE:
-                if (meshFxSession.active()) {
-                    const uint16_t previousEffect = meshFxSession.previousEffect();
-                    const bool previousAutoRoll = meshFxSession.previousAutoRoll();
-                    meshFxSession.clear();
-                    fxRegistry.autoRoll(previousAutoRoll);
-                    fxRegistry.restoreEffectPos(previousEffect);
-                }
+                meshAppliedTicket.store(0, std::memory_order_release);
+                restoreMeshFxState(meshFxSession, fxRegistry);
                 break;
             case COLOR_THEME: paletteFactory.setHoliday(static_cast<Holiday>(msg.data)); break;
             case SLEEP_ENABLED: fxRegistry.enableSleep(static_cast<bool>(msg.data)); break;
@@ -425,6 +422,7 @@ void fx_run() {
 
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageBeforeLoop;
     fxRegistry.loop();
+    meshPublishEffect(fxRegistry.curEffectPos());
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterLoop;
     HealthMonitor::update(7000, 4000);  //coordinate the warnMs argument with the FxHeartbeat timer in diag.cpp - this should be ~1s more than the timer value
     watchdog_hw->scratch[kFxStageScratchIndex] = kFxStageAfterPing;

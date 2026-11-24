@@ -19,7 +19,7 @@
 #include "stringutils.h"
 #include "task_msg.h"
 #include "HealthMonitor.h"
-#include "mesh_fx_session.h"
+#include "mesh_http.h"
 #include "index_html.h"
 #include "pixel_css.h"
 #include "pixel_js.h"
@@ -76,15 +76,9 @@ static constexpr uint16_t serverPort = 80;
 static auto mdnsStatus = false;
 #endif
 
-String masterBoardName;
 WebServer web::server;
 bool web::server_handlers_configured = false;
 
-static MeshFxActivity masterControlActivity;
-static IPAddress masterControlIp;
-static uint32_t lastRestoreQueueFailureMs = 0;
-
-static constexpr uint32_t masterRestoreRetryIntervalMs = 5UL * 1000UL;
 
 /**
  * @brief A map that associates file paths with their corresponding in-memory resources for serving static content.
@@ -117,50 +111,6 @@ static bool isMasterFxUpdate(const WebRequest &request, const JsonDocument &doc)
         doc[csAuto].is<bool>() && !doc[csAuto].as<bool>() &&
         doc[csBroadcast].is<bool>() && !doc[csBroadcast].as<bool>() &&
         doc["source"].is<String>() && doc["source"].as<String>().length() > 0;
-}
-
-/**
- * Resets the master control variables
- */
-static void clearMasterControl() {
-    masterControlActivity.clear();
-    masterControlIp = IPAddress();
-    masterBoardName = "";
-    lastRestoreQueueFailureMs = 0;
-}
-
-/**
- * Updates the master control variables with information from the master board
- * @param masterIp the IP address of the master board
- * @param masterName name of the master board
- */
-static void recordMasterControl(const IPAddress &masterIp, const String &masterName) {
-    masterControlActivity.record(millis());
-    masterControlIp = masterIp;
-    masterBoardName = masterName;
-    log_info(F("Mesh FX control received from %s (%s)"), masterBoardName.c_str(), masterControlIp.toString().c_str());
-}
-
-/**
- * Checks whether the timeout of master control has been reached (in which case signals the reset to previous mode)
- */
-static void checkMasterControlTimeout() {
-    if (!masterControlActivity.active())
-        return;
-
-    const uint32_t nowMs = millis();
-    constexpr uint32_t timeoutMs = MESH_CONTROL_TIMEOUT_MINUTES * 60UL * 1000UL;
-    if (masterControlActivity.timedOut(nowMs, timeoutMs)) {
-        constexpr FxActionMessage msg{.action = MESH_FX_RESTORE, .data = 0};
-        if (xQueueSend(fxQueue, &msg, 0) == pdPASS) {
-            log_warn(F("Mesh master %s (%s) has not sent an FX update for %u minutes; restoring local FX state"),
-                masterBoardName.c_str(), masterControlIp.toString().c_str(), static_cast<unsigned>(MESH_CONTROL_TIMEOUT_MINUTES));
-            clearMasterControl();
-        } else if (lastRestoreQueueFailureMs == 0 || nowMs - lastRestoreQueueFailureMs >= masterRestoreRetryIntervalMs) {
-            log_error(F("Failed to queue mesh FX restoration; retrying while the FX queue is full"));
-            lastRestoreQueueFailureMs = nowMs;
-        }
-    }
 }
 
 /**
@@ -284,8 +234,8 @@ void web::handleGetStatus(WebClient &client) {
         forEachActiveClientIP([&activeClients](const IPAddress &ip) {
             (void)activeClients.add(ip.toString());
         });
-    } else if (masterBoardName.length() > 0) {
-        master["masterBoard"] = masterBoardName;
+    } else {
+        describeMeshControl(master);
     }
     const auto knownClients = master["knownClients"].to<JsonArray>();
     forEachKnownClientIP([&knownClients](const IPAddress &ip) {
@@ -395,9 +345,9 @@ void web::handlePutConfig(WebClient &client) {
     BaseType_t qResult = pdTRUE;
     const bool boardFxSync = isMasterFxUpdate(req, doc);
 #if IGNORE_WEB_EFFECT_CHANGES == 1
-    const bool masterFxSync = boardFxSync && isUi;
+    const bool masterFxSync = boardFxSync && isUi && !meshVersionedControlActive();
 #else
-    const bool masterFxSync = boardFxSync;
+    const bool masterFxSync = boardFxSync && !meshVersionedControlActive();
 #endif
 
     if (masterFxSync) {
@@ -413,6 +363,9 @@ void web::handlePutConfig(WebClient &client) {
     } else if (boardFxSync) {
         log_warn(F("Ignoring master FX sync from origin ua='%s', x-source='%s'"), userAgent.c_str(), xSource.c_str());
         resp["talkToHand"] = true;
+        resp["status"] = false;
+        (void)marshalJson(resp, client);
+        return; // Reject the entire legacy sync, including its broadcast toggle.
     } else {
         // Effect change requests may be ignored based on compile-time flag and origin
         if (doc[csAuto].is<bool>()) {
@@ -426,7 +379,7 @@ void web::handlePutConfig(WebClient &client) {
                 const FxActionMessage msg = {AUTO_FX, autoAdvance};
                 if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
                     log_error(F("Error sending AUTO_FX message to FX queue with value %d - error %ld"), autoAdvance, qResult);
-                else if (masterControlActivity.active())
+                else if (meshControlActive())
                     clearMasterControl();
                 upd[csAuto] = autoAdvance;
             }
@@ -443,7 +396,7 @@ void web::handlePutConfig(WebClient &client) {
                 const FxActionMessage msg = {MANUAL_FX, nextFx};
                 if ((qResult = xQueueSend(fxQueue, &msg, 0)) != pdTRUE)
                     log_error(F("Error sending MANUAL_FX message to FX queue with value %d - error %ld"), nextFx, qResult);
-                else if (masterControlActivity.active())
+                else if (meshControlActive())
                     clearMasterControl();
                 upd[strEffect] = nextFx;
             }
@@ -856,6 +809,7 @@ void web::server_setup() {
         server.on("/log", HTTP_GET, handleGetLog);
         server.on("/status/log.txt", HTTP_GET, handleGetLog);
         server.on("/fx", HTTP_PUT, handlePutConfig);
+        server.on("/mesh", HTTP_PUT, handleMeshState);
         server.on("/tasks.json", HTTP_GET, handleGetTasks);
         // Filesystem listing (confined to /ext)
         server.on("/files.json", HTTP_GET, handleGetFiles);

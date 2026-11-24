@@ -22,7 +22,7 @@
 #define IP_DNS 192,168,0,1              // Local DNS
 #define IP_GW 192,168,0,1           // default gateway (router)
 #define IP_SUBNET 255,255,255,0     // usual subnet mask
-#define STATIC_BROADCAST_CLIENTS     10, 11, 12              //this is a CSV of *last byte* of the boards having static IP addresses
+#define STATIC_BROADCAST_CLIENTS     10, 11, 12, 75, 182              //this is a CSV of *last byte* of the boards having static IP addresses
 #define MDNS_CACHING_TIMEOUT_MS (60*60*1000)          // 60 minutes for discovered boards to persist in cache
 #ifndef MESH_CONTROL_TIMEOUT_MINUTES
 #define MESH_CONTROL_TIMEOUT_MINUTES 20              // Restore local FX state after 20 minutes without a master FX update

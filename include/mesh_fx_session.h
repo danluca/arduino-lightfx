@@ -2,6 +2,7 @@
 // Copyright (c) by Dan Luca. All rights reserved
 //
 #pragma once
+#include <cstdint>
 
 class MeshFxSession {
     uint16_t previousEffect_ = 0;
@@ -47,3 +48,22 @@ public:
         return active_ && meshControlTimedOut(nowMs, lastActivityMs_, timeoutMs);
     }
 };
+
+// FX-task-only helpers shared by both boards. Registry restoration preserves sleep scheduling.
+template<typename Registry>
+void applyMeshFxState(MeshFxSession &session, Registry &registry, uint16_t effect) {
+    (void)session.begin(registry.effectPosToRestore(), registry.isAutoRoll());
+    registry.autoRoll(false);
+    if (registry.effectPosToRestore() != effect)
+        registry.restoreEffectPos(effect);
+}
+
+template<typename Registry>
+void restoreMeshFxState(MeshFxSession &session, Registry &registry) {
+    if (!session.active()) return;
+    const uint16_t effect = session.previousEffect();
+    const bool automatic = session.previousAutoRoll();
+    session.clear();
+    registry.autoRoll(automatic);
+    registry.restoreEffectPos(effect);
+}
