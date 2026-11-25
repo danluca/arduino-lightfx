@@ -1,6 +1,7 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include "RequestHandlers.h"
+#include <cstring>
 #include <string>
 #include "mimetable.h"
 #include "../WebClient.h"
@@ -153,7 +154,7 @@ void StaticFileRequestHandler::getPath(const String &uri, String &path, const ch
 StaticSyncFileRequestHandler::StaticSyncFileRequestHandler(const SynchronizedFS &fs, const char *path, const char *uri, const char *cache_header):
     _fs(fs), _uri(uri), _path(path), _cache_header(cache_header) {
     FileInfo fi{};
-    fs.stat(path, &fi);
+    (void)fs.stat(path, &fi);
     _isFile = fi.size >0 && (!fi.isDir);
     log_debug("StaticSyncFileRequestHandler: web uri=%s mapped to physical path=%s, isFile=%d, cache_header=%s", uri, path, _isFile, cache_header ? cache_header : "");
     _baseUriLength = _uri.length();
@@ -271,7 +272,8 @@ bool StaticInMemoryRequestHandler::handle(WebClient& client) {
 
     if (_cache_header.length() != 0)
         client.addResponseHeader(F("Cache-Control"), _cache_header);
-    client.streamData(String(cacheEntry->second), contentType);
+    const char *data = cacheEntry->second;
+    client.streamData(data, std::strlen(data), contentType);
     return true;
 }
 
