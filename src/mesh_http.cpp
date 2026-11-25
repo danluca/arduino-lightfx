@@ -26,7 +26,7 @@ static uint32_t nextTicket = 0;
  *
  * @param index Index of the effect to publish.
  */
-void meshPublishEffect(uint16_t index) {
+void meshPublishEffect(const uint16_t index) {
     publishedEffect.store(index, std::memory_order_relaxed);
     publishedReady.store(true, std::memory_order_release);
 }
@@ -88,7 +88,7 @@ void recordMasterControl(const IPAddress &ip, const String &name) {
 void checkMasterControlTimeout() {
     const uint32_t timeout = inbox.active() ? mesh::leaseMs : MESH_CONTROL_TIMEOUT_MINUTES * 60000UL;
     if (!controlActivity.timedOut(millis(), timeout)) return;
-    const FxActionMessage msg{MESH_FX_RESTORE, 0};
+    constexpr FxActionMessage msg{MESH_FX_RESTORE, 0};
     if (xQueueSend(fxQueue, &msg, 0) == pdPASS) {
         log_warn(F("Mesh master %s timed out; restoring local FX state"), masterBoardName.c_str());
         clearMasterControl();

@@ -1,6 +1,7 @@
-// Copyright (c) 2025,2026 by Dan Luca. All rights reserved.
+// Copyright (c) by Dan Luca. All rights reserved.
 //
 #include "RequestHandlers.h"
+#include <cstring>
 #include <string>
 #include "mimetable.h"
 #include "../WebClient.h"
@@ -271,7 +272,8 @@ bool StaticInMemoryRequestHandler::handle(WebClient& client) {
 
     if (_cache_header.length() != 0)
         client.addResponseHeader(F("Cache-Control"), _cache_header);
-    client.streamData(String(cacheEntry->second), contentType);
+    const char *data = cacheEntry->second;
+    client.streamData(data, std::strlen(data), contentType);
     return true;
 }
 
